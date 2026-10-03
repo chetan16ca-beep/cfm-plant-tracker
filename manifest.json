@@ -1,0 +1,19 @@
+{
+  "name": "CFM Plant Tracker",
+  "short_name": "CFM Tracker",
+  "id": "/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef3f8",
+  "theme_color": "#101820",
+  "description": "CFM Plant ERP - stock, pending orders, cutting and plant tracking",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
