@@ -1,102 +1,19 @@
 <!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101820"><title>CFM Plant Tracker</title>
-<link rel="manifest" href="./manifest.json"><link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-<style>html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#eef3f8;color:#182433}.wrap{height:100%;display:grid;place-items:center;text-align:center;padding:24px}.card{background:#fff;padding:28px;border-radius:18px;box-shadow:0 10px 30px rgba(28,59,88,.12);max-width:420px;width:100%}.spinner{width:42px;height:42px;border:5px solid #d6e0e9;border-top-color:#1f4e79;border-radius:50%;margin:0 auto 16px;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}h1{font-size:20px;margin:0 0 8px}p{margin:0;color:#667586;font-size:14px}</style>
-</head><body><div class="wrap"><div class="card"><div class="spinner"></div><h1>CFM Plant Tracker</h1><p id="status">Loading ERP data…</p></div></div>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101820"><title>CFM Plant Tracker</title><link rel="manifest" href="/manifest.json">
+<style>html,body,#app{margin:0;width:100%;height:100%;overflow:hidden;background:#eef3f8}#app{border:0;display:block}.load{position:fixed;inset:0;display:grid;place-items:center;font-family:system-ui;color:#182433}.box{background:#fff;padding:24px;border-radius:16px;box-shadow:0 8px 30px #0002;text-align:center}</style></head>
+<body><div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div><iframe id="app" title="CFM Plant Tracker"></iframe>
 <script>
 const groups=[["chunks/s1-000.txt"],["chunks/s2-000.txt","chunks/s2-001.txt","chunks/s2-002.txt","chunks/s2-003.txt","chunks/s2-004.txt","chunks/s2-005.txt","chunks/s2-006.txt","chunks/s2-007.txt","chunks/s2-008.txt"],["chunks/s3-000.txt","chunks/s3-001.txt"],["chunks/s4-000.txt","chunks/s4-001.txt","chunks/s4-002.txt","chunks/s4-003.txt","chunks/s4-004.txt","chunks/s4-005.txt","chunks/s4-006.txt","chunks/s4-007.txt","chunks/s4-008.txt","chunks/s4-009.txt","chunks/s4-010.txt","chunks/s4-011.txt","chunks/s4-012.txt","chunks/s4-013.txt","chunks/s4-014.txt"]];
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 (async()=>{
- const status=document.getElementById('status');let done=0,total=groups.flat().length;
- const loaded=[];
- for(const group of groups){
-   const parts=await Promise.all(group.map(async u=>{const r=await fetch(u);if(!r.ok)throw new Error('Missing app file: '+u);done++;status.textContent='Loading ERP data… '+done+'/'+total;return await r.text();}));
-   loaded.push(parts.join(''));
- }
- let source=loaded.join('\n')+'\n';
- source=source.replaceAll('icons/icon-192.png','icons/icon.svg').replaceAll('icons/icon-512.png','icons/icon.svg');
- // CFM live event notifications: New Work No / New Cutting Entry from other mobiles.
- const notifyPatch=`
-<script>
-(function(){
-  const EVT_KEY='cfm_event_notify_v1';
-  const NSET_KEY='cfm_event_notify_enabled_v1';
-  let ready=false,lastWorks=new Set(),lastCuts=new Set(),lastVersion=0;
-  const nkey=r=>[r.workNo||'',r.date||'',r.srlNo||'',r.sizeLine||'',r.cutQty??'',r.updatedAt||'',r.batchId||''].join('|');
-  function nshow(title,body,tag){
-    if(localStorage.getItem(NSET_KEY)!=='1'||!('Notification' in window)||Notification.permission!=='granted')return;
-    try{
-      if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
-        navigator.serviceWorker.ready.then(reg=>reg.showNotification(title,{body,icon:'icons/icon.svg',badge:'icons/icon.svg',tag:tag||'cfm-event',renotify:true,data:{url:location.href}})).catch(()=>{});
-      }else new Notification(title,{body});
-    }catch(e){}
-  }
-  async function check(){
-    if(document.hidden)return;
-    try{
-      if(typeof cloudFetch!=='function')return;
-      const row=await cloudFetch(); if(!row||!row.payload)return;
-      const works=row.payload.pending||[], cuts=row.payload.cutting||[];
-      const ws=new Set(works.map(r=>r.workNo).filter(Boolean)), cs=new Set(cuts.map(nkey));
-      if(ready&&Number(row.version||0)>lastVersion){
-        const nw=works.filter(r=>r.workNo&&!lastWorks.has(r.workNo));
-        const nc=cuts.filter(r=>!lastCuts.has(nkey(r)));
-        nw.slice(-5).forEach(r=>nshow('🆕 New Work No: '+r.workNo,(r.party||'-')+' • '+(r.description||'-'),'cfm-work-'+r.workNo));
-        nc.slice(-8).forEach(r=>nshow('✂️ New Cutting Entry: '+(r.workNo||'-'),(r.srlNo?'SRL '+r.srlNo+' • ':'')+(r.sizeLine||'')+(r.cutQty!==''&&r.cutQty!=null?' • Qty '+r.cutQty:''),'cfm-cut-'+nkey(r)));
-      }
-      lastWorks=ws;lastCuts=cs;lastVersion=Number(row.version||0);ready=true;
-    }catch(e){}
-  }
-  window.enableEventNotifications=async function(){
-    if(!('Notification'in window))return toast('Notifications not supported');
-    const p=await Notification.requestPermission();
-    localStorage.setItem(NSET_KEY,p==='granted'?'1':'0');
-    if(p==='granted'){nshow('CFM Plant Tracker','New Work No + New Cutting Entry notifications ON','cfm-events-on');toast('Live notifications ON');}
-    else toast('Notification permission allow karo');
-  };
-  function addButton(){
-    if(document.getElementById('cfmEventNotifyBtn'))return;
-    const b=document.createElement('button');b.id='cfmEventNotifyBtn';b.type='button';b.textContent='🔔 Live Notifications';
-    b.style.cssText='position:fixed;right:14px;bottom:74px;z-index:9998;border:0;border-radius:999px;padding:11px 14px;background:#101820;color:white;font-weight:700;box-shadow:0 4px 16px #0003';
-    b.onclick=window.enableEventNotifications;document.body.appendChild(b);
-  }
-  window.addEventListener('load',()=>{addButton();setTimeout(check,1500);setInterval(check,5000);});
-})();
-<\/script>`;
- const touchFix=`
-<style>.module-command-card,#nav button,.kpi.clickable,.worker-dash-box{pointer-events:auto!important;touch-action:manipulation!important;position:relative}.module-command-card{z-index:1}</style>
-<script>
-(function(){
- function go(el){
-   if(!el)return false;
-   var name=el.getAttribute('data-view')||el.getAttribute('data-cfm-view');
-   if(!name){
-     var oc=el.getAttribute('onclick')||'';
-     var m=oc.match(/showView\\(['"]([^'"]+)['"]\\)/); if(m)name=m[1];
-   }
-   if(!name)return false;
-   try{if(typeof window.showView==='function'){window.showView(name);return true}}catch(err){}
-   var target=document.getElementById('view-'+name);
-   if(!target)return false;
-   document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');v.style.display='none'});
-   target.classList.add('active');target.style.display='block';
-   document.querySelectorAll('#nav button').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-view')===name)});
-   window.scrollTo(0,0);
-   return true;
- }
- document.addEventListener('click',function(e){
-   var el=e.target.closest&&e.target.closest('.module-command-card,#nav button');
-   if(el){e.preventDefault();e.stopPropagation();go(el)}
- },true);
- document.addEventListener('touchend',function(e){
-   var el=e.target.closest&&e.target.closest('.module-command-card,#nav button');
-   if(el){e.preventDefault();go(el)}
- },{capture:true,passive:false});
-})();
-<\\/script>`;
- source=source.replace('</body>',notifyPatch+touchFix+'</body>');
- document.open();document.write(source);document.close();
-})().catch(err=>{document.getElementById('status').textContent='App load failed. Internet on karke Refresh karein. '+err.message;console.error(err);});
+ let parts=[],done=0,total=groups.flat().length,st=document.getElementById('st');
+ for(const g of groups){const x=await Promise.all(g.map(async u=>{const r=await fetch('/'+u+'?v=47');if(!r.ok)throw Error(u);done++;st.textContent='Loading '+done+'/'+total;return r.text()}));parts.push(x.join(''))}
+ let src=parts.join('\n')+'\n';
+ src=src.replaceAll('icons/icon-192.png','/icons/icon-192.svg').replaceAll('icons/icon-512.png','/icons/icon-512.svg');
+ const base='<base href="'+location.origin+'/">';
+ src=src.replace('<head>','<head>'+base);
+ const frame=document.getElementById('app');
+ frame.addEventListener('load',()=>document.getElementById('load')?.remove(),{once:true});
+ frame.srcdoc=src;
+})().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
 </script></body></html>
