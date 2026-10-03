@@ -78,11 +78,13 @@ window.openCuttingForm=function(i=null,preset=null){
     o.layer=o.layer||1;o.wastage=o.wastage==='YES'||normalize(o.srlNo)==='W';if(o.wastage)o.srlNo='W';
     const pending=getPending(o.workNo);if(pending){if(!o.party)o.party=pending.party||'';if(!o.description)o.description=pending.description||'';if(!o.cloth)o.cloth=pending.cloth||'';if(!o.plannedWidth)o.plannedWidth=pending.width||'';}
     if(!o.sizeLine&&o.length!==''&&o.height!=='')o.sizeLine=`${o.length} x ${o.height}${o.layer&&o.layer!==1?` | Layer ${o.layer}`:''}`;
+    const keepPhotoTrack=!!(old&&old._trackSrl===true&&old._autoPendingLinked===false);
     if(old && old._autoPendingLinked)applyPendingDelta(old.workNo,-num(old.cutQty));
-    o._autoPendingLinked=true;
+    o._autoPendingLinked=keepPhotoTrack?false:true;
+    if(keepPhotoTrack)o._trackSrl=true;
     stampRecord(o);
     if(i==null)state.cutting.push(o);else state.cutting[i]=o;
-    applyPendingDelta(o.workNo,num(o.cutQty));
+    if(o._autoPendingLinked)applyPendingDelta(o.workNo,num(o.cutQty));
     save();
     const used=cuttingUsedMtr(o);toast(used>0?`Cutting saved • ${fmt(used)} MTR consumed`:'Cutting saved • Pending auto updated')
   })
@@ -172,5 +174,3 @@ main{padding-bottom:20px}
 .brand h1{font-size:22px}
 .brand p{font-size:13px}
 .logo{width:48px;height:48px;border-radius:14px;box-shadow:0 5px 12px rgba(0,0,0,.18)}
-.view{padding:14px}
-.data-card{border-radius:18px;box-shadow:0 6px 18px rgba(16,34,58,.06)}
