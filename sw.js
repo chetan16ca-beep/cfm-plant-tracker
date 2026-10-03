@@ -9,3 +9,11 @@ self.addEventListener('fetch',e=>{
     const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r;
   }).catch(()=>caches.match('./index.html'))));
 });
+
+self.addEventListener('notificationclick',event=>{
+  event.notification.close();
+  event.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{
+    for(const c of list){if('focus' in c)return c.focus();}
+    if(clients.openWindow)return clients.openWindow('./');
+  }));
+});
