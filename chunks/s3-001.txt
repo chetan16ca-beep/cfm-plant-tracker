@@ -1,0 +1,176 @@
+tWorkNo)).map(x=>({...x,source:'local'}))}catch(e){}
+  const rows=[...cloud,...local].sort((a,b)=>String(b.created_at||b.createdAt||'').localeCompare(String(a.created_at||a.createdAt||'')));
+  if(!rows.length){box.innerHTML='<div class="empty">No photo / drawing / Excel file yet</div>';return}
+  window.__attachRows=rows;
+  box.innerHTML=rows.map((r,idx)=>{
+    const name=r.file_name||r.name||'attachment',type=r.mime_type||r.type||'',size=r.size_bytes||r.size||0,dt=r.created_at||r.createdAt||'';
+    const ico=String(type).startsWith('image/')?'🖼️':String(type).includes('pdf')?'📄':String(name).match(/\.xlsx?$/i)?'📊':'📎';
+    const src=r.source==='cloud'?'☁️ Cloud • 2-Mobile':'📱 Local only';
+    return `<div class="attach-row ${r.source==='cloud'?'cloud-file':'local-file'}"><div class="attach-thumb">${ico}</div><div class="attach-meta"><b>${esc(name)}</b><span>${fmt(size/1024)} KB • ${esc(dateDisplay(String(dt).slice(0,10)))}<br>${src}</span></div><div class="card-actions" style="margin:0"><button class="btn btn-sm" onclick="openAnyAttachment(${idx})">Open</button><button class="btn btn-sm btn-danger" onclick="deleteAnyAttachment(${idx})">Delete</button></div></div>`;
+  }).join('');
+}
+window.openAnyAttachment=async function(idx){
+  const r=window.__attachRows?.[idx];if(!r)return;
+  let blob,name=r.file_name||r.name||'attachment';
+  try{
+    if(r.source==='cloud')blob=await cloudAttachmentBlob(r.storage_path);
+    else blob=(await attachGet(r.id))?.data;
+    if(!blob)return toast('File not found');
+    const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.target='_blank';a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),15000);
+  }catch(e){console.error(e);toast('File open nahi hua')}
+}
+window.deleteAnyAttachment=async function(idx){
+  const r=window.__attachRows?.[idx];if(!r||!confirm('Delete this attachment?'))return;
+  try{
+    if(r.source==='cloud')await cloudAttachmentDelete(r);else await attachDelete(r.id);
+    await renderAttachmentList();toast('Attachment deleted');
+  }catch(e){console.error(e);toast('Delete nahi hua')}
+}
+
+window.openPendingForm=function(i=null){
+  const r=i==null?{workNo:nextWorkNo(),party:'',poNo:'',orderDate:todayISO(),deliveryDate:'',eagleCode:'',itemCode:'',description:'',cloth:'',width:'',orderQty:'',cutQty:0,priority:'NORMAL',status:'PENDING',billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''}:clone(state.pending[i]);
+  const mi=measurementInfo(r);
+  const html=field('workNo','Work No.',r.workNo)+partySelectHTML(r.party)+field('poNo','PO / Reference (New order)',r.poNo)+field('orderDate','Order Date',r.orderDate,'date')+field('deliveryDate','Delivery Date',r.deliveryDate,'date')+
+    productPickerHTML(r)+
+    field('eagleCode','Eagle Code (Auto)',r.eagleCode)+field('itemCode','Item Code',r.itemCode)+field('cloth','Cloth (Auto if master available)',r.cloth)+field('width','Width (Auto if master available)',r.width,'number')+
+    `<div class="field full"><label>Measurement (Auto)</label><div id="pendingMeasurementPreview" class="auto-box ${mi.text==='MEASUREMENT REQUIRED'?'warn':'ok'}"><b>${esc(mi.text)}</b><div class="inline-help">${esc(mi.source||'')}</div></div></div>`+
+    field('orderQty','Order Qty (Enter only new qty)',r.orderQty,'number')+`<div class="field"><label>Cut Qty (Automatic)</label><input name="cutQty" type="number" step="any" value="${esc(r.cutQty)}" readonly style="background:#eef3f8"/></div>`+
+    field('priority','Priority',r.priority,'text',false,['LOW','NORMAL','HIGH'])+field('billStatus','Bill Status',r.billStatus||'', 'text',false,['','PENDING','READY','DONE','NOT REQUIRED'])+field('challanStatus','Challan Status',r.challanStatus||'', 'text',false,['','PENDING','READY','DONE','NOT REQUIRED'])+field('billNo','Bill No.',r.billNo||'')+field('challanNo','Challan No.',r.challanNo||'')+field('dispatchDate','Dispatch Date',r.dispatchDate||'','date')+field('description','Order Description (Auto from Previous Order / Product)',r.description,'textarea',true)+field('accountsRemark','Billing / Challan Remark',r.accountsRemark||'','textarea',true)+field('remark','Remark',r.remark,'textarea',true)+
+    `<div class="field full"><div class="card-actions" style="margin:0"><button type="button" class="btn btn-primary" onclick="applyPreviousOrderToForm()">↩ Fill Previous Order</button><button type="button" class="btn btn-green" onclick="applyProductToPendingForm(true)">⚡ Auto Match Eagle Code + Measurement</button></div></div>`;
+  openDialog(i==null?'Add Pending Order':`Edit ${r.workNo}`,html,o=>{
+    const chosenParty=resolvePartyFromForm(o);
+    if(String(o.party||'')==='__NEW_PARTY__'&&!chosenParty){toast('New Party Name enter karo');return}
+    o.party=chosenParty;delete o.newParty;
+    saveCustomParty(o.party);
+    const p=findProductFromFields({...o,productPick:$('pendingProductPick')?.value||''});
+    if(p){
+      o.eagleCode=p.eagleCode||o.eagleCode||'';
+      if(!o.itemCode)o.itemCode=p.itemCode||'';
+      if(!o.cloth)o.cloth=p.standardCloth||'';
+      if(!o.width)o.width=p.standardWidth||'';
+    }
+    ['width','orderQty','cutQty'].forEach(k=>o[k]=o[k]===''?'':num(o[k]));
+    const m=measurementInfo(o);o.measurementAuto=m.text;o.measurementSource=m.source;
+    const wasArchived=i!=null&&isArchived(state.pending[i]);o.status=wasArchived?'ARCHIVED':(!hasOrderQty(o)?'QTY REQUIRED':(pendingQty(o)<=0?'COMPLETED':'PENDING'));stampRecord(o);
+    if(i==null)state.pending.push(o);else state.pending[i]={...state.pending[i],...o,archived:wasArchived,...(wasArchived?{}:{archivedAt:'',archivedBy:''})};
+    save();toast(wasArchived?'Archived order updated':'Order saved • Eagle/Measurement auto checked')
+  });
+  setTimeout(bindPendingAutoFields,0);
+}
+
+window.openStoreForm=function(i=null){
+  const r=i==null?{entryDate:todayISO(),billNo:'',srlNo:'',efpplCode:'',quality:'',process:'STANDARD',description:'',width:'',openingMtr:'',rack:'',rollNo:'',issueDate:'',closeDate:'',verifiedBy:'STORE ENTRY',status:'READY',supplier:''}:clone(state.store[i]);
+  const html=field('srlNo','Full SRL No.',r.srlNo)+field('efpplCode','EFPPL Code',r.efpplCode)+field('entryDate','Entry Date',r.entryDate,'date')+field('billNo','Bill No.',r.billNo)+field('quality','Quality / Cloth',r.quality)+field('process','Process',r.process)+field('width','Width',r.width,'number')+field('openingMtr','Opening MTR',r.openingMtr,'number')+field('rollNo','Roll No.',r.rollNo||'')+field('issueDate','Issue Date',r.issueDate||'','date')+field('closeDate','Close Date',r.closeDate||'','date')+field('rack','Rack',r.rack)+field('supplier','Supplier / Party',r.supplier)+field('status','Status',r.status,'text',false,['READY','OPEN','CLOSED','ZERO'])+field('verifiedBy','Verified By',r.verifiedBy)+field('description','Description',r.description,'textarea',true);
+  openDialog(i==null?'Add SRL':`Edit ${r.srlNo}`,html,o=>{o.width=o.width===''?'':num(o.width);o.openingMtr=o.openingMtr===''?'':num(o.openingMtr);stampRecord(o);if(i==null)state.store.push(o);else state.store[i]=o;save();toast('SRL saved • Balance automatic')})
+}
+
+function resolveSRL(short){const v=String(short||'').trim();if(!v)return v;if(v.toUpperCase()==='W')return 'W';if(v.includes('/'))return v;const digits=(v.match(/(\d{2,4})$/)||[])[1];if(!digits)return v;const target=digits.padStart(4,'0');const matches=state.store.filter(s=>String(s.srlNo||'').endsWith('/'+target));if(matches.length===1)return matches[0].srlNo;if(matches.length>1)return '__AMBIGUOUS__';return v}
+window.openCuttingForm=function(i=null,preset=null){
+  const old=i==null?null:clone(state.cutting[i]);
+  const p=preset||null;
+  const r=i==null?{date:todayISO(),entryType:'ADDITIONAL CUTTING',workNo:p?.workNo||'',party:p?.party||'',description:p?.description||'',cloth:p?.cloth||'',plannedWidth:p?.width||'',srlNo:'',cutQty:0,length:'',height:'',layer:1,sizeLine:'',remark:'',wastage:false,cuttingBy:''}:clone(state.cutting[i]);
+  const workOptions=[...new Set([r.workNo,...state.pending.filter(x=>hasOrderQty(x)&&pendingQty(x)>0).slice().sort(workSort).map(x=>x.workNo)].filter(Boolean))];
+  const html=field('workNo','Work No.',r.workNo,'text',false,workOptions)+field('date','Date',r.date,'date')+field('party','Party',r.party)+field('entryType','Entry Type',r.entryType,'text',false,['ORDER + FIRST CUTTING','ADDITIONAL CUTTING'])+field('srlNo','Actual SRL No. / W',r.srlNo)+field('cutQty','Today Cut Qty',r.cutQty,'number')+field('length','Length (inch)',r.length,'number')+field('height','Height (inch)',r.height,'number')+field('layer','Layer',r.layer||1,'number')+field('cloth','Cloth',r.cloth)+field('plannedWidth','Planned Width',r.plannedWidth,'number')+field('cuttingBy','Cutting By',r.cuttingBy)+field('wastage','Wastage?',r.wastage?'YES':'NO','text',false,['NO','YES'])+field('sizeLine','Size / Cutting Line',r.sizeLine)+field('description','Order Description',r.description,'textarea',true)+field('remark','Remark',r.remark,'textarea',true);
+  openDialog(i==null?'Add Cutting Entry':`Edit ${r.workNo}`,html,o=>{
+    o.srlNo=resolveSRL(o.srlNo);
+    if(o.srlNo==='__AMBIGUOUS__'){toast('Same short SRL multiple rolls me mila. Full SRL select/enter karo.');return;}
+    ['cutQty','length','height','layer','plannedWidth'].forEach(k=>o[k]=o[k]===''?'':num(o[k]));
+    o.layer=o.layer||1;o.wastage=o.wastage==='YES'||normalize(o.srlNo)==='W';if(o.wastage)o.srlNo='W';
+    const pending=getPending(o.workNo);if(pending){if(!o.party)o.party=pending.party||'';if(!o.description)o.description=pending.description||'';if(!o.cloth)o.cloth=pending.cloth||'';if(!o.plannedWidth)o.plannedWidth=pending.width||'';}
+    if(!o.sizeLine&&o.length!==''&&o.height!=='')o.sizeLine=`${o.length} x ${o.height}${o.layer&&o.layer!==1?` | Layer ${o.layer}`:''}`;
+    if(old && old._autoPendingLinked)applyPendingDelta(old.workNo,-num(old.cutQty));
+    o._autoPendingLinked=true;
+    stampRecord(o);
+    if(i==null)state.cutting.push(o);else state.cutting[i]=o;
+    applyPendingDelta(o.workNo,num(o.cutQty));
+    save();
+    const used=cuttingUsedMtr(o);toast(used>0?`Cutting saved • ${fmt(used)} MTR consumed`:'Cutting saved • Pending auto updated')
+  })
+}
+
+window.deleteRecord=function(type,i){
+  if(!confirm('Delete this record?'))return;
+  if(type==='cutting'){const r=state.cutting[i];if(r?._autoPendingLinked)applyPendingDelta(r.workNo,-num(r.cutQty));}
+  state[type].splice(i,1);save();toast('Deleted')
+}
+window.resetData=function(){if(!confirm('Reset all local app data to the original seed?'))return;state=clone(window.CFM_SEED||{pending:[],store:[],cutting:[]});ensureExcelMasterData();save();toast('Excel master + seed data restored')}
+
+function download(name,text,type='text/plain'){const blob=new Blob([text],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+window.exportJSON=function(){download(`CFM-Plant-Tracker-Backup-${todayISO()}.json`,JSON.stringify(state,null,2),'application/json');toast('JSON backup downloaded')}
+window.importJSON=async function(file){if(!file)return;try{const d=JSON.parse(await file.text());if(!d.pending||!d.store||!d.cutting)throw new Error();state=d;save();toast('Backup restored')}catch(e){toast('Invalid backup file')}}
+window.restoreLastAutoBackup=function(){const h=historyList();if(!h.length)return toast('No auto backup available');try{const d=JSON.parse(h[0].raw);if(!validState(d))throw new Error();if(!confirm('Restore last auto backup? Current data will be saved as another snapshot.'))return;state=d;ensureExcelMasterData();save();toast('Last auto backup restored')}catch(e){toast('Auto backup invalid')}}
+function csvEscape(v){const s=String(v??'');return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s}
+window.exportCSV=function(type){const rows=state[type];if(!rows.length)return toast('No data');const keys=[...new Set(rows.flatMap(r=>Object.keys(r)))].filter(k=>!k.startsWith('_'));const csv=[keys.join(','),...rows.map(r=>keys.map(k=>csvEscape(r[k])).join(','))].join('\n');download(`CFM-${type}-${todayISO()}.csv`,csv,'text/csv');toast('CSV downloaded')}
+
+function findHeader(rows,candidates){for(let i=0;i<Math.min(rows.length,25);i++){const row=rows[i].map(normalize);if(candidates.some(c=>row.includes(normalize(c))))return i}return -1}
+function rowObjects(rows,hi){const heads=rows[hi].map(x=>String(x||'').trim());return rows.slice(hi+1).filter(r=>r.some(x=>x!==''&&x!=null)).map(r=>Object.fromEntries(heads.map((h,i)=>[h,r[i]]).filter(([h])=>h)))}
+function val(obj,names){for(const n of names){const key=Object.keys(obj).find(k=>normalize(k)===normalize(n));if(key!=null&&obj[key]!=null&&obj[key]!=='')return obj[key]}return ''}
+window.importExcel=async function(file){
+  if(!file)return;const status=$('excelStatus');if(!window.XLSX){status.textContent='Excel engine not loaded. Connect to internet once, reload app, then try again. JSON/CSV backup works offline.';return}
+  try{status.textContent='Reading Excel...';const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:'array',cellDates:false});let added={pending:0,store:0,cutting:0};
+    for(const name of wb.SheetNames){const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:''});const nn=normalize(name);
+      if(nn.includes('PENDING ORDER')||nn==='NEW PENDING AUTO'){
+        const hi=findHeader(rows,['Work No.','WORK NO']);if(hi<0)continue;for(const o of rowObjects(rows,hi)){const w=val(o,['Work No.','WORK NO']);if(!String(w).startsWith('CFM-'))continue;const rec={workNo:w,party:val(o,['Party']),poNo:val(o,['PO No.','PO NO']),orderDate:val(o,['Order Date','DATE']),deliveryDate:val(o,['Delivery Date','DUE DATE']),eagleCode:val(o,['EAGLE CODE AUTO','Eagle Code','EFPPL CODE']),itemCode:val(o,['Item Code']),description:val(o,['Order Description','DESCRIPTION','ITEM']),cloth:val(o,['Cloth','QUALITY']),width:val(o,['Width','WIDTH']),orderQty:num(val(o,['Order Qty','QTY'])),cutQty:num(val(o,['Total Cut Qty','Cut Qty'])),priority:val(o,['Priority'])||'NORMAL',status:'PENDING',remark:val(o,['Remark'])};const ex=state.pending.findIndex(x=>normalize(x.workNo)===normalize(w));if(ex>=0)state.pending[ex]={...state.pending[ex],...rec};else{state.pending.push(rec);added.pending++}}
+      }else if(nn==='STORE NEW'||nn.includes('SRL TRACKER')||nn==='OPEN'){
+        const hi=findHeader(rows,['SRL NO','SRL No.']);if(hi<0)continue;for(const o of rowObjects(rows,hi)){const s=val(o,['SRL NO','SRL No.']);if(!s)continue;const rec={entryDate:val(o,['ENTRY DATE']),billNo:val(o,['BILL NO']),srlNo:s,efpplCode:val(o,['EFPPL CODE']),quality:val(o,['QUALITY AUTO','QUALITY','Material']),process:val(o,['PROCESS AUTO','PROCESS']),description:val(o,['DESCRIPTION AUTO','DESCRIPTION']),width:val(o,['WIDTH','Width (inch)']),openingMtr:num(val(o,['OPENING MTR','Opening Stock','OPENING STOCK','Length (mtr)'])),rack:val(o,['RACK']),rollNo:val(o,['Roll No','ROLL NO']),issueDate:val(o,['ISSUE DA','ISSUE DATE']),closeDate:val(o,['CLOS D','CLOSE DATE']),verifiedBy:val(o,['VERIFIED BY']),status:val(o,['STATUS'])||'READY',supplier:val(o,['SUPPLIER / PARTY','SUPPLIER','PARTY'])};const ex=state.store.findIndex(x=>normalize(x.srlNo)===normalize(s));if(ex>=0)state.store[ex]={...state.store[ex],...rec};else{state.store.push(rec);added.store++}}
+      }else if(nn.includes('BILL CHALLAN')){
+        const hi=findHeader(rows,['Work No','WORK NO']);if(hi<0)continue;for(const o of rowObjects(rows,hi)){const w=val(o,['Work No','WORK NO']);const ex=state.pending.findIndex(x=>normalize(x.workNo)===normalize(w));if(ex<0)continue;const r=state.pending[ex];r.billStatus=val(o,['Bill Status'])||r.billStatus||'';r.billNo=val(o,['Bill No'])||r.billNo||'';r.challanStatus=val(o,['Challan Status'])||r.challanStatus||'';r.challanNo=val(o,['Challan No'])||r.challanNo||'';r.dispatchDate=val(o,['Dispatch Date'])||r.dispatchDate||'';r.accountsRemark=val(o,['Remark'])||r.accountsRemark||''}
+      }else if(nn.includes('ORDER & CUTTING')||nn==='NEW ORDER CUTTING'||nn==='CUTTING DETAILS'){
+        const hi=findHeader(rows,['Work No.','WORK NO.']);if(hi<0)continue;for(const o of rowObjects(rows,hi)){const w=val(o,['Work No.','WORK NO.']);const qty=val(o,['Cutting Qty','Today Cut Qty','TODAY CUT QTY']);if(!String(w).startsWith('CFM-')||qty==='')continue;const rec={date:val(o,['Date','DATE']),entryType:val(o,['Entry Type'])||'ADDITIONAL CUTTING',workNo:w,party:val(o,['Party']),description:val(o,['Order Description']),cloth:val(o,['Cloth']),plannedWidth:val(o,['Planned Width','Width']),srlNo:resolveSRL(val(o,['Actual SRL No.','SRL No.','SRL NO.'])),cutQty:num(qty),length:val(o,['Length (inch)','Length']),height:val(o,['Height (inch)','Height']),layer:num(val(o,['Layer']))||1,sizeLine:val(o,['Size / Cutting Line','Size Cut','SIZE CUT']),remark:val(o,['Remark']),wastage:normalize(val(o,['Actual SRL No.','SRL No.','SRL NO.']))==='W',cuttingBy:val(o,['Cutting By','CUTTING BY']),_autoPendingLinked:false};state.cutting.push(rec);added.cutting++}
+      }
+    }
+    save();status.textContent=`Excel imported. Added Pending ${added.pending}, Store ${added.store}, Cutting ${added.cutting}. Existing matching Work/SRL rows were updated.`;toast('Excel import complete')
+  }catch(e){console.error(e);status.textContent='Could not import this workbook. JSON/CSV backup is still available.';toast('Excel import failed')}
+}
+window.exportExcel=function(){
+  if(!window.XLSX){$('excelStatus').textContent='Excel engine not loaded. Connect to internet once and reload, or use CSV/JSON export offline.';return}
+  const wb=XLSX.utils.book_new();
+  const p=state.pending.map(r=>({...r,pendingQty:pendingQty(r)}));
+  const s=state.store.map(r=>({...r,usedMtr:srlUsedMtr(r.srlNo),balanceMtr:srlBalance(r),computedStatus:storeStatus(r)}));
+  const c=state.cutting.map(r=>({...r,usedMtr:cuttingUsedMtr(r)}));
+  const d=excelRows('docs');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(p),'PENDING ORDER AUTO');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(s),'STORE NEW');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(c),'ORDER & CUTTING ENTRY');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d),'BILL CHALLAN STATUS');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(excelRows('deptwork')),'DAILY DEPT WORK');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(excelRows('measurements')),'CUTTING MEASUREMENT MASTER');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(excelRows('srltracker')),'PHYSICAL SRL TRACKER');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(excelRows('issues')),'AUTO ISSUE REGISTER');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(excelRows('products')),'PRODUCT MASTER');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(excelRows('widthreport')),'PHYSICAL WIDTH REPORT');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(excelRows('openclose')),'SRL OPEN-CLOSE TRACKER');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(excelRows('stocksummary')),'STOCK SUMMARY');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(excelRows('readydispatch')),'READY TO DISPATCH');
+  XLSX.writeFile(wb,`CFM-Plant-Tracker-${todayISO()}.xlsx`);toast('Full Excel ERP exported')
+}
+
+function printStyles(){return `
+<style>
+@page{size:A4 portrait;margin:7mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0}h1,h2,h3,p{margin:0}.head{text-align:center;border-bottom:2px solid #111;padding-bottom:5px;margin-bottom:6px}.head h1{font-size:18px}.head .sub{font-size:12px;font-weight:700;margin-top:2px}.head .meta{display:flex;justify-content:space-between;font-size:11px;margin-top:4px}.work-block{border:1.5px solid #111;margin:0 0 7px 0;break-inside:avoid}.row{display:grid;grid-template-columns:70px 1fr 75px 70px 70px 70px;border-bottom:1px solid #777;min-height:22px;align-items:center}.row>div{padding:3px 5px;border-right:1px solid #aaa;font-size:10px}.row>div:last-child{border-right:0}.row .wide{grid-column:span 2}.info{display:grid;grid-template-columns:55px 1fr 55px 2fr 45px 90px;border-bottom:1px solid #777}.info>div{padding:3px 5px;border-right:1px solid #aaa;font-size:10px}.code{font-size:9px;padding:4px 5px;border-bottom:1px solid #777}.cut-head,.cut-row{display:grid;grid-template-columns:72px 1.25fr 1.15fr 78px 78px 92px}.cut-head>div,.cut-row>div{padding:3px 4px;border-right:1px solid #999;font-size:9px;min-height:20px}.cut-head{font-weight:700;background:#eee;border-bottom:1px solid #777}.cut-row{border-bottom:1px solid #bbb}.cut-row:last-child{border-bottom:0}.page{page-break-after:always}.page:last-child{page-break-after:auto}table{width:100%;border-collapse:collapse;font-size:9px}th,td{border:1px solid #444;padding:4px;text-align:left}th{background:#e8eef5}.landscape{font-size:9px}@media print{.no-print{display:none}}
+
+/* V6 Ready app look */
+body{padding-bottom:90px}
+main{padding-bottom:20px}
+.section-head h2{font-size:28px;letter-spacing:-.4px}
+.section-head p{font-size:14px;color:var(--muted)}
+.kpi{position:relative;overflow:hidden;border-radius:18px;min-height:112px;box-shadow:0 10px 24px rgba(24,56,94,.08)}
+.kpi .num{font-size:34px;font-weight:800;line-height:1.05;margin-bottom:6px;color:#fff}
+.kpi .label{font-size:13px;color:rgba(255,255,255,.92);font-weight:700;max-width:80%}
+.kpi .kpi-icon{position:absolute;right:14px;bottom:10px;font-size:29px;opacity:.95}
+#kpis .kpi:nth-child(1){background:linear-gradient(135deg,#1570ef,#2f89ff)}
+#kpis .kpi:nth-child(2){background:linear-gradient(135deg,#16a34a,#22c55e)}
+#kpis .kpi:nth-child(3){background:linear-gradient(135deg,#f97316,#fb923c)}
+#kpis .kpi:nth-child(4){background:linear-gradient(135deg,#7c3aed,#a855f7)}
+#docKpis .kpi:nth-child(1){background:linear-gradient(135deg,#1570ef,#2f89ff)}
+#docKpis .kpi:nth-child(2){background:linear-gradient(135deg,#f97316,#fb923c)}
+#docKpis .kpi:nth-child(3){background:linear-gradient(135deg,#ef4444,#f87171)}
+#docKpis .kpi:nth-child(4){background:linear-gradient(135deg,#16a34a,#22c55e)}
+#docKpis .kpi:nth-child(5){background:linear-gradient(135deg,#7c3aed,#a855f7)}
+.panel h3{font-size:20px}
+.topbar{padding:12px 14px 14px;position:sticky;top:0;z-index:30}
+.brand h1{font-size:22px}
+.brand p{font-size:13px}
+.logo{width:48px;height:48px;border-radius:14px;box-shadow:0 5px 12px rgba(0,0,0,.18)}
+.view{padding:14px}
+.data-card{border-radius:18px;box-shadow:0 6px 18px rgba(16,34,58,.06)}
