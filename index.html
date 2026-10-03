@@ -70,14 +70,21 @@ if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.
 <script>
 (function(){
  function go(el){
-   if(!el)return;
+   if(!el)return false;
    var name=el.getAttribute('data-view')||el.getAttribute('data-cfm-view');
    if(!name){
      var oc=el.getAttribute('onclick')||'';
      var m=oc.match(/showView\\(['"]([^'"]+)['"]\\)/); if(m)name=m[1];
    }
-   if(name&&typeof window.showView==='function'){window.showView(name);return true}
-   return false;
+   if(!name)return false;
+   try{if(typeof window.showView==='function'){window.showView(name);return true}}catch(err){}
+   var target=document.getElementById('view-'+name);
+   if(!target)return false;
+   document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');v.style.display='none'});
+   target.classList.add('active');target.style.display='block';
+   document.querySelectorAll('#nav button').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-view')===name)});
+   window.scrollTo(0,0);
+   return true;
  }
  document.addEventListener('click',function(e){
    var el=e.target.closest&&e.target.closest('.module-command-card,#nav button');
