@@ -1,19 +1,17 @@
 {
-  "name": "CFM Plant Tracker",
-  "short_name": "CFM Tracker",
-  "id": "/",
-  "start_url": "./",
-  "scope": "./",
-  "display": "standalone",
-  "background_color": "#eef3f8",
-  "theme_color": "#101820",
-  "description": "CFM Plant ERP - stock, pending orders, cutting and plant tracking",
-  "icons": [
-    {
-      "src": "icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
+  "name":"CFM Plant Tracker",
+  "short_name":"CFM Tracker",
+  "id":"/",
+  "start_url":"/?source=pwa",
+  "scope":"/",
+  "display":"standalone",
+  "display_override":["standalone","minimal-ui"],
+  "background_color":"#eef3f8",
+  "theme_color":"#101820",
+  "description":"CFM Plant ERP - stock, pending orders, cutting and plant tracking",
+  "icons":[
+    {"src":"/icons/icon-192.svg","sizes":"192x192","type":"image/svg+xml","purpose":"any"},
+    {"src":"/icons/icon-512.svg","sizes":"512x512","type":"image/svg+xml","purpose":"any"},
+    {"src":"/icons/icon-512.svg","sizes":"512x512","type":"image/svg+xml","purpose":"maskable"}
   ]
 }
