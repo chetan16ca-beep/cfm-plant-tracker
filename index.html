@@ -65,7 +65,31 @@ if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.
   window.addEventListener('load',()=>{addButton();setTimeout(check,1500);setInterval(check,5000);});
 })();
 <\/script>`;
- source=source.replace('</body>',notifyPatch+'</body>');
+ const touchFix=`
+<style>.module-command-card,#nav button,.kpi.clickable,.worker-dash-box{pointer-events:auto!important;touch-action:manipulation!important;position:relative}.module-command-card{z-index:1}</style>
+<script>
+(function(){
+ function go(el){
+   if(!el)return;
+   var name=el.getAttribute('data-view')||el.getAttribute('data-cfm-view');
+   if(!name){
+     var oc=el.getAttribute('onclick')||'';
+     var m=oc.match(/showView\\(['"]([^'"]+)['"]\\)/); if(m)name=m[1];
+   }
+   if(name&&typeof window.showView==='function'){window.showView(name);return true}
+   return false;
+ }
+ document.addEventListener('click',function(e){
+   var el=e.target.closest&&e.target.closest('.module-command-card,#nav button');
+   if(el){e.preventDefault();e.stopPropagation();go(el)}
+ },true);
+ document.addEventListener('touchend',function(e){
+   var el=e.target.closest&&e.target.closest('.module-command-card,#nav button');
+   if(el){e.preventDefault();go(el)}
+ },{capture:true,passive:false});
+})();
+<\\/script>`;
+ source=source.replace('</body>',notifyPatch+touchFix+'</body>');
  document.open();document.write(source);document.close();
 })().catch(err=>{document.getElementById('status').textContent='App load failed. Internet on karke Refresh karein. '+err.message;console.error(err);});
 </script></body></html>
