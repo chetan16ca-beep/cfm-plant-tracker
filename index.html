@@ -1,10 +1,98 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101820"><title>CFM Plant Tracker</title><link rel="manifest" href="./manifest.json">
-<style>html,body,#app{margin:0;width:100%;height:100%;overflow:hidden;background:#eef3f8}#app{border:0;display:block}.load{position:fixed;inset:0;display:grid;place-items:center;font-family:system-ui;color:#182433}.box{background:#fff;padding:24px;border-radius:16px;box-shadow:0 8px 30px #0002;text-align:center}</style></head>
-<body><div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div><iframe id="app" title="CFM Plant Tracker"></iframe>
+<style>
+html,body,#app{margin:0;width:100%;height:100%;overflow:hidden;background:#eef3f8}
+#app{border:0;display:block}
+.load{position:fixed;inset:0;display:grid;place-items:center;font-family:system-ui;color:#182433;z-index:20}
+.box{background:#fff;padding:24px;border-radius:16px;box-shadow:0 8px 30px #0002;text-align:center}
+#notifyBtn{position:fixed;right:14px;bottom:14px;z-index:50;border:0;border-radius:999px;padding:12px 16px;background:#101820;color:#fff;font:600 14px system-ui;box-shadow:0 6px 22px #0004;display:none}
+#notifyBtn:active{transform:scale(.98)}
+</style></head>
+<body>
+<div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
+<iframe id="app" title="CFM Plant Tracker"></iframe>
+<button id="notifyBtn" type="button">🔔 Enable Notifications</button>
 <script>
 const groups=[["chunks/s1-000.txt"],["chunks/s2-000.txt","chunks/s2-001.txt","chunks/s2-002.txt","chunks/s2-003.txt","chunks/s2-004.txt","chunks/s2-005.txt","chunks/s2-006.txt","chunks/s2-007.txt","chunks/s2-008.txt"],["chunks/s3-000.txt","chunks/s3-001.txt"],["chunks/s4-000.txt","chunks/s4-001.txt","chunks/s4-002.txt","chunks/s4-003.txt","chunks/s4-004.txt","chunks/s4-005.txt","chunks/s4-006.txt","chunks/s4-007.txt","chunks/s4-008.txt","chunks/s4-009.txt","chunks/s4-010.txt","chunks/s4-011.txt","chunks/s4-012.txt","chunks/s4-013.txt","chunks/s4-014.txt"]];
 const basePath=new URL('./',location.href).pathname;
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-(async()=>{let parts=[],done=0,total=groups.flat().length,st=document.getElementById('st');for(const g of groups){const x=await Promise.all(g.map(async u=>{const r=await fetch('./'+u+'?v=48');if(!r.ok)throw Error(u);done++;st.textContent='Loading '+done+'/'+total;return r.text()}));parts.push(x.join(''))}let src=parts.join('')+'\n';src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');src=src.replace('<head>','<head><base href="'+location.origin+basePath+'">');const frame=document.getElementById('app');frame.addEventListener('load',()=>document.getElementById('load')?.remove(),{once:true});frame.srcdoc=src})().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
+let swReg=null;
+
+async function registerSW(){
+  if(!('serviceWorker' in navigator))return null;
+  try{
+    swReg=await navigator.serviceWorker.register('./sw.js');
+    await navigator.serviceWorker.ready;
+    return swReg;
+  }catch(e){console.warn('SW registration failed',e);return null}
+}
+
+async function sendCFMNotification(title,body,data={}){
+  if(!('Notification' in window)||Notification.permission!=='granted')return false;
+  const reg=swReg||await navigator.serviceWorker.ready;
+  await reg.showNotification(title||'CFM Plant Tracker',{
+    body:body||'New plant update',
+    icon:'./icons/icon-192.svg',
+    badge:'./icons/icon-192.svg',
+    tag:data.tag||('cfm-'+Date.now()),
+    renotify:true,
+    vibrate:[180,80,180],
+    data:{url:'./',...data},
+    actions:[{action:'open',title:'Open ERP'}]
+  });
+  return true;
+}
+window.CFMNotify=sendCFMNotification;
+
+function refreshNotifyButton(){
+  const b=document.getElementById('notifyBtn');
+  if(!('Notification' in window)){b.style.display='none';return}
+  if(Notification.permission==='granted'){b.style.display='none'}
+  else{
+    b.style.display='block';
+    b.textContent=Notification.permission==='denied'?'🔕 Notification Blocked':'🔔 Enable Notifications';
+  }
+}
+
+document.getElementById('notifyBtn').addEventListener('click',async()=>{
+  if(!('Notification' in window))return;
+  if(Notification.permission==='denied'){
+    alert('Notifications blocked hain. Chrome > Site settings > Notifications me Allow karein.');
+    return;
+  }
+  const p=await Notification.requestPermission();
+  refreshNotifyButton();
+  if(p==='granted'){
+    await sendCFMNotification('CFM Plant Tracker','Notifications active ✅',{tag:'cfm-enabled'});
+  }
+});
+
+window.addEventListener('message',e=>{
+  const d=e.data||{};
+  if(d.type==='CFM_NOTIFICATION'||d.type==='cfm-notify'){
+    sendCFMNotification(d.title||'CFM Plant Tracker',d.body||'New update',d.data||{});
+  }
+});
+
+registerSW().then(refreshNotifyButton);
+
+(async()=>{
+ let parts=[],done=0,total=groups.flat().length,st=document.getElementById('st');
+ for(const g of groups){
+   const x=await Promise.all(g.map(async u=>{
+     const r=await fetch('./'+u+'?v=49');
+     if(!r.ok)throw Error(u);
+     done++;st.textContent='Loading '+done+'/'+total;
+     return r.text()
+   }));
+   parts.push(x.join(''))
+ }
+ let src=parts.join('')+'\n';
+ src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
+ src=src.replace('<head>','<head><base href="'+location.origin+basePath+'">');
+ const bridge='<script>window.CFMNotify=function(title,body,data){parent.postMessage({type:"CFM_NOTIFICATION",title:title,body:body,data:data||{}},"*")}<\/script>';
+ src=src.replace('</body>',bridge+'</body>');
+ const frame=document.getElementById('app');
+ frame.addEventListener('load',()=>document.getElementById('load')?.remove(),{once:true});
+ frame.srcdoc=src
+})().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
 </script></body></html>
