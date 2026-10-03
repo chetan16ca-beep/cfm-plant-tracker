@@ -17,6 +17,55 @@ if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.
  }
  let source=loaded.join('\n')+'\n';
  source=source.replaceAll('icons/icon-192.png','icons/icon.svg').replaceAll('icons/icon-512.png','icons/icon.svg');
+ // CFM live event notifications: New Work No / New Cutting Entry from other mobiles.
+ const notifyPatch=`
+<script>
+(function(){
+  const EVT_KEY='cfm_event_notify_v1';
+  const NSET_KEY='cfm_event_notify_enabled_v1';
+  let ready=false,lastWorks=new Set(),lastCuts=new Set(),lastVersion=0;
+  const nkey=r=>[r.workNo||'',r.date||'',r.srlNo||'',r.sizeLine||'',r.cutQty??'',r.updatedAt||'',r.batchId||''].join('|');
+  function nshow(title,body,tag){
+    if(localStorage.getItem(NSET_KEY)!=='1'||!('Notification' in window)||Notification.permission!=='granted')return;
+    try{
+      if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
+        navigator.serviceWorker.ready.then(reg=>reg.showNotification(title,{body,icon:'icons/icon.svg',badge:'icons/icon.svg',tag:tag||'cfm-event',renotify:true,data:{url:location.href}})).catch(()=>{});
+      }else new Notification(title,{body});
+    }catch(e){}
+  }
+  async function check(){
+    if(document.hidden)return;
+    try{
+      if(typeof cloudFetch!=='function')return;
+      const row=await cloudFetch(); if(!row||!row.payload)return;
+      const works=row.payload.pending||[], cuts=row.payload.cutting||[];
+      const ws=new Set(works.map(r=>r.workNo).filter(Boolean)), cs=new Set(cuts.map(nkey));
+      if(ready&&Number(row.version||0)>lastVersion){
+        const nw=works.filter(r=>r.workNo&&!lastWorks.has(r.workNo));
+        const nc=cuts.filter(r=>!lastCuts.has(nkey(r)));
+        nw.slice(-5).forEach(r=>nshow('🆕 New Work No: '+r.workNo,(r.party||'-')+' • '+(r.description||'-'),'cfm-work-'+r.workNo));
+        nc.slice(-8).forEach(r=>nshow('✂️ New Cutting Entry: '+(r.workNo||'-'),(r.srlNo?'SRL '+r.srlNo+' • ':'')+(r.sizeLine||'')+(r.cutQty!==''&&r.cutQty!=null?' • Qty '+r.cutQty:''),'cfm-cut-'+nkey(r)));
+      }
+      lastWorks=ws;lastCuts=cs;lastVersion=Number(row.version||0);ready=true;
+    }catch(e){}
+  }
+  window.enableEventNotifications=async function(){
+    if(!('Notification'in window))return toast('Notifications not supported');
+    const p=await Notification.requestPermission();
+    localStorage.setItem(NSET_KEY,p==='granted'?'1':'0');
+    if(p==='granted'){nshow('CFM Plant Tracker','New Work No + New Cutting Entry notifications ON','cfm-events-on');toast('Live notifications ON');}
+    else toast('Notification permission allow karo');
+  };
+  function addButton(){
+    if(document.getElementById('cfmEventNotifyBtn'))return;
+    const b=document.createElement('button');b.id='cfmEventNotifyBtn';b.type='button';b.textContent='🔔 Live Notifications';
+    b.style.cssText='position:fixed;right:14px;bottom:74px;z-index:9998;border:0;border-radius:999px;padding:11px 14px;background:#101820;color:white;font-weight:700;box-shadow:0 4px 16px #0003';
+    b.onclick=window.enableEventNotifications;document.body.appendChild(b);
+  }
+  window.addEventListener('load',()=>{addButton();setTimeout(check,1500);setInterval(check,5000);});
+})();
+<\/script>`;
+ source=source.replace('</body>',notifyPatch+'</body>');
  document.open();document.write(source);document.close();
 })().catch(err=>{document.getElementById('status').textContent='App load failed. Internet on karke Refresh karein. '+err.message;console.error(err);});
 </script></body></html>
