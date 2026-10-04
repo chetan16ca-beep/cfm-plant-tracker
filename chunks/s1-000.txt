@@ -1202,7 +1202,7 @@ dialog::backdrop{background:rgba(8,30,49,.62)!important;backdrop-filter:blur(2px
     background:linear-gradient(180deg,#081f34 0%,#0a2d49 55%,#09253d 100%)!important;
     box-shadow:10px 0 28px rgba(6,34,57,.14)!important
   }
-  .nav:before{content:'CFM  •  ERP  V68'!important;top:22px!important;font-size:17px!important}
+  .nav:before{content:'CFM  •  ERP  V69'!important;top:22px!important;font-size:17px!important}
   .nav:after{content:'EAGLE FILTRATION • PLANT CONTROL'!important;top:49px!important;color:#7fa4be!important}
   .nav button{border-radius:11px!important;min-height:44px!important;color:#bdd0df!important}
   .nav button:hover{background:rgba(255,255,255,.07)!important}
