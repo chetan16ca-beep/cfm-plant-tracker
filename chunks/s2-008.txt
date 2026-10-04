@@ -264,7 +264,7 @@ function save(doRender=true){
   if(changed){
     const notice=nextUpdateNotification||genericUpdateNotification(prev,next);
     nextUpdateNotification=null;
-    setTimeout(()=>showLocalNotification(notice.title,notice.body),40);
+    showLocalNotification(notice.title,notice.body);
   }else nextUpdateNotification=null;
 }
 function toast(msg){const t=$('toast');if(!t)return;t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
