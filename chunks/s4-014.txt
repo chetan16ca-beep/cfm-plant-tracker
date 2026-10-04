@@ -152,5 +152,23 @@ function saveAll(w){const p=work(w),d=drafts[N(w)]||[];if(!d.length)return toast
  const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:true});setTimeout(inject,500);
 })();
 </script>
+<script id="cfm-work-srl-simple">
+(function(){
+const n=v=>String(v||'').trim().toUpperCase(),q=v=>Number(v)||0;
+function s(x){return String(x.srlNo||x.srl||x.serialNo||'').trim()}
+function b(x){return typeof srlBalance==='function'?q(srlBalance(x)):q(x.balanceMtr||x.openingMtr)}
+function rolls(cl,wd){return(state.store||[]).filter(x=>s(x)&&b(x)>0&&(!cl||n(x.cloth||x.clothName||x.description)===n(cl))&&(!wd||n(x.width||x.clothWidth)===n(wd)))}
+window.cfmWorkSrl=function(w){
+ const p=(state.pending||[]).find(x=>n(x.workNo)===n(w));if(!p)return;
+ const cl=p.cloth||'',wd=p.width||'',rr=rolls(cl,wd);
+ const list=rr.map(x=>'<option value="'+esc(s(x))+'">'+esc(s(x))+' - '+fmt(b(x))+' MTR</option>').join('');
+ const h='<div><b>'+esc(w)+' - '+esc(p.party||'')+'</b><div>'+esc(p.description||'')+'</div><div>'+esc(p.description2||'')+'</div><label>Cloth<input id="wsCloth" value="'+esc(cl)+'"></label><label>Width<input id="wsWidth" value="'+esc(wd)+'"></label><label>Open SRL<select id="wsSrl"><option value="">Select</option>'+list+'</select></label><button id="wsSave" class="btn btn-primary">Save</button></div>';
+ openDialog('Work Cloth / SRL',h,()=>true,{type:'workSrl'});
+ setTimeout(()=>{document.getElementById('wsSave').onclick=()=>{p.cloth=document.getElementById('wsCloth').value.trim();p.width=document.getElementById('wsWidth').value.trim();p.selectedSrl=document.getElementById('wsSrl').value;p.materialStatus=p.selectedSrl?'READY':'SRL PENDING';save();toast('Cloth / SRL saved')}},0)
+};
+function add(){document.querySelectorAll('#pendingList .data-card').forEach(e=>{if(e.querySelector('.wsbtn'))return;const w=e.querySelector('.work')?.textContent?.trim(),a=e.querySelector('.card-actions');if(!w||!a)return;const p=(state.pending||[]).find(x=>n(x.workNo)===n(w));if(p){const d=document.createElement('div');d.className='muted';d.textContent='Cloth: '+(p.cloth||'-')+' | Width: '+(p.width||'-')+' | SRL: '+(p.selectedSrl||'-')+' | '+(p.materialStatus||'MATERIAL PENDING');e.insertBefore(d,a)}const z=document.createElement('button');z.className='btn btn-sm btn-primary wsbtn';z.textContent='Cloth / SRL';z.onclick=()=>cfmWorkSrl(w);a.appendChild(z)})}
+new MutationObserver(add).observe(document.body,{childList:true,subtree:true});setTimeout(add,500);
+})();
+</script>
 </body>
 </html>
