@@ -54,7 +54,8 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=98',{updateViaCache:'none'});\n    try{await swReg.update()}catch(_){}
+    swReg=await navigator.serviceWorker.register('./sw.js?v=98',{updateViaCache:'none'});
+    try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
   }catch(e){console.warn('SW registration failed',e);return null}
