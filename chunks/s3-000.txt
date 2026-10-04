@@ -52,10 +52,14 @@ window.openDocsForm=function(i){
     field('billNo','Bill / Invoice No.',r.billNo||'')+
     field('billDate','Bill / Invoice Date',r.billDate||'','date')+
     field('invoiceValue','Invoice Value (₹)',r.invoiceValue||'','number')+
+    field('paymentStatus','Payment Status',r.paymentStatus||'PENDING','text',false,['PENDING','PART PAYMENT','RECEIVED','HOLD','NOT REQUIRED'])+
+    field('paymentDueDate','Payment Due Date',r.paymentDueDate||'','date')+
+    field('paymentRemark','Payment Remark',r.paymentRemark||'','textarea',true)+
     `<div class="field full"><div class="doc-form-section">📄 CHALLAN DETAILS</div></div>`+
     field('challanStatus','Challan Status',docStatus(r,'challanStatus'),'text',false,['PENDING','REQUESTED','READY','DONE','NOT REQUIRED'])+
     field('challanNo','Challan No.',r.challanNo||'')+
     field('challanDate','Challan Date',r.challanDate||'','date')+
+    field('challanType','Challan Type',r.challanType||'DELIVERY','text',false,['DELIVERY','RETURNABLE','JOB WORK','SAMPLE','OTHER'])+
     field('dispatchQty','Dispatch Qty',r.dispatchQty||'','number')+
     `<div class="field full"><div class="doc-form-section">🚚 DISPATCH / TRANSPORT DETAILS</div></div>`+
     field('dispatchStatus','Dispatch Status',dispatchDocStatus(r),'text',false,['WAIT DOCS','READY','DISPATCHED','HOLD','NOT REQUIRED'])+
