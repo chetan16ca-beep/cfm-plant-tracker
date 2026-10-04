@@ -121,8 +121,8 @@
     <section id="view-pending" class="view">
 <div class="notice" style="margin-bottom:10px;background:#fff7e6;border:1px solid #f0ddb4;color:#7a5100"><b>Note:</b> Order Qty blank/0 ho to work <b>QTY REQUIRED</b> me dikhega, gayab nahi hoga.</div>
       <div class="section-head">
-        <div><h2>Pending Orders</h2><p>Pending Qty = Order Qty − Cut Qty</p></div>
-        <button class="btn btn-primary" onclick="openPendingForm()">+ Add Order</button>
+        <div><h2>Pending Orders</h2><p>Searchable Party • One PO can contain multiple items • Pending Qty = Order Qty − Cut Qty</p></div>
+        <button class="btn btn-primary" onclick="openMultiPendingForm()">+ Add PO / Multi Item</button>
       </div>
       <div class="filters">
         <input id="pendingSearch" placeholder="Search work no, party, item, cloth..." oninput="renderPending()" />
