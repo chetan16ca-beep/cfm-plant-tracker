@@ -186,3 +186,49 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
 </script>
 </body>
 </html>
+
+<script id="cfm-v99-srl-stock-assist">
+(function(){
+ const N=v=>String(v==null?'':v).trim().toUpperCase().replace(/\s+/g,' ');
+ const Q=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
+ function family(v){
+   let s=N(v);
+   if(/^333(\s|$)/.test(s)) return '333';
+   return s;
+ }
+ function openRowsFor(p){
+   const fam=family(p.cloth), req=Q(p.width);
+   return (state.store||[]).filter(s=>{
+     const bal=srlBalance(s);
+     return bal>0 && !['CLOSED','ZERO'].includes(N(storeStatus(s))) && family(s.quality||s.cloth)===fam;
+   }).map(s=>({s,bal:srlBalance(s),exact:req>0&&Math.abs(Q(s.width)-req)<0.01}))
+     .sort((a,b)=>(b.exact-a.exact)||(Q(a.s.width)-Q(b.s.width))||String(a.s.srlNo||'').localeCompare(String(b.s.srlNo||''),undefined,{numeric:true}));
+ }
+ window.cfmSrlAssistHTML=function(p){
+   const rows=openRowsFor(p), req=Q(p.width);
+   if(!rows.length)return '<div style="margin-top:5px;padding:5px 7px;border:1px solid #f0b9b9;background:#fff1f1;color:#a32222;font-size:10px"><b>STORE SRL:</b> NO OPEN STOCK for '+esc(p.cloth||'-')+'</div>';
+   const exact=rows.filter(x=>x.exact), alt=rows.filter(x=>!x.exact);
+   const line=x=>'<span style="display:inline-block;margin:2px 5px 2px 0;padding:3px 5px;border-radius:5px;border:1px solid '+(x.exact?'#a8d8b8':'#d8d8c5')+';background:'+(x.exact?'#eefaf1':'#fffdf0')+'"><b>'+esc(x.s.srlNo||'-')+'</b> • '+esc(x.s.quality||x.s.cloth||'-')+' • W '+esc(x.s.width||'-')+'" • '+fmt(x.bal)+' MTR</span>';
+   return '<div style="margin-top:5px;padding:5px 7px;border:1px solid #cddbd2;background:#f8fbf9;font-size:9.5px"><b>OPEN SRL'+(req?' • REQUIRED W '+esc(req)+'"':'')+':</b> '+(exact.length?exact.map(line).join(''):'<b style="color:#b06b00">EXACT WIDTH NOT AVAILABLE</b>')+(alt.length?'<div><b>STORE ALTERNATIVE:</b> '+alt.map(line).join('')+'</div>':'')+'</div>';
+ }
+ const oldBlock=window.dailyWorkBlock||dailyWorkBlock;
+ window.dailyWorkBlock=function(r,n,date){
+   return oldBlock(r,n,date).replace('</div>', '</div>')+cfmSrlAssistHTML(r);
+ };
+ const oldPrint=window.printDailyCuttingPlan;
+ window.printDailyCuttingPlan=function(){
+   const date=$('printDate')?.value||todayISO(),open=(state.pending||[]).filter(r=>pendingQty(r)>0).slice().sort(workSort);
+   if(!open.length)return toast('No open pending work');
+   const pages=[];for(let i=0;i<open.length;i+=5){const chunk=open.slice(i,i+5);pages.push('<div class="page"><div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">DAILY PLANT CUTTING PLAN — SRL STOCK ASSIST</div><div class="meta"><span>PAGE '+(Math.floor(i/5)+1)+'</span><span>DATE: '+esc(dateDisplay(date))+'</span></div></div>'+chunk.map((r,j)=>window.dailyWorkBlock(r,i+j+1,date)).join('')+'</div>')}
+   openPrintWindow('Daily Plant Cutting Plan',pages.join(''));
+ };
+ function decoratePending(){
+   document.querySelectorAll('#pendingList .data-card').forEach(el=>{
+     if(el.querySelector('.cfm-srl-assist'))return;
+     const w=el.querySelector('.work')?.textContent?.trim(),p=(state.pending||[]).find(x=>N(x.workNo)===N(w));if(!p)return;
+     const d=document.createElement('div');d.className='cfm-srl-assist';d.innerHTML=cfmSrlAssistHTML(p);const a=el.querySelector('.card-actions');if(a)a.before(d);else el.appendChild(d);
+   });
+ }
+ const mo=new MutationObserver(decoratePending);mo.observe(document.body,{childList:true,subtree:true});setTimeout(decoratePending,500);
+})();
+</script>
