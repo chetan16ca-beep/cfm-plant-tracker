@@ -168,7 +168,7 @@ async function cloudPoll(){
   if(cloudBusy||cloudDirty||document.hidden)return;
   try{
     const meta=await cloudFetchMeta();if(!meta)return;const v=num(meta.version)||0;
-    if(v>cloudVersion){const row=await cloudFetch();if(row&&validState(row.payload)){state=clone(row.payload);ensureExcelMasterData();syncDerivedState();cloudVersion=v;cloudUpdatedAt=row.updated_at||'';safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();setCloudBadge('☁️ Updated from other mobile','green');}}
+    if(v>cloudVersion){const row=await cloudFetch();if(row&&validState(row.payload)){state=clone(row.payload);ensureExcelMasterData();syncDerivedState();cloudVersion=v;cloudUpdatedAt=row.updated_at||'';safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();setCloudBadge('☁️ Updated from other mobile','green');showLocalNotification('☁️ CFM Updated from Other Mobile',notificationSummary());}}
     else if(cloudReady)setCloudBadge('☁️ 3-4 Mobile LIVE','green');
   }catch(e){setCloudBadge('☁️ Offline – will retry','red');}
 }
@@ -212,14 +212,60 @@ function load(){
   try{settings={...settings,...JSON.parse(safeStorage.getItem(SETTINGS_KEY)||'{}')} }catch(e){}
   safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));
 }
+let nextUpdateNotification=null;
+window.setNextUpdateNotification=function(title,body){
+  nextUpdateNotification={title:String(title||'CFM Updated'),body:String(body||'')};
+}
+function genericUpdateNotification(prevRaw,nextRaw){
+  try{
+    const prev=prevRaw?JSON.parse(prevRaw):{}, next=nextRaw?JSON.parse(nextRaw):{};
+    const changed=[];
+    const same=(a,b)=>JSON.stringify(a||[])===JSON.stringify(b||[]);
+    if(!same(prev.pending,next.pending))changed.push('Pending');
+    if(!same(prev.cutting,next.cutting))changed.push('Cutting');
+    if(!same(prev.store,next.store))changed.push('Store');
+    if(!same(prev.departmentWork,next.departmentWork))changed.push('Person Work');
+    if(!same(prev.measurements,next.measurements))changed.push('Measurement');
+    if(!same(prev.srlTracker,next.srlTracker))changed.push('SRL Tracker');
+    if(!same(prev.issueRegister,next.issueRegister))changed.push('Issue Register');
+    if(!same(prev.srlOpenClose,next.srlOpenClose))changed.push('SRL Status');
+    if(!same(prev.productMaster,next.productMaster))changed.push('Product Master');
+    const latest=(arr=[])=>arr.slice().sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')))[0]||{};
+    let detail='';
+    if(changed.length===1&&changed[0]==='Pending'){
+      const r=latest(next.pending);detail=[r.workNo,r.party,r.description2||r.description].filter(Boolean).join(' • ');
+    }else if(changed.length===1&&changed[0]==='Cutting'){
+      const r=latest(next.cutting);detail=[r.workNo,r.cutQty!==''?('Qty '+fmt(r.cutQty)):'',r.srlNo?('SRL '+r.srlNo):''].filter(Boolean).join(' • ');
+    }else if(changed.length===1&&changed[0]==='Store'){
+      const r=latest(next.store);detail=[r.srlNo,r.quality,r.openingMtr!==''?('MTR '+fmt(r.openingMtr)):''].filter(Boolean).join(' • ');
+    }else if(changed.length===1&&changed[0]==='Person Work'){
+      const r=latest(next.departmentWork);detail=[r.person,r.process,r.description2||r.description].filter(Boolean).join(' • ');
+    }else if(changed.length===1&&changed[0]==='Measurement'){
+      const r=latest(next.measurements);detail=[r.workNo,r.eagleCode,r.finalMeasurement||r.measurement3||r.measurement2||r.measurement1].filter(Boolean).join(' • ');
+    }
+    return {
+      title:changed.length?('🔔 '+changed.join(' + ')+' Updated'):'🔔 CFM Data Updated',
+      body:[detail,deviceLabel()].filter(Boolean).join(' • ')
+    };
+  }catch(e){
+    return {title:'🔔 CFM Data Updated',body:deviceLabel()};
+  }
+}
 function save(doRender=true){
   syncDerivedState();
   localMutationSeq++;
-  const next=JSON.stringify(state);const prev=safeStorage.getItem(STORAGE_KEY);if(prev&&prev!==next)pushHistory(prev);
+  const next=JSON.stringify(state),prev=safeStorage.getItem(STORAGE_KEY);
+  const changed=!!prev&&prev!==next;
+  if(changed)pushHistory(prev);
   safeStorage.setItem(STORAGE_KEY,next);
   safeStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));
   if(doRender)renderAll();
   queueCloudPush();
+  if(changed){
+    const notice=nextUpdateNotification||genericUpdateNotification(prev,next);
+    nextUpdateNotification=null;
+    setTimeout(()=>showLocalNotification(notice.title,notice.body),40);
+  }else nextUpdateNotification=null;
 }
 function toast(msg){const t=$('toast');if(!t)return;t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
 function fmt(v){if(v===''||v==null)return '-';const n=Number(v);return Number.isFinite(n)?(Number.isInteger(n)?String(n):n.toFixed(2)):String(v)}
