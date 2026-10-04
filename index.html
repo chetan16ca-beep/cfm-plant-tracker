@@ -113,7 +113,7 @@ registerSW().then(refreshNotifyButton);
  let parts=[],done=0,total=groups.flat().length,st=document.getElementById('st');
  for(const g of groups){
    const x=await Promise.all(g.map(async u=>{
-     const r=await fetch('./'+u+'?v=79');
+     const r=await fetch('./'+u+'?v=80');
      if(!r.ok)throw Error(u);
      done++;st.textContent='Loading '+done+'/'+total;
      return r.text()
@@ -122,8 +122,9 @@ registerSW().then(refreshNotifyButton);
  }
  let src=parts.join('')+'\n';
  src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
- src=src.replace('<head>','<head><base href="'+location.origin+basePath+'">');\n // Strip accidental text between outer loader and assembled document is not needed; assembled src starts at doctype.
- 
- const app=document.getElementById('app');\n app.srcdoc=src;\n document.getElementById('load').style.display='none';
+ src=src.replace('<head>','<head><base href="'+location.origin+basePath+'">');
+ const app=document.getElementById('app');
+ app.srcdoc=src;
+ document.getElementById('load').style.display='none';
 })().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
 </script></body></html>
