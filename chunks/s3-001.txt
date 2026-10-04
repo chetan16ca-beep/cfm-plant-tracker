@@ -54,11 +54,13 @@ window.openPendingForm=function(i=null){
     const wasArchived=i!=null&&isArchived(state.pending[i]);o.status=wasArchived?'ARCHIVED':(!hasOrderQty(o)?'QTY REQUIRED':(pendingQty(o)<=0?'COMPLETED':'PENDING'));stampRecord(o);
     const isNewWork=i==null;
     if(isNewWork)state.pending.push(o);else state.pending[i]={...state.pending[i],...o,archived:wasArchived,...(wasArchived?{}:{archivedAt:'',archivedBy:''})};
-    save();
     if(isNewWork){
       const msg=[o.workNo||'New Work',o.party||'',o.orderQty!==''?('Qty '+fmt(o.orderQty)):''].filter(Boolean).join(' • ');
-      showLocalNotification('🔔 New Work Added',msg);
+      setNextUpdateNotification('🔔 New Work Added',msg);
+    }else{
+      setNextUpdateNotification('📝 Pending Work Updated',[o.workNo||'',o.party||'',o.description2||o.description||''].filter(Boolean).join(' • '));
     }
+    save();
     toast(wasArchived?'Archived order updated':'Order saved • Eagle/Measurement auto checked')
   },{type:'pending',i,workNo:r.workNo||''});
   setTimeout(bindPendingAutoFields,0);
