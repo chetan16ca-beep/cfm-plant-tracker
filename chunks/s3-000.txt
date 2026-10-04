@@ -251,12 +251,14 @@ window.openDeptWorkForm=function(i=null){
     if($('deptWorkDate'))$('deptWorkDate').value=rec.date;
     if($('deptSupervisor')&&!$('deptSupervisor').value)$('deptSupervisor').value=rec.supervisor||'';
     if($('deptShift'))$('deptShift').value=rec.shift||'GENERAL';
-    save();
     if(isNewEntry){
       const q=rec.doneQty!==''?('Qty '+fmt(rec.doneQty)):(rec.givenQty!==''?('Qty '+fmt(rec.givenQty)):'');
       const msg=[rec.person||'Person',rec.process||'Work',q,rec.workNo?('Work '+rec.workNo):''].filter(Boolean).join(' • ');
-      showLocalNotification('👷 Person Work Entry',msg);
+      setNextUpdateNotification('👷 Person Work Entry',msg);
+    }else{
+      setNextUpdateNotification('👷 Person Work Updated',[rec.person||'Person',rec.process||'Work',rec.workNo?('Work '+rec.workNo):''].filter(Boolean).join(' • '));
     }
+    save();
     toast('Person work entry saved • Work No optional');
     return true;
   },{type:'deptwork',i,date:r.date||'',person:r.person||''});
@@ -847,9 +849,10 @@ window.saveMultiPoItems=function(){
     const m=measurementInfo(r);r.measurementAuto=m.text;r.measurementSource=m.source;stampRecord(r);
     state.pending.push(r);created.push(r);
   });
-  saveCustomParty(party);save();
+  saveCustomParty(party);
   const workRange=created.length===1?created[0].workNo:(created[0].workNo+' – '+created.at(-1).workNo);
-  showLocalNotification('🔔 New PO Added',`${party} • ${created.length} item • ${workRange}${poNo?' • PO '+poNo:''}`);
+  setNextUpdateNotification('🔔 New PO Added',`${party} • ${created.length} item • ${workRange}${poNo?' • PO '+poNo:''}`);
+  save();
   toast(`${created.length} PO item saved • ${workRange}`);
   return true;
 };
