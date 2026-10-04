@@ -230,7 +230,7 @@
 
     <section id="view-docs" class="view">
       <div class="section-head">
-        <div><h2>Bill / Challan Tracker</h2><p>Company + Work No. wise invoice/challan pending update</p></div>
+        <div><h2>🧾 Billing / Challan / Dispatch Tracker</h2><p>Invoice, challan, transporter, LR, vehicle, E-Way Bill & dispatch details • Work No wise</p></div>
         <div class="card-actions" style="margin:0">
           <button class="btn btn-green" onclick="shareDocsWhatsApp()">Share WhatsApp Update</button>
           <button class="btn" onclick="copyDocsUpdate()">Copy Update</button>
@@ -275,7 +275,9 @@
           <option value="ALL">All Work</option>
           <option value="BILL">Bill Pending</option>
           <option value="CHALLAN">Challan Pending</option>
-          <option value="DONE">Docs Done</option>
+          <option value="DISPATCH">Dispatch Pending</option>
+          <option value="DISPATCHED">Dispatched</option>
+          <option value="DONE">Docs Ready</option>
         </select>
       </div>
       <div id="docsList"></div>
