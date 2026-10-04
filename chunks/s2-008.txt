@@ -435,7 +435,7 @@ function workHasLinkedActivity(r){
   const work=normalize(r?.workNo);
   const cutting=(state.cutting||[]).filter(c=>normalize(c.workNo)===work);
   const hasCut=cutting.length>0 || num(r?.cutQty)>0;
-  const hasDocs=!!String(r?.billNo||'').trim() || !!String(r?.challanNo||'').trim() || !!String(r?.dispatchDate||'').trim();
+  const hasDocs=['billNo','billDate','invoiceValue','challanNo','challanDate','dispatchStatus','dispatchDate','dispatchQty','transporter','vehicleNo','lrNo','lrDate','ewayBillNo','ewayBillDate'].some(k=>String(r?.[k]??'').trim());
   return {hasCut,hasDocs,cuttingCount:cutting.length};
 }
 async function deleteLocalAttachmentsForWork(workNo){
