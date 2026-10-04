@@ -295,3 +295,61 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(clean,20));mo.observe(document.body,{childList:true,subtree:true});setTimeout(clean,500);
 })();
 </script>
+
+
+<script id="cfm-v102-product-intelligence">
+(function(){
+ const N=v=>String(v==null?'':v).trim().toUpperCase(),Q=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
+ function fam(v){const s=N(v).replace(/\s+/g,' ');return /^333(\s|$)/.test(s)?'333':s}
+ function productByCode(code){return (state.productMaster||[]).find(p=>N(p.eagleCode)===N(code))}
+ function nextCode(){
+  const nums=(state.productMaster||[]).map(p=>Number((String(p.eagleCode||'').match(/EFP-P(\d+)/i)||[])[1]||0));
+  return 'EFP-P'+String(Math.max(0,...nums)+1).padStart(4,'0');
+ }
+ function openStock(p){
+  const F=fam(p.standardCloth||p.cloth),w=Q(p.standardWidth||p.width);
+  return (state.store||[]).filter(s=>srlBalance(s)>0&&!['CLOSED','ZERO'].includes(N(storeStatus(s)))&&fam(s.quality||s.cloth)===F)
+   .map(s=>({s,b:srlBalance(s),x:w>0&&Math.abs(Q(s.width)-w)<.01})).sort((a,b)=>(b.x-a.x)||b.b-a.b);
+ }
+ function history(p){
+  const ec=N(p.eagleCode),ic=N(p.itemCode),d=N(p.description);
+  return (state.pending||[]).filter(x=>(ec&&N(x.eagleCode)===ec)||(ic&&N(x.itemCode)===ic)||(d&&N(x.description)===d)).slice().sort((a,b)=>String(b.orderDate||'').localeCompare(String(a.orderDate||''))).slice(0,3);
+ }
+ window.cfmProductInsight=function(p){
+  const st=openStock(p),ex=st.filter(x=>x.x),h=history(p),std=Q(p.stdClothMtrNos||p.standardConsumption||p.consumptionMtr);
+  return {stock:st,exact:ex,history:h,std};
+ };
+ function decorate(){
+  const box=document.getElementById('productList');if(!box)return;
+  [...box.querySelectorAll('.data-card')].forEach(card=>{
+   if(card.querySelector('.cfm-prod-intel'))return;
+   const code=card.querySelector('.work')?.textContent?.trim(),p=productByCode(code);if(!p)return;
+   const x=cfmProductInsight(p),d=document.createElement('div');d.className='cfm-prod-intel';
+   const s=x.stock.slice(0,4).map(z=>'<span class="chip '+(z.x?'green':'')+'">SRL '+esc(z.s.srlNo||'-')+' • W '+esc(z.s.width||'-')+' • '+fmt(z.b)+' MTR</span>').join('');
+   const h=x.history.map(o=>esc(o.workNo||'')+' '+esc(o.party||'')).join(' • ');
+   d.innerHTML='<div class="chips" style="margin-top:8px">'+
+    '<span class="chip '+(N(p.status||'ACTIVE')==='ACTIVE'?'green':'red')+'">'+esc(p.status||'ACTIVE')+'</span>'+
+    (x.std?'<span class="chip">Std '+fmt(x.std)+' MTR/NOS</span>':'')+
+    (x.exact.length?'<span class="chip green">'+x.exact.length+' Exact SRL</span>':'<span class="chip red">No Exact SRL</span>')+s+'</div>'+
+    (h?'<div class="muted" style="font-size:11px;margin-top:6px"><b>Recent:</b> '+h+'</div>':'');
+   card.appendChild(d);
+  });
+  const search=document.getElementById('productSearch');if(search&&!search.dataset.v102){search.dataset.v102='1';search.placeholder='Eagle Code / Item Code / Description / Cloth / Micron / Width';}
+ }
+ function workPreview(){
+  const f=document.getElementById('editForm');if(!f)return;
+  const pick=document.getElementById('pendingProductPick');if(!pick)return;
+  let b=document.getElementById('cfmProductPlanV102');if(!b){b=document.createElement('div');b.id='cfmProductPlanV102';b.className='field full auto-box';pick.closest('.field')?.insertAdjacentElement('afterend',b)}
+  const draw=()=>{
+   const code=(pick.value.match(/\bEFP-P\d+\b/i)||[])[0],p=code?productByCode(code):null;if(!p){b.innerHTML='<b>Product Planning</b><div class="inline-help">Product select karo — specification, consumption aur SRL stock yahan dikhega.</div>';return}
+   const x=cfmProductInsight(p),qty=Q(f.elements.namedItem('orderQty')?.value),need=x.std&&qty?x.std*qty:0;
+   b.innerHTML='<b>'+esc(p.eagleCode||'')+' • '+esc(p.description||'')+'</b><div class="chips" style="margin-top:7px"><span class="chip">'+esc(p.standardCloth||'-')+'</span><span class="chip">W '+esc(p.standardWidth||'-')+'</span><span class="chip">'+esc(p.micron||'-')+' µ</span>'+(x.std?'<span class="chip">Std '+fmt(x.std)+' MTR/NOS</span>':'')+(need?'<span class="chip green">Required ≈ '+fmt(need)+' MTR</span>':'')+(x.exact.length?'<span class="chip green">Exact SRL '+x.exact.length+'</span>':'<span class="chip red">Exact SRL 0</span>')+'</div>';
+  };
+  if(!pick.dataset.plan102){pick.dataset.plan102='1';pick.addEventListener('change',()=>setTimeout(draw,50));pick.addEventListener('input',draw);f.elements.namedItem('orderQty')?.addEventListener('input',draw)}
+  draw();
+ }
+ window.cfmNextProductCode=nextCode;
+ const mo=new MutationObserver(()=>{setTimeout(decorate,20);setTimeout(workPreview,20)});mo.observe(document.body,{childList:true,subtree:true});
+ setTimeout(()=>{decorate();workPreview()},600);
+})();
+</script>
