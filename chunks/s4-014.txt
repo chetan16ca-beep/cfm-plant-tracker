@@ -29,5 +29,30 @@
  const obs=new MutationObserver(addButtons);obs.observe(document.body,{childList:true,subtree:true});setTimeout(addButtons,300);
 })();
 </script>
+
+<script id="cfm-v72-ops-enhancements">
+(function(){
+ function n(v){return Number(v)||0} function N(v){return String(v==null?'':v).trim().toUpperCase()}
+ window.cfmOpsSummary=function(){
+  const open=(state.pending||[]).filter(orderOpen), today=todayISO();
+  const low=(state.store||[]).filter(x=>{const b=srlBalance(x);return b>0&&b<=10});
+  const delayed=open.filter(x=>x.deliveryDate&&String(x.deliveryDate)<today);
+  const stages={cutting:0,stitching:0,finishing:0,packing:0,ready:0};
+  open.forEach(p=>{const w=N(p.workNo),d=(state.departmentWork||[]).filter(x=>N(x.workNo)===w).map(x=>N(x.process||x.department));
+    if(d.some(x=>x.includes('PACK')))stages.packing++;else if(d.some(x=>x.includes('FINISH')||x.includes('GUN')||x.includes('THREAD')))stages.finishing++;else if(d.some(x=>x.includes('STITCH')))stages.stitching++;else stages.cutting++;
+  });
+  stages.ready=(state.pending||[]).filter(x=>N(x.challanStatus)==='DONE'||N(x.dispatchStatus).includes('READY')).length;
+  return {open:open.length,low:low.length,delayed:delayed.length,stages};
+ };
+ function inject(){
+  const host=document.querySelector('#view-dashboard .command-hero'); if(!host||document.getElementById('cfmOpsStrip'))return;
+  const x=cfmOpsSummary(),box=document.createElement('div');box.id='cfmOpsStrip';box.style.cssText='margin:12px 0 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px';
+  box.innerHTML=[['Cutting',x.stages.cutting],['Stitching',x.stages.stitching],['Finishing',x.stages.finishing],['Packing',x.stages.packing],['Ready',x.stages.ready],['Low Stock',x.low],['Delayed',x.delayed]].map((a,i)=>'<div class="data-card" style="padding:11px 12px;border-left:4px solid '+(i===5||i===6?'#d73b32':'#176a45')+'"><b>'+a[1]+'</b><div class="muted" style="font-size:11px">'+a[0]+'</div></div>').join('');
+  host.insertAdjacentElement('afterend',box);
+ }
+ const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:true});setTimeout(inject,500);
+})();
+</script>
+
 </body>
 </html>
