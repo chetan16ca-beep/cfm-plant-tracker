@@ -52,8 +52,14 @@ window.openPendingForm=function(i=null){
     ['width','orderQty','cutQty'].forEach(k=>o[k]=o[k]===''?'':num(o[k]));
     const m=measurementInfo(o);o.measurementAuto=m.text;o.measurementSource=m.source;
     const wasArchived=i!=null&&isArchived(state.pending[i]);o.status=wasArchived?'ARCHIVED':(!hasOrderQty(o)?'QTY REQUIRED':(pendingQty(o)<=0?'COMPLETED':'PENDING'));stampRecord(o);
-    if(i==null)state.pending.push(o);else state.pending[i]={...state.pending[i],...o,archived:wasArchived,...(wasArchived?{}:{archivedAt:'',archivedBy:''})};
-    save();toast(wasArchived?'Archived order updated':'Order saved • Eagle/Measurement auto checked')
+    const isNewWork=i==null;
+    if(isNewWork)state.pending.push(o);else state.pending[i]={...state.pending[i],...o,archived:wasArchived,...(wasArchived?{}:{archivedAt:'',archivedBy:''})};
+    save();
+    if(isNewWork){
+      const msg=[o.workNo||'New Work',o.party||'',o.orderQty!==''?('Qty '+fmt(o.orderQty)):''].filter(Boolean).join(' • ');
+      showLocalNotification('🔔 New Work Added',msg);
+    }
+    toast(wasArchived?'Archived order updated':'Order saved • Eagle/Measurement auto checked')
   });
   setTimeout(bindPendingAutoFields,0);
 }
