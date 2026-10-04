@@ -1,0 +1,130 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101820"><title>CFM Plant Tracker</title><link rel="manifest" href="./manifest.json">
+<style>
+html,body,#app{margin:0;width:100%;height:100%;overflow:hidden;background:#eef3f8}
+#app{border:0;display:block}
+.load{position:fixed;inset:0;display:grid;place-items:center;font-family:system-ui;color:#182433;z-index:20}
+.box{background:#fff;padding:24px;border-radius:16px;box-shadow:0 8px 30px #0002;text-align:center}
+#notifyBtn{position:fixed;right:14px;bottom:14px;z-index:50;border:0;border-radius:999px;padding:12px 16px;background:#101820;color:#fff;font:600 14px system-ui;box-shadow:0 6px 22px #0004;display:none}
+#notifyBtn:active{transform:scale(.98)}
+</style>
+/* V68 Professional ERP visual theme - presentation only */
+<style id="cfm-v68-theme">
+:root{--cfm-navy:#14213d;--cfm-navy2:#1f3158;--cfm-bg:#f4f6f9;--cfm-line:#e1e6ed;--cfm-text:#172033}
+html,body{background:var(--cfm-bg)!important}
+body,button,input,select,textarea{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif!important}
+.topbar{background:linear-gradient(135deg,var(--cfm-navy),var(--cfm-navy2))!important;box-shadow:0 5px 20px rgba(20,33,61,.18)!important}
+.panel,.data-card,.kpi,.action-card{border-color:var(--cfm-line)!important;box-shadow:0 7px 22px rgba(20,33,61,.07)!important}
+.panel,.data-card,.action-card{border-radius:16px!important}
+.btn-primary,.nav button.active{background:var(--cfm-navy)!important}
+.work,.action-card b{color:var(--cfm-navy)!important}
+input,select,textarea{border-color:#d5dce6!important}
+@media(max-width:760px){
+ .nav{background:#fff!important;border-top:1px solid var(--cfm-line)!important;box-shadow:0 -6px 20px rgba(20,33,61,.08)!important}
+ .nav button.active{background:#e9eef7!important;color:var(--cfm-navy)!important}
+}
+</style>
+<style id="cfm-v69-light-theme">
+:root{--cfm-navy:#486454;--cfm-navy2:#6f8a79;--cfm-bg:#f7f6f2;--cfm-line:#e5e3dc;--cfm-text:#29332d}
+html,body{background:#f7f6f2!important;color:#29332d!important}
+body,button,input,select,textarea{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif!important}
+.topbar{background:linear-gradient(135deg,#f7f4ec,#e7eee8)!important;color:#29332d!important;border-bottom:1px solid #dedfd9!important;box-shadow:0 4px 16px rgba(55,70,60,.08)!important}
+.topbar .brand h1,.topbar .brand p{color:#29332d!important}.topbar .brand p{opacity:.7!important}
+.topbar .btn{background:#fff!important;color:#486454!important;border-color:#d8ddd8!important}
+.panel,.data-card,.action-card{background:#fff!important;border-color:#e5e3dc!important;box-shadow:0 6px 18px rgba(55,70,60,.06)!important}
+.btn-primary{background:#5f7d69!important;color:#fff!important;border-color:#5f7d69!important}
+.btn-green{background:#76957f!important;border-color:#76957f!important}
+.work,.action-card b{color:#486454!important}
+.nav button.active{background:#e5eee7!important;color:#3f6650!important;border-color:#d1dfd4!important;box-shadow:none!important}
+#kpis .kpi,#docKpis .kpi{background:linear-gradient(145deg,#ffffff,#eef2ed)!important;border:1px solid #e1e6df!important}
+#kpis .kpi .num,#kpis .kpi .label,#docKpis .kpi .num,#docKpis .kpi .label{color:#34463b!important}
+input,select,textarea{background:#fff!important;border-color:#dcded8!important;color:#29332d!important}
+@media(max-width:760px){.nav{background:#fff!important}.nav button.active{background:#e7efe9!important;color:#486454!important}}
+</style>
+</head>
+<body>
+<div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
+<iframe id="app" title="CFM Plant Tracker"></iframe>
+<button id="notifyBtn" type="button">🔔 Enable Notifications</button>
+<script>
+const groups=[["chunks/s1-000.txt"],["chunks/s2-000.txt","chunks/s2-001.txt","chunks/s2-002.txt","chunks/s2-003.txt","chunks/s2-004.txt","chunks/s2-005.txt","chunks/s2-006.txt","chunks/s2-007.txt","chunks/s2-008.txt"],["chunks/s3-000.txt","chunks/s3-001.txt"],["chunks/s4-000.txt","chunks/s4-001.txt","chunks/s4-002.txt","chunks/s4-003.txt","chunks/s4-004.txt","chunks/s4-005.txt","chunks/s4-006.txt","chunks/s4-007.txt","chunks/s4-008.txt","chunks/s4-009.txt","chunks/s4-010.txt","chunks/s4-011.txt","chunks/s4-012.txt","chunks/s4-013.txt","chunks/s4-014.txt"]];
+const basePath=new URL('./',location.href).pathname;
+let swReg=null;
+
+async function registerSW(){
+  if(!('serviceWorker' in navigator))return null;
+  try{
+    swReg=await navigator.serviceWorker.register('./sw.js');
+    await navigator.serviceWorker.ready;
+    return swReg;
+  }catch(e){console.warn('SW registration failed',e);return null}
+}
+
+async function sendCFMNotification(title,body,data={}){
+  if(!('Notification' in window)||Notification.permission!=='granted')return false;
+  const reg=swReg||await navigator.serviceWorker.ready;
+  await reg.showNotification(title||'CFM Plant Tracker',{
+    body:body||'New plant update',
+    icon:'./icons/icon-192.svg',
+    badge:'./icons/icon-192.svg',
+    tag:data.tag||('cfm-'+Date.now()),
+    renotify:true,
+    vibrate:[180,80,180],
+    data:{url:'./',...data},
+    actions:[{action:'open',title:'Open ERP'}]
+  });
+  return true;
+}
+window.CFMNotify=sendCFMNotification;
+
+function refreshNotifyButton(){
+  const b=document.getElementById('notifyBtn');
+  if(!('Notification' in window)){b.style.display='none';return}
+  if(Notification.permission==='granted'){b.style.display='none'}
+  else{
+    b.style.display='block';
+    b.textContent=Notification.permission==='denied'?'🔕 Notification Blocked':'🔔 Enable Notifications';
+  }
+}
+
+document.getElementById('notifyBtn').addEventListener('click',async()=>{
+  if(!('Notification' in window))return;
+  if(Notification.permission==='denied'){
+    alert('Notifications blocked hain. Chrome > Site settings > Notifications me Allow karein.');
+    return;
+  }
+  const p=await Notification.requestPermission();
+  refreshNotifyButton();
+  if(p==='granted'){
+    await sendCFMNotification('CFM Plant Tracker','Notifications active ✅',{tag:'cfm-enabled'});
+  }
+});
+
+window.addEventListener('message',e=>{
+  const d=e.data||{};
+  if(d.type==='CFM_NOTIFICATION'||d.type==='cfm-notify'){
+    sendCFMNotification(d.title||'CFM Plant Tracker',d.body||'New update',d.data||{});
+  }
+});
+
+refreshNotifyButton();
+
+(async()=>{
+ let parts=[],done=0,total=groups.flat().length,st=document.getElementById('st');
+ for(const g of groups){
+   const x=await Promise.all(g.map(async u=>{
+     const r=await fetch('./'+u+'?v=mobile1');
+     if(!r.ok)throw Error(u);
+     done++;st.textContent='Loading '+done+'/'+total;
+     return r.text()
+   }));
+   parts.push(x.join(''))
+ }
+ let src=parts.join('')+'\n';
+ src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
+ src=src.replace('<head>','<head><base href="'+location.origin+basePath+'">');
+ const app=document.getElementById('app');
+ app.srcdoc=src;
+ document.getElementById('load').style.display='none';
+})().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
+</script></body></html>
