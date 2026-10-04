@@ -10,18 +10,16 @@
  };
  window.openWorkTrack=function(w){
    const p=getPending(w),cuts=(state.cutting||[]).filter(x=>norm(x.workNo)===norm(w)),dept=(state.departmentWork||[]).filter(x=>norm(x.workNo)===norm(w)),issues=(state.issueRegister||[]).filter(x=>norm(x.workNo)===norm(w));
-   const srls=[...new Set(cuts.map(x=>x.srlNo).concat(issues.map(x=>x.srlNo)).filter(x=>x&&norm(x)!=='W'))];
-   let status=p?.status||'OPEN';
-   const proc=dept.map(x=>norm(x.process||x.department||''));
-   if(p?.dispatchStatus||p?.dispatchDate)status='DISPATCHED';
-   else if(p?.challanNo||p?.challanStatus==='DONE')status='READY / CHALLAN';
-   else if(proc.some(x=>x.includes('PACK')))status='PACKING';
-   else if(proc.some(x=>x.includes('FINISH')||x.includes('GUN')||x.includes('THREAD')))status='FINISHING';
-   else if(proc.some(x=>x.includes('STITCH')))status='STITCHING';
-   else if(p&&hasOrderQty(p)&&pendingQty(p)<=0)status='CUTTING COMPLETE';
-   else if(cuts.length)status='CUTTING IN PROGRESS';
-   alert(['WORK ORDER: '+w,'Party: '+(p?.party||'-'),'Status: '+status,'Order Qty: '+(p?fmt(p.orderQty):'-')+' | Cut Qty: '+(p?fmt(p.cutQty):'-')+' | Pending: '+(p?fmt(pendingQty(p)):'-'),'SRL Used: '+(srls.join(', ')||'None'),'Stage: '+status,'','Cutting Entries: '+cuts.length].concat(cuts.slice().reverse().map(x=>(dateDisplay(x.date||'')+' • SRL '+(x.srlNo||'-')+' • Qty '+fmt(x.cutQty)+' • '+fmt(cuttingUsedMtr(x))+' MTR')),['','Department Entries: '+dept.length],dept.slice().reverse().map(x=>(dateDisplay(x.date||'')+' • '+(x.process||'-')+' • '+(x.person||'-')+' • Done '+fmt(x.doneQty)))).join('\n'));
+   const order=p?Number(p.orderQty||0):0,cut=p?Number(p.cutQty||0):cuts.reduce((a,x)=>a+Number(x.cutQty||0),0),bal=Math.max(0,order-cut);
+   const latest=dept.length?dept[dept.length-1]:null,proc=norm(latest?.process||latest?.department||'');
+   let stage='CUTTING';
+   if(p?.dispatchStatus||p?.dispatchDate)stage='DISPATCHED';else if(p?.workDone||p?.challanNo||norm(p?.challanStatus)==='DONE')stage='READY TO DISPATCH';else if(proc.includes('PACK'))stage='PACKING';else if(proc.includes('CHECK'))stage='CHECKING';else if(proc.includes('FINISH')||proc.includes('GUN')||proc.includes('THREAD'))stage='FINISHING';else if(proc.includes('STITCH'))stage='STITCHING';else if(bal<=0)stage='CUTTING COMPLETE';
+   let forecast='NO',reason='Production pending';
+   if(stage==='DISPATCHED'){forecast='DONE';reason='Already dispatched'}else if(stage==='READY TO DISPATCH'){forecast='YES';reason='Work done / challan ready'}else if(stage==='PACKING'&&bal<=0){forecast='POSSIBLE';reason='Packing stage; final completion required'}else if(bal<=0){forecast='POSSIBLE';reason='Cutting complete; next process pending'}
+   const people=dept.slice().reverse().map(x=>dateDisplay(x.date||'')+' • '+(x.person||'-')+' • '+(x.process||'-')+' • Done '+fmt(x.doneQty)+(x.description?' • '+x.description:''));
+   alert(['WORK ORDER: '+w,'Party: '+(p?.party||'-'),'CURRENT STAGE: '+stage,'Order Qty: '+fmt(order)+' | Done/Cut: '+fmt(cut)+' | Balance: '+fmt(bal),'Tomorrow Dispatch: '+forecast+' — '+reason,'','WHO DID WHAT:'].concat(people.length?people:['No department activity linked yet'],['','Department sheet entries with this Work No appear here automatically.']).join('\n'));
  };
+
  function addButtons(){
   document.querySelectorAll('#storeList .data-card').forEach(el=>{if(el.querySelector('.srl-history-btn'))return;const s=el.querySelector('.work')?.textContent?.trim();if(!s)return;const a=el.querySelector('.card-actions')||el,b=document.createElement('button');b.className='btn btn-sm btn-primary srl-history-btn';b.textContent='🔗 SRL History';b.onclick=()=>openSrlHistory(s);a.appendChild(b)});
   document.querySelectorAll('#pendingList .data-card').forEach(el=>{if(el.querySelector('.work-track-btn'))return;const w=el.querySelector('.work')?.textContent?.trim();if(!w||w==='No Work No')return;const a=el.querySelector('.card-actions')||el,b=document.createElement('button');b.className='btn btn-sm btn-primary work-track-btn';b.textContent='📍 Track Work';b.onclick=()=>openWorkTrack(w);a.appendChild(b)});
