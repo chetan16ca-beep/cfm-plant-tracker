@@ -257,7 +257,7 @@ window.openDeptWorkForm=function(i=null){
     }
     toast('Person work entry saved • Work No optional');
     return true;
-  });
+  },{type:'deptwork',i,date:r.date||'',person:r.person||''});
   setTimeout(bindDeptWorkForm,0);
 }
 window.deleteDeptWork=function(i){
@@ -459,8 +459,27 @@ window.printReadyDispatch=function(){const rows=readyDispatchRows();if(!rows.len
 window.renderGlobalSearch=function(){const q=($('globalSearch').value||'').trim().toLowerCase();if(q.length<2){$('searchResults').innerHTML='<div class="empty">Type at least 2 characters</div>';return}const p=state.pending.filter(r=>JSON.stringify(r).toLowerCase().includes(q));const s=state.store.filter(r=>JSON.stringify(r).toLowerCase().includes(q));const c=state.cutting.filter(r=>JSON.stringify(r).toLowerCase().includes(q));const m=(state.measurements||[]).filter(r=>JSON.stringify(r).toLowerCase().includes(q));const t=(state.srlTracker||[]).filter(r=>JSON.stringify(r).toLowerCase().includes(q));const pr=(state.productMaster||[]).filter(r=>JSON.stringify(r).toLowerCase().includes(q));$('searchResults').innerHTML=`<div class="search-group"><h3>Pending (${p.length})</h3>${p.slice(0,20).map(r=>pendingCard(r,true)).join('')||'<div class="muted">None</div>'}</div><div class="search-group"><h3>Store / SRL (${s.length})</h3>${s.slice(0,20).map(r=>storeCard(r,true)).join('')||'<div class="muted">None</div>'}</div><div class="search-group"><h3>Cutting (${c.length})</h3>${c.slice(0,20).map(r=>cutCard(r,true)).join('')||'<div class="muted">None</div>'}</div><div class="search-group"><h3>Measurements (${m.length})</h3>${m.slice(0,15).map(r=>`<div class="data-card"><b>${esc(r.workNo||r.eagleCode)}</b> • ${esc(r.party||'')}<div class="muted">${esc(r.description||'')} • ${esc(r.finalMeasurement||r.status||'')}</div></div>`).join('')||'<div class="muted">None</div>'}</div><div class="search-group"><h3>Physical SRL (${t.length})</h3>${t.slice(0,15).map(r=>`<div class="data-card"><b>${esc(r.srlNo)}</b> • ${esc(r.quality||'')} • ${fmt(r.liveBalanceMtr)} MTR • ${esc(r.status||'')}</div>`).join('')||'<div class="muted">None</div>'}</div><div class="search-group"><h3>Product Master (${pr.length})</h3>${pr.slice(0,15).map(r=>`<div class="data-card"><b>${esc(r.eagleCode)}</b> • ${esc(r.description||'')}</div>`).join('')||'<div class="muted">None</div>'}</div>`}
 
 function field(name,label,value='',type='text',full=false,options=null){let control;if(options){control=`<select name="${name}">${options.map(x=>`<option value="${esc(x)}" ${String(value)===String(x)?'selected':''}>${esc(x)}</option>`).join('')}</select>`}else if(type==='textarea'){control=`<textarea name="${name}" rows="3">${esc(value)}</textarea>`}else{control=`<input name="${name}" type="${type}" value="${esc(value)}" ${type==='number'?'step="any"':''}/>`}return `<div class="field ${full?'full':''}"><label>${esc(label)}</label>${control}</div>`}
-function openDialog(title,html,onSave){editContext=onSave;$('editDialog').classList.remove('multi-po-dialog');$('dialogTitle').textContent=title;$('formFields').innerHTML=html;$('saveFormBtn').textContent='Save';$('editDialog').showModal()}
+let dialogResumeMeta=null;
+function openDialog(title,html,onSave,resumeMeta=null){
+  editContext=onSave;
+  dialogResumeMeta=resumeMeta;
+  $('editDialog').classList.remove('multi-po-dialog');
+  $('dialogTitle').textContent=title;
+  $('formFields').innerHTML=html;
+  $('saveFormBtn').textContent='Save';
+  $('editDialog').showModal();
+  setTimeout(()=>{
+    window.captureUiDialogState?.();
+    const f=$('editForm');
+    if(f&&!f.dataset.resumeCaptureBound){
+      f.dataset.resumeCaptureBound='1';
+      f.addEventListener('input',()=>window.captureUiDialogState?.());
+      f.addEventListener('change',()=>window.captureUiDialogState?.());
+    }
+  },0);
+}
 $('saveFormBtn').addEventListener('click',()=>{const fd=new FormData($('editForm'));const obj=Object.fromEntries(fd.entries());const ok=editContext?.(obj);if(ok!==false)$('editDialog').close()});
+$('editDialog').addEventListener('close',()=>{dialogResumeMeta=null;try{safeStorage.removeItem('cfm-ui-dialog-v1')}catch(e){}});
 
 
 const FULL_OLD_PARTIES=["ABERT L", "ABERT LI", "ABERT LIFE", "ACUTAS AN", "ACUTAS JHGDIA", "ACUTS 2", "ACUTS-2", "ACUTS-3", "ACUTS-III", "ALEX P", "ALIVUS", "ALIVUS  L", "ALIVUS 2", "ALIVUS P-17", "ALIVUS P-18", "ALIVUS P-3", "ALL C", "ALL CHEM", "ALTITUDE", "AMANRTH", "AMAR H", "AMAR HLTH", "AMBICA C", "AMINISHA", "AMRNTH", "ANDROZENICA", "APEX H", "APEX HL", "APEX HLT", "APEX SAY", "ARROMA", "ATERNA C", "ATERNA CHM", "ATHRENA", "ATRERNA CHEM", "AUXGEN P", "AVANCIA", "AVENCIA", "AZ", "BASIC P", "BBELL", "BENZMARK", "BIGSON P", "BIRLA", "DAKSAYNI C", "DAKSHAYNI C", "DARSHAN P", "DARSHN HLT", "DF", "DFR", "DRAGNET", "FLUROSENT", "FORTUNE P", "GOKULESH", "GSP", "GUJRAT G", "GUJRAT GRD", "GURU A", "GURUAS", "HARIHAR P", "HARSH I", "HORSTER", "HORSTER L", "HP PHARMA", "INTER POSE", "INTERPOS", "JAY GANESH", "JIYANSH", "KIRAN C", "KIRANC", "KOHINOOR", "LANCO", "LIFE SC", "LOKUS L", "MAHADEV P", "MARS P", "MARUTI IN", "MEHAK", "MEHAK L", "MH", "MICROTCH", "MICROTECH", "microtek", "NARMADA", "NASIT P", "NIRAN LAB", "NIRANJAN P", "NIRANJN P", "NK", "OZONE", "OZONE  L", "OZONE L", "PRANAM DR-2", "PRANAMI DR-2", "PRANAMI DRGS", "PRANMI-2", "PRINCE CHEM", "PRUDENC H", "PRUDENCE H", "Prudence HL", "PRUDENCE L", "PUR C", "PURE CHEM", "PURE CHM", "RAIN C", "RANGO DHDI", "RANGODHDI", "RASAYNO", "REGAL", "REGAL REM", "REINE", "REINE L", "RENIE L", "RUSAN P", "RUSANP", "RUSN P", "RUTAIN", "RUTAIN P", "SALAVIADAS", "SATYAM C", "SATYM C", "SHAYON P", "SHAYONA P", "SHIVIT P", "SHIVITA P", "SHIVSTR", "SHREE SULPH", "SIDDHI C", "SIDHI C", "SIGMA L", "SIPL-1", "SIPL-II", "SIPL2", "SIPL3", "SUNFARBEN", "SYNZEEL", "TECHNO D", "TECHNO DR", "TORNT T-20", "TORNT-10", "TORRENT T20", "TORRNT-20", "TRVC", "UNIVERSAL", "VASUD P", "VEERA HELTH", "VEERA HLTH", "VISHAL IN", "VISHDHA", "VISHDHARA", "VISHDHRA", "VISHKARMA", "VISHKRMA", "VISHU B", "VISHUN B", "VVIC P", "WELL  BEING", "WILLCARE", "WILLO", "WILLOWD", "WILLOWOOD", "YASHO", "yasho inds", "YASHO PILOT", "ZENI", "ZENI B", "ZENTIKA"];
@@ -789,7 +808,7 @@ window.openMultiPendingForm=function(){
     <button type="button" class="multi-add-item" onclick="addMultiPoItem()">＋ Add Another Item</button>
     <div class="multi-cut-note"><b>✂ Cutting Entry Available</b><span>Save ke baad har Work No. ke liye SRL No., Cut Qty, Length, Height, Layer, Cloth, Width, Cutting By aur Wastage alag enter kar sakte ho.</span></div>
   </div>`;
-  openDialog('Add Pending Order • Multi-item PO',html,()=>saveMultiPoItems());
+  openDialog('Add Pending Order • Multi-item PO',html,()=>saveMultiPoItems(),{type:'multiPending'});
   $('editDialog').classList.add('multi-po-dialog');
   $('saveFormBtn').textContent='Save PO Items';
   document.querySelectorAll('#multiPoItems .multi-po-item-row').forEach(bindMultiPoRow);
