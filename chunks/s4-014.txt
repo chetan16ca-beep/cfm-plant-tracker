@@ -68,54 +68,35 @@
  const mo=new MutationObserver(addDoneButtons);mo.observe(document.body,{childList:true,subtree:true});setTimeout(addDoneButtons,400);
 })();
 </script>
-<script id="cfm-safe-batch-v86">
+<script id="cfm-safe-batch-v88">
 (function(){
- const N=v=>String(v==null?'':v).trim().toUpperCase(), Q=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
+ const N=v=>String(v==null?'':v).trim().toUpperCase(),Q=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
  const stages=['CUTTING','STITCHING','THREAD CUTTING','GUN / FINISHING','FINAL CHECKING','PACKING'];
  function work(w){return (state.pending||[]).find(x=>N(x.workNo)===N(w))}
- function entries(w,stage){
-  const d=(state.departmentWork||[]).filter(x=>N(x.workNo)===N(w)&&N(x.process||x.department).includes(stage==='GUN / FINISHING'?'FINISH':stage==='FINAL CHECKING'?'CHECK':stage));
-  if(stage!=='CUTTING')return d;
-  const c=(state.cutting||[]).filter(x=>N(x.workNo)===N(w)).map(x=>Object.assign({_source:'cutting'},x));
-  return c.concat(d);
- }
+ function matchStage(x,s){const p=N(x.process||x.department);return p.includes(s==='GUN / FINISHING'?'FINISH':s==='FINAL CHECKING'?'CHECK':s)}
+ function peopleOptions(){const p=[...(typeof FIXED_PERSONS!=='undefined'?FIXED_PERSONS:[]).map(x=>typeof x==='string'?x:(x.name||'')),...(state.customPersons||[]).map(x=>typeof x==='string'?x:(x.name||'')),...(state.departmentWork||[]).map(x=>x.person||'')];return [...new Set(p.filter(Boolean))].sort().map(x=>'<option value="'+esc(x)+'"></option>').join('')}
+ function history(w,s){let d=(state.departmentWork||[]).filter(x=>N(x.workNo)===N(w)&&matchStage(x,s));if(s==='CUTTING'){d=[...(state.cutting||[]).filter(x=>N(x.workNo)===N(w)),...d]}return d}
  function report(w){
-  const p=work(w);if(!p)return '<div class="empty">Work not found</div>';
-  const oq=Q(p.orderQty);
-  const rows=stages.map(stage=>{
-   const a=entries(w,stage);
-   if(!a.length)return '<tr><td>'+esc(stage)+'</td><td>-</td><td>☐</td><td>'+fmt(oq)+'</td><td>0</td><td>'+fmt(oq)+'</td><td>'+esc(p.description||'-')+'</td><td>-</td><td>-</td></tr>';
-   return a.map((x,i)=>{
-    const done=Q(x.doneQty!==undefined&&x.doneQty!==''?x.doneQty:x.cutQty),pending=Math.max(0,oq-done);
-    return '<tr><td>'+esc(stage)+(i?' #'+(i+1):'')+'</td><td>'+esc(x.person||x.cuttingPerson||'-')+'</td><td>'+(done>0?'✓':'☐')+'</td><td>'+fmt(oq)+'</td><td>'+fmt(done)+'</td><td>'+fmt(pending)+'</td><td>'+esc(x.workDescription||x.description||p.description||'-')+'</td><td>'+esc(dateDisplay(x.date||'')||'-')+'</td><td>'+esc(x.remark||'-')+'</td></tr>';
-   }).join('');
+  const p=work(w);if(!p)return '<div class="empty">Work not found</div>';const oq=Q(p.orderQty),opts=peopleOptions();
+  const rows=stages.map((stage,i)=>{
+   const h=history(w,stage),done=h.reduce((a,x)=>a+Q(x.doneQty!==undefined&&x.doneQty!==''?x.doneQty:x.cutQty),0),pen=Math.max(0,oq-done);
+   const hist=h.length?'<div class="muted" style="font-size:11px;margin-top:5px">'+h.map(x=>esc((x.person||x.cuttingPerson||'-')+' '+fmt(Q(x.doneQty!==undefined&&x.doneQty!==''?x.doneQty:x.cutQty)))).join(' • ')+'</div>':'';
+   return '<tr data-batch-stage="'+i+'"><td><b>'+esc(stage)+'</b>'+hist+'</td><td><input class="batch-person" list="batchPeopleV88" placeholder="Person" style="min-width:120px"></td><td style="text-align:center"><input class="batch-check" type="checkbox"></td><td>'+fmt(oq)+'</td><td><input class="batch-done" type="number" min="0" max="'+oq+'" placeholder="0" style="width:80px"></td><td class="batch-pending">'+fmt(pen)+'</td><td><input class="batch-desc" value="'+esc(p.description||'')+'" style="min-width:160px"></td><td><input class="batch-remark" placeholder="Remark" style="min-width:140px"></td><td><button type="button" class="btn btn-sm btn-green batch-row-save">Save</button></td></tr>';
   }).join('');
-  return '<div class="auto-box ok"><b>'+esc(w)+' • '+esc(p.party||'')+'</b><br><b>Description:</b> '+esc(p.description||'-')+(p.description2?'<br><b>Measurement:</b> '+esc(p.description2):'')+'<br><b>Order Qty:</b> '+fmt(oq)+'</div><div style="overflow-x:auto;margin-top:12px"><table class="table batch-v86-table" style="min-width:940px"><thead><tr><th>Stage</th><th>Person</th><th>✓</th><th>Order Qty</th><th>Done Qty</th><th>Pending Qty</th><th>Work Description</th><th>Date</th><th>Remark</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  return '<datalist id="batchPeopleV88">'+opts+'</datalist><div class="auto-box ok"><b>'+esc(w)+' • '+esc(p.party||'')+'</b><br><b>Description:</b> '+esc(p.description||'-')+(p.description2?'<br><b>Measurement:</b> '+esc(p.description2):'')+'<br><b>Order Qty:</b> '+fmt(oq)+'</div><div style="overflow-x:auto;margin-top:12px"><table class="table" style="min-width:1080px"><thead><tr><th>Stage</th><th>Person</th><th>✓</th><th>Order Qty</th><th>Done Qty</th><th>Pending Qty</th><th>Work Description</th><th>Remark</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
  }
- window.cfmSafeBatchAdd=function(w){
-  const p=work(w);if(!p)return toast('Work not found');
-  const people=[...new Set([...(typeof FIXED_PERSONS!=='undefined'?FIXED_PERSONS:[]).map(x=>typeof x==='string'?x:(x.name||'')),...(state.customPersons||[]).map(x=>typeof x==='string'?x:(x.name||'')),...(state.departmentWork||[]).map(x=>x.person||'')].filter(Boolean))].sort();
-  const opts=people.map(x=>'<option value="'+esc(x)+'"></option>').join('');
-  const html='<div class="field"><label>Work No</label><input name="workNo" value="'+esc(w)+'" readonly></div>'+
-   field('process','Stage','STITCHING','text',false,stages)+
-   '<div class="field"><label>Person • Search / Select</label><input name="person" list="batchPeopleV86" placeholder="Type person name..." autocomplete="off"><datalist id="batchPeopleV86">'+opts+'</datalist></div>'+
-   field('orderQty','Order Qty',p.orderQty||'','number')+field('doneQty','Done Qty','','number')+
-   '<div class="field"><label>Pending Qty</label><input value="'+esc(String(Q(p.orderQty)))+'" readonly></div>'+
-   field('workDescription','Work Description',p.description||'','text')+field('date','Date',todayISO(),'date')+field('remark','Remark','','textarea',true);
-  openDialog('Batch Process Entry • '+w,html,o=>{
-   if(!String(o.person||'').trim()){toast('Person required');return false}
-   const done=Q(o.doneQty),order=Q(o.orderQty||p.orderQty);
-   if(done<0||done>order){toast('Done Qty 0 se Order Qty ke beech rakho');return false}
-   if(!Array.isArray(state.departmentWork))state.departmentWork=[];
-   state.departmentWork.push({workNo:w,party:p.party||'',description:p.description||'',description2:p.description2||'',workDescription:o.workDescription||p.description||'',person:String(o.person).trim(),process:o.process||'STITCHING',givenQty:order,orderQty:order,doneQty:done,pendingQty:Math.max(0,order-done),checklist:done>0,date:o.date||todayISO(),remark:o.remark||'',updatedAt:new Date().toISOString(),updatedBy:(typeof deviceLabel==='function'?deviceLabel():'ERP')});
-   save();toast('Batch + Department entry saved');setTimeout(()=>cfmSafeBatchOpen(w),180);return true;
-  },{type:'safeBatch',workNo:w});
+ window.cfmBatchRowSave=function(w,tr,i){
+  const p=work(w),person=tr.querySelector('.batch-person').value.trim(),done=Q(tr.querySelector('.batch-done').value),oq=Q(p?.orderQty),stage=stages[i];
+  if(!person){toast('Person select / type karo');return}if(done<=0){toast('Done Qty dalo');return}if(done>oq){toast('Done Qty Order Qty se jyada nahi');return}
+  if(!Array.isArray(state.departmentWork))state.departmentWork=[];
+  state.departmentWork.push({workNo:w,party:p.party||'',description:p.description||'',description2:p.description2||'',workDescription:tr.querySelector('.batch-desc').value||p.description||'',person,process:stage,givenQty:oq,orderQty:oq,doneQty:done,pendingQty:Math.max(0,oq-done),checklist:tr.querySelector('.batch-check').checked||done>0,date:todayISO(),remark:tr.querySelector('.batch-remark').value||'',updatedAt:new Date().toISOString(),updatedBy:(typeof deviceLabel==='function'?deviceLabel():'ERP')});
+  save();toast(stage+' • '+person+' saved to Department');setTimeout(()=>cfmSafeBatchOpen(w),120);
  };
- window.cfmSafeBatchPrint=function(w){const h=report(w);if(typeof openPrintWindow==='function')openPrintWindow('Batch Report '+w,'<h2>WORK PRODUCTION BATCH REPORT</h2>'+h,false)};
+ window.cfmSafeBatchPrint=function(w){if(typeof openPrintWindow==='function')openPrintWindow('Batch Report '+w,'<h2>WORK PRODUCTION BATCH REPORT</h2>'+report(w),false)};
  window.cfmSafeBatchOpen=function(w){
-  const html=report(w)+'<div class="field full" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><button type="button" class="btn btn-green" id="batchAddV86">＋ Add Process Entry</button><button type="button" class="btn btn-primary" id="batchPrintV86">🖨 Print Report</button></div>';
+  const html=report(w)+'<div style="margin-top:14px"><button type="button" class="btn btn-primary" id="batchPrintV88">🖨 Print Report</button></div>';
   openDialog('Production Batch Report • '+w,html,()=>true,{type:'safeBatchView',workNo:w});
-  setTimeout(()=>{const a=document.getElementById('batchAddV86'),p=document.getElementById('batchPrintV86');if(a)a.onclick=()=>cfmSafeBatchAdd(w);if(p)p.onclick=()=>cfmSafeBatchPrint(w)},0);
+  setTimeout(()=>{document.querySelectorAll('[data-batch-stage]').forEach(tr=>{const i=Number(tr.dataset.batchStage),d=tr.querySelector('.batch-done'),c=tr.querySelector('.batch-check');d.oninput=()=>{c.checked=Q(d.value)>0};tr.querySelector('.batch-row-save').onclick=()=>cfmBatchRowSave(w,tr,i)});const p=document.getElementById('batchPrintV88');if(p)p.onclick=()=>cfmSafeBatchPrint(w)},0);
  };
  function inject(){document.querySelectorAll('#pendingList .data-card').forEach(el=>{if(el.querySelector('.safe-batch-btn'))return;const w=el.querySelector('.work')?.textContent?.trim(),a=el.querySelector('.card-actions');if(!w||!a)return;const b=document.createElement('button');b.type='button';b.className='btn btn-sm btn-primary safe-batch-btn';b.textContent='📋 Batch Report';b.onclick=e=>{e.preventDefault();e.stopPropagation();cfmSafeBatchOpen(w)};a.appendChild(b)})}
  const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:true});setTimeout(inject,500);
