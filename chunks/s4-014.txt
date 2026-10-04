@@ -250,3 +250,48 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(liveBox,0));mo.observe(document.body,{childList:true,subtree:true});setTimeout(liveBox,500);
 })();
 </script>
+
+
+<script id="cfm-v101-po-srl-cleanup">
+(function(){
+ const N=v=>String(v==null?'':v).trim().toUpperCase().replace(/\s+/g,' ');
+ function fam(v){const s=N(v);return /^333(\s|$)/.test(s)?'333':s}
+ function stockHTML(cloth,width){
+  const req=Number(width)||0,F=fam(cloth);
+  const rows=(state.store||[]).filter(s=>srlBalance(s)>0&&!['CLOSED','ZERO'].includes(N(storeStatus(s)))&&fam(s.quality||s.cloth)===F)
+   .map(s=>({s,b:srlBalance(s),x:req>0&&Math.abs((Number(s.width)||0)-req)<.01}))
+   .sort((a,b)=>(b.x-a.x)||((Number(a.s.width)||0)-(Number(b.s.width)||0))||String(a.s.srlNo||'').localeCompare(String(b.s.srlNo||''),undefined,{numeric:true}));
+  if(!rows.length)return '<b style="color:#b3261e">NO OPEN STOCK</b><div class="inline-help">Store me '+esc(cloth||'-')+' ka koi OPEN SRL balance available nahi hai.</div>';
+  const exact=rows.filter(r=>r.x),alt=rows.filter(r=>!r.x);
+  const chip=r=>'<span style="display:block;margin:6px 0;padding:8px 10px;border:1px solid '+(r.x?'#9bd0ad':'#e0d6a4')+';border-radius:9px;background:'+(r.x?'#effaf3':'#fffbea')+'"><b>SRL '+esc(r.s.srlNo||'-')+'</b> • '+esc(r.s.quality||r.s.cloth||'-')+' • Width '+esc(r.s.width||'-')+'" • <b>'+fmt(r.b)+' MTR</b></span>';
+  return (exact.length?'<b>EXACT OPEN SRL</b>'+exact.map(chip).join(''):'<b style="color:#b3261e">No exact OPEN SRL • '+esc(cloth||'-')+' / Width '+esc(width||'-')+'</b>')+(alt.length?'<div style="margin-top:8px"><b style="color:#8a6500">STORE ALTERNATIVE</b>'+alt.map(chip).join('')+'</div>':'');
+ }
+ function clean(){
+  document.querySelectorAll('.dialog,.modal').forEach(d=>{
+   const title=N(d.querySelector('h1,h2,h3,.dialog-title,.modal-title')?.textContent);
+   if(!title.includes('PENDING ORDER')&&!title.includes('MULTI-ITEM'))return;
+   const cloths=[...d.querySelectorAll('[name="cloth"],input[name*="cloth" i],select[name*="cloth" i]')];
+   cloths.forEach(cloth=>{
+    const scope=cloth.closest('.po-item,.item-card,.data-card,.panel,.form-grid')||d;
+    const width=scope.querySelector('[name="width"],input[name*="width" i],select[name*="width" i]')||d.querySelector('[name="width"]');
+    if(!width)return;
+    // Hide old duplicate Active SRL UI blocks but never inputs for cloth/width/order qty.
+    [...scope.querySelectorAll('label,div')].forEach(el=>{
+      const t=N(el.textContent);
+      if((t.startsWith('ACTIVE SRL')||t.includes('NO MATCHING ACTIVE SRL'))&&!el.querySelector('[name="cloth"],[name="width"],[name="orderQty"]')){
+        const box=el.closest('.field,.auto-box')||el;
+        if(box&&!box.querySelector('[name="cloth"],[name="width"],[name="orderQty"]'))box.style.display='none';
+      }
+    });
+    let box=scope.querySelector('.cfm-po-stock-v101');
+    if(!box){box=document.createElement('div');box.className='field full cfm-po-stock-v101';box.style.cssText='border:2px solid #25895e;border-radius:14px;padding:12px;margin:10px 0;background:#f7fffa';const wf=width.closest('.field')||width;wf.insertAdjacentElement('afterend',box)}
+    const draw=()=>{box.innerHTML='<b style="font-size:14px">OPEN SRL • '+esc(cloth.value||'-')+' / Required Width '+esc(width.value||'-')+'</b><div style="margin-top:7px">'+stockHTML(cloth.value,width.value)+'</div>'};
+    if(!cloth.dataset.v101){cloth.dataset.v101='1';cloth.addEventListener('input',draw);cloth.addEventListener('change',draw)}
+    if(!width.dataset.v101){width.dataset.v101='1';width.addEventListener('input',draw);width.addEventListener('change',draw)}
+    draw();
+   });
+  });
+ }
+ const mo=new MutationObserver(()=>setTimeout(clean,20));mo.observe(document.body,{childList:true,subtree:true});setTimeout(clean,500);
+})();
+</script>
