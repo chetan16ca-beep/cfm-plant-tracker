@@ -22,7 +22,7 @@
 
  function addButtons(){
   document.querySelectorAll('#storeList .data-card').forEach(el=>{if(el.querySelector('.srl-history-btn'))return;const s=el.querySelector('.work')?.textContent?.trim();if(!s)return;const a=el.querySelector('.card-actions')||el,b=document.createElement('button');b.className='btn btn-sm btn-primary srl-history-btn';b.textContent='🔗 SRL History';b.onclick=()=>openSrlHistory(s);a.appendChild(b)});
-  document.querySelectorAll('#pendingList .data-card').forEach(el=>{if(el.querySelector('.work-track-btn'))return;const w=el.querySelector('.work')?.textContent?.trim();if(!w||w==='No Work No')return;const a=el.querySelector('.card-actions')||el,b=document.createElement('button');b.className='btn btn-sm btn-primary work-track-btn';b.textContent='📍 Track Work';b.onclick=()=>openWorkTrack(w);a.appendChild(b)});
+  document.querySelectorAll('#pendingList .data-card').forEach(el=>{if(el.querySelector('.work-track-btn'))return;const w=el.querySelector('.work')?.textContent?.trim();if(!w||w==='No Work No')return;const a=el.querySelector('.card-actions')||el,b=document.createElement('button');b.className='btn btn-sm btn-primary work-track-btn';b.textContent='📍 Track Work / Batch';b.onclick=()=>{if(confirm('OK = Track Work\nCancel = Batch Report'))openWorkTrack(w);else if(typeof openWorkBatchReport==='function')openWorkBatchReport(w);else alert('Batch Report loading • Refresh ERP once')};a.appendChild(b)});
  }
  const obs=new MutationObserver(addButtons);obs.observe(document.body,{childList:true,subtree:true});setTimeout(addButtons,300);
 })();
