@@ -173,16 +173,13 @@ function deptFormWorkChanged(){
   const f=$('editForm');if(!f)return;
   const work=f.elements.namedItem('workNo')?.value||'';
   const p=getPending(work);
-  const party=f.elements.namedItem('party'), desc=f.elements.namedItem('description');
+  const party=f.elements.namedItem('party');
   if(p){
-    if(party){party.value=p.party||'';party.readOnly=true;party.style.background='#eef3f8';}
-    if(desc){desc.value=p.description||'';desc.readOnly=true;desc.style.background='#eef3f8';}
+    if(party && !String(party.value||'').trim())party.value=p.party||'';
     const hint=$('deptWorkHint');
-    if(hint)hint.innerHTML=`<b>Auto:</b> ${esc(p.party||'')} • ${esc(p.description||'')}<br>Order Qty: <b>${fmt(p.orderQty)}</b> • Work Pending: <b>${fmt(pendingQty(p))}</b>`;
+    if(hint)hint.innerHTML=`<b>Optional link:</b> ${esc(p.workNo||'')} • ${esc(p.party||'')}<br>${esc(p.description||'')} • Order Qty ${fmt(p.orderQty)} • Work Pending ${fmt(pendingQty(p))}`;
   }else{
-    if(party){party.readOnly=false;party.style.background='#fff';}
-    if(desc){desc.readOnly=false;desc.style.background='#fff';}
-    const hint=$('deptWorkHint');if(hint)hint.innerHTML='<b>Manual Entry:</b> Work No ke bina Party (optional) aur Work Details manually likh sakte ho.';
+    const hint=$('deptWorkHint');if(hint)hint.innerHTML='<b>Optional:</b> Work No blank chhod sakte ho. Person ki manual/general activity bina Work No ke save hogi.';
   }
 }
 function deptFormQtyChanged(){
@@ -207,35 +204,35 @@ window.openDeptWorkForm=function(i=null){
   const processOptions=DEPT_PROCESSES;
   const html=
     field('date','Date',r.date||deptSelectedDate(),'date')+
-    field('process','Department',r.process||'CUTTING','text',false,processOptions)+
-    `<div class="field"><label>Person</label><select name="person">${deptPersonOptions('',r.person||'')}</select><div id="deptNewPersonWrap" style="display:none;margin-top:8px"><input id="deptNewPersonInput" name="newPerson" placeholder="New Person Name"><div class="inline-help">Save ke baad person dropdown me rahega aur 3-4 mobiles me sync hoga.</div></div></div>`+
-    `<div class="field full"><label>Work No. (Optional)</label><select name="workNo">${deptWorkOptions(r.workNo||'')}</select><div id="deptWorkHint" class="inline-help">Work No select karo to Party aur Description auto-fill hoga; warna manual entry karo.</div></div>`+
-    `<div class="field"><label>Party (Optional)</label><input name="party" value="${esc(r.party||'')}" placeholder="Party / Internal Work"></div>`+
-    `<div class="field full"><label>Description / Work Details</label><textarea name="description" rows="2" placeholder="Manual work details bhi yahan likh sakte ho">${esc(r.description||'')}</textarea></div>`+
-    field('givenQty','Given Qty',r.givenQty,'number')+
-    field('doneQty','Done Qty',r.doneQty,'number')+
-    `<div class="field"><label>Pending (Auto)</label><div id="deptPendingPreview" class="auto-box ok"><b>${fmt(deptEntryPending(r))}</b></div></div>`+
+    `<div class="field"><label>Person *</label><select name="person">${deptPersonOptions('',r.person||'')}</select><div id="deptNewPersonWrap" style="display:none;margin-top:8px"><input id="deptNewPersonInput" name="newPerson" placeholder="New Person Name"><div class="inline-help">New person ek baar add karo; baad me dropdown me rahega.</div></div></div>`+
+    field('process','Department / Process',r.process||'CUTTING','text',false,processOptions)+
+    `<div class="field full"><label>Activity / Work Details *</label><textarea name="description" rows="3" placeholder="Person ne kya kaam kiya? Work No ho ya na ho, yahan activity likho">${esc(r.description||'')}</textarea><div class="inline-help">Example: Packing help, cloth checking, machine cleaning, stitching, thread cutting, general work.</div></div>`+
+    field('givenQty','Given Qty (Optional)',r.givenQty,'number')+
+    field('doneQty','Done Qty (Optional)',r.doneQty,'number')+
+    `<div class="field"><label>Pending Qty (Auto)</label><div id="deptPendingPreview" class="auto-box ok"><b>${fmt(deptEntryPending(r))}</b></div></div>`+
+    `<div class="field full"><label>Work No. (Optional Reference)</label><select name="workNo">${deptWorkOptions(r.workNo||'')}</select><div id="deptWorkHint" class="inline-help">Work No nahi ho to blank chhodo. Entry Person ke naam par save hogi.</div></div>`+
+    `<div class="field"><label>Party (Optional)</label><input name="party" value="${esc(r.party||'')}" placeholder="Party / Internal / General Work"></div>`+
     field('remark','Remark',r.remark||'','textarea',true)+
     field('supervisor','Supervisor',r.supervisor||'')+
     field('shift','Shift',r.shift||'GENERAL','text',false,['GENERAL','SHIFT 1','SHIFT 2','NIGHT']);
-  openDialog(i==null?'Add Daily Department Work':`Edit Department Entry`,html,o=>{
+  openDialog(i==null?'Add Person Work Entry':'Edit Person Work Entry',html,o=>{
     let person=String(o.person||'').trim();
     if(person==='__NEW_PERSON__'){
       person=String(o.newPerson||'').trim();
-      if(!person){toast('Person name enter karo');return}
+      if(!person){toast('Person name enter karo');return false}
       if(!Array.isArray(state.customPersons))state.customPersons=[];
       if(!state.customPersons.some(x=>normalize(x.name)===normalize(person))){
         state.customPersons.push({name:person,process:'',createdAt:new Date().toISOString(),createdBy:deviceLabel()});
       }
     }
-    const p=getPending(o.workNo);
+    const linked=getPending(o.workNo);
     const rec={
       date:o.date||todayISO(),
-      process:o.process||'CUTTING',
+      process:o.process||'GENERAL WORK',
       person,
       workNo:o.workNo||'',
-      party:p?.party||o.party||'',
-      description:p?.description||o.description||'',
+      party:o.party||linked?.party||'',
+      description:o.description||'',
       givenQty:o.givenQty===''?'':num(o.givenQty),
       doneQty:o.doneQty===''?'':num(o.doneQty),
       remark:o.remark||'',
@@ -245,13 +242,14 @@ window.openDeptWorkForm=function(i=null){
       updatedBy:deviceLabel()
     };
     rec.pendingQty=deptEntryPending(rec);
-    if(!rec.person){toast('Person select karo');return}
-    if(!String(rec.description||'').trim()){toast('Work Details enter karo');return}
+    if(!rec.person){toast('Person select karo');return false}
+    if(!String(rec.description||'').trim()){toast('Activity / Work Details enter karo');return false}
     if(i==null)state.departmentWork.push(rec);else state.departmentWork[i]=rec;
     if($('deptWorkDate'))$('deptWorkDate').value=rec.date;
     if($('deptSupervisor')&&!$('deptSupervisor').value)$('deptSupervisor').value=rec.supervisor||'';
     if($('deptShift'))$('deptShift').value=rec.shift||'GENERAL';
-    save();toast('Department work entry saved • mobile sync queued');
+    save();toast('Person work entry saved • Work No optional');
+    return true;
   });
   setTimeout(bindDeptWorkForm,0);
 }
@@ -262,13 +260,15 @@ window.deleteDeptWork=function(i){
 }
 function deptWorkCard(r){
   const i=state.departmentWork.indexOf(r),p=deptEntryPending(r);
-  return `<div class="data-card dept-entry-card"><div class="card-top"><div><div class="work">${esc(r.workNo||'MANUAL WORK')}</div><div class="party">${esc(r.party||'')}</div></div><span class="chip ${p>0?'amber':'green'}">${p>0?'PENDING '+fmt(p):'DONE'}</span></div>
-    <div class="dept-person-tag">${esc(r.process||'')} • ${esc(r.person||'')}</div>
-    <div class="desc" style="margin-top:7px">${esc(r.description||'')}</div>
+  return `<div class="data-card dept-entry-card">
+    <div class="card-top"><div><div class="work">👤 ${esc(r.person||'PERSON')}</div><div class="party">${esc(r.process||'GENERAL WORK')}</div></div><span class="chip ${p>0?'amber':'green'}">${p>0?'PENDING '+fmt(p):'DONE'}</span></div>
+    <div class="desc" style="margin-top:9px">${esc(r.description||'')}</div>
+    <div class="chips" style="margin-top:8px">${r.workNo?`<span class="chip">Work ${esc(r.workNo)}</span>`:''}${r.party?`<span class="chip">${esc(r.party)}</span>`:''}<span class="chip">${esc(dateDisplay(r.date))}</span>${r.shift?`<span class="chip">${esc(r.shift)}</span>`:''}</div>
     <div class="dept-qty"><div><span>Given</span><b>${fmt(r.givenQty)}</b></div><div><span>Done</span><b>${fmt(r.doneQty)}</b></div><div><span>Pending</span><b>${fmt(p)}</b></div></div>
     ${r.remark?`<div class="notice" style="margin-top:9px;padding:8px 10px"><b>Remark:</b> ${esc(r.remark)}</div>`:''}
-    <div class="chips" style="margin-top:9px"><span class="chip">${esc(dateDisplay(r.date))}</span>${r.shift?`<span class="chip">${esc(r.shift)}</span>`:''}${r.supervisor?`<span class="chip">Supervisor: ${esc(r.supervisor)}</span>`:''}<span class="chip">By ${esc(r.updatedBy||'')}</span></div>
-    <div class="card-actions"><button class="btn btn-sm" onclick="openDeptWorkForm(${i})">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteDeptWork(${i})">Delete</button></div></div>`;
+    <div class="chips" style="margin-top:9px">${r.supervisor?`<span class="chip">Supervisor: ${esc(r.supervisor)}</span>`:''}<span class="chip">By ${esc(r.updatedBy||'')}</span></div>
+    <div class="card-actions"><button class="btn btn-sm" onclick="openDeptWorkForm(${i})">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteDeptWork(${i})">Delete</button></div>
+  </div>`;
 }
 window.renderDeptWork=function(){
   const list=$('deptWorkList');if(!list)return;
