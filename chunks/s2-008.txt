@@ -389,13 +389,31 @@ function pendingLiveInfo(r){
  let dispatch=stage==='DISPATCHED'?'DONE':stage==='READY TO DISPATCH'?'YES':(p<=0||stage==='PACKING')?'POSSIBLE':'NO';
  return {last,stage,dispatch,balance:p};
 }
+window.addBatchProcessEntry=function(w){
+ const p=getPending(w);if(!p)return toast('Work No not found');
+ const people=[...new Set([...(typeof FIXED_PERSONS!=='undefined'?FIXED_PERSONS:[]).map(x=>typeof x==='string'?x:(x.name||'')),...(state.customPersons||[]).map(x=>typeof x==='string'?x:(x.name||''))].filter(Boolean))];
+ const opts=people.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+ const procs=['CUTTING','STITCHING','THREAD CUTTING','GUN / FINISHING','FINAL CHECKING','PACKING','GENERAL WORK'];
+ const html=field('date','Date',todayISO(),'date')+'<div class="field"><label>Person *</label><select name="person"><option value="">Select Person</option>'+opts+'</select></div>'+field('process','Department / Process','STITCHING','text',false,procs)+field('givenQty','Given Qty',pendingQty(p),'number')+field('doneQty','Done Qty','','number')+field('remark','Remark','','textarea',true)+'<div class="field full"><div class="auto-box ok"><b>Work '+esc(w)+'</b> • '+esc(p.party||'')+'<br>'+esc(p.description||'')+'</div></div>';
+ openDialog('Add Batch Process Entry',html,o=>{
+  if(!String(o.person||'').trim())return toast('Person select karo'),false;
+  const rec={date:o.date||todayISO(),process:o.process||'GENERAL WORK',person:String(o.person||'').trim(),workNo:w,party:p.party||'',description:p.description||'',description2:p.description2||'',givenQty:o.givenQty===''?'':num(o.givenQty),doneQty:o.doneQty===''?'':num(o.doneQty),remark:o.remark||'',supervisor:'',shift:'GENERAL',updatedAt:new Date().toISOString(),updatedBy:deviceLabel()};
+  rec.pendingQty=Math.max(0,num(rec.givenQty)-num(rec.doneQty));
+  if(!Array.isArray(state.departmentWork))state.departmentWork=[];
+  state.departmentWork.push(rec);
+  setNextUpdateNotification('👷 Batch Process Entry',[w,rec.person,rec.process,'Done '+fmt(rec.doneQty)].join(' • '));
+  save();toast('Batch + Department entry saved');
+  setTimeout(()=>openWorkBatchReport(w),250);
+  return true;
+ },{type:'batchprocess',workNo:w});
+};
 window.openWorkBatchReport=function(w){
  const p=getPending(w);if(!p)return toast('Work No not found');
  const N=v=>String(v==null?'':v).trim().toUpperCase(),dept=(state.departmentWork||[]).filter(x=>N(x.workNo)===N(w)),cuts=(state.cutting||[]).filter(x=>N(x.workNo)===N(w));
  const cq=Math.max(num(p.cutQty),cuts.reduce((a,x)=>a+num(x.cutQty),0)),bal=Math.max(0,num(p.orderQty)-cq);
  const steps=['CUTTING','STITCHING','THREAD CUTTING','FINISHING','CHECKING','PACKING'];
  const trs=steps.map(step=>{let a=dept.filter(x=>N(x.process||x.department).includes(step==='FINISHING'?'FINISH':step==='CHECKING'?'CHECK':step));if(step==='CUTTING'&&cuts.length)a=cuts.map(x=>({person:x.person||x.cuttingPerson||'',doneQty:x.cutQty,date:x.date,remark:x.remark||''}));return '<tr><td>'+esc(step)+'</td><td>'+esc(a.map(x=>x.person).filter(Boolean).join(', ')||'-')+'</td><td>'+fmt(a.reduce((q,x)=>q+num(x.doneQty),0))+'</td><td>'+esc(a.map(x=>dateDisplay(x.date||'')).filter(Boolean).join(', ')||'-')+'</td><td>'+esc(a.map(x=>x.remark||x.description||'').filter(Boolean).join(' | ')||'-')+'</td><td>'+(a.length?'YES':'PENDING')+'</td></tr>'}).join('');
- const html='<h2>WORK PRODUCTION BATCH REPORT</h2><h3>'+esc(w)+' • '+esc(p.party||'')+'</h3><table class="print-table"><tbody><tr><th>Product</th><td>'+esc(p.description||'-')+'</td><th>Order Qty</th><td>'+fmt(p.orderQty)+'</td></tr><tr><th>Description 2</th><td>'+esc(p.description2||'-')+'</td><th>Done / Balance</th><td>'+fmt(cq)+' / '+fmt(bal)+'</td></tr><tr><th>Cloth</th><td>'+esc(p.cloth||'-')+'</td><th>Work No</th><td>'+esc(w)+'</td></tr></tbody></table><h3>Process Checklist</h3><table class="print-table"><thead><tr><th>Process</th><th>Person</th><th>Done Qty</th><th>Date</th><th>Remark</th><th>Status</th></tr></thead><tbody>'+trs+'</tbody></table><p style="margin-top:24px">Supervisor: __________________ &nbsp;&nbsp; Checked By: __________________ &nbsp;&nbsp; Approved By: __________________</p>';
+ const html='<div style="margin-bottom:12px"><button class="btn btn-primary" onclick="window.opener&&window.opener.addBatchProcessEntry(\''+esc(w)+'\');window.close()">＋ Add Process Entry</button></div><h2>WORK PRODUCTION BATCH REPORT</h2><h3>'+esc(w)+' • '+esc(p.party||'')+'</h3><table class="print-table"><tbody><tr><th>Product</th><td>'+esc(p.description||'-')+'</td><th>Order Qty</th><td>'+fmt(p.orderQty)+'</td></tr><tr><th>Description 2</th><td>'+esc(p.description2||'-')+'</td><th>Done / Balance</th><td>'+fmt(cq)+' / '+fmt(bal)+'</td></tr><tr><th>Cloth</th><td>'+esc(p.cloth||'-')+'</td><th>Work No</th><td>'+esc(w)+'</td></tr></tbody></table><h3>Process Checklist</h3><table class="print-table"><thead><tr><th>Process</th><th>Person</th><th>Done Qty</th><th>Date</th><th>Remark</th><th>Status</th></tr></thead><tbody>'+trs+'</tbody></table><p style="margin-top:24px">Supervisor: __________________ &nbsp;&nbsp; Checked By: __________________ &nbsp;&nbsp; Approved By: __________________</p>';
  if(typeof openPrintWindow==='function')openPrintWindow('Batch Report '+w,html,true);else{const x=window.open('','_blank');if(x){x.document.write(html);x.document.close()}}
 };
 function pendingCard(r,compact=false){
