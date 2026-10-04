@@ -452,8 +452,8 @@ window.printReadyDispatch=function(){const rows=readyDispatchRows();if(!rows.len
 window.renderGlobalSearch=function(){const q=($('globalSearch').value||'').trim().toLowerCase();if(q.length<2){$('searchResults').innerHTML='<div class="empty">Type at least 2 characters</div>';return}const p=state.pending.filter(r=>JSON.stringify(r).toLowerCase().includes(q));const s=state.store.filter(r=>JSON.stringify(r).toLowerCase().includes(q));const c=state.cutting.filter(r=>JSON.stringify(r).toLowerCase().includes(q));const m=(state.measurements||[]).filter(r=>JSON.stringify(r).toLowerCase().includes(q));const t=(state.srlTracker||[]).filter(r=>JSON.stringify(r).toLowerCase().includes(q));const pr=(state.productMaster||[]).filter(r=>JSON.stringify(r).toLowerCase().includes(q));$('searchResults').innerHTML=`<div class="search-group"><h3>Pending (${p.length})</h3>${p.slice(0,20).map(r=>pendingCard(r,true)).join('')||'<div class="muted">None</div>'}</div><div class="search-group"><h3>Store / SRL (${s.length})</h3>${s.slice(0,20).map(r=>storeCard(r,true)).join('')||'<div class="muted">None</div>'}</div><div class="search-group"><h3>Cutting (${c.length})</h3>${c.slice(0,20).map(r=>cutCard(r,true)).join('')||'<div class="muted">None</div>'}</div><div class="search-group"><h3>Measurements (${m.length})</h3>${m.slice(0,15).map(r=>`<div class="data-card"><b>${esc(r.workNo||r.eagleCode)}</b> • ${esc(r.party||'')}<div class="muted">${esc(r.description||'')} • ${esc(r.finalMeasurement||r.status||'')}</div></div>`).join('')||'<div class="muted">None</div>'}</div><div class="search-group"><h3>Physical SRL (${t.length})</h3>${t.slice(0,15).map(r=>`<div class="data-card"><b>${esc(r.srlNo)}</b> • ${esc(r.quality||'')} • ${fmt(r.liveBalanceMtr)} MTR • ${esc(r.status||'')}</div>`).join('')||'<div class="muted">None</div>'}</div><div class="search-group"><h3>Product Master (${pr.length})</h3>${pr.slice(0,15).map(r=>`<div class="data-card"><b>${esc(r.eagleCode)}</b> • ${esc(r.description||'')}</div>`).join('')||'<div class="muted">None</div>'}</div>`}
 
 function field(name,label,value='',type='text',full=false,options=null){let control;if(options){control=`<select name="${name}">${options.map(x=>`<option value="${esc(x)}" ${String(value)===String(x)?'selected':''}>${esc(x)}</option>`).join('')}</select>`}else if(type==='textarea'){control=`<textarea name="${name}" rows="3">${esc(value)}</textarea>`}else{control=`<input name="${name}" type="${type}" value="${esc(value)}" ${type==='number'?'step="any"':''}/>`}return `<div class="field ${full?'full':''}"><label>${esc(label)}</label>${control}</div>`}
-function openDialog(title,html,onSave){editContext=onSave;$('dialogTitle').textContent=title;$('formFields').innerHTML=html;$('editDialog').showModal()}
-$('saveFormBtn').addEventListener('click',()=>{const fd=new FormData($('editForm'));const obj=Object.fromEntries(fd.entries());editContext?.(obj);$('editDialog').close()});
+function openDialog(title,html,onSave){editContext=onSave;$('editDialog').classList.remove('multi-po-dialog');$('dialogTitle').textContent=title;$('formFields').innerHTML=html;$('saveFormBtn').textContent='Save';$('editDialog').showModal()}
+$('saveFormBtn').addEventListener('click',()=>{const fd=new FormData($('editForm'));const obj=Object.fromEntries(fd.entries());const ok=editContext?.(obj);if(ok!==false)$('editDialog').close()});
 
 
 const FULL_OLD_PARTIES=["ABERT L", "ABERT LI", "ABERT LIFE", "ACUTAS AN", "ACUTAS JHGDIA", "ACUTS 2", "ACUTS-2", "ACUTS-3", "ACUTS-III", "ALEX P", "ALIVUS", "ALIVUS  L", "ALIVUS 2", "ALIVUS P-17", "ALIVUS P-18", "ALIVUS P-3", "ALL C", "ALL CHEM", "ALTITUDE", "AMANRTH", "AMAR H", "AMAR HLTH", "AMBICA C", "AMINISHA", "AMRNTH", "ANDROZENICA", "APEX H", "APEX HL", "APEX HLT", "APEX SAY", "ARROMA", "ATERNA C", "ATERNA CHM", "ATHRENA", "ATRERNA CHEM", "AUXGEN P", "AVANCIA", "AVENCIA", "AZ", "BASIC P", "BBELL", "BENZMARK", "BIGSON P", "BIRLA", "DAKSAYNI C", "DAKSHAYNI C", "DARSHAN P", "DARSHN HLT", "DF", "DFR", "DRAGNET", "FLUROSENT", "FORTUNE P", "GOKULESH", "GSP", "GUJRAT G", "GUJRAT GRD", "GURU A", "GURUAS", "HARIHAR P", "HARSH I", "HORSTER", "HORSTER L", "HP PHARMA", "INTER POSE", "INTERPOS", "JAY GANESH", "JIYANSH", "KIRAN C", "KIRANC", "KOHINOOR", "LANCO", "LIFE SC", "LOKUS L", "MAHADEV P", "MARS P", "MARUTI IN", "MEHAK", "MEHAK L", "MH", "MICROTCH", "MICROTECH", "microtek", "NARMADA", "NASIT P", "NIRAN LAB", "NIRANJAN P", "NIRANJN P", "NK", "OZONE", "OZONE  L", "OZONE L", "PRANAM DR-2", "PRANAMI DR-2", "PRANAMI DRGS", "PRANMI-2", "PRINCE CHEM", "PRUDENC H", "PRUDENCE H", "Prudence HL", "PRUDENCE L", "PUR C", "PURE CHEM", "PURE CHM", "RAIN C", "RANGO DHDI", "RANGODHDI", "RASAYNO", "REGAL", "REGAL REM", "REINE", "REINE L", "RENIE L", "RUSAN P", "RUSANP", "RUSN P", "RUTAIN", "RUTAIN P", "SALAVIADAS", "SATYAM C", "SATYM C", "SHAYON P", "SHAYONA P", "SHIVIT P", "SHIVITA P", "SHIVSTR", "SHREE SULPH", "SIDDHI C", "SIDHI C", "SIGMA L", "SIPL-1", "SIPL-II", "SIPL2", "SIPL3", "SUNFARBEN", "SYNZEEL", "TECHNO D", "TECHNO DR", "TORNT T-20", "TORNT-10", "TORRENT T20", "TORRNT-20", "TRVC", "UNIVERSAL", "VASUD P", "VEERA HELTH", "VEERA HLTH", "VISHAL IN", "VISHDHA", "VISHDHARA", "VISHDHRA", "VISHKARMA", "VISHKRMA", "VISHU B", "VISHUN B", "VVIC P", "WELL  BEING", "WILLCARE", "WILLO", "WILLOWD", "WILLOWOOD", "YASHO", "yasho inds", "YASHO PILOT", "ZENI", "ZENI B", "ZENTIKA"];
@@ -473,17 +473,10 @@ function customerPartyOptions(){
 }
 function partySelectHTML(value=''){
   const vals=customerPartyOptions(); if(value&&!vals.some(x=>normalize(x)===normalize(value)))vals.unshift(value);
-  return `<div class="field"><label>Party Select • All Old Excel Parties (167)</label>
-    <select name="party" id="pendingPartySelect">
-      <option value="">Select Party</option>
-      ${vals.map(x=>`<option value="${esc(x)}" ${normalize(x)===normalize(value)?'selected':''}>${esc(x)}</option>`).join('')}
-      <option value="__NEW_PARTY__">＋ Add New Party</option>
-    </select>
-    <div class="inline-help">167 historical party/customer names old Excel ke order/history sheets se loaded hain. Old spelling/variants bhi rakhe hain.</div>
-    <div id="newPartyWrap" style="display:none;margin-top:8px">
-      <input name="newParty" id="newPartyInput" placeholder="New Party Name" autocomplete="off">
-      <div class="inline-help">Save karne ke baad ye party dropdown me permanently aa jayegi aur 3-4 mobiles me sync hogi.</div>
-    </div>
+  return `<div class="field"><label>Party Search / Select</label>
+    <input name="party" id="pendingPartySelect" list="pendingPartyOptions" value="${esc(value)}" placeholder="🔎 Search or select party" autocomplete="off">
+    <datalist id="pendingPartyOptions">${vals.map(x=>`<option value="${esc(x)}"></option>`).join('')}</datalist>
+    <div class="inline-help">Party naam type karo to old parties search honge. New party ka naam direct type karke bhi save kar sakte ho.</div>
   </div>`;
 }
 function resolvePartyFromForm(o){
@@ -696,6 +689,139 @@ function bindPendingAutoFields(){
   refreshPreviousOrderOptions();
   refreshPendingMeasurement();
 }
+
+// V59 • Searchable Party + Multi-item PO entry
+let multiPoBaseNo=1;
+function nextWorkStartNo(){
+  const nums=(state.pending||[]).map(r=>Number(String(r.workNo||'').match(/(\d+)$/)?.[1]||0)).filter(n=>Number.isFinite(n)&&n>0);
+  return nums.length?Math.max(...nums)+1:1;
+}
+function multiPoWorkNo(i){return 'CFM-'+(multiPoBaseNo+i)}
+function multiPoProductOptions(){
+  return (state.productMaster||[]).filter(p=>p.eagleCode||p.description||p.itemCode).map(p=>`<option value="${esc(productLabel(p))}"></option>`).join('');
+}
+function multiPoItemHTML(i){
+  return `<div class="multi-po-item-row" data-row="${i}">
+    <div class="multi-po-item-head"><b>Item ${i+1}</b><span class="multi-work-badge">Work No. (Auto) <strong data-work-label>${esc(multiPoWorkNo(i))}</strong></span><button type="button" class="multi-remove" onclick="removeMultiPoItem(this)" title="Remove item">🗑</button></div>
+    <div class="multi-item-grid">
+      <div class="field multi-desc"><label>Item / Description *</label><input class="multi-item-product" list="multiProductOptions" placeholder="Search product / Eagle code" autocomplete="off"></div>
+      <div class="field"><label>Eagle Code</label><input class="multi-eagle" placeholder="Auto"></div>
+      <div class="field"><label>Item Code</label><input class="multi-item-code" placeholder="Auto"></div>
+      <div class="field"><label>Cloth</label><input class="multi-cloth" placeholder="Auto / enter"></div>
+      <div class="field"><label>Width</label><input class="multi-width" type="number" step="any" placeholder="Inch"></div>
+      <div class="field"><label>Order Qty *</label><input class="multi-qty" type="number" step="any" min="0" placeholder="Qty"></div>
+    </div>
+  </div>`;
+}
+function renumberMultiPoRows(){
+  document.querySelectorAll('#multiPoItems .multi-po-item-row').forEach((row,i)=>{
+    row.dataset.row=i;
+    const b=row.querySelector('[data-work-label]');if(b)b.textContent=multiPoWorkNo(i);
+    const h=row.querySelector('.multi-po-item-head b');if(h)h.textContent='Item '+(i+1);
+  });
+}
+window.addMultiPoItem=function(){
+  const box=$('multiPoItems');if(!box)return;
+  const i=box.querySelectorAll('.multi-po-item-row').length;
+  box.insertAdjacentHTML('beforeend',multiPoItemHTML(i));
+  bindMultiPoRow(box.lastElementChild);
+  renumberMultiPoRows();
+};
+window.removeMultiPoItem=function(btn){
+  const box=$('multiPoItems');if(!box)return;
+  if(box.querySelectorAll('.multi-po-item-row').length<=1)return toast('Kam se kam 1 item required');
+  btn.closest('.multi-po-item-row')?.remove();renumberMultiPoRows();
+};
+function matchMultiProduct(row){
+  const pick=row.querySelector('.multi-item-product')?.value||'';
+  const p=findProductFromFields({
+    productPick:pick,
+    description:pick,
+    eagleCode:row.querySelector('.multi-eagle')?.value||'',
+    itemCode:row.querySelector('.multi-item-code')?.value||''
+  });
+  if(!p)return null;
+  const set=(sel,v)=>{const el=row.querySelector(sel);if(el&&v!==''&&v!=null)el.value=v};
+  set('.multi-item-product',p.description||pick);
+  set('.multi-eagle',p.eagleCode||'');
+  set('.multi-item-code',p.itemCode||'');
+  set('.multi-cloth',p.standardCloth||'');
+  set('.multi-width',p.standardWidth||'');
+  return p;
+}
+function bindMultiPoRow(row){
+  if(!row)return;
+  const inp=row.querySelector('.multi-item-product');
+  if(inp){inp.addEventListener('change',()=>matchMultiProduct(row));inp.addEventListener('blur',()=>{if(inp.value)matchMultiProduct(row)})}
+}
+function multiPoRowsData(){
+  return [...document.querySelectorAll('#multiPoItems .multi-po-item-row')].map(row=>({
+    row,
+    description:String(row.querySelector('.multi-item-product')?.value||'').trim(),
+    eagleCode:String(row.querySelector('.multi-eagle')?.value||'').trim(),
+    itemCode:String(row.querySelector('.multi-item-code')?.value||'').trim(),
+    cloth:String(row.querySelector('.multi-cloth')?.value||'').trim(),
+    width:String(row.querySelector('.multi-width')?.value||'').trim(),
+    orderQty:String(row.querySelector('.multi-qty')?.value||'').trim()
+  }));
+}
+window.openMultiPendingForm=function(){
+  multiPoBaseNo=nextWorkStartNo();
+  const parties=customerPartyOptions();
+  const html=`<div class="multi-po-shell">
+    <div class="multi-po-top">
+      <div class="field"><label>Party *</label><input name="multiParty" id="multiParty" list="multiPartyOptions" placeholder="🔎 Search or select party" autocomplete="off"><datalist id="multiPartyOptions">${parties.map(x=>`<option value="${esc(x)}"></option>`).join('')}</datalist></div>
+      <div class="field"><label>PO / Reference</label><input name="multiPoNo" id="multiPoNo" placeholder="PO Number"></div>
+      <div class="field"><label>Order Date</label><input name="multiOrderDate" id="multiOrderDate" type="date" value="${todayISO()}"></div>
+      <div class="field"><label>Delivery Date</label><input name="multiDeliveryDate" id="multiDeliveryDate" type="date"></div>
+      <div class="field"><label>Priority</label><select name="multiPriority" id="multiPriority"><option>NORMAL</option><option>HIGH</option><option>LOW</option></select></div>
+    </div>
+    <div class="multi-po-title"><div><h3>Items in this PO</h3><p>Ek company ke ek PO me 6–7 items ek saath add kar sakte ho.</p></div><div class="multi-po-info">ℹ️ Har item ka apna Work No. auto banega.</div></div>
+    <datalist id="multiProductOptions">${multiPoProductOptions()}</datalist>
+    <div id="multiPoItems">${multiPoItemHTML(0)}</div>
+    <button type="button" class="multi-add-item" onclick="addMultiPoItem()">＋ Add Another Item</button>
+    <div class="multi-cut-note"><b>✂ Cutting Entry Available</b><span>Save ke baad har Work No. ke liye SRL No., Cut Qty, Length, Height, Layer, Cloth, Width, Cutting By aur Wastage alag enter kar sakte ho.</span></div>
+  </div>`;
+  openDialog('Add Pending Order • Multi-item PO',html,()=>saveMultiPoItems());
+  $('editDialog').classList.add('multi-po-dialog');
+  $('saveFormBtn').textContent='Save PO Items';
+  document.querySelectorAll('#multiPoItems .multi-po-item-row').forEach(bindMultiPoRow);
+};
+window.saveMultiPoItems=function(){
+  const party=String($('multiParty')?.value||'').trim();
+  if(!party){toast('Party select / enter karo');$('multiParty')?.focus();return false}
+  const rows=multiPoRowsData().filter(x=>x.description||x.eagleCode||x.itemCode||x.orderQty);
+  if(!rows.length){toast('Kam se kam 1 item add karo');return false}
+  for(const x of rows){
+    if(!x.description){toast('Har item ka Description required hai');x.row.querySelector('.multi-item-product')?.focus();return false}
+    if(!(num(x.orderQty)>0)){toast('Har item ka Order Qty required hai');x.row.querySelector('.multi-qty')?.focus();return false}
+  }
+  // Re-check the latest work number at save time, useful when 3-4 mobiles are syncing.
+  multiPoBaseNo=nextWorkStartNo();renumberMultiPoRows();
+  const poNo=String($('multiPoNo')?.value||'').trim();
+  const orderDate=$('multiOrderDate')?.value||todayISO();
+  const deliveryDate=$('multiDeliveryDate')?.value||'';
+  const priority=$('multiPriority')?.value||'NORMAL';
+  const created=[];
+  rows.forEach((x,i)=>{
+    const p=findProductFromFields({description:x.description,eagleCode:x.eagleCode,itemCode:x.itemCode,productPick:x.description});
+    const r={
+      workNo:multiPoWorkNo(i),party,poNo,orderDate,deliveryDate,
+      eagleCode:(p?.eagleCode||x.eagleCode||''),itemCode:(p?.itemCode||x.itemCode||''),
+      description:(p?.description||x.description),cloth:(p?.standardCloth||x.cloth||''),
+      width:(x.width!==''?num(x.width):(p?.standardWidth!==''&&p?.standardWidth!=null?num(p.standardWidth):'')),
+      orderQty:num(x.orderQty),cutQty:0,priority,status:'PENDING',
+      billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''
+    };
+    const m=measurementInfo(r);r.measurementAuto=m.text;r.measurementSource=m.source;stampRecord(r);
+    state.pending.push(r);created.push(r);
+  });
+  saveCustomParty(party);save();
+  const workRange=created.length===1?created[0].workNo:(created[0].workNo+' – '+created.at(-1).workNo);
+  showLocalNotification('🔔 New PO Added',`${party} • ${created.length} item • ${workRange}${poNo?' • PO '+poNo:''}`);
+  toast(`${created.length} PO item saved • ${workRange}`);
+  return true;
+};
 
 
 let attachmentWorkNo='';
