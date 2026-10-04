@@ -170,5 +170,19 @@ function add(){document.querySelectorAll('#pendingList .data-card').forEach(e=>{
 new MutationObserver(add).observe(document.body,{childList:true,subtree:true});setTimeout(add,500);
 })();
 </script>
+<script id="cfm-multi-srl-force-v104">
+(function(){
+function N(v){return String(v==null?'':v).trim().toUpperCase()} function Q(v){return Number(v)||0}
+function bal(x){try{return typeof srlBalance==='function'?Q(srlBalance(x)):Q(x.balanceMtr||x.balance||x.openingMtr||x.openingStock)}catch(e){return Q(x.balanceMtr||x.openingMtr||x.openingStock)}}
+function active(cl,wd){return(state.store||[]).filter(x=>{const sr=String(x.srlNo||x.srl||x.serialNo||'').trim(),cc=String(x.quality||x.cloth||x.clothName||x.description||'').trim(),ww=String(x.width??x.clothWidth??'').trim(),st=N(x.status);return sr&&bal(x)>0&&!['CLOSED','ZERO','BLOCKED'].includes(st)&&(!cl||N(cc)===N(cl))&&(!wd||Q(ww)===Q(wd))})}
+function draw(row){if(!row)return;let wrap=row.querySelector('.multi-srl-force');if(!wrap){wrap=document.createElement('div');wrap.className='field full multi-srl-force';wrap.style.cssText='grid-column:1/-1;border:2px solid #198754;border-radius:12px;padding:10px;background:#f3fff8';const qty=row.querySelector('.multi-qty')?.closest('.field');if(qty)qty.parentNode.insertBefore(wrap,qty);else row.querySelector('.multi-item-grid')?.appendChild(wrap)}
+ const cl=String(row.querySelector('.multi-cloth')?.value||'').trim(),wd=String(row.querySelector('.multi-width')?.value||'').trim(),rr=active(cl,wd),old=[...(wrap.querySelector('select')?.selectedOptions||[])].map(o=>o.value);
+ wrap.innerHTML='<label style="font-weight:800">Active SRL • '+(cl||'Cloth')+' / Width '+(wd||'-')+'</label><div style="margin:6px 0">'+(rr.length?rr.map(x=>'<div><b>'+esc(x.srlNo||x.srl||x.serialNo)+'</b> — '+fmt(bal(x))+' MTR</div>').join(''):'<b style="color:#b42318">No matching ACTIVE SRL</b>')+'</div><select class="multi-srl" multiple size="'+Math.min(5,Math.max(2,rr.length))+'" style="width:100%">'+rr.map(x=>{const sr=String(x.srlNo||x.srl||x.serialNo);return '<option value="'+esc(sr)+'" '+(old.includes(sr)?'selected':'')+'>'+esc(sr)+' — '+fmt(bal(x))+' MTR</option>'}).join('')+'</select><div class="inline-help">Same Cloth + Width • 0 balance / CLOSED hide • Multiple select allowed</div>';
+}
+function bind(row){if(!row||row.dataset.srlForce==='1')return;row.dataset.srlForce='1';const cl=row.querySelector('.multi-cloth'),wd=row.querySelector('.multi-width'),prod=row.querySelector('.multi-item-product');['input','change','blur'].forEach(ev=>{cl?.addEventListener(ev,()=>draw(row));wd?.addEventListener(ev,()=>draw(row))});prod?.addEventListener('change',()=>setTimeout(()=>draw(row),0));prod?.addEventListener('blur',()=>setTimeout(()=>draw(row),0));draw(row)}
+function scan(){document.querySelectorAll('#multiPoItems .multi-po-item-row').forEach(bind)}
+new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setInterval(scan,1200);setTimeout(scan,200);
+})();
+</script>
 </body>
 </html>
