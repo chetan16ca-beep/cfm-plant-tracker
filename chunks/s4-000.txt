@@ -257,10 +257,149 @@ window.renderExcelMirror=function(){
 window.excelMirrorPrev=function(){excelMirrorPage=Math.max(0,excelMirrorPage-1);renderExcelMirror()}
 window.excelMirrorNext=function(){excelMirrorPage++;renderExcelMirror()}
 
+
+const UI_ACTIVE_VIEW_KEY='cfm-ui-active-view-v1';
+const UI_SCROLL_KEY='cfm-ui-scroll-v1';
+const UI_DIALOG_KEY='cfm-ui-dialog-v1';
+
+function currentActiveViewName(){
+  const v=document.querySelector('.view.active');
+  return v&&v.id&&v.id.startsWith('view-')?v.id.slice(5):'dashboard';
+}
+window.captureUiDialogState=function(){
+  try{
+    const dlg=$('editDialog'),form=$('editForm');
+    if(!dlg||!dlg.open||!form||!dialogResumeMeta)return;
+    const fields={};
+    const fd=new FormData(form);
+    fd.forEach((v,k)=>{if(typeof v==='string')fields[k]=v});
+    const special={};
+    ['pendingProductPick','previousOrderPick'].forEach(id=>{const el=$(id);if(el)special[id]=el.value||''});
+    const extra={};
+    if(dialogResumeMeta.type==='multiPending'&&typeof multiPoRowsData==='function'){
+      extra.multiRows=multiPoRowsData().map(x=>({
+        description:x.description||'',eagleCode:x.eagleCode||'',itemCode:x.itemCode||'',
+        cloth:x.cloth||'',width:x.width||'',orderQty:x.orderQty||''
+      }));
+    }
+    safeStorage.setItem(UI_DIALOG_KEY,JSON.stringify({
+      meta:dialogResumeMeta,fields,special,extra,at:Date.now()
+    }));
+  }catch(e){console.warn('UI dialog resume capture',e)}
+}
+function captureUiResumeState(){
+  try{
+    const view=currentActiveViewName();
+    safeStorage.setItem(UI_ACTIVE_VIEW_KEY,view);
+    let scroll={};try{scroll=JSON.parse(safeStorage.getItem(UI_SCROLL_KEY)||'{}')||{}}catch(e){}
+    scroll[view]=Math.max(0,window.scrollY||document.documentElement.scrollTop||0);
+    safeStorage.setItem(UI_SCROLL_KEY,JSON.stringify(scroll));
+    window.captureUiDialogState?.();
+  }catch(e){console.warn('UI resume capture',e)}
+}
+function setResumeField(form,name,value,meta){
+  const el=form?.elements?.namedItem(name);if(!el)return;
+  if(el instanceof RadioNodeList){
+    [...el].forEach(x=>{if(x.value===String(value))x.checked=true});
+    return;
+  }
+  if(name==='workNo'&&meta?.type==='pending'&&(meta.i===null||meta.i===undefined)){
+    const exists=(state.pending||[]).some(r=>normalize(r.workNo)===normalize(value));
+    if(exists){el.value=nextWorkNo();return}
+  }
+  try{el.value=value??''}catch(e){}
+}
+function applyUiDialogDraft(snap){
+  const form=$('editForm');if(!form||!snap)return;
+  const meta=snap.meta||{};
+  Object.entries(snap.fields||{}).forEach(([k,v])=>setResumeField(form,k,v,meta));
+  Object.entries(snap.special||{}).forEach(([id,v])=>{const el=$(id);if(el)el.value=v??''});
+  if(meta.type==='multiPending'&&Array.isArray(snap.extra?.multiRows)){
+    const rows=snap.extra.multiRows;
+    const box=$('multiPoItems');
+    if(box){
+      while(box.querySelectorAll('.multi-po-item-row').length<Math.max(1,rows.length))window.addMultiPoItem?.();
+      while(box.querySelectorAll('.multi-po-item-row').length>Math.max(1,rows.length)){
+        box.querySelector('.multi-po-item-row:last-child')?.remove();
+      }
+      [...box.querySelectorAll('.multi-po-item-row')].forEach((row,i)=>{
+        const x=rows[i]||{};
+        const put=(sel,v)=>{const el=row.querySelector(sel);if(el)el.value=v??''};
+        put('.multi-item-product',x.description);
+        put('.multi-eagle',x.eagleCode);
+        put('.multi-item-code',x.itemCode);
+        put('.multi-cloth',x.cloth);
+        put('.multi-width',x.width);
+        put('.multi-qty',x.orderQty);
+      });
+      if(typeof renumberMultiPoRows==='function')renumberMultiPoRows();
+    }
+  }
+  try{
+    if(meta.type==='pending'){refreshPendingMeasurement?.();refreshPreviousOrderOptions?.()}
+    if(meta.type==='deptwork'){deptFormToggleNewPerson?.();deptFormWorkChanged?.();deptFormQtyChanged?.()}
+  }catch(e){}
+  window.captureUiDialogState?.();
+}
+function restoreUiDialogSnapshot(snap){
+  if(!snap?.meta)return;
+  if(Date.now()-Number(snap.at||0)>12*60*60*1000){safeStorage.removeItem(UI_DIALOG_KEY);return}
+  const m=snap.meta;
+  try{
+    if(m.type==='pending'){
+      let i=null;
+      if(m.i!==null&&m.i!==undefined){
+        i=(state.pending||[]).findIndex(r=>normalize(r.workNo)===normalize(m.workNo));
+        if(i<0&&state.pending[m.i])i=m.i;
+        if(i<0)return;
+      }
+      openPendingForm(i);
+    }else if(m.type==='multiPending'){
+      openMultiPendingForm();
+    }else if(m.type==='store'){
+      let i=null;
+      if(m.i!==null&&m.i!==undefined){
+        i=(state.store||[]).findIndex(r=>normalize(r.srlNo)===normalize(m.srlNo));
+        if(i<0&&state.store[m.i])i=m.i;
+        if(i<0)return;
+      }
+      openStoreForm(i);
+    }else if(m.type==='cutting'){
+      if(m.i!==null&&m.i!==undefined&&state.cutting[m.i])openCuttingForm(m.i);
+      else openCuttingForm(null,m.presetWorkNo?getPending(m.presetWorkNo):null);
+    }else if(m.type==='deptwork'){
+      let i=null;
+      if(m.i!==null&&m.i!==undefined){
+        if(state.departmentWork?.[m.i])i=m.i;
+        else i=(state.departmentWork||[]).findIndex(r=>r.date===m.date&&normalize(r.person)===normalize(m.person));
+        if(i<0)return;
+      }
+      openDeptWorkForm(i);
+    }else return;
+    setTimeout(()=>applyUiDialogDraft(snap),120);
+  }catch(e){console.warn('UI dialog resume restore',e)}
+}
+function restoreUiResumeState(){
+  try{
+    const view=safeStorage.getItem(UI_ACTIVE_VIEW_KEY)||'dashboard';
+    if($('view-'+view))showView(view);else showView('dashboard');
+    let scroll={};try{scroll=JSON.parse(safeStorage.getItem(UI_SCROLL_KEY)||'{}')||{}}catch(e){}
+    setTimeout(()=>window.scrollTo(0,Math.max(0,Number(scroll[view]||0))),60);
+    let snap=null;try{snap=JSON.parse(safeStorage.getItem(UI_DIALOG_KEY)||'null')}catch(e){}
+    if(snap)setTimeout(()=>restoreUiDialogSnapshot(snap),90);
+  }catch(e){console.warn('UI resume restore',e)}
+}
+
 function renderAll(){syncDerivedState();renderDashboard();renderPending();renderStore();renderCutting();renderDocs();renderExcelView();renderPlanning();renderDeptWork();renderDeviceLabel();if($('globalSearch')?.value)renderGlobalSearch();renderNotificationStatus();if($('printDate')&&!$('printDate').value)$('printDate').value=todayISO();if($('planningDate')&&!$('planningDate').value)$('planningDate').value=settings.planningDate||tomorrowISO();if($('deptWorkDate')&&!$('deptWorkDate').value)$('deptWorkDate').value=todayISO();if($('monthlyMonth')&&!$('monthlyMonth').value)$('monthlyMonth').value=todayISO().slice(0,7)}
-load();renderAll();setTimeout(cloudInit,300);
+load();renderAll();restoreUiResumeState();setTimeout(cloudInit,300);
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(console.warn);
-setInterval(checkScheduledNotification,30000);setInterval(cloudPoll,3000);document.addEventListener('visibilitychange',()=>{if(!document.hidden){checkScheduledNotification();cloudPoll();}});setTimeout(checkScheduledNotification,1500);
+setInterval(checkScheduledNotification,30000);setInterval(cloudPoll,3000);
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)captureUiResumeState();
+  else{checkScheduledNotification();cloudPoll();}
+});
+window.addEventListener('pagehide',captureUiResumeState);
+setTimeout(checkScheduledNotification,1500);
 
 </script>
 
