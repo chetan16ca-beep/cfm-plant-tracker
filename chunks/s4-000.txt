@@ -110,20 +110,15 @@ window.printPlanningReport=function(){
 function notificationSummary(){const open=state.pending.filter(orderOpen);const total=open.reduce((a,r)=>a+pendingQty(r),0);const cut=state.cutting.filter(r=>r.date===todayISO()).reduce((a,r)=>a+num(r.cutQty),0);const srl=state.store.filter(r=>srlBalance(r)>0).length;const docs=state.pending.filter(docsActionRequired).length;const plan=state.pending.filter(r=>hasOrderQty(r)&&pendingQty(r)>0&&String(r.planDate||'')===tomorrowISO()).length;return `Pending ${open.length} works / ${fmt(total)} qty • Today cut ${fmt(cut)} • Tomorrow plan ${plan} • Open SRL ${srl} • Bill/Challan action ${docs}`}
 window.enableNotifications=async function(){
   if(!('Notification'in window))return toast('Notifications not supported on this browser');
-  const p=await Notification.requestPermission();settings.notifications=p==='granted';save(false);renderNotificationStatus();if(p==='granted'){showLocalNotification('CFM Plant Tracker','Any data update + daily 9:00 AM & 5:00 PM notifications enabled.');toast('Notifications enabled')}else toast('Notification permission not allowed')
+  if(Notification.permission==='granted'){settings.notifications=true;safeStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));renderNotificationStatus();toast('Notifications already enabled');return}
+  if(Notification.permission==='denied'){settings.notifications=false;safeStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));renderNotificationStatus();toast('Notification blocked • Mobile Settings > Apps/Chrome > Notifications me Allow karo');return}
+  const p=await Notification.requestPermission();settings.notifications=p==='granted';safeStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));renderNotificationStatus();if(p==='granted'){showLocalNotification('CFM Plant Tracker','Notifications enabled on this device.');toast('Notifications enabled')}else toast('Notification permission not allowed')
 }
-function renderNotificationStatus(){const el=$('notificationStatus');if(!el)return;const p=('Notification'in window)?Notification.permission:'unsupported';el.textContent=p==='granted'?'Enabled: any data update notification + 9:00 AM and 5:00 PM reminders on this device.':'Not enabled. Tap Enable Notifications and allow notifications.'}
+function renderNotificationStatus(){const el=$('notificationStatus');if(!el)return;const p=('Notification'in window)?Notification.permission:'unsupported';if(p==='granted'){settings.notifications=true;safeStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));el.textContent='Enabled on this device • permission saved automatically.'}else if(p==='denied')el.textContent='Blocked in browser/mobile settings • Enable button will not repeatedly ask.';else el.textContent='Not enabled • Tap Enable Notifications once.'}
 async function showLocalNotification(title,body){
-  if(!('Notification'in window)){toast('Notifications is browser me supported nahi hai');return false}
-  let p=Notification.permission;
-  if(p==='default'){
-    try{p=await Notification.requestPermission()}catch(e){console.warn(e)}
-  }
-  if(p!=='granted'){
-    toast('Notification blocked hai • Chrome/App settings me Allow karo');
-    renderNotificationStatus();
-    return false
-  }
+  if(!('Notification'in window))return false;
+  const p=Notification.permission;
+  if(p!=='granted'){renderNotificationStatus();return false}
   settings.notifications=true;
   safeStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));
   try{
