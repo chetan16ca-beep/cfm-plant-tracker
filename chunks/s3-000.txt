@@ -198,7 +198,7 @@ function bindDeptWorkForm(){
 }
 window.openDeptWorkForm=function(i=null){
   const r=i==null?{
-    date:deptSelectedDate(),process:'CUTTING',person:'',workNo:'',party:'',description:'',
+    date:deptSelectedDate(),process:'CUTTING',person:'',workNo:'',party:'',description:'',description2:'',
     givenQty:'',doneQty:'',remark:'',supervisor:$('deptSupervisor')?.value||'',shift:$('deptShift')?.value||'GENERAL'
   }:clone(state.departmentWork[i]);
   const processOptions=DEPT_PROCESSES;
@@ -207,6 +207,7 @@ window.openDeptWorkForm=function(i=null){
     `<div class="field"><label>Person *</label><select name="person">${deptPersonOptions('',r.person||'')}</select><div id="deptNewPersonWrap" style="display:none;margin-top:8px"><input id="deptNewPersonInput" name="newPerson" placeholder="New Person Name"><div class="inline-help">New person ek baar add karo; baad me dropdown me rahega.</div></div></div>`+
     field('process','Department / Process',r.process||'CUTTING','text',false,processOptions)+
     `<div class="field full"><label>Activity / Work Details *</label><textarea name="description" rows="3" placeholder="Person ne kya kaam kiya? Work No ho ya na ho, yahan activity likho">${esc(r.description||'')}</textarea><div class="inline-help">Example: Packing help, cloth checking, machine cleaning, stitching, thread cutting, general work.</div></div>`+
+    `<div class="field full"><label>Description 2 / Extra Details (Optional)</label><textarea name="description2" rows="2" placeholder="Extra detail / second description">${esc(r.description2||'')}</textarea></div>`+
     field('givenQty','Given Qty (Optional)',r.givenQty,'number')+
     field('doneQty','Done Qty (Optional)',r.doneQty,'number')+
     `<div class="field"><label>Pending Qty (Auto)</label><div id="deptPendingPreview" class="auto-box ok"><b>${fmt(deptEntryPending(r))}</b></div></div>`+
@@ -233,6 +234,7 @@ window.openDeptWorkForm=function(i=null){
       workNo:o.workNo||'',
       party:o.party||linked?.party||'',
       description:o.description||'',
+      description2:o.description2||'',
       givenQty:o.givenQty===''?'':num(o.givenQty),
       doneQty:o.doneQty===''?'':num(o.doneQty),
       remark:o.remark||'',
@@ -270,6 +272,7 @@ function deptWorkCard(r){
   return `<div class="data-card dept-entry-card">
     <div class="card-top"><div><div class="work">👤 ${esc(r.person||'PERSON')}</div><div class="party">${esc(r.process||'GENERAL WORK')}</div></div><span class="chip ${p>0?'amber':'green'}">${p>0?'PENDING '+fmt(p):'DONE'}</span></div>
     <div class="desc" style="margin-top:9px">${esc(r.description||'')}</div>
+    ${r.description2?`<div class="desc" style="margin-top:5px;color:#64798b"><b>Extra:</b> ${esc(r.description2)}</div>`:''}
     <div class="chips" style="margin-top:8px">${r.workNo?`<span class="chip">Work ${esc(r.workNo)}</span>`:''}${r.party?`<span class="chip">${esc(r.party)}</span>`:''}<span class="chip">${esc(dateDisplay(r.date))}</span>${r.shift?`<span class="chip">${esc(r.shift)}</span>`:''}</div>
     <div class="dept-qty"><div><span>Given</span><b>${fmt(r.givenQty)}</b></div><div><span>Done</span><b>${fmt(r.doneQty)}</b></div><div><span>Pending</span><b>${fmt(p)}</b></div></div>
     ${r.remark?`<div class="notice" style="margin-top:9px;padding:8px 10px"><b>Remark:</b> ${esc(r.remark)}</div>`:''}
@@ -291,7 +294,7 @@ function deptPrintTable(person,rows){
   const chunks=[];for(let i=0;i<Math.max(1,rows.length);i+=10)chunks.push(rows.slice(i,i+10));
   return chunks.map((chunk,ci)=>{
     const padded=[...chunk];while(padded.length<10)padded.push(null);
-    return `<div class="dept-person-print"><div class="dept-person-head">${esc(person)}${ci?` — CONT. ${ci+1}`:''}</div><table class="dept-paper"><thead><tr><th>SR.</th><th>WO NO.</th><th>PARTY NAME</th><th>WORK / PRODUCT DETAILS</th><th>GIVEN QTY</th><th>DONE QTY</th><th>PENDING</th><th>REMARK</th></tr></thead><tbody>${padded.map((r,j)=>`<tr><td>${j+1}</td><td>${r?esc(r.workNo||''):''}</td><td>${r?esc(r.party||''):''}</td><td>${r?esc(r.description||''):''}</td><td>${r?fmt(r.givenQty):''}</td><td>${r?fmt(r.doneQty):''}</td><td>${r?fmt(deptEntryPending(r)):''}</td><td>${r?esc((r.process||'')+(r.remark?' • '+r.remark:'')):''}</td></tr>`).join('')}</tbody></table></div>`;
+    return `<div class="dept-person-print"><div class="dept-person-head">${esc(person)}${ci?` — CONT. ${ci+1}`:''}</div><table class="dept-paper"><thead><tr><th>SR.</th><th>WO NO.</th><th>PARTY NAME</th><th>WORK / PRODUCT DETAILS</th><th>DESCRIPTION 2</th><th>GIVEN QTY</th><th>DONE QTY</th><th>PENDING</th><th>REMARK</th></tr></thead><tbody>${padded.map((r,j)=>`<tr><td>${j+1}</td><td>${r?esc(r.workNo||''):''}</td><td>${r?esc(r.party||''):''}</td><td>${r?esc(r.description||''):''}</td><td>${r?esc(r.description2||''):''}</td><td>${r?fmt(r.givenQty):''}</td><td>${r?fmt(r.doneQty):''}</td><td>${r?fmt(deptEntryPending(r)):''}</td><td>${r?esc((r.process||'')+(r.remark?' • '+r.remark:'')):''}</td></tr>`).join('')}</tbody></table></div>`;
   }).join('');
 }
 window.printDeptWorkReport=function(){
