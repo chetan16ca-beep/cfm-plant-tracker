@@ -826,7 +826,7 @@ function multiPoItemHTML(i){
       <div class="field"><label>Eagle Code</label><input class="multi-eagle" placeholder="Auto"></div>
       <div class="field"><label>Item Code</label><input class="multi-item-code" placeholder="Auto"></div>
       <div class="field"><label>Cloth</label><input class="multi-cloth" placeholder="Auto / enter"></div>
-      <div class="field"><label>Width</label><input class="multi-width" type="number" step="any" placeholder="Inch"></div><div class="field full multi-srl-wrap"><label>Active SRL • same Cloth + Width</label><div class="multi-srl-list auto-box">Cloth + Width enter karo</div><select class="multi-srl" multiple size="4" style="width:100%;margin-top:6px"></select><div class="inline-help">0 balance / CLOSED SRL hide rahenge. Multiple SRL select kar sakte ho.</div></div>
+      <div class="field"><label>Width</label><input class="multi-width" type="number" step="any" placeholder="Inch"></div><div class="field multi-srl-wrap" style="grid-column:1/-1!important;display:block!important;visibility:visible!important;min-height:120px;border:2px solid #16845b;border-radius:12px;padding:10px;background:#f4fff9"><label style="display:block;font-weight:900;color:#126b4c">ACTIVE SRL NO. • SAME CLOTH + WIDTH</label><div class="multi-srl-list auto-box" style="display:block!important;margin:7px 0">Cloth + Width enter karo</div><select class="multi-srl" multiple size="4" style="display:block!important;width:100%;min-height:88px;margin-top:6px"></select><div class="inline-help">Active/Open SRL balance MTR ke saath • multiple select allowed</div></div>
       <div class="field"><label>Order Qty *</label><input class="multi-qty" type="number" step="any" min="0" placeholder="Qty"></div>
     </div>
   </div>`;
