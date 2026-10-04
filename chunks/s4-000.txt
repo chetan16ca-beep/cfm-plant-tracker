@@ -114,8 +114,31 @@ window.enableNotifications=async function(){
 }
 function renderNotificationStatus(){const el=$('notificationStatus');if(!el)return;const p=('Notification'in window)?Notification.permission:'unsupported';el.textContent=p==='granted'?'Enabled: app will show 9:00 AM and 5:00 PM status reminder when browser/PWA can run in background.':'Not enabled. Tap Enable Mobile Reminder and allow notifications.'}
 async function showLocalNotification(title,body){
-  if(!('Notification'in window)||Notification.permission!=='granted')return;
-  try{if('serviceWorker'in navigator&&location.protocol.startsWith('http')){const reg=await navigator.serviceWorker.ready;await reg.showNotification(title,{body,icon:'icons/icon-192.png',badge:'icons/icon-192.png',tag:'cfm-daily-update',renotify:true});}else new Notification(title,{body});}catch(e){console.warn(e)}
+  if(!('Notification'in window)){toast('Notifications is browser me supported nahi hai');return false}
+  let p=Notification.permission;
+  if(p==='default'){
+    try{p=await Notification.requestPermission()}catch(e){console.warn(e)}
+  }
+  if(p!=='granted'){
+    toast('Notification blocked hai • Chrome/App settings me Allow karo');
+    renderNotificationStatus();
+    return false
+  }
+  settings.notifications=true;
+  safeStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));
+  try{
+    const tag='cfm-event-'+Date.now();
+    if('serviceWorker'in navigator&&location.protocol.startsWith('http')){
+      const reg=await navigator.serviceWorker.ready;
+      await reg.showNotification(title,{body,icon:'icons/icon-192.png',badge:'icons/icon-192.png',tag,renotify:true});
+    }else new Notification(title,{body,tag});
+    renderNotificationStatus();
+    return true
+  }catch(e){
+    console.warn(e);
+    toast('Notification show nahi hua • permission/settings check karo');
+    return false
+  }
 }
 function checkScheduledNotification(){
   if(!settings.notifications||!('Notification'in window)||Notification.permission!=='granted')return;
