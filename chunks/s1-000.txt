@@ -988,16 +988,6 @@ dialog::backdrop{background:rgba(8,15,20,.55)!important}
   table,.excel-grid{border-radius:6px!important}.btn,button,input,select,textarea{border-radius:6px!important}
 }
 
-</style>
-  
-  
-  
-<meta name="color-scheme" content="light">
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-</head>
-<body>
-  <header class="topbar">
-    <div class="brand">
 
 /* V59 • Multi-item PO entry */
 #editDialog.multi-po-dialog{width:min(980px,96vw);max-width:980px;max-height:94vh;border:0;border-radius:18px;padding:0;overflow:auto}
@@ -1037,3 +1027,252 @@ dialog::backdrop{background:rgba(8,15,20,.55)!important}
  .multi-remove{margin-left:auto}
  .multi-cut-note{align-items:flex-start;flex-direction:column;gap:4px}
 }
+
+/* V62 • PREMIUM MOBILE ERP REDESIGN */
+:root{
+  --v62-navy:#0a2742;
+  --v62-blue:#1567b3;
+  --v62-blue2:#2583d8;
+  --v62-teal:#0d9a8a;
+  --v62-bg:#f3f7fb;
+  --v62-card:#ffffff;
+  --v62-line:#dce7f0;
+  --v62-text:#172b3d;
+  --v62-muted:#728394;
+  --v62-shadow:0 8px 26px rgba(24,62,96,.08);
+}
+body{background:linear-gradient(180deg,#f7faff 0,#f2f6fa 420px,#f4f7fa 100%)!important;color:var(--v62-text)!important}
+.topbar{
+  background:rgba(255,255,255,.96)!important;
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid #e2ebf2!important;
+  box-shadow:0 6px 22px rgba(27,67,101,.06)!important
+}
+.topbar .brand h1{letter-spacing:.01em!important;color:var(--v62-navy)!important}
+.topbar .brand p{color:#75879a!important;font-weight:650!important}
+.app-version-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:4px 8px;border-radius:999px;background:#e9f3ff;color:#0b65b7;
+  border:1px solid #cce2f8;font-size:10px;font-weight:900;letter-spacing:.06em;margin-left:7px
+}
+#cloudSyncBadge{box-shadow:inset 0 0 0 1px rgba(23,101,58,.04)}
+.section-head h2{color:var(--v62-navy)!important;letter-spacing:-.025em!important}
+.section-head p{color:var(--v62-muted)!important}
+.btn{
+  min-height:38px!important;border-radius:10px!important;
+  transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease!important
+}
+.btn:active,.module-command-card:active,.action-card:active{transform:scale(.985)!important}
+.btn-primary{background:linear-gradient(135deg,var(--v62-blue),#0b5da5)!important;border-color:#0b5da5!important;box-shadow:0 6px 15px rgba(21,103,179,.18)!important}
+.btn-green{background:linear-gradient(135deg,#15976d,#0b7e65)!important;border-color:#0b7e65!important}
+.filters input,.filters select,.form-grid input,.form-grid select,.form-grid textarea,
+.multi-po-top input,.multi-po-top select,.multi-item-grid input,.multi-item-grid select{
+  border:1px solid #cfdeea!important;border-radius:11px!important;background:#fff!important;
+  box-shadow:inset 0 1px 2px rgba(17,48,76,.025)!important;outline:none!important
+}
+.filters input:focus,.filters select:focus,.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus,
+.multi-po-top input:focus,.multi-po-top select:focus,.multi-item-grid input:focus,.multi-item-grid select:focus{
+  border-color:#4b91d0!important;box-shadow:0 0 0 3px rgba(32,123,205,.12)!important
+}
+
+/* Dashboard */
+#view-dashboard .section-head{margin-bottom:12px!important}
+#view-dashboard .command-hero{
+  border-radius:22px!important;padding:24px!important;min-height:148px!important;
+  background:
+    radial-gradient(circle at 88% 12%,rgba(94,203,255,.25),transparent 28%),
+    linear-gradient(125deg,#092640 0%,#124d7b 58%,#0c7b78 100%)!important;
+  box-shadow:0 18px 42px rgba(7,43,73,.20)!important;border:1px solid rgba(255,255,255,.08)!important
+}
+#view-dashboard .command-eyebrow{color:#8cddff!important;font-size:10px!important}
+#view-dashboard .command-hero h3{font-size:29px!important;letter-spacing:-.035em!important}
+#view-dashboard .command-hero p{color:#d7e8f5!important;font-size:12.5px!important}
+#view-dashboard .command-tags span{border-radius:999px!important;background:rgba(255,255,255,.09)!important;backdrop-filter:blur(7px)}
+#view-dashboard .kpi{
+  border-radius:16px!important;border:1px solid #e0eaf2!important;
+  box-shadow:var(--v62-shadow)!important;overflow:hidden!important
+}
+#view-dashboard .kpi:before{width:5px!important}
+#view-dashboard .kpi .num{color:var(--v62-navy)!important}
+#view-dashboard .exec-group{
+  border:1px solid #e1eaf1!important;border-radius:18px!important;padding:15px!important;
+  background:rgba(255,255,255,.80)!important;box-shadow:0 9px 28px rgba(27,67,101,.055)!important
+}
+#view-dashboard .dashboard-section-title h3{color:var(--v62-navy)!important}
+#view-dashboard .module-command-card{
+  border:1px solid #dfe9f0!important;border-radius:15px!important;
+  background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)!important;
+  box-shadow:0 5px 16px rgba(30,69,99,.045)!important;transition:.16s ease!important
+}
+#view-dashboard .module-command-card:hover{transform:translateY(-2px)!important;box-shadow:0 12px 24px rgba(30,69,99,.09)!important}
+#view-dashboard .module-command-card .m-ico{
+  width:40px;height:40px;display:grid!important;place-items:center;
+  border-radius:12px;background:#edf6ff;font-size:21px!important;margin-bottom:10px!important
+}
+#view-dashboard .module-command-card:nth-child(3n+2) .m-ico{background:#ecfaf7}
+#view-dashboard .module-command-card:nth-child(3n+3) .m-ico{background:#fff5e8}
+#view-dashboard .module-command-card b{color:#17334a!important;font-weight:850!important}
+#view-dashboard .module-command-card .go{width:25px;height:25px;border-radius:50%;display:grid!important;place-items:center;background:#edf5fb;color:#2676bd!important}
+
+/* Pending Order premium workspace */
+#view-pending>.notice{
+  border:0!important;border-left:4px solid #f1ad32!important;border-radius:13px!important;
+  background:#fff9ec!important;color:#785421!important;box-shadow:none!important
+}
+#view-pending>.section-head{
+  background:linear-gradient(120deg,#fff,#f5faff)!important;border:1px solid #dfeaf2!important;
+  border-radius:17px!important;padding:16px 17px!important;box-shadow:0 8px 24px rgba(24,62,96,.055)!important
+}
+#view-pending>.section-head .btn-primary{min-height:44px!important;padding:10px 16px!important}
+#view-pending>.filters{
+  background:#fff!important;border:1px solid #dfe8ef!important;border-radius:14px!important;
+  padding:10px!important;box-shadow:0 5px 18px rgba(24,62,96,.045)!important
+}
+#view-pending #pendingList .data-card{
+  position:relative;border:1px solid #dfe8ef!important;border-radius:16px!important;padding:14px!important;
+  box-shadow:0 6px 18px rgba(24,62,96,.055)!important;background:#fff!important
+}
+#view-pending #pendingList .data-card:before{width:4px!important;border-radius:8px 0 0 8px!important;background:#2380c8!important}
+#view-pending #pendingList .work{font-size:17px!important;color:#0c568f!important}
+#view-pending #pendingList .party{font-size:12px!important;color:#667d90!important}
+#view-pending #pendingList .desc{font-weight:650!important;line-height:1.42!important}
+#view-pending #pendingList .chip{background:#f3f7fa!important;border-color:#e0e8ee!important}
+#view-pending #pendingList .chip.green{background:#eaf8f1!important}
+#view-pending #pendingList .chip.amber{background:#fff6e5!important}
+#view-pending #pendingList .chip.red{background:#fff0f0!important}
+#view-pending #pendingList .card-actions{padding-top:9px;border-top:1px solid #edf2f5}
+
+/* Person / Department work */
+#view-deptwork>.section-head{
+  background:linear-gradient(125deg,#0b3153,#145e91)!important;color:#fff!important;
+  border-radius:18px!important;padding:18px!important;box-shadow:0 14px 32px rgba(9,55,91,.16)!important
+}
+#view-deptwork>.section-head h2,#view-deptwork>.section-head p{color:#fff!important}
+#view-deptwork>.section-head p{opacity:.78}
+#view-deptwork>.section-head .btn-primary{background:#fff!important;color:#105c9d!important;border-color:#fff!important;box-shadow:none!important}
+#view-deptwork>.panel{
+  border-radius:17px!important;border:1px solid #dfe8ef!important;box-shadow:0 7px 22px rgba(24,62,96,.05)!important
+}
+#view-deptwork .dept-toolbar{gap:10px!important}
+#view-deptwork .dept-toolbar label{
+  background:#f8fbfd;border:1px solid #e1eaf1;border-radius:12px;padding:9px!important;color:#60788d!important;font-size:11px!important;font-weight:800!important
+}
+#view-deptwork .dept-toolbar input,#view-deptwork .dept-toolbar select{margin-top:5px!important}
+#view-deptwork #deptWorkList .dept-entry-card{
+  border:1px solid #dfe8ef!important;border-radius:16px!important;padding:14px!important;
+  box-shadow:0 6px 18px rgba(24,62,96,.05)!important
+}
+#view-deptwork #deptWorkList .dept-entry-card:before{background:#0d9a8a!important;width:4px!important;border-radius:8px 0 0 8px!important}
+#view-deptwork #deptWorkList .work{color:#0c4f83!important;font-size:17px!important}
+#view-deptwork .dept-qty{gap:8px!important;margin-top:10px!important}
+#view-deptwork .dept-qty>div{
+  background:#f6f9fc!important;border:1px solid #e3ebf1!important;border-radius:11px!important;
+  padding:9px 10px!important
+}
+#view-deptwork .dept-qty span{color:#788b9b!important;font-size:10px!important}
+#view-deptwork .dept-qty b{color:#183b55!important}
+
+/* Dialog polish */
+dialog{border-radius:20px!important;box-shadow:0 30px 80px rgba(10,39,66,.30)!important}
+dialog::backdrop{background:rgba(8,30,49,.62)!important;backdrop-filter:blur(2px)}
+#editForm{padding:16px!important}
+#editDialog:not(.multi-po-dialog) .dialog-head{
+  margin:-16px -16px 14px!important;padding:15px 16px!important;border:0!important;
+  background:linear-gradient(120deg,#0b3153,#1769a9)!important;color:#fff!important;border-radius:20px 20px 0 0!important
+}
+#editDialog:not(.multi-po-dialog) .dialog-head h3{color:#fff!important}
+#editDialog:not(.multi-po-dialog) .icon-btn{color:#fff!important}
+#editDialog:not(.multi-po-dialog) .field label{color:#48657c!important;font-size:11px!important;text-transform:none!important}
+#editDialog:not(.multi-po-dialog) .dialog-actions{margin:14px -16px -16px!important;padding:12px 16px!important;background:#f8fafc!important;border-radius:0 0 20px 20px!important}
+#editDialog.multi-po-dialog .dialog-head{
+  background:linear-gradient(125deg,#0b3153,#1769b0 70%,#0c8b82)!important
+}
+#editDialog.multi-po-dialog #formFields{background:#f3f7fb!important}
+.multi-po-top,.multi-po-item-row{border-radius:16px!important;border-color:#dfe9f1!important;box-shadow:0 6px 18px rgba(24,62,96,.045)!important}
+.multi-work-badge{background:#eaf4ff!important;color:#446980!important}
+.multi-add-item{border-radius:14px!important;background:#f8fbff!important}
+.multi-cut-note{border-radius:14px!important}
+
+/* Desktop shell V62 */
+@media(min-width:1000px){
+  body{padding-left:248px!important}
+  .topbar{left:248px!important;height:70px!important;padding:0 26px!important}
+  .nav{
+    width:248px!important;padding:91px 13px 20px!important;
+    background:linear-gradient(180deg,#081f34 0%,#0a2d49 55%,#09253d 100%)!important;
+    box-shadow:10px 0 28px rgba(6,34,57,.14)!important
+  }
+  .nav:before{content:'CFM  •  ERP  V62'!important;top:22px!important;font-size:17px!important}
+  .nav:after{content:'EAGLE FILTRATION • PLANT CONTROL'!important;top:49px!important;color:#7fa4be!important}
+  .nav button{border-radius:11px!important;min-height:44px!important;color:#bdd0df!important}
+  .nav button:hover{background:rgba(255,255,255,.07)!important}
+  .nav button.active{background:linear-gradient(90deg,#116b9f,#0d8c83)!important;box-shadow:0 8px 18px rgba(0,0,0,.12)!important}
+  main{padding:94px 28px 38px!important}
+}
+
+/* Mobile app shell V62 */
+@media(max-width:999px){
+  body{padding-bottom:78px!important}
+  .topbar{position:sticky!important;top:0!important;padding:8px 10px!important;z-index:80!important}
+  .topbar .brand .logo{width:38px!important;height:38px!important;border-radius:11px!important}
+  .topbar .brand h1{font-size:14px!important}
+  .topbar .brand p{font-size:9.5px!important}
+  .topbar>div:last-child .btn{display:none!important}
+  #cloudSyncBadge{font-size:9px!important;padding:5px 7px!important}
+  .nav{
+    position:fixed!important;left:8px!important;right:8px!important;bottom:8px!important;top:auto!important;
+    z-index:90!important;height:64px!important;display:grid!important;grid-template-columns:repeat(5,1fr)!important;
+    padding:5px!important;gap:3px!important;border:1px solid rgba(207,221,232,.95)!important;
+    border-radius:18px!important;background:rgba(255,255,255,.96)!important;backdrop-filter:blur(16px)!important;
+    box-shadow:0 14px 38px rgba(9,47,79,.22)!important;overflow:visible!important
+  }
+  .nav button{display:none!important}
+  .nav button[data-view="dashboard"],.nav button[data-view="pending"],.nav button[data-view="store"],
+  .nav button[data-view="cutting"],.nav button.mobile-more{
+    display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+    gap:2px!important;min-width:0!important;min-height:52px!important;padding:5px 3px!important;
+    border-radius:13px!important;background:transparent!important;color:#667d8e!important;font-size:9px!important
+  }
+  .nav button .ico{font-size:18px!important}
+  .nav button.active{background:#eaf4ff!important;color:#0d64ae!important;box-shadow:none!important}
+  main{padding:12px 10px 18px!important}
+  #view-dashboard .section-head .btn{display:none}
+  #view-dashboard .command-hero{border-radius:18px!important;padding:19px 17px!important;min-height:0!important}
+  #view-dashboard .command-hero h3{font-size:23px!important}
+  #view-dashboard .command-tags{gap:5px!important}
+  #view-dashboard .command-tags span{font-size:8.5px!important;padding:5px 7px!important}
+  #view-dashboard .kpis{grid-template-columns:1fr 1fr!important;gap:8px!important}
+  #view-dashboard .kpi{min-height:91px!important;border-radius:14px!important;padding:12px!important}
+  #view-dashboard .exec-group{padding:10px!important;border-radius:15px!important}
+  #view-dashboard .primary-modules,#view-dashboard .compact-modules,#view-dashboard .utility-modules{grid-template-columns:1fr 1fr!important}
+  #view-dashboard .module-command-card{min-height:108px!important;border-radius:14px!important;padding:12px!important}
+  #view-dashboard .module-command-card .m-ico{width:36px;height:36px;font-size:18px!important}
+  #view-pending>.section-head{align-items:stretch!important;flex-direction:column!important;padding:13px!important}
+  #view-pending>.section-head .btn-primary{width:100%!important}
+  #view-pending>.filters{position:sticky;top:58px;z-index:12;padding:7px!important}
+  #view-pending>.filters select{max-width:120px!important}
+  #view-pending #pendingList{display:block!important}
+  #view-pending #pendingList .data-card{margin-bottom:9px!important}
+  #view-deptwork>.section-head{align-items:stretch!important;flex-direction:column!important;padding:15px!important}
+  #view-deptwork>.section-head .btn-primary{width:100%!important}
+  #view-deptwork .dept-toolbar{display:grid!important;grid-template-columns:1fr 1fr!important}
+  #view-deptwork #deptWorkList .dept-entry-card{margin-bottom:9px!important}
+  dialog:not(.multi-po-dialog){width:calc(100vw - 14px)!important;max-width:none!important;border-radius:18px!important}
+  #editDialog:not(.multi-po-dialog) .form-grid{grid-template-columns:1fr!important;max-height:66vh!important}
+  #editDialog:not(.multi-po-dialog) .field.full{grid-column:auto!important}
+}
+@media(max-width:390px){
+  #view-dashboard .primary-modules,#view-dashboard .compact-modules,#view-dashboard .utility-modules{grid-template-columns:1fr 1fr!important}
+  #view-deptwork .dept-toolbar{grid-template-columns:1fr!important}
+}
+
+</style>
+  
+  
+  
+<meta name="color-scheme" content="light">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
