@@ -1,5 +1,5 @@
       <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiB2aWV3Qm94PSIwIDAgMTkyIDE5MiI+PHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSIzNiIgZmlsbD0iIzFmNGU3OSIvPjxjaXJjbGUgY3g9Ijk2IiBjeT0iOTYiIHI9IjU1IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMTIiLz48cGF0aCBkPSJNNTUgOTZoODJNOTYgNTV2ODIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHRleHQgeD0iOTYiIHk9IjE3NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjIyIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj5DRk08L3RleHQ+PC9zdmc+" alt="CFM" class="logo" />
-      <div><h1>EAGLE <span style="font-size:11px;opacity:.85">FILTRATION PRODUCT PVT. LTD.</span><span class="app-version-badge">V67</span></h1><p>CFM Operations Hub • Smart Plant ERP</p></div>
+      <div><h1>EAGLE <span style="font-size:11px;opacity:.85">FILTRATION PRODUCT PVT. LTD.</span><span class="app-version-badge">V68</span></h1><p>CFM Operations Hub • Smart Plant ERP</p></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span id="cloudSyncBadge" class="chip green" style="background:#e8f7ee;color:#17653a;border:1px solid #bfe5ce">☁️ Sync starting…</span><button class="btn btn-sm" onclick="manualCloudSync()" title="3-4 mobile cloud sync">↻ Sync</button><button id="installBtn" class="btn btn-green hidden">Install App</button></div>
   </header>
@@ -541,9 +541,9 @@
       </div>
 
       <div class="panel">
-        <h3>9 AM & 5 PM Mobile Update</h3>
-        <p>Enable browser/PWA notification permission. The app shows Pending Work, Pending Qty, Today Cut and Open SRL summary when the browser/PWA is allowed to run.</p>
-        <button class="btn btn-green" onclick="enableNotifications()">Enable Mobile Reminder</button>
+        <h3>All Update Notifications + 9 AM / 5 PM Summary</h3>
+        <p>Measurement, Description, Qty, Pending, Cutting, Store/SRL, Person Work, Billing, Challan, Dispatch — kisi bhi saved data update par notification aayega. Dusre mobile se sync update ho to bhi alert milega jab app/browser background notification allow kare.</p>
+        <button class="btn btn-green" onclick="enableNotifications()">Enable All Notifications</button>
         <div id="notificationStatus" class="notice" style="margin-top:10px"></div>
       </div>
       <div class="panel">
