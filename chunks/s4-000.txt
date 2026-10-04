@@ -278,7 +278,7 @@ window.captureUiDialogState=function(){
     const extra={};
     if(dialogResumeMeta.type==='multiPending'&&typeof multiPoRowsData==='function'){
       extra.multiRows=multiPoRowsData().map(x=>({
-        description:x.description||'',eagleCode:x.eagleCode||'',itemCode:x.itemCode||'',
+        description:x.description||'',description2:x.description2||'',eagleCode:x.eagleCode||'',itemCode:x.itemCode||'',
         cloth:x.cloth||'',width:x.width||'',orderQty:x.orderQty||''
       }));
     }
@@ -326,6 +326,7 @@ function applyUiDialogDraft(snap){
         const x=rows[i]||{};
         const put=(sel,v)=>{const el=row.querySelector(sel);if(el)el.value=v??''};
         put('.multi-item-product',x.description);
+        put('.multi-description2',x.description2);
         put('.multi-eagle',x.eagleCode);
         put('.multi-item-code',x.itemCode);
         put('.multi-cloth',x.cloth);
