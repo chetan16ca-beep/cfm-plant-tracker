@@ -1315,7 +1315,7 @@ dialog::backdrop{background:rgba(8,30,49,.62)!important;backdrop-filter:blur(2px
 html,body{background:#f7f6f2!important;color:#29332d!important;font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif!important}
 @media(min-width:1000px){
  .nav{background:linear-gradient(180deg,#f2f0e9,#e8eee8)!important;border-right:1px solid #d9ddd7!important;box-shadow:8px 0 24px rgba(65,78,68,.07)!important}
- .nav:before{content:'CFM  •  ERP  V70'!important;color:#34453a!important}
+ .nav:before{content:'CFM  •  ERP  V71'!important;color:#34453a!important}
  .nav:after{color:#78867c!important}
  .nav button{color:#526159!important}
  .nav button:hover{background:#fff!important}
