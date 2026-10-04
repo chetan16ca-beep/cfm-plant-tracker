@@ -79,7 +79,7 @@ registerSW().then(refreshNotifyButton);
  let parts=[],done=0,total=groups.flat().length,st=document.getElementById('st');
  for(const g of groups){
    const x=await Promise.all(g.map(async u=>{
-     const r=await fetch('./'+u+'?v=52');
+     const r=await fetch('./'+u+'?v=54');
      if(!r.ok)throw Error(u);
      done++;st.textContent='Loading '+done+'/'+total;
      return r.text()
@@ -89,8 +89,7 @@ registerSW().then(refreshNotifyButton);
  let src=parts.join('')+'\n';
  src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
  src=src.replace('<head>','<head><base href="'+location.origin+basePath+'">');
- const bridge='<script>window.CFMNotify=function(title,body,data){parent.postMessage({type:"CFM_NOTIFICATION",title:title,body:body,data:data||{}},"*")}<\/script>';
- src=src.replace('</body>',bridge+'</body>');
+ 
  const frame=document.getElementById('app');
  frame.addEventListener('load',()=>document.getElementById('load')?.remove(),{once:true});
  frame.srcdoc=src
