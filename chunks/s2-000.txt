@@ -1,5 +1,5 @@
       <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiB2aWV3Qm94PSIwIDAgMTkyIDE5MiI+PHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSIzNiIgZmlsbD0iIzFmNGU3OSIvPjxjaXJjbGUgY3g9Ijk2IiBjeT0iOTYiIHI9IjU1IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMTIiLz48cGF0aCBkPSJNNTUgOTZoODJNOTYgNTV2ODIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHRleHQgeD0iOTYiIHk9IjE3NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjIyIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj5DRk08L3RleHQ+PC9zdmc+" alt="CFM" class="logo" />
-      <div><h1>EAGLE <span style="font-size:11px;opacity:.85">FILTRATION PRODUCT PVT. LTD.</span><span class="app-version-badge">V62</span></h1><p>CFM Operations Hub • Smart Plant ERP</p></div>
+      <div><h1>EAGLE <span style="font-size:11px;opacity:.85">FILTRATION PRODUCT PVT. LTD.</span><span class="app-version-badge">V63</span></h1><p>CFM Operations Hub • Smart Plant ERP</p></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span id="cloudSyncBadge" class="chip green" style="background:#e8f7ee;color:#17653a;border:1px solid #bfe5ce">☁️ Sync starting…</span><button class="btn btn-sm" onclick="manualCloudSync()" title="3-4 mobile cloud sync">↻ Sync</button><button id="installBtn" class="btn btn-green hidden">Install App</button></div>
   </header>
@@ -126,7 +126,7 @@
       </div>
       <div class="filters">
         <input id="pendingSearch" placeholder="Search work no, party, item, cloth..." oninput="renderPending()" />
-        <select id="pendingStatus" onchange="renderPending()"><option value="OPEN">Open only</option><option value="ALL">All Active</option><option value="COMPLETE">Completed</option><option value="ARCHIVED">Archived</option></select>
+        <select id="pendingStatus" onchange="renderPending()"><option value="OPEN">Open Pending</option><option value="CUTENTRY">✂ Cut Entry Pending</option><option value="ALL">All Active</option><option value="COMPLETE">Completed</option><option value="ARCHIVED">Archived</option></select>
       </div>
       <div id="pendingList"></div>
     </section>
