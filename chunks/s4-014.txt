@@ -54,7 +54,37 @@
  let st=document.getElementById('batchMncStyle');if(!st){st=document.createElement('style');st.id='batchMncStyle';st.textContent=
  '.batch-mnc-dialog{width:min(96vw,1500px)!important;max-width:96vw!important}.batch-mnc-dialog .dialog-body,.batch-mnc-dialog .modal-body{padding:18px!important}.batch-mnc-dialog .auto-box{display:grid!important;grid-template-columns:1fr 1fr;gap:4px 18px;border:1px solid #dce7e1!important;border-left:5px solid #176a45!important;background:#f8fbf9!important;border-radius:10px!important;padding:14px 16px!important;margin-bottom:12px!important}.batch-mnc-dialog table{min-width:100%!important;font-size:12px!important}.batch-mnc-dialog th{position:sticky;top:0;background:#eef5f1!important;color:#274638!important;text-transform:uppercase;font-size:10px!important;letter-spacing:.4px;padding:10px 8px!important}.batch-mnc-dialog td{padding:9px 8px!important;vertical-align:middle!important}.batch-mnc-dialog tbody tr:hover{background:#f7faf8!important}.batch-mnc-dialog input{min-height:36px!important;border-radius:7px!important}.batch-mnc-dialog .batch-person{min-width:135px!important}.batch-mnc-dialog .batch-desc{min-width:180px!important}.batch-mnc-dialog .batch-row-save{white-space:nowrap!important}.batch-mnc-dialog .dialog-footer button[type="submit"],.batch-mnc-dialog .dialog-footer .btn-green{display:none!important}@media(max-width:760px){.batch-mnc-dialog{width:98vw!important;max-width:98vw!important;height:94vh!important;max-height:94vh!important}.batch-mnc-dialog .auto-box{grid-template-columns:1fr!important}.batch-mnc-dialog table,.batch-mnc-dialog thead,.batch-mnc-dialog tbody,.batch-mnc-dialog th,.batch-mnc-dialog td,.batch-mnc-dialog tr{display:block!important;min-width:0!important}.batch-mnc-dialog thead{display:none!important}.batch-mnc-dialog tr[data-batch-stage]{border:1px solid #dce7e1!important;border-radius:12px!important;padding:10px!important;margin:10px 0!important;background:#fff!important}.batch-mnc-dialog tr[data-batch-stage] td{border:0!important;padding:5px!important}.batch-mnc-dialog tr[data-batch-stage] td:first-child{font-size:15px!important;color:#176a45!important;border-bottom:1px solid #edf2ef!important;margin-bottom:5px!important}.batch-mnc-dialog input{width:100%!important;min-width:0!important}.batch-mnc-dialog .batch-row-save{width:100%!important}}';document.head.appendChild(st)}
 }
-const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{inject();styleBatch()},500);
+function mobilePolish(){
+ let st=document.getElementById('cfmMobilePolishV94');if(st)return;
+ st=document.createElement('style');st.id='cfmMobilePolishV94';st.textContent=
+ '@media(max-width:760px){'+
+ '.batch-mnc-dialog .dialog-body,.batch-mnc-dialog .modal-body{padding:10px!important}'+
+ '.batch-mnc-dialog .auto-box{padding:11px 12px!important;margin-bottom:10px!important;font-size:13px!important}'+
+ '.batch-mnc-dialog div[style*="overflow-x:auto"]{overflow:visible!important}'+
+ '.batch-mnc-dialog table{display:block!important;width:100%!important;min-width:0!important}'+
+ '.batch-mnc-dialog tbody{display:block!important;width:100%!important}'+
+ '.batch-mnc-dialog tr[data-batch-stage]{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;padding:12px!important;margin:10px 0!important;box-shadow:0 2px 8px rgba(0,0,0,.05)!important}'+
+ '.batch-mnc-dialog tr[data-batch-stage] td{display:block!important;width:auto!important;padding:0!important}'+
+ '.batch-mnc-dialog tr[data-batch-stage] td:first-child{grid-column:1/-1!important;font-size:16px!important;padding-bottom:7px!important}'+
+ '.batch-mnc-dialog tr[data-batch-stage] td:nth-child(2){grid-column:1/-1!important}'+
+ '.batch-mnc-dialog tr[data-batch-stage] td:nth-child(3){display:flex!important;align-items:center!important;justify-content:flex-start!important;min-height:36px!important}'+
+ '.batch-mnc-dialog tr[data-batch-stage] td:nth-child(4):before{content:"Order Qty";display:block;font-size:10px;color:#66756d;font-weight:700}'+
+ '.batch-mnc-dialog tr[data-batch-stage] td:nth-child(5):before{content:"Done Qty";display:block;font-size:10px;color:#66756d;font-weight:700}'+
+ '.batch-mnc-dialog tr[data-batch-stage] td:nth-child(6):before{content:"Pending Qty";display:block;font-size:10px;color:#66756d;font-weight:700}'+
+ '.batch-mnc-dialog tr[data-batch-stage] td:nth-child(7){grid-column:1/-1!important}.batch-mnc-dialog tr[data-batch-stage] td:nth-child(7):before{content:"Work Description";display:block;font-size:10px;color:#66756d;font-weight:700}'+
+ '.batch-mnc-dialog tr[data-batch-stage] td:nth-child(8){grid-column:1/-1!important}.batch-mnc-dialog tr[data-batch-stage] td:nth-child(8):before{content:"Remark";display:block;font-size:10px;color:#66756d;font-weight:700}'+
+ '.batch-mnc-dialog tr[data-batch-stage] td:nth-child(9){grid-column:1/-1!important}'+
+ '.batch-mnc-dialog .batch-person,.batch-mnc-dialog .batch-desc,.batch-mnc-dialog .batch-remark,.batch-mnc-dialog .batch-done{width:100%!important;min-width:0!important;box-sizing:border-box!important}'+
+ '.batch-mnc-dialog #batchBigV88{display:none!important}'+
+ '.batch-mnc-dialog .dialog-footer{display:none!important}'+
+ '#view-pending .toolbar,#view-pending .filters{padding:6px!important;margin:4px 0!important;gap:6px!important}'+
+ '#view-pending .toolbar select,#view-pending .filters select{min-height:42px!important;height:42px!important;padding:6px 10px!important;font-size:14px!important}'+
+ '#pendingList .data-card{padding:13px!important;margin-bottom:12px!important}'+
+ '#pendingList .card-actions{gap:7px!important}#pendingList .card-actions .btn{min-height:44px!important;padding:8px 7px!important;font-size:13px!important;border-radius:10px!important}'+
+ '.app-header,.topbar{padding-top:6px!important;padding-bottom:6px!important}'+
+ '}';document.head.appendChild(st);
+}
+const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{inject();styleBatch();mobilePolish()},500);
 })();
 </script>
 
@@ -106,7 +136,7 @@ const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,s
 };
  window.cfmSafeBatchOpen=function(w){
   const html=report(w)+'<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="btn btn-primary" id="batchBigV88">⛶ Big Screen</button><button type="button" class="btn btn-primary" id="batchPrintV88">🖨 Print Report</button></div>';
-  openDialog('Production Batch Report • '+w,html,()=>true,{type:'safeBatchView',workNo:w});setTimeout(styleBatch,0);
+  openDialog('Production Batch Report • '+w,html,()=>true,{type:'safeBatchView',workNo:w});setTimeout(()=>{styleBatch();mobilePolish()},0);
   setTimeout(()=>{document.querySelectorAll('[data-batch-stage]').forEach(tr=>{const i=Number(tr.dataset.batchStage),d=tr.querySelector('.batch-done'),c=tr.querySelector('.batch-check');d.oninput=()=>{c.checked=Q(d.value)>0};tr.querySelector('.batch-row-save').onclick=()=>cfmBatchRowSave(w,tr,i)});const big=document.getElementById('batchBigV88');if(big)big.onclick=()=>{const dlg=big.closest('.dialog')||big.closest('[role="dialog"]')||big.parentElement?.parentElement?.parentElement;if(!dlg)return;const on=dlg.dataset.batchBig==='1';if(on){dlg.style.cssText=dlg.dataset.oldStyle||'';dlg.dataset.batchBig='0';big.textContent='⛶ Big Screen'}else{dlg.dataset.oldStyle=dlg.getAttribute('style')||'';dlg.dataset.batchBig='1';dlg.style.setProperty('width','96vw','important');dlg.style.setProperty('max-width','96vw','important');dlg.style.setProperty('height','92vh','important');dlg.style.setProperty('max-height','92vh','important');big.textContent='↙ Normal Screen'}};const p=document.getElementById('batchPrintV88');if(p)p.onclick=()=>cfmSafeBatchPrint(w)},0);
  };
  function inject(){document.querySelectorAll('#pendingList .data-card').forEach(el=>{if(el.querySelector('.safe-batch-btn'))return;const w=el.querySelector('.work')?.textContent?.trim(),a=el.querySelector('.card-actions');if(!w||!a)return;const b=document.createElement('button');b.type='button';b.className='btn btn-sm btn-primary safe-batch-btn';b.textContent='📋 Batch Report';b.onclick=e=>{e.preventDefault();e.stopPropagation();cfmSafeBatchOpen(w)};a.appendChild(b)})}
