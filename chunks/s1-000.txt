@@ -1334,6 +1334,23 @@ html,body{background:#f7f6f2!important;color:#29332d!important;font-family:Inter
 .section-head h2,.section-head h3,.dashboard-section-title h3{color:#29332d!important}
 @media(max-width:999px){.nav button.active{background:#e5eee7!important;color:#486454!important}.nav{box-shadow:0 10px 30px rgba(65,78,68,.14)!important}}
 
+
+/* V72 EAGLE corporate branding */
+:root{--brand:#176a45!important;--brand-2:#25895b!important;--brand-3:#245d9b!important;--accent:#d73b32!important;--accent-soft:#fbeceb!important;--bg:#f7f8f5!important;--surface:#fff!important;--line:#e0e5df!important;--text:#25332b!important}
+@media(min-width:1000px){
+ .nav{background:linear-gradient(180deg,#f7faf6,#eef5ef)!important;border-right:1px solid #dce5dc!important}
+ .nav:before{content:'CFM  •  ERP  V72'!important;color:#176a45!important}
+ .nav button.active{background:#e1f0e5!important;color:#176a45!important;border-left:4px solid #d73b32!important}
+}
+.topbar{background:#fff!important;border-bottom:2px solid #e4ebe5!important}
+.topbar .brand h1{color:#176a45!important}.topbar .brand h1:first-letter{color:#d73b32!important}
+.command-hero{background:linear-gradient(120deg,#f8fbf8,#edf5ef)!important;color:#25332b!important;border:1px solid #dbe7dc!important}
+.command-hero:before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;background:linear-gradient(#d73b32 0 33%,#176a45 33% 66%,#245d9b 66%)!important}
+.command-eyebrow{color:#176a45!important}.command-hero h3{color:#263a2e!important}.command-hero p{color:#66736a!important}
+.command-tags span{background:#fff!important;color:#176a45!important;border-color:#d4e2d7!important}
+.btn-primary{background:#176a45!important;border-color:#176a45!important}.btn-danger{background:#d73b32!important;border-color:#d73b32!important}
+.work,.module-command-card b{color:#176a45!important}
+.kpi:nth-child(1):before,.module-command-card:nth-child(4n+1):before{background:#176a45!important}.kpi:nth-child(2):before,.module-command-card:nth-child(4n+2):before{background:#245d9b!important}.kpi:nth-child(3):before,.module-command-card:nth-child(4n+3):before{background:#d73b32!important}.kpi:nth-child(4):before,.module-command-card:nth-child(4n+4):before{background:#6a9b77!important}
 </style>
   
   
