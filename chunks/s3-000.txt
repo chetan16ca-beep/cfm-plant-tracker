@@ -244,11 +244,18 @@ window.openDeptWorkForm=function(i=null){
     rec.pendingQty=deptEntryPending(rec);
     if(!rec.person){toast('Person select karo');return false}
     if(!String(rec.description||'').trim()){toast('Activity / Work Details enter karo');return false}
-    if(i==null)state.departmentWork.push(rec);else state.departmentWork[i]=rec;
+    const isNewEntry=i==null;
+    if(isNewEntry)state.departmentWork.push(rec);else state.departmentWork[i]=rec;
     if($('deptWorkDate'))$('deptWorkDate').value=rec.date;
     if($('deptSupervisor')&&!$('deptSupervisor').value)$('deptSupervisor').value=rec.supervisor||'';
     if($('deptShift'))$('deptShift').value=rec.shift||'GENERAL';
-    save();toast('Person work entry saved • Work No optional');
+    save();
+    if(isNewEntry){
+      const q=rec.doneQty!==''?('Qty '+fmt(rec.doneQty)):(rec.givenQty!==''?('Qty '+fmt(rec.givenQty)):'');
+      const msg=[rec.person||'Person',rec.process||'Work',q,rec.workNo?('Work '+rec.workNo):''].filter(Boolean).join(' • ');
+      showLocalNotification('👷 Person Work Entry',msg);
+    }
+    toast('Person work entry saved • Work No optional');
     return true;
   });
   setTimeout(bindDeptWorkForm,0);
