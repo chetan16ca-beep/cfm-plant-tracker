@@ -1,5 +1,5 @@
       <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiB2aWV3Qm94PSIwIDAgMTkyIDE5MiI+PHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSIzNiIgZmlsbD0iIzFmNGU3OSIvPjxjaXJjbGUgY3g9Ijk2IiBjeT0iOTYiIHI9IjU1IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMTIiLz48cGF0aCBkPSJNNTUgOTZoODJNOTYgNTV2ODIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHRleHQgeD0iOTYiIHk9IjE3NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjIyIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj5DRk08L3RleHQ+PC9zdmc+" alt="CFM" class="logo" />
-      <div><h1>EAGLE <span style="font-size:11px;opacity:.85">FILTRATION PRODUCT PVT. LTD.</span></h1><p>CFM Operations Hub • V38 SAP ERP UI</p></div>
+      <div><h1>EAGLE <span style="font-size:11px;opacity:.85">FILTRATION PRODUCT PVT. LTD.</span><span class="app-version-badge">V62</span></h1><p>CFM Operations Hub • Smart Plant ERP</p></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span id="cloudSyncBadge" class="chip green" style="background:#e8f7ee;color:#17653a;border:1px solid #bfe5ce">☁️ Sync starting…</span><button class="btn btn-sm" onclick="manualCloudSync()" title="3-4 mobile cloud sync">↻ Sync</button><button id="installBtn" class="btn btn-green hidden">Install App</button></div>
   </header>
@@ -44,7 +44,7 @@
         <button class="module-command-card" onclick="showView('planning')"><i class="go">›</i><span class="m-ico">🗓️</span><b>Daily Planning</b><span>Date-wise production plan</span></button>
         <button class="module-command-card" onclick="showView('store')"><i class="go">›</i><span class="m-ico">📦</span><b>Store / SRL Stock</b><span>Opening, issue & balance</span></button>
         <button class="module-command-card" onclick="showView('cutting')"><i class="go">›</i><span class="m-ico">✂️</span><b>Cutting Details</b><span>Cut qty, size & wastage</span></button>
-        <button class="module-command-card" onclick="showView('deptwork')"><i class="go">›</i><span class="m-ico">👷</span><b>Department Work</b><span>Worker + manual work entry</span></button>
+        <button class="module-command-card" onclick="showView('deptwork')"><i class="go">›</i><span class="m-ico">👷</span><b>Person Work</b><span>Person-based daily activity entry</span></button>
         <button class="module-command-card" onclick="showView('readydispatch')"><i class="go">›</i><span class="m-ico">🚚</span><b>Ready Dispatch</b><span>Completed work control</span></button>
       </div></div>
       <div class="exec-group"><div class="dashboard-section-title"><h3>📊 Stock & Reports</h3><span>SRL and inventory visibility</span></div><div class="module-command-grid compact-modules">
@@ -492,7 +492,7 @@
       <div class="section-head"><div><h2>More & Reports</h2><p>Excel, Bill/Challan, Print, Search, Backup & Settings</p></div></div>
       <div class="action-grid more-grid">
         <button class="action-card" onclick="showView('planning')"><b>📅 Daily Planning</b><span>Select next-day work, pending report, print & WhatsApp</span></button>
-        <button class="action-card" onclick="showView('deptwork')"><b>🏭 Daily Department Report</b><span>Cutting, Stitching, Thread/Gun/Packing • person-wise qty & print</span></button>
+        <button class="action-card" onclick="showView('deptwork')"><b>👷 Daily Person Work</b><span>Person-based activity • Work No optional • qty & print</span></button>
         <button class="action-card" onclick="showView('docs')"><b>🧾 Bill / Challan</b><span>Bill request, challan, WhatsApp updates</span></button>
         <button class="action-card" onclick="showView('excel')"><b>📗 Excel View</b><span>View and export ERP data in Excel format</span></button>
         <button class="action-card" onclick="showView('legacyfull')"><b>📚 Purana Excel — Full Data</b><span>All 78 sheets • global search • input details finder • original Excel</span></button>
