@@ -1309,6 +1309,31 @@ dialog::backdrop{background:rgba(8,30,49,.62)!important;backdrop-filter:blur(2px
   #view-docs .doc-card .card-actions .btn{flex:1 1 calc(50% - 6px)}
 }
 
+
+/* V70 LIGHT ERP THEME - actual inner application */
+:root{--brand:#526b5b!important;--brand-2:#6f8776!important;--brand-3:#8ca092!important;--accent:#708c78!important;--accent-soft:#edf3ee!important;--bg:#f7f6f2!important;--surface:#fff!important;--line:#e3e3dc!important;--text:#29332d!important;--muted:#747d76!important}
+html,body{background:#f7f6f2!important;color:#29332d!important;font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif!important}
+@media(min-width:1000px){
+ .nav{background:linear-gradient(180deg,#f2f0e9,#e8eee8)!important;border-right:1px solid #d9ddd7!important;box-shadow:8px 0 24px rgba(65,78,68,.07)!important}
+ .nav:before{content:'CFM  •  ERP  V70'!important;color:#34453a!important}
+ .nav:after{color:#78867c!important}
+ .nav button{color:#526159!important}
+ .nav button:hover{background:#fff!important}
+ .nav button.active{background:#dce9df!important;color:#355541!important;box-shadow:none!important}
+}
+.topbar{background:#faf9f5!important;color:#29332d!important;border-bottom:1px solid #e1e2dc!important;box-shadow:0 4px 16px rgba(65,78,68,.06)!important}
+.topbar .brand h1,.topbar .brand p{color:#29332d!important}.topbar .brand p{opacity:.68!important}
+.topbar .btn{background:#fff!important;color:#4d6656!important;border-color:#d9ddd7!important}
+.command-hero{background:linear-gradient(120deg,#eef1eb,#dde8df)!important;color:#29332d!important;box-shadow:0 8px 22px rgba(65,78,68,.08)!important;border:1px solid #d9e0d9!important}
+.command-eyebrow{color:#5c7965!important}.command-hero h3{color:#29332d!important}.command-hero p{color:#66736a!important}
+.command-tags span{background:#f8faf7!important;border-color:#d2ddd4!important;color:#526b5b!important}.command-tags span:first-child{color:#467054!important;background:#e5f0e7!important;border-color:#c8dccd!important}
+.kpi:nth-child(n){background:#fff!important;color:#29332d!important;border:1px solid #e0e3dc!important;box-shadow:0 5px 16px rgba(65,78,68,.05)!important}
+.kpi .num{color:#34483a!important}.kpi .label{color:#6d776f!important}
+.kpi:before,.module-command-card:before{background:#91ad99!important}.kpi:nth-child(2):before,.module-command-card:nth-child(4n+2):before{background:#b1bba7!important}.kpi:nth-child(3):before,.module-command-card:nth-child(4n+3):before{background:#d2b98d!important}.kpi:nth-child(4):before,.module-command-card:nth-child(4n+4):before{background:#aaa5b8!important}
+.module-command-card{border-color:#e1e3dc!important;box-shadow:0 5px 16px rgba(65,78,68,.05)!important}.module-command-card b{color:#34483a!important}.module-command-card .go{color:#718b78!important}
+.section-head h2,.section-head h3,.dashboard-section-title h3{color:#29332d!important}
+@media(max-width:999px){.nav button.active{background:#e5eee7!important;color:#486454!important}.nav{box-shadow:0 10px 30px rgba(65,78,68,.14)!important}}
+
 </style>
   
   
