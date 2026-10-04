@@ -112,7 +112,7 @@ const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,s
 <script id="cfm-safe-batch-v88">
 (function(){
  const N=v=>String(v==null?'':v).trim().toUpperCase(),Q=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
- const stages=['CUTTING','STITCHING','THREAD CUTTING','GUN / FINISHING','PACKING'];
+ const stages=['CUTTING','STITCHING','THREAD CUTTING','GUN / FINISHING','FINAL CHECKING','PACKING'];
  function work(w){return (state.pending||[]).find(x=>N(x.workNo)===N(w))}
  function matchStage(x,s){const p=N(x.process||x.department);return p.includes(s==='GUN / FINISHING'?'FINISH':s==='FINAL CHECKING'?'CHECK':s)}
  function peopleOptions(){const p=[...(typeof FIXED_PERSONS!=='undefined'?FIXED_PERSONS:[]).map(x=>typeof x==='string'?x:(x.name||'')),...(state.customPersons||[]).map(x=>typeof x==='string'?x:(x.name||'')),...(state.departmentWork||[]).map(x=>x.person||'')];return [...new Set(p.filter(Boolean))].sort().map(x=>'<option value="'+esc(x)+'"></option>').join('')}
@@ -123,10 +123,8 @@ const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,s
  return '<div class="batch-work-card"><div><b class="batch-work-title">'+esc(w)+' • '+esc(p.party||'')+'</b><span class="batch-status">IN PROCESS</span></div><div><b>Description:</b> '+esc(p.description||'-')+'</div>'+(p.description2?'<div><b>Measurement:</b> '+esc(p.description2)+'</div>':'')+'<div class="batch-kpis"><span><small>Order Qty</small><b>'+fmt(oq)+'</b></span><span><small>Cut Qty</small><b>'+fmt(Q(p.cutQty))+'</b></span><span><small>Plan Date</small><b>'+esc(dateDisplay(p.planDate||p.dispatchDate||'')||'-')+'</b></span></div></div><div class="batch-progress-head"><b>Stagewise Progress</b><span>Order Qty: '+fmt(oq)+'</span></div><div class="batch-stage-list">'+cards+'</div>';
 }
 function entryPanel(w){
- const p=work(w),oq=Q(p?.orderQty),opts=peopleOptions();
- const next=stages.find(x=>history(w,x).reduce((a,z)=>a+Q(z.doneQty!==undefined&&z.doneQty!==''?z.doneQty:z.cutQty),0)<oq)||'PACKING';
- const stageOpts=stages.map(x=>'<option value="'+esc(x)+'" '+(x===next?'selected':'')+'>'+esc(x)+'</option>').join('');
- return '<div class="batch-entry-card" id="batchSingleEntry"><div class="batch-entry-title"><span>＋</span><b>Add Process Entry</b></div><div class="batch-entry-grid"><label>Department / Stage<select id="batchStageOne">'+stageOpts+'</select></label><label>Person<input id="batchPersonOne" list="batchPeopleOne" placeholder="Select Person"><datalist id="batchPeopleOne">'+opts+'</datalist></label><label>Done Qty<input id="batchDoneOne" type="number" min="0" max="'+oq+'" placeholder="0"></label><label>Pending<input id="batchPendingOne" value="'+oq+'" readonly></label><label class="wide">Work Description<input id="batchDescOne" value="'+esc(p?.description||'')+'"></label><label class="wide">Remark<input id="batchRemarkOne" placeholder="Remark (optional)"></label></div><button type="button" class="btn btn-green batch-one-save" id="batchSaveOne">💾 Save Process Entry</button></div>';
+ const p=work(w),oq=Q(p?.orderQty),opts=peopleOptions(),stageOpts=stages.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+ return '<div class="batch-entry-card" id="batchSingleEntry"><div class="batch-entry-title"><span>＋</span><b>Add Process Entry</b></div><div class="batch-entry-grid"><label>Stage<select id="batchStageOne">'+stageOpts+'</select></label><label>Person<input id="batchPersonOne" list="batchPeopleOne" placeholder="Select Person"><datalist id="batchPeopleOne">'+opts+'</datalist></label><label>Done Qty<input id="batchDoneOne" type="number" min="0" max="'+oq+'" placeholder="0"></label><label>Pending<input id="batchPendingOne" value="'+oq+'" readonly></label><label class="wide">Work Description<input id="batchDescOne" value="'+esc(p?.description||'')+'"></label><label class="wide">Remark<input id="batchRemarkOne" placeholder="Remark (optional)"></label></div><button type="button" class="btn btn-green batch-one-save" id="batchSaveOne">💾 Save Process Entry</button></div>';
 }
 window.cfmBatchSingleSave=function(w){
   const p=work(w),oq=Q(p?.orderQty),stage=document.getElementById('batchStageOne')?.value||'',person=(document.getElementById('batchPersonOne')?.value||'').trim(),done=Q(document.getElementById('batchDoneOne')?.value);
