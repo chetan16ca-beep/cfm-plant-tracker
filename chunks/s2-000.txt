@@ -90,7 +90,7 @@
         <div class="section-head" style="margin-bottom:10px">
           <div>
             <h3 style="margin:0">👷 Daily Worker Report</h3>
-            <p>Department + Person + Work No. dropdown • Description auto • Given / Done / Pending / Remark</p>
+            <p>Person + Department + Activity • Work No optional • Given / Done / Pending / Remark</p>
           </div>
           <div class="card-actions" style="margin:0">
             <button class="btn btn-sm btn-primary" onclick="openDeptWorkForm()">+ Add Entry</button>
@@ -441,8 +441,8 @@
 
     <section id="view-deptwork" class="view">
       <div class="section-head">
-        <div><h2>🏭 Daily Department Work Report</h2><p>Single Department dropdown • All Person names • Given / Done / Pending auto • 3-4 mobile sync</p></div>
-        <button class="btn btn-primary" onclick="openDeptWorkForm()">+ Add Work Entry</button>
+        <div><h2>👷 Daily Person Work Report</h2><p>Person-based entry • Work No optional • Manual/general work bhi save hoga • 3-4 mobile sync</p></div>
+        <button class="btn btn-primary" onclick="openDeptWorkForm()">+ Add Person Entry</button>
       </div>
 
       <div class="panel">
@@ -480,12 +480,12 @@
 
       <div class="panel">
         <div class="section-head" style="margin-top:0">
-          <div><h3 style="margin:0">Today / Selected Date Entries</h3><p>Work No dropdown select karo → Party + Description auto fill → Given / Done → Pending auto → Remark</p></div>
+          <div><h3 style="margin:0">Today / Selected Date Entries</h3><p>Person select karo → Department / Activity likho → Qty optional → Work No optional reference</p></div>
         </div>
         <div id="deptWorkList"></div>
       </div>
 
-      <div class="notice"><b>Person dropdown me sabhi names hamesha available:</b> SUMIT, VIJAY SM-01, ANKIT SM-03, SATISH SM-04, RAHUL SM-05, BHAVNA, RADHA, KAILASH, LAKUSH, SANGITA. Extra person ho to “+ Add New Person” se add kar sakte ho.</div>
+      <div class="notice"><b>Person-first entry:</b> Work No nahi ho to bhi entry save hogi. Person + Department + Activity mandatory; Qty, Party aur Work No optional hain.</div>
     </section>
 
     <section id="view-more" class="view">
