@@ -236,6 +236,13 @@ function deptFormWorkChanged(){
   const party=f.elements.namedItem('party');
   if(p){
     if(party && !String(party.value||'').trim())party.value=p.party||'';
+    const desc=f.elements.namedItem('description');
+    const desc2=f.elements.namedItem('description2');
+    const given=f.elements.namedItem('givenQty');
+    if(desc && !String(desc.value||'').trim())desc.value=p.description||p.orderDetails||'';
+    if(desc2 && !String(desc2.value||'').trim())desc2.value=p.description2||p.measurement||'';
+    if(given && !String(given.value||'').trim())given.value=pendingQty(p)||p.orderQty||'';
+    deptFormQtyChanged();
     const hint=$('deptWorkHint');
     if(hint)hint.innerHTML=`<b>Optional link:</b> ${esc(p.workNo||'')} • ${esc(p.party||'')}<br>${esc(p.description||'')} • Order Qty ${fmt(p.orderQty)} • Work Pending ${fmt(pendingQty(p))}`;
   }else{
