@@ -232,3 +232,21 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(decoratePending);mo.observe(document.body,{childList:true,subtree:true});setTimeout(decoratePending,500);
 })();
 </script>
+
+
+<script id="cfm-v100-new-work-srl-live">
+(function(){
+ const N=v=>String(v==null?'':v).trim().toUpperCase().replace(/\s+/g,' ');
+ function liveBox(){
+  const dlg=document.querySelector('.dialog:last-of-type,.modal:last-of-type');if(!dlg)return;
+  const cloth=dlg.querySelector('[name="cloth"]'),width=dlg.querySelector('[name="width"]');if(!cloth||!width)return;
+  let box=dlg.querySelector('#newWorkSrlLiveV100');
+  if(!box){box=document.createElement('div');box.id='newWorkSrlLiveV100';box.className='field full';box.innerHTML='<label>Available OPEN SRL / Store Stock</label><div class="auto-box" id="newWorkSrlLiveBody"></div>';const wf=width.closest('.field');(wf||width).insertAdjacentElement('afterend',box)}
+  const draw=()=>{const p={cloth:cloth.value,width:width.value},body=box.querySelector('#newWorkSrlLiveBody');if(!N(p.cloth)){body.innerHTML='<span class="muted">Cloth select/enter karo — OPEN SRL yahan live dikhenge.</span>';return}body.innerHTML=typeof cfmSrlAssistHTML==='function'?cfmSrlAssistHTML(p):'<span class="muted">SRL stock loading…</span>'};
+  if(!cloth.dataset.srlLive){cloth.dataset.srlLive='1';cloth.addEventListener('input',draw);cloth.addEventListener('change',draw)}
+  if(!width.dataset.srlLive){width.dataset.srlLive='1';width.addEventListener('input',draw);width.addEventListener('change',draw)}
+  draw();
+ }
+ const mo=new MutationObserver(()=>setTimeout(liveBox,0));mo.observe(document.body,{childList:true,subtree:true});setTimeout(liveBox,500);
+})();
+</script>
