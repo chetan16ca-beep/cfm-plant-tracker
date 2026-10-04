@@ -1,4 +1,4 @@
-const CACHE='cfm-plant-v99-shell';
+const CACHE='cfm-plant-v100-shell';
 const BASE=self.registration.scope;
 const SHELL=[BASE+'manifest.json',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
 
