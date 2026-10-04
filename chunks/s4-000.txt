@@ -94,9 +94,9 @@ window.printOpenStock=function(){
 
 
 window.printDocsPending=function(){
-  const rows=state.pending.filter(docsActionRequired).slice().sort(workSort);if(!rows.length)return toast('No bill/challan pending work');
-  const body=`<div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">BILL / CHALLAN PENDING REGISTER</div><div class="meta"><span>${rows.length} work</span><span>DATE: ${esc(dateDisplay(todayISO()))}</span></div></div><table><thead><tr><th>Company</th><th>Work No</th><th>PO / Ref</th><th>Order Qty</th><th>Work Pending</th><th>Bill Status</th><th>Bill No</th><th>Challan Status</th><th>Challan No</th><th>Dispatch</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.party||'')}</td><td>${esc(r.workNo||'')}</td><td>${esc(r.poNo||'')}</td><td>${fmt(r.orderQty)}</td><td>${fmt(pendingQty(r))}</td><td>${esc(docStatus(r,'billStatus'))}</td><td>${esc(r.billNo||'')}</td><td>${esc(docStatus(r,'challanStatus'))}</td><td>${esc(r.challanNo||'')}</td><td>${esc(dateDisplay(r.dispatchDate||''))}</td></tr>`).join('')}</tbody></table>`;
-  openPrintWindow('Bill Challan Pending',body,true)
+  const rows=state.pending.filter(r=>docsActionRequired(r)||dispatchNeedsAction(r)).slice().sort(workSort);if(!rows.length)return toast('No billing / challan / dispatch action pending');
+  const body=`<div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">BILLING / CHALLAN / DISPATCH REGISTER</div><div class="meta"><span>${rows.length} work</span><span>DATE: ${esc(dateDisplay(todayISO()))}</span></div></div><table><thead><tr><th>Company</th><th>Work No</th><th>PO / Ref</th><th>Qty</th><th>Bill Status</th><th>Invoice No / Date</th><th>Value</th><th>Challan Status</th><th>Challan No / Date</th><th>Dispatch</th><th>Transporter / Vehicle</th><th>LR</th><th>E-Way Bill</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.party||'')}</td><td>${esc(r.workNo||'')}</td><td>${esc(r.poNo||'')}</td><td>${fmt(r.orderQty)}</td><td>${esc(docStatus(r,'billStatus'))}</td><td>${esc(r.billNo||'')} ${esc(dateDisplay(r.billDate||''))}</td><td>${r.invoiceValue!==''&&r.invoiceValue!=null?'₹ '+fmt(r.invoiceValue):''}</td><td>${esc(docStatus(r,'challanStatus'))}</td><td>${esc(r.challanNo||'')} ${esc(dateDisplay(r.challanDate||''))}</td><td>${esc(dispatchDocStatus(r))} ${esc(dateDisplay(r.dispatchDate||''))}</td><td>${esc(r.transporter||'')} ${esc(r.vehicleNo||'')}</td><td>${esc(r.lrNo||'')}</td><td>${esc(r.ewayBillNo||'')}</td></tr>`).join('')}</tbody></table>`;
+  openPrintWindow('Billing Challan Dispatch Register',body,true)
 }
 
 
@@ -376,6 +376,11 @@ function restoreUiDialogSnapshot(snap){
         if(i<0)return;
       }
       openDeptWorkForm(i);
+    }else if(m.type==='docs'){
+      let i=(state.pending||[]).findIndex(r=>normalize(r.workNo)===normalize(m.workNo));
+      if(i<0&&m.i!==null&&m.i!==undefined&&state.pending[m.i])i=m.i;
+      if(i<0)return;
+      openDocsForm(i);
     }else return;
     setTimeout(()=>applyUiDialogDraft(snap),120);
   }catch(e){console.warn('UI dialog resume restore',e)}
