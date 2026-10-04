@@ -1,4 +1,4 @@
-const CACHE='cfm-plant-v81-shell';
+const CACHE='cfm-plant-v93-shell';
 const BASE=self.registration.scope;
 const SHELL=[BASE+'manifest.json',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
 
@@ -16,7 +16,7 @@ self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET')return;
   if(e.request.mode==='navigate'){e.respondWith(fetch(e.request,{cache:'no-store'}));return;}
   e.respondWith(
-    fetch(e.request).then(r=>{
+    fetch(e.request,{cache:'no-store'}).then(r=>{
       if(r&&r.status===200){
         const cp=r.clone();
         caches.open(CACHE).then(c=>c.put(e.request,cp)).catch(()=>{});
