@@ -16,7 +16,7 @@
     <button data-view="print"><span class="ico">🖨️</span><span>Print</span></button>
     <button data-view="backup"><span class="ico">💾</span><span>Backup</span></button>
     <button data-view="settings"><span class="ico">⚙️</span><span>Settings</span></button>
-    <button data-view="more" class="mobile-more"><span class="ico">☰</span><span>More</span></button>
+    <button type="button" class="mobile-more" onclick="location.reload()" title="Refresh ERP"><span class="ico">🔄</span><span>Refresh</span></button><button data-view="more" class="mobile-more"><span class="ico">☰</span><span>More</span></button>
   </nav>
 
   <main>
