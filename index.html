@@ -79,7 +79,7 @@ registerSW().then(refreshNotifyButton);
  let parts=[],done=0,total=groups.flat().length,st=document.getElementById('st');
  for(const g of groups){
    const x=await Promise.all(g.map(async u=>{
-     const r=await fetch('./'+u+'?v=60');
+     const r=await fetch('./'+u+'?v=61');
      if(!r.ok)throw Error(u);
      done++;st.textContent='Loading '+done+'/'+total;
      return r.text()
