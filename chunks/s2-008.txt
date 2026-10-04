@@ -410,8 +410,9 @@ window.markCutEntryPending=function(i){
   r.cutEntryPendingAt=new Date().toISOString();
   r.cutEntryPendingBy=deviceLabel();
   r.planDate='';
-  stampRecord(r);save();
-  showLocalNotification('✂ Cutting Done • Entry Pending',[r.workNo||'Work',r.party||'','Entry balance '+fmt(pendingQty(r))].filter(Boolean).join(' • '));
+  stampRecord(r);
+  setNextUpdateNotification('✂ Cutting Done • Entry Pending',[r.workNo||'Work',r.party||'','Entry balance '+fmt(pendingQty(r))].filter(Boolean).join(' • '));
+  save();
   toast('Pending se hata diya • Cut Entry Pending me safe hai');
 }
 window.restoreCutEntryPending=function(i){
