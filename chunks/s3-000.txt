@@ -37,37 +37,81 @@ window.quickCut=function(i){const r=state.pending[i];if(isArchived(r))return toa
 window.openCuttingFromPending=function(i){const p=state.pending[i];if(isArchived(p))return toast('Archived order ko pehle Restore karo');openCuttingForm(null,p)}
 
 
+function dispatchDocStatus(r){
+  const explicit=String(r?.dispatchStatus||'').trim().toUpperCase();
+  if(explicit)return explicit;
+  if(r?.dispatchDate)return 'DISPATCHED';
+  return docsDone(r)?'READY':'WAIT DOCS';
+}
+function dispatchNeedsAction(r){return !['DISPATCHED','NOT REQUIRED'].includes(dispatchDocStatus(r))}
 window.openDocsForm=function(i){
   const r=clone(state.pending[i]);
-  const html=field('billStatus','Bill Status',docStatus(r,'billStatus'),'text',false,['PENDING','REQUESTED','READY','DONE','NOT REQUIRED'])+
+  const html=
+    `<div class="field full"><div class="doc-form-section">🧾 BILL / INVOICE DETAILS</div></div>`+
+    field('billStatus','Bill Status',docStatus(r,'billStatus'),'text',false,['PENDING','REQUESTED','READY','DONE','NOT REQUIRED'])+
+    field('billNo','Bill / Invoice No.',r.billNo||'')+
+    field('billDate','Bill / Invoice Date',r.billDate||'','date')+
+    field('invoiceValue','Invoice Value (₹)',r.invoiceValue||'','number')+
+    `<div class="field full"><div class="doc-form-section">📄 CHALLAN DETAILS</div></div>`+
     field('challanStatus','Challan Status',docStatus(r,'challanStatus'),'text',false,['PENDING','REQUESTED','READY','DONE','NOT REQUIRED'])+
-    field('billNo','Bill No.',r.billNo||'')+field('challanNo','Challan No.',r.challanNo||'')+
+    field('challanNo','Challan No.',r.challanNo||'')+
+    field('challanDate','Challan Date',r.challanDate||'','date')+
+    field('dispatchQty','Dispatch Qty',r.dispatchQty||'','number')+
+    `<div class="field full"><div class="doc-form-section">🚚 DISPATCH / TRANSPORT DETAILS</div></div>`+
+    field('dispatchStatus','Dispatch Status',dispatchDocStatus(r),'text',false,['WAIT DOCS','READY','DISPATCHED','HOLD','NOT REQUIRED'])+
     field('dispatchDate','Dispatch Date',r.dispatchDate||'','date')+
-    field('accountsRemark','Billing / Challan Remark',r.accountsRemark||'','textarea',true);
-  openDialog(`Bill / Challan — ${r.workNo}`,html,o=>{Object.assign(state.pending[i],o);stampRecord(state.pending[i]);save();toast('Bill / Challan status saved')})
+    field('transporter','Transporter / Courier',r.transporter||'')+
+    field('vehicleNo','Vehicle No.',r.vehicleNo||'')+
+    field('lrNo','LR / Docket No.',r.lrNo||'')+
+    field('lrDate','LR / Docket Date',r.lrDate||'','date')+
+    field('ewayBillNo','E-Way Bill No.',r.ewayBillNo||'')+
+    field('ewayBillDate','E-Way Bill Date',r.ewayBillDate||'','date')+
+    field('accountsRemark','Billing / Challan / Dispatch Remark',r.accountsRemark||'','textarea',true);
+  openDialog(`Bill / Challan / Dispatch — ${r.workNo}`,html,o=>{
+    ['invoiceValue','dispatchQty'].forEach(k=>o[k]=o[k]===''?'':num(o[k]));
+    if(o.dispatchStatus==='DISPATCHED'&&!o.dispatchDate)o.dispatchDate=todayISO();
+    Object.assign(state.pending[i],o);
+    stampRecord(state.pending[i]);
+    setNextUpdateNotification?.('🧾 Billing / Challan Updated',[
+      state.pending[i].workNo||'Work',
+      state.pending[i].party||'',
+      state.pending[i].billNo?('Bill '+state.pending[i].billNo):'',
+      state.pending[i].challanNo?('Challan '+state.pending[i].challanNo):'',
+      dispatchDocStatus(state.pending[i])
+    ].filter(Boolean).join(' • '));
+    save();toast('Billing / Challan / Dispatch details saved')
+  },{type:'docs',i,workNo:r.workNo||''})
 }
 window.markDoc=function(i,key,status){
-  const r=state.pending[i];if(!r)return;r[key]=status;save();toast(`${key==='billStatus'?'Bill':'Challan'} ${status}`)
+  const r=state.pending[i];if(!r)return;
+  r[key]=status;stampRecord(r);
+  setNextUpdateNotification?.('🧾 Document Status Updated',[r.workNo||'Work',key==='billStatus'?'Bill':'Challan',status].join(' • '));
+  save();toast(`${key==='billStatus'?'Bill':'Challan'} ${status}`)
 }
 function docsCard(r){
-  const i=state.pending.indexOf(r),bs=docStatus(r,'billStatus'),cs=docStatus(r,'challanStatus'),done=docsDone(r);
-  return `<div class="data-card doc-card ${done?'done':''}"><div class="card-top"><div><div class="work">${esc(r.workNo||'MANUAL WORK')}</div><div class="party">${esc(r.party||'')}</div></div><span class="chip ${done?'green':'amber'}">${done?'DOCS DONE':(pendingQty(r)>0?'WORK PENDING':'ACTION')}</span></div>
-  <div class="desc">${esc(r.description||'')}</div><div class="chips">${r.poNo?`<span class="chip">PO ${esc(r.poNo)}</span>`:''}<span class="chip">Order ${fmt(r.orderQty)}</span><span class="chip">Pending Work ${fmt(pendingQty(r))}</span>${r.deliveryDate?`<span class="chip">Del ${esc(dateDisplay(r.deliveryDate))}</span>`:''}</div>
-  <div class="doc-status"><span class="chip ${docNeedsAction(r,'billStatus')?'red':'green'}">Bill: ${esc(bs)}${r.billNo?` • ${esc(r.billNo)}`:''}</span><span class="chip ${docNeedsAction(r,'challanStatus')?'red':'green'}">Challan: ${esc(cs)}${r.challanNo?` • ${esc(r.challanNo)}`:''}</span></div>
-  <div class="card-actions"><button class="btn btn-sm" onclick="openDocsForm(${i})">Edit</button><button class="btn btn-sm btn-green" onclick="markDoc(${i},'billStatus','DONE')">Bill Done</button><button class="btn btn-sm btn-green" onclick="markDoc(${i},'challanStatus','DONE')">Challan Done</button><button class="btn btn-sm" onclick="selectBillRequestWork(${i})">Bill Request</button><button class="btn btn-sm" onclick="shareSingleWorkWhatsApp(${i})">Status Share</button></div></div>`;
+  const i=state.pending.indexOf(r),bs=docStatus(r,'billStatus'),cs=docStatus(r,'challanStatus'),ds=dispatchDocStatus(r),done=docsDone(r);
+  return `<div class="data-card doc-card ${done?'done':''}"><div class="card-top"><div><div class="work">${esc(r.workNo||'MANUAL WORK')}</div><div class="party">${esc(r.party||'')}</div></div><span class="chip ${ds==='DISPATCHED'?'green':done?'green':'amber'}">${ds==='DISPATCHED'?'DISPATCHED':done?'DOCS READY':(pendingQty(r)>0?'WORK PENDING':'ACTION')}</span></div>
+  <div class="desc">${esc(r.description||'')}</div>${r.description2?`<div class="desc pending-desc2"><b>Description 2:</b> ${esc(r.description2)}</div>`:''}<div class="chips">${r.poNo?`<span class="chip">PO ${esc(r.poNo)}</span>`:''}<span class="chip">Order ${fmt(r.orderQty)}</span><span class="chip">Pending Work ${fmt(pendingQty(r))}</span>${r.deliveryDate?`<span class="chip">Del ${esc(dateDisplay(r.deliveryDate))}</span>`:''}</div>
+  <div class="doc-status"><span class="chip ${docNeedsAction(r,'billStatus')?'red':'green'}">Bill: ${esc(bs)}${r.billNo?` • ${esc(r.billNo)}`:''}${r.billDate?` • ${esc(dateDisplay(r.billDate))}`:''}</span><span class="chip ${docNeedsAction(r,'challanStatus')?'red':'green'}">Challan: ${esc(cs)}${r.challanNo?` • ${esc(r.challanNo)}`:''}${r.challanDate?` • ${esc(dateDisplay(r.challanDate))}`:''}</span><span class="chip ${ds==='DISPATCHED'?'green':ds==='HOLD'?'red':'amber'}">Dispatch: ${esc(ds)}</span></div>
+  <div class="chips doc-transport-chips">${r.invoiceValue!==''&&r.invoiceValue!=null?`<span class="chip">₹ ${fmt(r.invoiceValue)}</span>`:''}${r.dispatchQty!==''&&r.dispatchQty!=null?`<span class="chip">Dispatch Qty ${fmt(r.dispatchQty)}</span>`:''}${r.transporter?`<span class="chip">🚚 ${esc(r.transporter)}</span>`:''}${r.vehicleNo?`<span class="chip">Vehicle ${esc(r.vehicleNo)}</span>`:''}${r.lrNo?`<span class="chip">LR ${esc(r.lrNo)}</span>`:''}${r.ewayBillNo?`<span class="chip">E-Way ${esc(r.ewayBillNo)}</span>`:''}${r.dispatchDate?`<span class="chip">Dispatch ${esc(dateDisplay(r.dispatchDate))}</span>`:''}</div>
+  <div class="card-actions"><button class="btn btn-sm btn-primary" onclick="openDocsForm(${i})">Edit Full Details</button><button class="btn btn-sm btn-green" onclick="markDoc(${i},'billStatus','DONE')">Bill Done</button><button class="btn btn-sm btn-green" onclick="markDoc(${i},'challanStatus','DONE')">Challan Done</button><button class="btn btn-sm" onclick="selectBillRequestWork(${i})">Bill Request</button><button class="btn btn-sm" onclick="shareSingleWorkWhatsApp(${i})">Status Share</button></div></div>`;
 }
 window.renderDocs=function(){
   const q=($('docSearch')?.value||'').toLowerCase(),mode=$('docFilter')?.value||'ACTION';
   let rows=state.pending.filter(r=>!isArchived(r)&&JSON.stringify(r).toLowerCase().includes(q));
-  if(mode==='ACTION')rows=rows.filter(r=>docsActionRequired(r));
+  if(mode==='ACTION')rows=rows.filter(r=>docsActionRequired(r)||dispatchNeedsAction(r));
   if(mode==='BILL')rows=rows.filter(r=>docNeedsAction(r,'billStatus'));
   if(mode==='CHALLAN')rows=rows.filter(r=>docNeedsAction(r,'challanStatus'));
+  if(mode==='DISPATCH')rows=rows.filter(r=>docsDone(r)&&dispatchNeedsAction(r));
+  if(mode==='DISPATCHED')rows=rows.filter(r=>dispatchDocStatus(r)==='DISPATCHED');
   if(mode==='DONE')rows=rows.filter(r=>docsDone(r));
   rows.sort((a,b)=>String(b.workNo||'').localeCompare(String(a.workNo||''),undefined,{numeric:true}));
-  const bill=state.pending.filter(r=>!isArchived(r)&&docNeedsAction(r,'billStatus')).length, challan=state.pending.filter(r=>!isArchived(r)&&docNeedsAction(r,'challanStatus')).length;
-  const action=state.pending.filter(r=>!isArchived(r)&&docsActionRequired(r)).length, done=state.pending.filter(r=>!isArchived(r)&&docsDone(r)).length;
-  if($('docKpis'))$('docKpis').innerHTML=kpi('Action Required',action)+kpi('Bill Pending',bill)+kpi('Challan Pending',challan)+kpi('Docs Done',done)+kpi('Total Work',state.pending.length);
-  if($('docsList'))$('docsList').innerHTML=rows.map(docsCard).join('')||'<div class="empty">No matching bill/challan work</div>';
+  const active=state.pending.filter(r=>!isArchived(r));
+  const bill=active.filter(r=>docNeedsAction(r,'billStatus')).length, challan=active.filter(r=>docNeedsAction(r,'challanStatus')).length;
+  const dispatch=active.filter(r=>docsDone(r)&&dispatchNeedsAction(r)).length, dispatched=active.filter(r=>dispatchDocStatus(r)==='DISPATCHED').length;
+  const action=active.filter(r=>docsActionRequired(r)||dispatchNeedsAction(r)).length, done=active.filter(r=>docsDone(r)).length;
+  if($('docKpis'))$('docKpis').innerHTML=kpi('Action Required',action)+kpi('Bill Pending',bill)+kpi('Challan Pending',challan)+kpi('Dispatch Pending',dispatch)+kpi('Dispatched',dispatched)+kpi('Docs Done',done);
+  if($('docsList'))$('docsList').innerHTML=rows.map(docsCard).join('')||'<div class="empty">No matching billing / challan / dispatch work</div>';
   populateBillRequestWork();updateBillRequestPreview();
 }
 function populateBillRequestWork(){
@@ -350,11 +394,11 @@ window.printDeptWorkReport=function(){
 }
 
 function excelRows(kind){
-  if(kind==='pending')return state.pending.map(r=>({'Work No':r.workNo,'Party':r.party,'PO / Ref':r.poNo,'Order Date':r.orderDate,'Delivery Date':r.deliveryDate,'Eagle Code':r.eagleCode,'Item':r.description,'Cloth':r.cloth,'Width':r.width,'Order Qty':r.orderQty,'Cut Qty (Auto)':r.cutQty,'Pending Qty (Auto)':pendingQty(r),'Status (Auto)':r.status||'','Bill Status':docStatus(r,'billStatus'),'Challan Status':docStatus(r,'challanStatus'),'Updated By':r.updatedBy||'','Updated At':r.updatedAt||''}));
+  if(kind==='pending')return state.pending.map(r=>({'Work No':r.workNo,'Party':r.party,'PO / Ref':r.poNo,'Order Date':r.orderDate,'Delivery Date':r.deliveryDate,'Eagle Code':r.eagleCode,'Description 1':r.description,'Description 2':r.description2||'','Cloth':r.cloth,'Width':r.width,'Order Qty':r.orderQty,'Cut Qty (Auto)':r.cutQty,'Pending Qty (Auto)':pendingQty(r),'Status (Auto)':r.status||'','Bill Status':docStatus(r,'billStatus'),'Bill No':r.billNo||'','Bill Date':r.billDate||'','Invoice Value':r.invoiceValue||'','Challan Status':docStatus(r,'challanStatus'),'Challan No':r.challanNo||'','Challan Date':r.challanDate||'','Dispatch Status':dispatchDocStatus(r),'Dispatch Date':r.dispatchDate||'','Dispatch Qty':r.dispatchQty||'','Transporter':r.transporter||'','Vehicle No':r.vehicleNo||'','LR No':r.lrNo||'','LR Date':r.lrDate||'','E-Way Bill No':r.ewayBillNo||'','E-Way Bill Date':r.ewayBillDate||'','Accounts Remark':r.accountsRemark||'','Updated By':r.updatedBy||'','Updated At':r.updatedAt||''}));
   if(kind==='store')return state.store.map(r=>({'SRL No':r.srlNo,'Party / Supplier':r.supplier,'Quality':r.quality,'Description':r.description,'Width':r.width,'Opening MTR':r.openingMtr,'Used MTR (Auto)':Number(srlUsedMtr(r.srlNo).toFixed(2)),'Balance MTR (Auto)':Number(srlBalance(r).toFixed(2)),'Status (Auto)':storeStatus(r),'Issue Date (Auto)':r.issueDate,'Close Date (Auto)':r.closeDate,'Updated By':r.updatedBy||'','Updated At':r.updatedAt||''}));
   if(kind==='cutting')return state.cutting.map(r=>({'Date':r.date,'Work No':r.workNo,'Party':r.party,'Size Cut':r.sizeLine,'SRL No':r.srlNo,'Cut Qty':r.cutQty,'Used MTR (Auto)':Number(cuttingUsedMtr(r).toFixed(2)),'Cloth':r.cloth,'Cutting By':r.cuttingBy,'Wastage':r.wastage?'W':'','Remark':r.remark,'Updated By':r.updatedBy||'','Updated At':r.updatedAt||''}));
   if(kind==='planning')return state.pending.filter(r=>r.planDate).map(r=>({'Plan Date':r.planDate,'Work No':r.workNo,'Party':r.party,'Item':r.description,'Cloth':r.cloth,'Order Qty':r.orderQty,'Cut Qty (Auto)':r.cutQty,'Pending Qty (Auto)':pendingQty(r),'Delivery Date':r.deliveryDate,'Priority':r.priority||'','Remark':r.remark||'','Updated By':r.updatedBy||''}));
-  if(kind==='deptwork')return (state.departmentWork||[]).map(r=>({'Date':r.date,'Process':r.process,'Person':r.person,'Work No':r.workNo,'Party':r.party,'Work / Product Details':r.description,'Given Qty':r.givenQty,'Done Qty':r.doneQty,'Pending (Auto)':deptEntryPending(r),'Remark':r.remark||'','Supervisor':r.supervisor||'','Shift':r.shift||'','Updated By':r.updatedBy||'','Updated At':r.updatedAt||''}));
+  if(kind==='deptwork')return (state.departmentWork||[]).map(r=>({'Date':r.date,'Process':r.process,'Person':r.person,'Work No':r.workNo,'Party':r.party,'Work / Product Details':r.description,'Description 2':r.description2||'','Given Qty':r.givenQty,'Done Qty':r.doneQty,'Pending (Auto)':deptEntryPending(r),'Remark':r.remark||'','Supervisor':r.supervisor||'','Shift':r.shift||'','Updated By':r.updatedBy||'','Updated At':r.updatedAt||''}));
   if(kind==='measurements')return (state.measurements||[]).map(r=>({'Work No':r.workNo,'Eagle Code':r.eagleCode,'Party':r.party,'Product':r.description,'Category':r.category,'Size':r.size,'Type':r.type,'Micron':r.micron,'Standard Cloth':r.standardCloth,'Std Width':r.stdWidth,'Previous Measurement':r.previousMeasurement,'Measurement 1':r.measurement1,'Measurement 2':r.measurement2,'Measurement 3':r.measurement3,'Final Measurement':r.finalMeasurement,'Status':r.status}));
   if(kind==='srltracker')return (state.srlTracker||[]).map(r=>({'SRL No':r.srlNo,'EFPPL Code':r.efpplCode,'Quality':r.quality,'Process':r.process,'Width':r.width,'Physical Opening MTR':r.openingMtr,'Excel Issue MTR':r.issueMtr,'Excel Live Balance MTR':r.liveBalanceMtr,'Status':r.status,'Rack':r.rack,'Last Issue Date':r.lastIssueDate,'Last Work':r.lastWork,'Note':r.note}));
   if(kind==='issues')return (state.issueRegister||[]).map(r=>({'Issue Date':r.issueDate,'SRL No':r.srlNo,'Party':r.party,'Material':r.material,'Cloth':r.cloth,'Width':r.width,'Opening MTR':r.openingMtr,'Previously Issued':r.previousIssued,'Issue Qty MTR':r.issueQtyMtr,'Balance After':r.balanceAfter,'Work No':r.workNo,'Issued By':r.issuedBy,'Source':r.source,'Closing Date':r.closingDate,'Status':r.stockStatus}));
