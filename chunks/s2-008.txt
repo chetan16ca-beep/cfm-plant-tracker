@@ -280,6 +280,7 @@ window.showView=function(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
   const target=$('view-'+name); if(target)target.classList.add('active');
+  if(target){try{safeStorage.setItem('cfm-ui-active-view-v1',name)}catch(e){}}
   if(name==='search')$('globalSearch')?.focus();
   if(name==='docs')renderDocs();
   if(name==='excel')renderExcelView();
