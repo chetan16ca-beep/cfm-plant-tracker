@@ -389,6 +389,15 @@ function pendingLiveInfo(r){
  let dispatch=stage==='DISPATCHED'?'DONE':stage==='READY TO DISPATCH'?'YES':(p<=0||stage==='PACKING')?'POSSIBLE':'NO';
  return {last,stage,dispatch,balance:p};
 }
+window.openWorkBatchReport=function(w){
+ const p=getPending(w);if(!p)return toast('Work No not found');
+ const N=v=>String(v==null?'':v).trim().toUpperCase(),dept=(state.departmentWork||[]).filter(x=>N(x.workNo)===N(w)),cuts=(state.cutting||[]).filter(x=>N(x.workNo)===N(w));
+ const cq=Math.max(num(p.cutQty),cuts.reduce((a,x)=>a+num(x.cutQty),0)),bal=Math.max(0,num(p.orderQty)-cq);
+ const steps=['CUTTING','STITCHING','THREAD CUTTING','FINISHING','CHECKING','PACKING'];
+ const trs=steps.map(step=>{let a=dept.filter(x=>N(x.process||x.department).includes(step==='FINISHING'?'FINISH':step==='CHECKING'?'CHECK':step));if(step==='CUTTING'&&cuts.length)a=cuts.map(x=>({person:x.person||x.cuttingPerson||'',doneQty:x.cutQty,date:x.date,remark:x.remark||''}));return '<tr><td>'+esc(step)+'</td><td>'+esc(a.map(x=>x.person).filter(Boolean).join(', ')||'-')+'</td><td>'+fmt(a.reduce((q,x)=>q+num(x.doneQty),0))+'</td><td>'+esc(a.map(x=>dateDisplay(x.date||'')).filter(Boolean).join(', ')||'-')+'</td><td>'+esc(a.map(x=>x.remark||x.description||'').filter(Boolean).join(' | ')||'-')+'</td><td>'+(a.length?'YES':'PENDING')+'</td></tr>'}).join('');
+ const html='<h2>WORK PRODUCTION BATCH REPORT</h2><h3>'+esc(w)+' • '+esc(p.party||'')+'</h3><table class="print-table"><tbody><tr><th>Product</th><td>'+esc(p.description||'-')+'</td><th>Order Qty</th><td>'+fmt(p.orderQty)+'</td></tr><tr><th>Description 2</th><td>'+esc(p.description2||'-')+'</td><th>Done / Balance</th><td>'+fmt(cq)+' / '+fmt(bal)+'</td></tr><tr><th>Cloth</th><td>'+esc(p.cloth||'-')+'</td><th>Work No</th><td>'+esc(w)+'</td></tr></tbody></table><h3>Process Checklist</h3><table class="print-table"><thead><tr><th>Process</th><th>Person</th><th>Done Qty</th><th>Date</th><th>Remark</th><th>Status</th></tr></thead><tbody>'+trs+'</tbody></table><p style="margin-top:24px">Supervisor: __________________ &nbsp;&nbsp; Checked By: __________________ &nbsp;&nbsp; Approved By: __________________</p>';
+ if(typeof openPrintWindow==='function')openPrintWindow('Batch Report '+w,html,true);else{const x=window.open('','_blank');if(x){x.document.write(html);x.document.close()}}
+};
 function pendingCard(r,compact=false){
   const archived=isArchived(r),cutEntry=isCutEntryPending(r),p=pendingQty(r),qtyMissing=!hasOrderQty(r),done=!qtyMissing&&p<=0,pct=qtyMissing?0:Math.min(100,Math.round((num(r.cutQty)/Math.max(1,num(r.orderQty)))*100)),idx=state.pending.indexOf(r);
   const live=pendingLiveInfo(r);
