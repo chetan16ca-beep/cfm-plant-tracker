@@ -67,9 +67,17 @@ window.openPendingForm=function(i=null){
 }
 
 window.openStoreForm=function(i=null){
-  const r=i==null?{entryDate:todayISO(),billNo:'',srlNo:'',efpplCode:'',quality:'',process:'STANDARD',description:'',width:'',openingMtr:'',rack:'',rollNo:'',issueDate:'',closeDate:'',verifiedBy:'STORE ENTRY',status:'READY',supplier:''}:clone(state.store[i]);
-  const html=field('srlNo','Full SRL No.',r.srlNo)+field('efpplCode','EFPPL Code',r.efpplCode)+field('entryDate','Entry Date',r.entryDate,'date')+field('billNo','Bill No.',r.billNo)+field('quality','Quality / Cloth',r.quality)+field('process','Process',r.process)+field('width','Width',r.width,'number')+field('openingMtr','Opening MTR',r.openingMtr,'number')+field('rollNo','Roll No.',r.rollNo||'')+field('issueDate','Issue Date',r.issueDate||'','date')+field('closeDate','Close Date',r.closeDate||'','date')+field('rack','Rack',r.rack)+field('supplier','Supplier / Party',r.supplier)+field('status','Status',r.status,'text',false,['READY','OPEN','CLOSED','ZERO'])+field('verifiedBy','Verified By',r.verifiedBy)+field('description','Description',r.description,'textarea',true);
-  openDialog(i==null?'Add SRL':`Edit ${r.srlNo}`,html,o=>{o.width=o.width===''?'':num(o.width);o.openingMtr=o.openingMtr===''?'':num(o.openingMtr);stampRecord(o);if(i==null)state.store.push(o);else state.store[i]=o;save();toast('SRL saved • Balance automatic')},{type:'store',i,srlNo:r.srlNo||''})
+  const r=i==null?{entryDate:todayISO(),billNo:'',srlNo:'',efpplCode:'',quality:'',process:'STANDARD',description:'',width:'',openingMtr:'',rack:'',rollNo:'',issueDate:'',closeDate:'',verifiedBy:'STORE ENTRY',status:'READY',supplier:'',assignedWorkNo:'',issuedTo:'',physicalMtr:'',storeRemark:''}:clone(state.store[i]);
+  const workOptions=[...new Set((state.pending||[]).map(x=>x.workNo).filter(Boolean))];
+  const html=field('srlNo','Full SRL No.',r.srlNo)+field('efpplCode','EFPPL Code',r.efpplCode)+field('entryDate','Entry Date',r.entryDate,'date')+field('billNo','Bill No.',r.billNo)+field('quality','Quality / Cloth',r.quality)+field('process','Process',r.process)+field('width','Width',r.width,'number')+field('openingMtr','Opening MTR',r.openingMtr,'number')+field('rollNo','Roll No.',r.rollNo||'')+field('rack','Rack / Location',r.rack)+field('assignedWorkNo','Reserved / Work No.',r.assignedWorkNo||'','text',false,['',...workOptions])+field('issuedTo','Issued To / Worker',r.issuedTo||'')+field('physicalMtr','Physical MTR (Verification)',r.physicalMtr??'','number')+field('issueDate','Issue Date',r.issueDate||'','date')+field('closeDate','Close Date',r.closeDate||'','date')+field('supplier','Supplier / Party',r.supplier)+field('status','Status',r.status,'text',false,['READY','OPEN','RESERVED','CLOSED','ZERO','BLOCKED','HOLD'])+field('verifiedBy','Verified By',r.verifiedBy)+field('description','Description',r.description,'textarea',true)+field('storeRemark','Store / Movement Remark',r.storeRemark||'','textarea',true);
+  openDialog(i==null?'Add SRL':`Edit ${r.srlNo}`,html,o=>{
+    o.width=o.width===''?'':num(o.width);o.openingMtr=o.openingMtr===''?'':num(o.openingMtr);o.physicalMtr=o.physicalMtr===''?'':num(o.physicalMtr);
+    const duplicate=state.store.find((x,idx)=>idx!==i&&normalize(x.srlNo)===normalize(o.srlNo));
+    if(duplicate){toast('Duplicate SRL No. allowed nahi hai');return false}
+    stampRecord(o);if(i==null)state.store.push(o);else state.store[i]=o;
+    setNextUpdateNotification?.('📦 Store SRL Updated',[o.srlNo||'SRL',o.assignedWorkNo?('Work '+o.assignedWorkNo):'',o.issuedTo?('Worker '+o.issuedTo):'',o.rack?('Rack '+o.rack):''].filter(Boolean).join(' • '));
+    save();toast('SRL saved • Work / Worker tracking updated')
+  },{type:'store',i,srlNo:r.srlNo||''})
 }
 
 function resolveSRL(short){const v=String(short||'').trim();if(!v)return v;if(v.toUpperCase()==='W')return 'W';if(v.includes('/'))return v;const digits=(v.match(/(\d{2,4})$/)||[])[1];if(!digits)return v;const target=digits.padStart(4,'0');const matches=state.store.filter(s=>String(s.srlNo||'').endsWith('/'+target));if(matches.length===1)return matches[0].srlNo;if(matches.length>1)return '__AMBIGUOUS__';return v}
