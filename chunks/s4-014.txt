@@ -376,3 +376,50 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(addButtons,20));mo.observe(document.body,{childList:true,subtree:true});setTimeout(addButtons,700);
 })();
 </script>
+
+<script id="cfm-v104-smart-allocation">
+(function(){
+ const N=v=>String(v==null?'':v).trim().toUpperCase().replace(/\s+/g,' '), Q=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
+ function fam(v){const s=N(v);return ['333 ANT','333 AS','333 A'].includes(s)?'333 ANT/AS/A':s}
+ function pFor(r){const ec=N(r.eagleCode);return (state.productMaster||[]).find(p=>ec&&N(p.eagleCode)===ec)||null}
+ function need(r){const p=pFor(r),std=Q(p?.stdClothMtrNos||p?.standardConsumption||p?.consumptionMtr);return std?std*Q(r.orderQty):0}
+ function rows(r){
+  const F=fam(r.cloth),w=Q(r.width);
+  return (state.store||[]).filter(s=>srlBalance(s)>0&&!['CLOSED','ZERO','BLOCKED'].includes(N(storeStatus(s)))&&fam(s.quality||s.cloth)===F)
+   .map(s=>({s,b:srlBalance(s),exact:w>0&&Math.abs(Q(s.width)-w)<.01,res:N(s.assignedWorkNo)===N(r.workNo)}))
+   .filter(x=>!x.s.assignedWorkNo||x.res)
+   .sort((a,b)=>(b.exact-a.exact)||(a.b-b.b));
+ }
+ function plan(r){
+  const all=rows(r),req=need(r),exact=all.filter(x=>x.exact),pool=exact.length?exact:all,sel=[];let left=req;
+  if(req>0){for(const x of pool){if(left<=0)break;sel.push({...x,take:Math.min(x.b,left)});left-=Math.min(x.b,left)}}
+  else if(pool[0])sel.push({...pool[0],take:0});
+  return {req,left:Math.max(0,left),sel,exact:exact.length>0,all};
+ }
+ window.cfmSmartAllocate=function(workNo){
+  const r=(state.pending||[]).find(x=>N(x.workNo)===N(workNo));if(!r)return toast('Work not found');
+  const p=plan(r);if(!p.sel.length)return toast('Suitable OPEN SRL stock nahi mila');
+  const ids=p.sel.map(x=>x.s.srlNo).join(', ');
+  if(!confirm('Reserve for '+r.workNo+'?\nSRL: '+ids+(p.req?'\nRequired ≈ '+fmt(p.req)+' MTR':'')+(p.left?'\nSHORT '+fmt(p.left)+' MTR':'')))return;
+  p.sel.forEach(x=>{x.s.assignedWorkNo=r.workNo;x.s.status='RESERVED';x.s.reservedMtr=x.take||x.b;x.s.reservedAt=new Date().toISOString()});
+  r.allocatedSrls=p.sel.map(x=>x.s.srlNo);r.clothAllocationStatus=p.left>0?'PARTIAL':'ALLOCATED';r.requiredClothMtr=p.req||'';
+  save();setNextUpdateNotification?.('📌 Cloth Reserved',r.workNo+' • '+ids);toast('SRL reserved • '+r.workNo);
+ };
+ window.cfmReleaseAllocation=function(workNo){
+  (state.store||[]).filter(s=>N(s.assignedWorkNo)===N(workNo)).forEach(s=>{s.assignedWorkNo='';s.reservedMtr='';if(N(s.status)==='RESERVED')s.status='OPEN'});
+  const r=(state.pending||[]).find(x=>N(x.workNo)===N(workNo));if(r){r.allocatedSrls=[];r.clothAllocationStatus='';r.requiredClothMtr=''}save();toast('SRL reservation released');
+ };
+ function decorate(){
+  const list=document.getElementById('pendingList');if(!list)return;
+  [...list.querySelectorAll('.data-card')].forEach(card=>{
+   if(card.querySelector('.cfm-alloc-v104'))return;
+   const work=card.querySelector('.work')?.textContent?.trim(),r=(state.pending||[]).find(x=>N(x.workNo)===N(work));if(!r)return;
+   const p=plan(r),d=document.createElement('div');d.className='cfm-alloc-v104';
+   const chips=p.sel.map(x=>'<span class="chip '+(x.exact?'green':'')+'">SRL '+esc(x.s.srlNo)+' • W '+esc(x.s.width||'-')+' • Bal '+fmt(x.b)+' MTR'+(p.req?' • Use ≈ '+fmt(x.take):'')+'</span>').join('');
+   d.innerHTML='<div style="margin-top:9px;padding:9px;border:1px solid #d6e2ee;border-radius:10px"><b>Smart Cloth Allocation</b><div class="chips" style="margin-top:6px">'+(p.req?'<span class="chip">Required ≈ '+fmt(p.req)+' MTR</span>':'<span class="chip">Consumption master required</span>')+(p.exact?'<span class="chip green">Exact Width</span>':'<span class="chip red">Alternative Width</span>')+chips+(p.left?'<span class="chip red">SHORT '+fmt(p.left)+' MTR</span>':'')+'</div><div class="card-actions" style="margin-top:7px"><button class="btn btn-sm btn-green" type="button" onclick="event.stopPropagation();cfmSmartAllocate(\''+esc(r.workNo)+'\')">📌 Reserve SRL</button>'+(r.allocatedSrls?.length?'<button class="btn btn-sm" type="button" onclick="event.stopPropagation();cfmReleaseAllocation(\''+esc(r.workNo)+'\')">Release</button>':'')+'</div></div>';
+   card.appendChild(d);
+  });
+ }
+ const mo=new MutationObserver(()=>setTimeout(decorate,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(decorate,700);
+})();
+</script>
