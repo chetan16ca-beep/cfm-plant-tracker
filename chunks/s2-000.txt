@@ -247,7 +247,7 @@
             <label>Company</label>
             <input id="billRequestCompanySearch" list="billRequestCompanyList" placeholder="Company name type/search karo..." oninput="billCompanySearchChanged()" autocomplete="off">
             <datalist id="billRequestCompanyList"></datalist>
-            <select id="billRequestCompany" onchange="syncBillCompanySearch();populateBillRequestWork();updateBillRequestPreview()" style="margin-top:7px"></select>
+            <select id="billRequestCompany" onchange="billCompanyPick()" style="margin-top:7px"></select>
             <div style="height:8px"></div>
             <label>Work No.</label>
             <div style="display:flex;gap:8px;margin:6px 0"><button type="button" class="btn btn-sm" onclick="toggleAllBillWorks(true)">☑ Select All</button><button type="button" class="btn btn-sm" onclick="toggleAllBillWorks(false)">Clear</button></div>
