@@ -121,7 +121,9 @@ window.renderDocs=function(){
 }
 function populateBillRequestCompany(){
   const el=$('billRequestCompany');if(!el)return;
-  const current=el.value, parties=[...new Set(state.pending.filter(r=>!isArchived(r)).map(r=>String(r.party||'').trim()).filter(Boolean))].sort();
+  const current=el.value;
+  const source=[...(state.pending||[]),...(window.CFM_SEED?.pending||[])];
+  const parties=[...new Set(source.map(r=>String(r.party||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   el.innerHTML='<option value="">Select Company</option>'+parties.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
   const dl=$('billRequestCompanyList');if(dl)dl.innerHTML=parties.map(x=>'<option value="'+esc(x)+'"></option>').join('');
   if(parties.includes(current))el.value=current;
@@ -137,7 +139,7 @@ window.billCompanySearchChanged=function(){
 }
 function populateBillRequestWork(){
   const el=$('billRequestWork');if(!el)return;
-  const party=$('billRequestCompany')?.value||'';
+  const party=$('billRequestCompany')?.value||$('billRequestCompanySearch')?.value||'';
   const selected=new Set([...el.selectedOptions].map(o=>o.value));
   const rows=state.pending.filter(r=>!isArchived(r)&&(!party||normalize(r.party)===normalize(party))).slice().sort(workSort);
   el.innerHTML=rows.map(r=>'<option value="'+esc(r.workNo)+'">'+esc(r.workNo)+' — '+esc(r.description||'')+'</option>').join('');
