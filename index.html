@@ -105,6 +105,7 @@ window.addEventListener('message',e=>{
   const d=e.data||{};
   if(d.type==='CFM_NOTIFICATION'||d.type==='cfm-notify'){
     sendCFMNotification(d.title||'CFM Plant Tracker',d.body||'New update',d.data||{});
+    try{document.getElementById('app').contentWindow.CFMToast(d.title||'CFM Update',d.body||'New update')}catch(_){};
   }
 });
 
