@@ -626,7 +626,16 @@ function openDialog(title,html,onSave,resumeMeta=null){
     }
   },0);
 }
-$('saveFormBtn').addEventListener('click',()=>{const fd=new FormData($('editForm'));const obj=Object.fromEntries(fd.entries());const ok=editContext?.(obj);if(ok!==false)$('editDialog').close()});
+$('saveFormBtn').addEventListener('click',async()=>{
+  const btn=$('saveFormBtn');if(btn?.dataset.saving==='1')return;
+  const fd=new FormData($('editForm'));const obj=Object.fromEntries(fd.entries());
+  try{
+    if(btn){btn.dataset.saving='1';btn.disabled=true;btn.textContent='Saving…'}
+    const ok=await Promise.resolve(editContext?.(obj));
+    if(ok!==false){$('editDialog').close();setTimeout(()=>{try{renderAll()}catch(e){}},0)}
+  }catch(e){console.error('Save failed',e);toast('Save error • '+(e?.message||'please retry'))}
+  finally{if(btn){btn.dataset.saving='0';btn.disabled=false;if($('editDialog')?.open)btn.textContent=$('editDialog')?.classList.contains('multi-po-dialog')?'Save PO Items':'Save'}}
+});
 $('editDialog').addEventListener('close',()=>{dialogResumeMeta=null;try{safeStorage.removeItem('cfm-ui-dialog-v1')}catch(e){}});
 
 
@@ -995,7 +1004,7 @@ window.saveMultiPoItems=function(){
   saveCustomParty(party);
   const workRange=created.length===1?created[0].workNo:(created[0].workNo+' – '+created.at(-1).workNo);
   setNextUpdateNotification('🔔 New PO Added',`${party} • ${created.length} item • ${workRange}${poNo?' • PO '+poNo:''}`);
-  save();
+  try{save()}catch(e){created.forEach(r=>{const j=state.pending.indexOf(r);if(j>=0)state.pending.splice(j,1)});toast('Work Order save error • '+(e?.message||'retry'));return false}
   toast(`${created.length} PO item saved • ${workRange}`);
   return true;
 };
