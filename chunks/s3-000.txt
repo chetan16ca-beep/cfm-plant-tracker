@@ -123,7 +123,17 @@ function populateBillRequestCompany(){
   const el=$('billRequestCompany');if(!el)return;
   const current=el.value, parties=[...new Set(state.pending.filter(r=>!isArchived(r)).map(r=>String(r.party||'').trim()).filter(Boolean))].sort();
   el.innerHTML='<option value="">Select Company</option>'+parties.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+  const dl=$('billRequestCompanyList');if(dl)dl.innerHTML=parties.map(x=>'<option value="'+esc(x)+'"></option>').join('');
   if(parties.includes(current))el.value=current;
+  syncBillCompanySearch();
+}
+window.syncBillCompanySearch=function(){const s=$('billRequestCompanySearch'),el=$('billRequestCompany');if(s&&el)s.value=el.value||''}
+window.billCompanySearchChanged=function(){
+ const s=$('billRequestCompanySearch'),el=$('billRequestCompany');if(!s||!el)return;
+ const q=normalize(s.value),opts=[...el.options].filter(o=>o.value);
+ const exact=opts.find(o=>normalize(o.value)===q), starts=opts.filter(o=>normalize(o.value).includes(q));
+ if(exact)el.value=exact.value; else if(starts.length===1)el.value=starts[0].value; else el.value='';
+ populateBillRequestWork();updateBillRequestPreview();
 }
 function populateBillRequestWork(){
   const el=$('billRequestWork');if(!el)return;
