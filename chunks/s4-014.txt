@@ -740,3 +740,23 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
 }
 .v151-person{margin-top:10px;border-top:1px solid #e4edf4;padding-top:9px;display:flex;gap:7px;flex-wrap:wrap}.v151-person>b{width:100%;color:#145b8d}.v151-person span{background:#f4f9fd;border-radius:9px;padding:6px 8px;font-size:10px}.v151-srl{background:#e8f5ff!important;color:#1269b0!important;border-color:#b9dcf5!important}
 </style>
+
+<style id="cfm-v152-pro-header">
+@media(max-width:760px){
+ .topbar{position:relative!important;padding:10px 12px!important;min-height:68px!important;border-radius:0 0 16px 16px!important;background:#fff!important;display:flex!important;justify-content:space-between!important;gap:8px!important;box-shadow:0 5px 18px rgba(20,95,150,.10)!important}
+ .topbar .brand{display:flex!important;align-items:center!important;gap:9px!important;min-width:0!important}.topbar .logo{width:44px!important;height:44px!important;flex:0 0 44px!important}
+ .topbar .brand>div{display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:wrap!important}.topbar .brand h1{margin:0!important;font-size:15px!important;line-height:1.05!important;display:flex!important;align-items:center!important;gap:5px!important;flex-wrap:wrap!important}
+ .topbar .brand h1>span:first-child{font-size:9px!important;max-width:105px!important;line-height:1.05!important}.topbar .brand p{display:none!important}.app-version-badge{font-size:8px!important;padding:3px 6px!important;margin-left:0!important}
+ .topbar>div:last-child{display:flex!important;align-items:center!important;gap:5px!important;flex-wrap:nowrap!important}.topbar>div:last-child .btn{min-width:0!important;width:36px!important;height:36px!important;min-height:36px!important;padding:0!important;border-radius:11px!important;font-size:0!important}
+ .topbar>div:last-child .btn[onclick*="manualCloudSync"]:before{content:'↻';font-size:21px!important}.topbar>div:last-child .btn[onclick*="manualCloudSync"]:after{content:''}
+ #cloudSyncBadge{font-size:0!important;width:34px!important;height:34px!important;padding:0!important;display:grid!important;place-items:center!important;border-radius:11px!important}#cloudSyncBadge:before{content:'☁';font-size:17px!important}
+ #installBtn{display:none!important}
+ .home-shortcut-tip{display:none!important}
+}
+</style>
+<script id="cfm-v152-refresh-header">
+(function(){
+ function addRefresh(){const r=document.querySelector('.topbar>div:last-child');if(!r||document.getElementById('v152Refresh'))return;const b=document.createElement('button');b.id='v152Refresh';b.className='btn';b.title='Refresh ERP';b.textContent='↻';b.style.fontSize='20px';b.onclick=()=>location.reload();r.appendChild(b)}
+ const o=new MutationObserver(addRefresh);o.observe(document.body,{childList:true,subtree:false});setTimeout(addRefresh,300);
+})();
+</script>
