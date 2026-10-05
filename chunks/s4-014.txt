@@ -501,3 +501,18 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(update,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(update,800);
 })();
 </script>
+
+<script id="cfm-v108-cloth-tag-4x8">
+(function(){
+ window.printClothTags5=function(srls){
+  const ids=(Array.isArray(srls)?srls:[srls]).filter(Boolean);
+  const rows=ids.map(id=>(state.store||[]).find(r=>String(r.srlNo||'')===String(id))).filter(Boolean);
+  if(!rows.length)return toast('SRL select karo');
+  const tag=r=>{const bal=srlBalance(r),st=bal<=0?'CLOSED':storeStatus(r);return '<div class="tag"><div class="head"><b>CFM • CLOTH / SRL TAG</b><strong>'+esc(r.srlNo||'-')+'</strong></div><div class="g"><span><small>CLOTH / QUALITY</small><b>'+esc(r.quality||r.cloth||'-')+'</b></span><span><small>ACTUAL WIDTH</small><b>'+esc(r.width||'-')+'"</b></span><span><small>OPENING MTR</small><b>'+fmt(r.openingMtr||0)+' MTR</b></span><span><small>LIVE BALANCE</small><b>'+fmt(bal)+' MTR</b></span><span><small>RACK / LOCATION</small><b>'+esc(r.rack||'-')+'</b></span><span><small>STATUS</small><b>'+esc(st)+'</b></span><span><small>ENTRY DATE</small><b>'+esc(dateDisplay(r.entryDate||''))+'</b></span><span><small>BILL NO.</small><b>'+esc(r.billNo||'-')+'</b></span><span class="full"><small>SUPPLIER</small><b>'+esc(r.supplier||'-')+'</b></span></div><div class="scan">SRL '+esc(r.srlNo||'')+' | '+esc(r.quality||r.cloth||'')+' | '+esc(r.width||'')+'" | BAL '+fmt(bal)+' MTR</div></div>'};
+  const w=window.open('','_blank','width=900,height=1000');if(!w)return toast('Print popup allow karo');
+  w.document.write('<!doctype html><html><head><title>Cloth Tags 4x8</title><style>@page{size:A4 portrait;margin:5mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0}.sheet{display:grid;grid-template-columns:repeat(2,4in);grid-auto-rows:8in;gap:3mm;justify-content:center;align-content:start}.tag{width:4in;height:8in;border:2px solid #111;padding:12px;overflow:hidden;page-break-inside:avoid}.head{border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:12px;text-align:center}.head b{display:block;font-size:15px}.head strong{display:block;font-size:34px;margin-top:7px}.g{display:grid;grid-template-columns:1fr 1fr;border-left:1px solid #777;border-top:1px solid #777}.g span{padding:10px;border-right:1px solid #777;border-bottom:1px solid #777;min-height:72px}.g .full{grid-column:1/-1}.g small{display:block;font-size:9px;color:#555;margin-bottom:5px}.g b{font-size:16px}.scan{font:11px monospace;text-align:center;margin-top:14px;border:1px dashed #777;padding:10px;overflow:hidden}@media print{body{print-color-adjust:exact}}</style></head><body><div class="sheet">'+rows.map(tag).join('')+'</div><script>setTimeout(()=>window.print(),250)<\/script></body></html>');w.document.close();
+ };
+ function update(){const b=document.querySelector('#clothTag5Bar button');if(b)b.textContent='🏷 Print Selected Cloth Tags • 4x8" • 2/Page';}
+ const mo=new MutationObserver(()=>setTimeout(update,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(update,700);
+})();
+</script>
