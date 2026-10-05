@@ -759,4 +759,4 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
  function addRefresh(){const r=document.querySelector('.topbar>div:last-child');if(!r||document.getElementById('v152Refresh'))return;const b=document.createElement('button');b.id='v152Refresh';b.className='btn';b.title='Refresh ERP';b.textContent='↻';b.style.fontSize='20px';b.onclick=()=>location.reload();r.appendChild(b)}
  const o=new MutationObserver(addRefresh);o.observe(document.body,{childList:true,subtree:false});setTimeout(addRefresh,300);
 })();
-</script>
+</script><style id="cfm-v153-logo">.topbar .eagle-logo{width:150px!important;height:64px!important;object-fit:contain!important;background:#fff!important;border-radius:8px!important}@media(max-width:760px){.topbar .eagle-logo{width:118px!important;height:54px!important;flex:0 0 118px!important}.topbar .brand>div{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:2px!important}.topbar .brand p{display:block!important;font-size:9px!important;margin:0!important}}</style>
