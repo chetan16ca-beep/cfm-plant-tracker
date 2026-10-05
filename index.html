@@ -41,7 +41,20 @@ body,button,input,select,textarea{font-family:Inter,"Segoe UI",Roboto,Arial,sans
 input,select,textarea{background:#fff!important;border-color:#dcded8!important;color:#29332d!important}
 @media(max-width:760px){.nav{background:#fff!important}.nav button.active{background:#e7efe9!important;color:#486454!important}}
 </style>
-</head>
+<style id="cfm-v143-final-blue-theme">
+:root{--cfm-blue:#1674c9;--cfm-blue2:#49a8f2;--cfm-pale:#eef8ff;--cfm-line:#cfe5f6;--cfm-text:#13233b}
+html,body{background:#f6fbff!important;color:var(--cfm-text)!important}
+.topbar{background:linear-gradient(135deg,#fff,#eaf7ff)!important;color:#13233b!important;border-bottom:1px solid #cfe5f6!important;box-shadow:0 5px 18px rgba(22,116,201,.10)!important}
+.topbar .brand h1,.topbar .brand p{color:#17375e!important}
+.panel,.data-card,.action-card,.kpi{background:#fff!important;border-color:#d7eaf8!important;box-shadow:0 7px 22px rgba(30,112,180,.08)!important}
+.btn-primary{background:#1674c9!important;color:#fff!important;border-color:#1674c9!important}
+.btn-green{background:#20a464!important;color:#fff!important}
+.work,.action-card b{color:#176db7!important}
+input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;color:#13233b!important}
+.nav button.active{background:#e5f4ff!important;color:#1269b0!important;border-color:#c9e5f8!important}
+.chip.blue{background:#e8f5ff!important;color:#1269b0!important;border-color:#c9e5f8!important}
+@media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7eaf8!important;box-shadow:0 -5px 18px rgba(22,116,201,.08)!important}}
+</style></head>
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker"></iframe>
@@ -54,7 +67,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=142',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=143',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -109,19 +122,19 @@ window.addEventListener('message',e=>{
   }
 });
 
-registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V142 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
+registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V143 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw142-reload'))return;
-  sessionStorage.setItem('cfm-sw142-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw143-reload'))return;
+  sessionStorage.setItem('cfm-sw143-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='142';
+ const urls=groups.flat(), ver='143';
  const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-142-'+u;
+   const cacheKey='cfm-chunk-143-'+u;
    try{
      const saved=null; // Always fetch current chunk; old PWA chunk cache caused stale mobile versions.
    }catch(_){}
@@ -133,7 +146,7 @@ if('serviceWorker' in navigator){
  }));
  let src=texts.join('')+'\n';
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
- src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V142 LIVE');
+ src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V143 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V117');
  src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
  src=src.replace('<head>',`<head><base href="${location.origin}${basePath}"><style id="cfm-v116-sky-theme">
