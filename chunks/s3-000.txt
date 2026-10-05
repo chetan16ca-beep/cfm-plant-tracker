@@ -45,6 +45,7 @@ function dispatchDocStatus(r){
 }
 function dispatchNeedsAction(r){return docsDone(r)&&!['DISPATCHED','NOT REQUIRED'].includes(dispatchDocStatus(r))}
 window.openDocsForm=function(i){
+  i=Number(i); if(!Number.isInteger(i)||i<0||i>=state.pending.length){toast('Bill / Challan work not found');return}
   const r=clone(state.pending[i]);
   const html=
     `<div class="field full"><div class="doc-form-section">🧾 BILL / INVOICE DETAILS</div></div>`+
@@ -87,13 +88,13 @@ window.openDocsForm=function(i){
   },{type:'docs',i,workNo:r.workNo||''})
 }
 window.markDoc=function(i,key,status){
-  const r=state.pending[i];if(!r)return;
+  i=Number(i);const r=state.pending[i];if(!r)return toast('Bill / Challan work not found');
   r[key]=status;stampRecord(r);
   setNextUpdateNotification?.('🧾 Document Status Updated',[r.workNo||'Work',key==='billStatus'?'Bill':'Challan',status].join(' • '));
   save();toast(`${key==='billStatus'?'Bill':'Challan'} ${status}`)
 }
 function docsCard(r){
-  const i=state.pending.indexOf(r),bs=docStatus(r,'billStatus'),cs=docStatus(r,'challanStatus'),ds=dispatchDocStatus(r),done=docsDone(r);
+  const i=state.pending.findIndex(x=>x===r||(x.workNo&&r.workNo&&normalize(x.workNo)===normalize(r.workNo))),bs=docStatus(r,'billStatus'),cs=docStatus(r,'challanStatus'),ds=dispatchDocStatus(r),done=docsDone(r);
   return `<div class="data-card doc-card ${done?'done':''}"><div class="card-top"><div><div class="work">${esc(r.workNo||'MANUAL WORK')}</div><div class="party">${esc(r.party||'')}</div></div><span class="chip ${ds==='DISPATCHED'?'green':done?'green':'amber'}">${ds==='DISPATCHED'?'DISPATCHED':done?'DOCS READY':(pendingQty(r)>0?'WORK PENDING':'ACTION')}</span></div>
   <div class="desc">${esc(r.description||'')}</div>${r.description2?`<div class="desc pending-desc2"><b>Description 2:</b> ${esc(r.description2)}</div>`:''}<div class="chips">${r.poNo?`<span class="chip">PO ${esc(r.poNo)}</span>`:''}<span class="chip">Order ${fmt(r.orderQty)}</span><span class="chip">Pending Work ${fmt(pendingQty(r))}</span>${r.deliveryDate?`<span class="chip">Del ${esc(dateDisplay(r.deliveryDate))}</span>`:''}</div>
   <div class="doc-status"><span class="chip ${docNeedsAction(r,'billStatus')?'red':'green'}">Bill: ${esc(bs)}${r.billNo?` • ${esc(r.billNo)}`:''}${r.billDate?` • ${esc(dateDisplay(r.billDate))}`:''}</span><span class="chip ${docNeedsAction(r,'challanStatus')?'red':'green'}">Challan: ${esc(cs)}${r.challanNo?` • ${esc(r.challanNo)}`:''}${r.challanDate?` • ${esc(dateDisplay(r.challanDate))}`:''}</span><span class="chip ${ds==='DISPATCHED'?'green':ds==='HOLD'?'red':'amber'}">Dispatch: ${esc(ds)}</span></div>
