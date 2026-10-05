@@ -54,7 +54,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=113',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=114',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -111,8 +111,8 @@ window.addEventListener('message',e=>{
 registerSW().then(reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'})});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw113-reload'))return;
-  sessionStorage.setItem('cfm-sw113-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw114-reload'))return;
+  sessionStorage.setItem('cfm-sw114-reload','1');location.reload();
  });
 }
 
@@ -120,7 +120,7 @@ if('serviceWorker' in navigator){
  let parts=[],done=0,total=groups.flat().length,st=document.getElementById('st');
  for(const g of groups){
    const x=await Promise.all(g.map(async u=>{
-     const r=await fetch('./'+u+'?v=113&t='+Date.now(),{cache:'no-store'});
+     const r=await fetch('./'+u+'?v=114&t='+Date.now(),{cache:'no-store'});
      if(!r.ok)throw Error(u);
      done++;st.textContent='Loading '+done+'/'+total;
      return r.text()
