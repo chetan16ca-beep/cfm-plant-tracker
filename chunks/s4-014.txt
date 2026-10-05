@@ -647,3 +647,33 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(fix,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(fix,500);
 })();
 </script>
+
+<script id="cfm-v114-alerts-bottom-nav">
+(function(){
+ function add(){
+  if(document.getElementById('cfmAlertsNavV114'))return;
+  const candidates=[...document.querySelectorAll('nav,.bottom-nav,.bottomnav,[class*="bottom"][class*="nav"],[class*="dock"]')];
+  let nav=candidates.find(x=>/Dashboard/i.test(x.innerText||'')&&/Pending/i.test(x.innerText||'')&&/Store/i.test(x.innerText||''));
+  if(!nav){
+    const refresh=[...document.querySelectorAll('button,a')].find(x=>/^\s*↪?\s*Refresh\s*$/i.test(x.innerText||''));
+    nav=refresh?.parentElement;
+  }
+  if(!nav)return;
+  const sample=nav.querySelector('button,a');
+  const b=document.createElement(sample?.tagName?.toLowerCase()==='a'?'a':'button');
+  b.id='cfmAlertsNavV114';b.type='button';b.href='javascript:void(0)';
+  if(sample)b.className=sample.className;
+  b.innerHTML='<span style="font-size:22px;display:block">🔔</span><span style="display:block">Alerts</span>';
+  b.onclick=e=>{e.preventDefault();e.stopPropagation();if(typeof openCFMNotifications==='function')openCFMNotifications();else alert('Notifications loading. App refresh karo.')};
+  nav.appendChild(b);
+ }
+ function settingsLink(){
+  const d=document.getElementById('cfmSettingsV111');if(!d||d.querySelector('#v114NotifSettings'))return;
+  const box=document.createElement('div');box.id='v114NotifSettings';box.className='card';box.style.cssText='padding:10px;margin:10px 0';
+  box.innerHTML='<b>🔔 Notifications</b><div class="hint">Phone permission, ON/OFF aur notification history.</div><button class="btn btn-primary" type="button">Open Notifications</button>';
+  box.querySelector('button').onclick=()=>openCFMNotifications?.();
+  d.querySelector('.dialog')?.insertBefore(box,d.querySelector('.dialog')?.children[2]||null);
+ }
+ const mo=new MutationObserver(()=>setTimeout(()=>{add();settingsLink()},25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(add,600);
+})();
+</script>
