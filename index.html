@@ -130,8 +130,8 @@ if('serviceWorker' in navigator){
  }
  let src=parts.join('')+'\n';
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
- src=src.replace(/V\\s*(?:98|113|115|116|117)\\s*LIVE/gi,'V117 LIVE');
- src=src.replace(/V(?:98|113|115|116)\\b/gi,'V117');
+ src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V117 LIVE');
+ src=src.replace(/V(?:98|113|115|116)\b/gi,'V117');
  src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
  src=src.replace('<head>',`<head><base href="${location.origin}${basePath}"><style id="cfm-v116-sky-theme">
 :root{--cfm-blue:#1674c9;--cfm-blue2:#49a8f2;--cfm-pale:#eef8ff;--cfm-line:#cfe5f6;--cfm-text:#13233b}
@@ -152,6 +152,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe1ef!important;c
 .badge,.pill{border-color:#8fc8ee!important}
 @media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7e8f4!important;box-shadow:0 -6px 20px rgba(30,112,180,.09)!important}.nav button.active{background:#eaf6ff!important;color:#1269b2!important}}
 </style>`);
+ src=src.replace('</head>',`<style id="cfm-final-v117">.command-hero{background:linear-gradient(115deg,#eef8ff 0%,#dff2ff 58%,#cbeaff 100%)!important;color:#17375e!important}.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}.command-tags span{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}</style></head>`);
  const app=document.getElementById('app');
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
  app.style.visibility='visible';app.style.opacity='1';app.srcdoc=src;
