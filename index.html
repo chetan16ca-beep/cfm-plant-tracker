@@ -118,17 +118,21 @@ if('serviceWorker' in navigator){
 }
 
 (async()=>{
- let parts=[],done=0,total=groups.flat().length,st=document.getElementById('st');
- for(const g of groups){
-   const x=await Promise.all(g.map(async u=>{
-     const r=await fetch('./'+u+'?v=119&t='+Date.now(),{cache:'no-store'});
-     if(!r.ok)throw Error(u);
-     done++;st.textContent='Loading '+done+'/'+total;
-     return r.text()
-   }));
-   parts.push(x.join(''))
- }
- let src=parts.join('')+'\n';
+ let done=0,total=groups.flat().length,st=document.getElementById('st');
+ const urls=groups.flat(), ver='119';
+ const texts=await Promise.all(urls.map(async u=>{
+   const cacheKey='cfm-chunk-'+ver+'-'+u;
+   try{
+     const saved=localStorage.getItem(cacheKey);
+     if(saved){done++;st.textContent='Loading '+done+'/'+total;return saved}
+   }catch(_){}
+   const r=await fetch('./'+u+'?v='+ver,{cache:'default'});
+   if(!r.ok)throw Error(u);
+   const txt=await r.text();
+   try{localStorage.setItem(cacheKey,txt)}catch(_){}
+   done++;st.textContent='Loading '+done+'/'+total;return txt
+ }));
+ let src=texts.join('')+'\n';
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V117 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V117');
