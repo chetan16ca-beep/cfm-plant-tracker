@@ -24,7 +24,7 @@
   document.querySelectorAll('#storeList .data-card').forEach(el=>{if(el.querySelector('.srl-history-btn'))return;const s=el.querySelector('.work')?.textContent?.trim();if(!s)return;const a=el.querySelector('.card-actions')||el,b=document.createElement('button');b.className='btn btn-sm btn-primary srl-history-btn';b.textContent='🔗 SRL History';b.onclick=()=>openSrlHistory(s);a.appendChild(b)});
   document.querySelectorAll('#pendingList .data-card').forEach(el=>{if(el.querySelector('.work-track-btn'))return;const w=el.querySelector('.work')?.textContent?.trim();if(!w||w==='No Work No')return;const a=el.querySelector('.card-actions')||el,b=document.createElement('button');b.className='btn btn-sm btn-primary work-track-btn';b.textContent='📍 Track Work / Batch';b.onclick=()=>{if(confirm('OK = Track Work\nCancel = Batch Report'))openWorkTrack(w);else if(typeof openWorkBatchReport==='function')openWorkBatchReport(w);else alert('Batch Report loading • Refresh ERP once')};a.appendChild(b)});
  }
- const obs=new MutationObserver(addButtons);obs.observe(document.body,{childList:true,subtree:false});setTimeout(addButtons,300);
+ const obs=new MutationObserver(addButtons);obs.observe(document.body,{childList:true,subtree:true});setTimeout(addButtons,300);
 })();
 </script>
 
@@ -89,7 +89,7 @@ function mobilePolish(){
  '.app-header,.topbar{padding-top:6px!important;padding-bottom:6px!important}'+
  '}';document.head.appendChild(st);
 }
-const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:false});setTimeout(()=>{inject();styleBatch();mobilePolish();batchPhotoStyle()},500);
+const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{inject();styleBatch();mobilePolish();batchPhotoStyle()},500);
 })();
 </script>
 
@@ -106,7 +106,7 @@ const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,s
    const b=document.createElement('button');b.className='btn btn-sm btn-green work-done-btn';b.textContent='✓ Work Done';b.onclick=()=>markWorkDone(i);a.appendChild(b);
   });
  }
- const mo=new MutationObserver(addDoneButtons);mo.observe(document.body,{childList:true,subtree:false});setTimeout(addDoneButtons,400);
+ const mo=new MutationObserver(addDoneButtons);mo.observe(document.body,{childList:true,subtree:true});setTimeout(addDoneButtons,400);
 })();
 </script>
 <script id="cfm-safe-batch-v88">
@@ -149,7 +149,7 @@ function saveAll(w){const p=work(w),d=drafts[N(w)]||[];if(!d.length)return toast
   setTimeout(()=>{const done=document.getElementById('batchDoneOne'),pen=document.getElementById('batchPendingOne'),p0=work(w);if(done&&pen)done.oninput=()=>pen.value=String(Math.max(0,Q(p0?.orderQty)-Q(done.value)));drawDrafts(w);const ad=document.getElementById('batchAddOne');if(ad)ad.onclick=()=>addDraft(w);const sv=document.getElementById('batchSaveAll');if(sv)sv.onclick=()=>saveAll(w);const big=document.getElementById('batchBigV88');if(big)big.onclick=()=>{const dlg=big.closest('.dialog')||big.closest('[role="dialog"]')||big.parentElement?.parentElement?.parentElement;if(!dlg)return;const on=dlg.dataset.batchBig==='1';if(on){dlg.style.cssText=dlg.dataset.oldStyle||'';dlg.dataset.batchBig='0';big.textContent='⛶ Big Screen'}else{dlg.dataset.oldStyle=dlg.getAttribute('style')||'';dlg.dataset.batchBig='1';dlg.style.setProperty('width','96vw','important');dlg.style.setProperty('max-width','96vw','important');dlg.style.setProperty('height','92vh','important');dlg.style.setProperty('max-height','92vh','important');big.textContent='↙ Normal Screen'}};const pr=document.getElementById('batchPrintV88');if(pr)pr.onclick=()=>cfmSafeBatchPrint(w)},0);
  };
  function inject(){document.querySelectorAll('#pendingList .data-card').forEach(el=>{if(el.querySelector('.safe-batch-btn'))return;const w=el.querySelector('.work')?.textContent?.trim(),a=el.querySelector('.card-actions');if(!w||!a)return;const b=document.createElement('button');b.type='button';b.className='btn btn-sm btn-primary safe-batch-btn';b.textContent='📋 Batch Report';b.onclick=e=>{e.preventDefault();e.stopPropagation();cfmSafeBatchOpen(w)};a.appendChild(b)})}
- const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:false});setTimeout(inject,500);
+ const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:true});setTimeout(inject,500);
 })();
 </script>
 <script id="cfm-work-srl-simple">
@@ -167,7 +167,7 @@ window.cfmWorkSrl=function(w){
  setTimeout(()=>{document.getElementById('wsSave').onclick=()=>{p.cloth=document.getElementById('wsCloth').value.trim();p.width=document.getElementById('wsWidth').value.trim();p.selectedSrl=document.getElementById('wsSrl').value;p.materialStatus=p.selectedSrl?'READY':'SRL PENDING';save();toast('Cloth / SRL saved')}},0)
 };
 function add(){document.querySelectorAll('#pendingList .data-card').forEach(e=>{if(e.querySelector('.wsbtn'))return;const w=e.querySelector('.work')?.textContent?.trim(),a=e.querySelector('.card-actions');if(!w||!a)return;const p=(state.pending||[]).find(x=>n(x.workNo)===n(w));if(p){const rr=rolls(p.cloth||'',p.width||'');const d=document.createElement('div');d.className='muted active-srl-list';d.style.cssText='margin:8px 0;padding:8px;border:1px solid #d9e7df;border-radius:9px;background:#f7fbf8;font-size:11px';d.innerHTML='<b>Active SRL ('+esc(p.cloth||'-')+' / W '+esc(p.width||'-')+')</b><br>'+(rr.length?rr.map(x=>esc(s(x))+' — '+fmt(b(x))+' MTR').join('<br>'):'No matching active SRL');e.insertBefore(d,a)}const z=document.createElement('button');z.className='btn btn-sm btn-primary wsbtn';z.textContent='Cloth / SRL';z.onclick=()=>cfmWorkSrl(w);a.appendChild(z)})}
-new MutationObserver(add).observe(document.body,{childList:true,subtree:false});setTimeout(add,500);
+new MutationObserver(add).observe(document.body,{childList:true,subtree:true});setTimeout(add,500);
 })();
 </script>
 <script id="cfm-multi-srl-force-v104">
@@ -229,7 +229,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
      const d=document.createElement('div');d.className='cfm-srl-assist';d.innerHTML=cfmSrlAssistHTML(p);const a=el.querySelector('.card-actions');if(a)a.before(d);else el.appendChild(d);
    });
  }
- const mo=new MutationObserver(decoratePending);mo.observe(document.body,{childList:true,subtree:false});setTimeout(decoratePending,500);
+ const mo=new MutationObserver(decoratePending);mo.observe(document.body,{childList:true,subtree:true});setTimeout(decoratePending,500);
 })();
 </script>
 
@@ -247,7 +247,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   if(!width.dataset.srlLive){width.dataset.srlLive='1';width.addEventListener('input',draw);width.addEventListener('change',draw)}
   draw();
  }
- const mo=new MutationObserver(()=>setTimeout(liveBox,0));mo.observe(document.body,{childList:true,subtree:false});setTimeout(liveBox,500);
+ const mo=new MutationObserver(()=>setTimeout(liveBox,0));mo.observe(document.body,{childList:true,subtree:true});setTimeout(liveBox,500);
 })();
 </script>
 
@@ -292,7 +292,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
    });
   });
  }
- const mo=new MutationObserver(()=>setTimeout(clean,20));mo.observe(document.body,{childList:true,subtree:false});setTimeout(clean,500);
+ const mo=new MutationObserver(()=>setTimeout(clean,20));mo.observe(document.body,{childList:true,subtree:true});setTimeout(clean,500);
 })();
 </script>
 
@@ -349,7 +349,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   draw();
  }
  window.cfmNextProductCode=nextCode;
- const mo=new MutationObserver(()=>{setTimeout(decorate,20);setTimeout(workPreview,20)});mo.observe(document.body,{childList:true,subtree:false});
+ const mo=new MutationObserver(()=>{setTimeout(decorate,20);setTimeout(workPreview,20)});mo.observe(document.body,{childList:true,subtree:true});
  setTimeout(()=>{decorate();workPreview()},600);
 })();
 </script>
@@ -373,7 +373,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
    let a=card.querySelector('.card-actions');if(!a){a=document.createElement('div');a.className='card-actions';card.appendChild(a)}a.appendChild(b);
   });
  }
- const mo=new MutationObserver(()=>setTimeout(addButtons,20));mo.observe(document.body,{childList:true,subtree:false});setTimeout(addButtons,700);
+ const mo=new MutationObserver(()=>setTimeout(addButtons,20));mo.observe(document.body,{childList:true,subtree:true});setTimeout(addButtons,700);
 })();
 </script>
 
@@ -420,7 +420,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
    card.appendChild(d);
   });
  }
- const mo=new MutationObserver(()=>setTimeout(decorate,25));mo.observe(document.body,{childList:true,subtree:false});setTimeout(decorate,700);
+ const mo=new MutationObserver(()=>setTimeout(decorate,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(decorate,700);
 })();
 </script>
 
@@ -445,7 +445,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   });
   let bar=document.getElementById('clothTag5Bar');if(!bar){bar=document.createElement('div');bar.id='clothTag5Bar';bar.style.cssText='position:sticky;bottom:8px;z-index:20;padding:8px;text-align:center';bar.innerHTML='<button class="btn btn-primary" onclick="printClothTags5([...cfmTagSelection])">🏷 Print Selected Cloth Tags • 5/Page</button>';list.parentElement?.appendChild(bar)}
  }
- const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:false});setTimeout(enhance,700);
+ const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(enhance,700);
 })();
 </script>
 
@@ -480,7 +480,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   const list=document.getElementById('storeList');if(!list)return;[...list.querySelectorAll('.data-card')].forEach(card=>{if(card.querySelector('.v106-ledger'))return;const srl=card.querySelector('.work')?.textContent?.trim();if(!srl)return;let a=card.querySelector('.card-actions');if(!a){a=document.createElement('div');a.className='card-actions';card.appendChild(a)};const b=document.createElement('button');b.className='btn btn-sm v106-ledger';b.textContent='📒 SRL Ledger';b.onclick=e=>{e.stopPropagation();cfmSrlLedger(srl)};a.appendChild(b);const i=document.createElement('button');i.className='btn btn-sm';i.textContent='✂ Issue Cutting';i.onclick=e=>{e.stopPropagation();cfmIssueCutting(srl,'')};a.appendChild(i)});
  }
  function dash(){const d=document.getElementById('dashboard');if(!d||document.getElementById('v106ReqBtn'))return;const b=document.createElement('button');b.id='v106ReqBtn';b.className='btn btn-primary';b.textContent='📊 Cloth Requirement / Shortage';b.onclick=cfmRequirementReport;d.prepend(b)}
- const mo=new MutationObserver(()=>setTimeout(()=>{enhanceStore();dash()},25));mo.observe(document.body,{childList:true,subtree:false});setTimeout(()=>{enhanceStore();dash()},700);
+ const mo=new MutationObserver(()=>setTimeout(()=>{enhanceStore();dash()},25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{enhanceStore();dash()},700);
 })();
 </script>
 
@@ -498,7 +498,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   document.querySelectorAll('.tag-select-v105 input').forEach(cb=>{cb.onchange=function(e){e.stopPropagation();const card=cb.closest('.data-card'),srl=card?.querySelector('.work')?.textContent?.trim();if(!srl)return;if(cb.checked){if(cfmTagSelection.size>=6){cb.checked=false;return toast('A4 me maximum 6 tags • 4x4 inch')}cfmTagSelection.add(srl)}else cfmTagSelection.delete(srl);const b=document.querySelector('#clothTag5Bar button');if(b)b.textContent='🏷 Print Selected Cloth Tags • '+cfmTagSelection.size+'/6 • 4x4"';};});
   const b=document.querySelector('#clothTag5Bar button');if(b)b.textContent='🏷 Print Selected Cloth Tags • '+cfmTagSelection.size+'/6 • 4x4"';
  }
- const mo=new MutationObserver(()=>setTimeout(update,30));mo.observe(document.body,{childList:true,subtree:false});setTimeout(update,800);
+ const mo=new MutationObserver(()=>setTimeout(update,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(update,800);
 })();
 </script>
 
@@ -513,7 +513,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   w.document.write('<!doctype html><html><head><title>Cloth Tags 4x8</title><style>@page{size:A4 portrait;margin:5mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0}.sheet{display:grid;grid-template-columns:repeat(2,4in);grid-auto-rows:8in;gap:3mm;justify-content:center;align-content:start}.tag{width:4in;height:8in;border:2px solid #111;padding:12px;overflow:hidden;page-break-inside:avoid}.head{border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:12px;text-align:center}.head b{display:block;font-size:15px}.head strong{display:block;font-size:34px;margin-top:7px}.g{display:grid;grid-template-columns:1fr 1fr;border-left:1px solid #777;border-top:1px solid #777}.g span{padding:10px;border-right:1px solid #777;border-bottom:1px solid #777;min-height:72px}.g .full{grid-column:1/-1}.g small{display:block;font-size:9px;color:#555;margin-bottom:5px}.g b{font-size:16px}.scan{font:11px monospace;text-align:center;margin-top:14px;border:1px dashed #777;padding:10px;overflow:hidden}@media print{body{print-color-adjust:exact}}</style></head><body><div class="sheet">'+rows.map(tag).join('')+'</div><script>setTimeout(()=>window.print(),250)<\/script></body></html>');w.document.close();
  };
  function update(){const b=document.querySelector('#clothTag5Bar button');if(b)b.textContent='🏷 Print Selected Cloth Tags • 4x8" • 2/Page';}
- const mo=new MutationObserver(()=>setTimeout(update,30));mo.observe(document.body,{childList:true,subtree:false});setTimeout(update,700);
+ const mo=new MutationObserver(()=>setTimeout(update,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(update,700);
 })();
 </script>
 
@@ -529,7 +529,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   w.document.write('<!doctype html><html><head><title>Cloth Tags • A4 6 Equal</title><style>@page{size:A4 portrait;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;width:210mm;height:297mm;font-family:Arial,sans-serif}.sheet{width:210mm;height:297mm;display:grid;grid-template-columns:repeat(2,105mm);grid-template-rows:repeat(3,99mm)}.tag{width:105mm;height:99mm;border:.35mm solid #111;padding:4mm;overflow:hidden;page-break-inside:avoid}.head{display:flex;justify-content:space-between;align-items:center;border-bottom:.5mm solid #111;padding-bottom:2mm;margin-bottom:2mm;font-size:10pt}.head strong{font-size:18pt}.g{display:grid;grid-template-columns:1fr 1fr;border-left:.25mm solid #777;border-top:.25mm solid #777}.g span{padding:1.7mm 2mm;border-right:.25mm solid #777;border-bottom:.25mm solid #777;min-height:12mm}.g small{display:block;font-size:6.5pt;color:#555}.g b{font-size:9.5pt}.scan{font:7pt monospace;text-align:center;margin-top:2mm;border:.25mm dashed #777;padding:1.5mm;white-space:nowrap;overflow:hidden}.blank{border:.25mm dashed #bbb}@media print{html,body{width:210mm;height:297mm}}</style></head><body><div class="sheet">'+rows.map(tag).join('')+blanks+'</div><script>setTimeout(()=>window.print(),250)<\/script></body></html>');w.document.close();
  };
  function update(){const b=document.querySelector('#clothTag5Bar button');if(b)b.textContent='🏷 Print Cloth Tags • A4 6 Equal Parts';}
- const mo=new MutationObserver(()=>setTimeout(update,30));mo.observe(document.body,{childList:true,subtree:false});setTimeout(update,700);
+ const mo=new MutationObserver(()=>setTimeout(update,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(update,700);
 })();
 </script>
 
@@ -560,7 +560,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
    if(!cloth.dataset.v110){cloth.dataset.v110='1';cloth.addEventListener('input',draw);cloth.addEventListener('change',draw)}
    if(!width.dataset.v110){width.dataset.v110='1';width.addEventListener('input',draw);width.addEventListener('change',draw)}
  }
- const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:false});setTimeout(enhance,700);
+ const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(enhance,700);
 })();
 </script>
 
@@ -579,7 +579,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   const dash=document.getElementById('dashboard');if(dash){dash.prepend(b);return}
   const h=document.querySelector('header,.topbar,.app-header');if(h)h.appendChild(b);
  }
- const mo=new MutationObserver(()=>setTimeout(add,30));mo.observe(document.body,{childList:true,subtree:false});setTimeout(add,700);
+ const mo=new MutationObserver(()=>setTimeout(add,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(add,700);
 })();
 </script>
 
@@ -613,7 +613,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
  function lowStockScan(){
    (state.store||[]).forEach(s=>{const bal=srlBalance(s),min=Number(s.minStock||s.minimumStock||0);if((bal<=0||min>0&&bal<=min)&&!s._v112LowAlert){s._v112LowAlert=true;cfmNotify(bal<=0?'SRL ZERO / CLOSED':'Low Stock','SRL '+(s.srlNo||'-')+' • '+(s.quality||s.cloth||'-')+' • '+fmt(bal)+' MTR','stock')}});
  }
- const mo=new MutationObserver(()=>setTimeout(add,25));mo.observe(document.body,{childList:true,subtree:false});setTimeout(()=>{add();lowStockScan()},800);setInterval(lowStockScan,60000);
+ const mo=new MutationObserver(()=>setTimeout(add,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{add();lowStockScan()},800);setInterval(lowStockScan,60000);
 })();
 </script>
 
@@ -644,7 +644,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
     }
   }
  }
- const mo=new MutationObserver(()=>setTimeout(fix,30));mo.observe(document.body,{childList:true,subtree:false});setTimeout(fix,500);
+ const mo=new MutationObserver(()=>setTimeout(fix,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(fix,500);
 })();
 </script>
 
@@ -674,9 +674,9 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   box.querySelector('button').onclick=()=>openCFMNotifications?.();
   d.querySelector('.dialog')?.insertBefore(box,d.querySelector('.dialog')?.children[2]||null);
  }
- const mo=new MutationObserver(()=>setTimeout(()=>{add();settingsLink()},25));mo.observe(document.body,{childList:true,subtree:false});setTimeout(add,600);
+ const mo=new MutationObserver(()=>setTimeout(()=>{add();settingsLink()},25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(add,600);
 })();
 </script>
 <script id="cfm-v115-force-version">
-(function(){function f(){document.querySelectorAll('body *').forEach(e=>{if(e.children.length===0&&/^\s*V\d+\s+LIVE\s*$/i.test(e.textContent||''))e.textContent='V115 LIVE'})}new MutationObserver(()=>setTimeout(f,20)).observe(document.body,{childList:true,subtree:false});setTimeout(f,300)})();
+(function(){function f(){document.querySelectorAll('body *').forEach(e=>{if(e.children.length===0&&/^\s*V\d+\s+LIVE\s*$/i.test(e.textContent||''))e.textContent='V115 LIVE'})}new MutationObserver(()=>setTimeout(f,20)).observe(document.body,{childList:true,subtree:true});setTimeout(f,300)})();
 </script>
