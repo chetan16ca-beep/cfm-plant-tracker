@@ -185,9 +185,9 @@ window.shareBillRequest=async function(){
 window.markBillRequested=function(){
   const rows=selectedBillRequests();if(!rows.length)return toast('Select Work No.');
   const type=$('billRequestType')?.value||'BILL',at=new Date().toISOString(),rem=($('billRequestRemark')?.value||'').trim();
-  rows.forEach(r=>{if(type==='BILL'||type==='BOTH'){r.billStatus='REQUESTED';r.billRequestedAt=at}if(type==='CHALLAN'||type==='BOTH'){r.challanStatus='REQUESTED';r.challanRequestedAt=at}if(rem)r.accountsRemark=[r.accountsRemark,rem].filter(Boolean).join(' | ');stampRecord(r)});
+  rows.forEach(r=>{if(type==='BILL'||type==='BOTH'){r.billStatus='REQUESTED';r.billRequestedAt=at}if(type==='CHALLAN'||type==='BOTH'){r.challanStatus='REQUESTED';r.challanRequestedAt=at}if(rem)r.accountsRemark=[r.accountsRemark,rem].filter(Boolean).join(' | ');r.materialStatus='DELIVERED';r.deliveredMaterial=true;r.deliveredAt=at;r.billRequestMovedAt=at;stampRecord(r)});
   setNextUpdateNotification?.('🧾 Combined Bill / Challan Request',(rows[0].party||'Company')+' • '+rows.length+' work');
-  save();toast(rows.length+' work request marked REQUESTED')
+  save();try{sendCFMNotification?.('🧾 Bill / Challan Request Sent',(rows[0].party||'Company')+' • '+rows.length+' work moved to Delivered Material')}catch(e){};renderDocs();populateBillRequestCompany();populateBillRequestWork();toast(rows.length+' work moved to Delivered Material')
 }
 function docsUpdateText(rows=null){
   const list=(rows||state.pending.filter(docsActionRequired)).slice().sort(workSort);
