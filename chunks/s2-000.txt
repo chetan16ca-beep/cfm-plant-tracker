@@ -1,5 +1,5 @@
       <img src="icons/eagle-logo.svg" alt="Eagle Filtration Product Pvt. Ltd." class="logo eagle-logo" />
-      <div><span class="app-version-badge">V158 LIVE</span><p>CFM Plant ERP</p></div>
+      <div><span class="app-version-badge">V160 LIVE</span><p>CFM Plant ERP</p></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span id="cloudSyncBadge" class="chip green" style="background:#e8f7ee;color:#17653a;border:1px solid #bfe5ce">☁️ Sync starting…</span><button class="btn btn-sm" onclick="manualCloudSync()" title="3-4 mobile cloud sync">↻ Sync</button><button id="installBtn" class="btn btn-green hidden">Install App</button></div>
   </header>
