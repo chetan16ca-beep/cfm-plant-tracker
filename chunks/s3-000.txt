@@ -103,7 +103,7 @@ function docsCard(r){
 }
 window.renderDocs=function(){
   const q=($('docSearch')?.value||'').toLowerCase(),mode=$('docFilter')?.value||'ACTION';
-  let rows=state.pending.filter(r=>!isArchived(r)&&JSON.stringify(r).toLowerCase().includes(q));
+  let rows=state.pending.filter(r=>!isArchived(r)&&!r.deliveredMaterial&&JSON.stringify(r).toLowerCase().includes(q));
   if(mode==='ACTION')rows=rows.filter(r=>docsActionRequired(r)||dispatchNeedsAction(r));
   if(mode==='BILL')rows=rows.filter(r=>docNeedsAction(r,'billStatus'));
   if(mode==='CHALLAN')rows=rows.filter(r=>docNeedsAction(r,'challanStatus'));
@@ -111,7 +111,7 @@ window.renderDocs=function(){
   if(mode==='DISPATCHED')rows=rows.filter(r=>dispatchDocStatus(r)==='DISPATCHED');
   if(mode==='DONE')rows=rows.filter(r=>docsDone(r));
   rows.sort((a,b)=>String(b.workNo||'').localeCompare(String(a.workNo||''),undefined,{numeric:true}));
-  const active=state.pending.filter(r=>!isArchived(r));
+  const active=state.pending.filter(r=>!isArchived(r)&&!r.deliveredMaterial);
   const bill=active.filter(r=>docNeedsAction(r,'billStatus')).length, challan=active.filter(r=>docNeedsAction(r,'challanStatus')).length;
   const dispatch=active.filter(r=>docsDone(r)&&dispatchNeedsAction(r)).length, dispatched=active.filter(r=>dispatchDocStatus(r)==='DISPATCHED').length;
   const action=active.filter(r=>docsActionRequired(r)||dispatchNeedsAction(r)).length, done=active.filter(r=>docsDone(r)).length;
@@ -141,7 +141,7 @@ window.populateBillRequestWork=function(){
   const el=$('billRequestWork');if(!el)return;
   const party=$('billRequestCompany')?.value||$('billRequestCompanySearch')?.value||'';
   const selected=new Set([...el.selectedOptions].map(o=>o.value));
-  const rows=state.pending.filter(r=>!isArchived(r)&&(!party||normalize(r.party)===normalize(party))).slice().sort(workSort);
+  const rows=state.pending.filter(r=>!isArchived(r)&&!r.deliveredMaterial&&(!party||normalize(r.party)===normalize(party))).slice().sort(workSort);
   el.innerHTML=rows.map(r=>'<option value="'+esc(r.workNo)+'">'+esc(r.workNo)+' — '+esc(r.description||'')+'</option>').join('');
   [...el.options].forEach(o=>o.selected=selected.has(o.value));
   const box=$('billRequestWorkChecks');
