@@ -145,22 +145,25 @@ function queueCloudPush(){
   },250);
 }
 window.manualCloudSync=async function(){
+  if(cloudBusy){setCloudBadge('☁️ Sync already running…','amber');return}
   setCloudBadge('☁️ Syncing…','amber');
   try{
-    if(!cloudReady)await cloudInit();
-    if(cloudDirty)await cloudPush(true);
-    const row=await cloudFetch();
-    if(row&&validState(row.payload)&&!cloudDirty){
-      state=clone(row.payload);syncDerivedState();
-      cloudVersion=num(row.version)||cloudVersion;cloudUpdatedAt=row.updated_at||cloudUpdatedAt;
-      safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();
+    if(!cloudReady){await cloudInit();toast('3-4 Mobile sync complete');return}
+    if(cloudDirty){const ok=await cloudPush(true);if(!ok)throw new Error('Cloud push failed');toast('3-4 Mobile sync complete');return}
+    const meta=await cloudFetchMeta();
+    const v=num(meta?.version)||0;
+    if(v>cloudVersion){
+      const row=await cloudFetch();
+      if(row&&validState(row.payload)){
+        state=clone(row.payload);syncDerivedState();
+        cloudVersion=num(row.version)||cloudVersion;cloudUpdatedAt=row.updated_at||cloudUpdatedAt;
+        safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();
+      }
     }
     toast('3-4 Mobile sync complete');
     setCloudBadge('☁️ 3-4 Mobile LIVE','green');
   }catch(e){
-    console.warn(e);
-    setCloudBadge('☁️ Sync failed','red');
-    toast('Sync failed • internet check karo');
+    console.warn(e);setCloudBadge('☁️ Sync failed','red');toast('Sync failed • internet check karo');
   }
 };
 
