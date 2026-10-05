@@ -132,7 +132,7 @@ if('serviceWorker' in navigator){
  src=src.replace(/V\\s*(?:98|113|115)\\s*LIVE/gi,'V116 LIVE');
  src=src.replace(/V(?:98|113|115)\\b/gi,'V116');
  src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
- src=src.replace('<head>','<head><base href="'+location.origin+basePath+'"><style id="cfm-v116-sky-theme">
+ src=src.replace('<head>',`<head><base href="${location.origin}${basePath}"><style id="cfm-v116-sky-theme">
 :root{--cfm-blue:#1674c9;--cfm-blue2:#49a8f2;--cfm-pale:#eef8ff;--cfm-line:#cfe5f6;--cfm-text:#13233b}
 html,body{background:#f6fbff!important;color:var(--cfm-text)!important}
 body,button,input,select,textarea{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif!important}
@@ -150,7 +150,7 @@ body,button,input,select,textarea{font-family:Inter,"Segoe UI",Roboto,Arial,sans
 input,select,textarea{background:#fff!important;border-color:#cfe1ef!important;color:#17283e!important}
 .badge,.pill{border-color:#8fc8ee!important}
 @media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7e8f4!important;box-shadow:0 -6px 20px rgba(30,112,180,.09)!important}.nav button.active{background:#eaf6ff!important;color:#1269b2!important}}
-</style>');
+</style>`);
  const app=document.getElementById('app');
  app.srcdoc=src;
  document.getElementById('load').style.display='none';
