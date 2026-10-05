@@ -23,7 +23,13 @@
     <section id="view-dashboard" class="view active">
       <div class="section-head"><div><h2><span class="ico">🏠</span><span>Dashboard</span></h2><p>Executive operations dashboard • live plant control • 3-4 mobile cloud sync</p></div><button class="btn" onclick="showView('pending')">Open Pending</button></div>
 
-      <div class="command-hero">
+            <div class="photo-quick-actions">
+        <button onclick="showView('pending')"><span>🧾</span><b>New Order</b></button>
+        <button onclick="showView('store')"><span>📦</span><b>Store</b></button>
+        <button onclick="showView('search')"><span>📊</span><b>Reports</b></button>
+        <button onclick="showView('settings')"><span>⚙️</span><b>Settings</b></button>
+      </div>
+<div class="command-hero">
         <div>
           <div class="command-eyebrow">EAGLE FILTRATION • CFM OPERATIONS</div>
           <h3>Plant Command Center</h3>
