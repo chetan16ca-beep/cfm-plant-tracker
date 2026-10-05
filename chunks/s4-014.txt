@@ -563,3 +563,22 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(enhance,700);
 })();
 </script>
+
+<script id="cfm-v111-settings-guide">
+(function(){
+ function guide(){
+  const old=document.getElementById('cfmSettingsV111');if(old)old.remove();
+  const d=document.createElement('div');d.id='cfmSettingsV111';d.className='modal';d.style.cssText='display:flex;position:fixed;inset:0;z-index:99999;background:#0008;align-items:center;justify-content:center;padding:12px';
+  d.innerHTML='<div class="dialog" style="background:#fff;max-width:760px;width:100%;max-height:92vh;overflow:auto;border-radius:16px;padding:16px"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">⚙️ CFM Settings & How to Work</h2><button class="btn" onclick="this.closest(\'.modal\').remove()">✕</button></div><hr><h3>Daily Working Flow</h3><ol style="line-height:1.75;padding-left:22px"><li><b>STORE:</b> New cloth roll/SRL enter karo. Cloth quality, actual width aur opening MTR correct rakho.</li><li><b>CLOTH TAG:</b> Store me Tag Select karo → maximum 6 SRL → Print Cloth Tags. A4 sheet 6 equal parts me print hogi.</li><li><b>PENDING / WORK ORDER:</b> Party, Product Code, Cloth, Width, Qty aur measurement enter karo. Width blank ho to system Product Master/previous order se recover karne ki koshish karega.</li><li><b>SRL CHECK:</b> Work me exact width ka OPEN SRL dekho. Exact available na ho to Store Alternative alag dikhega.</li><li><b>RESERVE SRL:</b> Smart Cloth Allocation me Reserve SRL dabao. Reserved roll dusre work ke free stock me use na karo.</li><li><b>CUTTING:</b> Store → SRL → Issue Cutting. Actual cut MTR aur wastage enter karo. Balance automatically reduce hoga.</li><li><b>SRL LEDGER:</b> SRL Ledger se issue, wastage aur balance movement check karo. Zero balance par SRL CLOSED hoga.</li><li><b>DAILY CUTTING PLAN:</b> Daily Plant Pending Order Print se cutting ko Work No., cloth/width aur available SRL details do.</li><li><b>SHORTAGE:</b> Dashboard → Cloth Requirement / Shortage se required vs available MTR check karo.</li><li><b>NEXT PROCESS:</b> Cutting complete hone ke baad Stitching → Finishing/QC → Packing → Dispatch status update karo.</li></ol><h3>Important Rules</h3><div class="card" style="padding:10px">• Actual Store width hi use karo.<br>• 333 ANT / 333 AS / 333 A matching family hai, lekin tag par actual cloth name hi rahega.<br>• CLOSED/ZERO SRL ko OPEN stock me use nahi karna.<br>• Cutting issue se pehle SRL No. aur Work No. verify karo.<br>• Wrong entry ho to ledger/balance check karke hi correction karo.</div><div style="margin-top:14px;text-align:right"><button class="btn btn-primary" onclick="this.closest(\'.modal\').remove()">Done</button></div></div>';
+  document.body.appendChild(d);
+ }
+ window.openCFMSettings=guide;
+ function add(){
+  if(document.getElementById('cfmSettingsBtnV111'))return;
+  const b=document.createElement('button');b.id='cfmSettingsBtnV111';b.type='button';b.className='btn';b.innerHTML='⚙️ Settings / How to Work';b.onclick=guide;
+  const dash=document.getElementById('dashboard');if(dash){dash.prepend(b);return}
+  const h=document.querySelector('header,.topbar,.app-header');if(h)h.appendChild(b);
+ }
+ const mo=new MutationObserver(()=>setTimeout(add,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(add,700);
+})();
+</script>
