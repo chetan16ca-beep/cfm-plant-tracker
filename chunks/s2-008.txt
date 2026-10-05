@@ -328,7 +328,7 @@ window.showView=function(name){
   const target=$('view-'+name); if(target)target.classList.add('active');
   if(target){try{safeStorage.setItem('cfm-ui-active-view-v1',name)}catch(e){}}
   if(name==='search')$('globalSearch')?.focus();
-  if(name==='docs'){renderDocs();setTimeout(()=>{try{populateBillRequestCompany();populateBillRequestWork()}catch(e){console.error(e)}},0);}
+  if(name==='docs'){renderDocs();setTimeout(()=>{try{window.populateBillRequestCompany?.();window.populateBillRequestWork?.()}catch(e){console.error(e)}},50);}
   if(name==='excel')renderExcelView();
   if(name==='planning')renderPlanning();
   if(name==='deptwork')renderDeptWork();
