@@ -353,3 +353,26 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  setTimeout(()=>{decorate();workPreview()},600);
 })();
 </script>
+
+
+<script id="cfm-v103-cloth-tag">
+(function(){
+ function rowBySrl(s){return (state.store||[]).find(r=>String(r.srlNo||'')===String(s||''))}
+ window.printClothTag=function(srl){
+  const r=rowBySrl(srl);if(!r)return toast('SRL not found');
+  const bal=srlBalance(r),st=bal<=0?'CLOSED':storeStatus(r),qr=[r.srlNo,r.quality||r.cloth,r.width,bal].join('|');
+  const w=window.open('','_blank','width=820,height=900');if(!w)return toast('Print popup allow karo');
+  w.document.write('<!doctype html><html><head><title>Cloth Tag '+esc(r.srlNo||'')+'</title><style>@page{size:A4 portrait;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;color:#111}.tag{width:100%;border:2.5px solid #111;padding:14px}.head{text-align:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:10px}.head h1{font-size:22px;margin:0}.head p{font-size:12px;margin:4px 0 0}.srl{font-size:28px;font-weight:900;text-align:center;padding:10px;border:2px solid #111;margin-bottom:10px}.grid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #555;border-left:1px solid #555}.cell{min-height:58px;padding:7px;border-right:1px solid #555;border-bottom:1px solid #555}.cell b{display:block;font-size:11px;color:#444;margin-bottom:5px}.cell strong{font-size:18px}.full{grid-column:1/-1}.status{font-size:22px;font-weight:900}.code{font-family:monospace;font-size:13px;word-break:break-all;text-align:center;padding:12px 4px;border:1px dashed #555;margin-top:12px}.foot{text-align:center;font-size:10px;margin-top:8px}@media print{button{display:none}}</style></head><body><div class="tag"><div class="head"><h1>CFM • CLOTH / SRL TAG</h1><p>STORE IDENTIFICATION & LIVE BALANCE</p></div><div class="srl">'+esc(r.srlNo||'-')+'</div><div class="grid"><div class="cell"><b>CLOTH / QUALITY</b><strong>'+esc(r.quality||r.cloth||'-')+'</strong></div><div class="cell"><b>ACTUAL WIDTH</b><strong>'+esc(r.width||'-')+'"</strong></div><div class="cell"><b>OPENING MTR</b><strong>'+fmt(r.openingMtr||0)+' MTR</strong></div><div class="cell"><b>LIVE BALANCE</b><strong>'+fmt(bal)+' MTR</strong></div><div class="cell"><b>ENTRY DATE</b><strong>'+esc(dateDisplay(r.entryDate||''))+'</strong></div><div class="cell"><b>RACK / LOCATION</b><strong>'+esc(r.rack||'-')+'</strong></div><div class="cell"><b>SUPPLIER</b><strong>'+esc(r.supplier||'-')+'</strong></div><div class="cell"><b>BILL NO.</b><strong>'+esc(r.billNo||'-')+'</strong></div><div class="cell full"><b>STATUS</b><span class="status">'+esc(st)+'</span></div></div><div class="code">SCAN DATA: '+esc(qr)+'</div><div class="foot">Printed '+new Date().toLocaleString()+' • CFM Plant ERP</div></div><script>setTimeout(()=>window.print(),250)<\/script></body></html>');w.document.close();
+ };
+ function addButtons(){
+  const list=document.getElementById('storeList');if(!list)return;
+  [...list.querySelectorAll('.data-card')].forEach(card=>{
+   if(card.querySelector('.cloth-tag-v103'))return;
+   const srl=card.querySelector('.work')?.textContent?.trim();if(!srl||!rowBySrl(srl))return;
+   const b=document.createElement('button');b.type='button';b.className='btn btn-sm cloth-tag-v103';b.textContent='🏷 Cloth Tag';b.onclick=e=>{e.stopPropagation();printClothTag(srl)};
+   let a=card.querySelector('.card-actions');if(!a){a=document.createElement('div');a.className='card-actions';card.appendChild(a)}a.appendChild(b);
+  });
+ }
+ const mo=new MutationObserver(()=>setTimeout(addButtons,20));mo.observe(document.body,{childList:true,subtree:true});setTimeout(addButtons,700);
+})();
+</script>
