@@ -616,3 +616,34 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(add,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{add();lowStockScan()},800);setInterval(lowStockScan,60000);
 })();
 </script>
+
+<script id="cfm-v113-header-fix">
+(function(){
+ function fix(){
+  // Update any visible old LIVE version badge.
+  document.querySelectorAll('body *').forEach(el=>{
+    if(el.children.length===0 && /^\s*V\d+\s+LIVE\s*$/i.test(el.textContent||'')) el.textContent='V113 LIVE';
+  });
+  const settings=document.getElementById('cfmSettingsBtnV111');
+  const notif=document.getElementById('cfmNotifBtnV112');
+  if(settings){
+    settings.innerHTML='⚙️ Settings';
+    settings.style.cssText+=';min-height:48px!important;padding:8px 12px!important;font-size:16px!important;line-height:1.15!important;white-space:nowrap!important;width:auto!important;max-width:none!important;';
+  }
+  if(notif){
+    notif.innerHTML='🔔 Notifications'+((()=>{try{return JSON.parse(localStorage.getItem("cfm_notification_log_v112")||"[]").filter(x=>!x.read).length}catch(e){return 0}})()? ' ('+(()=>{try{return JSON.parse(localStorage.getItem("cfm_notification_log_v112")||"[]").filter(x=>!x.read).length}catch(e){return 0}})()+')':'');
+    notif.style.cssText+=';display:inline-flex!important;visibility:visible!important;opacity:1!important;min-height:48px!important;padding:8px 12px!important;font-size:15px!important;line-height:1.15!important;white-space:nowrap!important;width:auto!important;max-width:none!important;';
+    if(settings.parentElement===notif.parentElement && settings.nextElementSibling!==notif) settings.after(notif);
+  }
+  if(settings&&notif){
+    let wrap=document.getElementById('cfmHeaderActionsV113');
+    if(!wrap){
+      wrap=document.createElement('div');wrap.id='cfmHeaderActionsV113';
+      wrap.style.cssText='display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;max-width:100%;';
+      settings.parentNode.insertBefore(wrap,settings);wrap.append(settings,notif);
+    }
+  }
+ }
+ const mo=new MutationObserver(()=>setTimeout(fix,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(fix,500);
+})();
+</script>
