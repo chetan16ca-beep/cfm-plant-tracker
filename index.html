@@ -67,7 +67,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=144',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=145',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -122,19 +122,19 @@ window.addEventListener('message',e=>{
   }
 });
 
-registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V144 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
+registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V145 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw144-reload'))return;
-  sessionStorage.setItem('cfm-sw144-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw145-reload'))return;
+  sessionStorage.setItem('cfm-sw145-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='144';
+ const urls=groups.flat(), ver='145';
  const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-144-'+u;
+   const cacheKey='cfm-chunk-145-'+u;
    try{
      const saved=null; // Always fetch current chunk; old PWA chunk cache caused stale mobile versions.
    }catch(_){}
@@ -146,7 +146,7 @@ if('serviceWorker' in navigator){
  }));
  let src=texts.join('')+'\n';
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
- src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V144 LIVE');
+ src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V145 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V117');
  src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
  src=src.replace('<head>',`<head><base href="${location.origin}${basePath}"><style id="cfm-v116-sky-theme">
@@ -168,6 +168,31 @@ input,select,textarea{background:#fff!important;border-color:#cfe1ef!important;c
 .badge,.pill{border-color:#8fc8ee!important}
 @media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7e8f4!important;box-shadow:0 -6px 20px rgba(30,112,180,.09)!important}.nav button.active{background:#eaf6ff!important;color:#1269b2!important}}
 </style>`);
+ src=src.replace('</head>',`<style id="cfm-v145-modern-layout">
+body{background:linear-gradient(180deg,#edf8ff 0,#f8fcff 280px,#f5f9fc 100%)!important}
+.topbar{margin:10px!important;border-radius:22px!important;padding:14px 18px!important;background:rgba(255,255,255,.96)!important;border:1px solid #cfe7f8!important;box-shadow:0 10px 30px rgba(20,100,160,.10)!important}
+.topbar .brand h1{font-weight:900!important;letter-spacing:.2px!important}.topbar .brand p{font-weight:700!important}
+main,.main,.content{max-width:1500px!important;margin:auto!important}
+.panel{border-radius:24px!important;padding:20px!important;background:#fff!important}
+#kpis,.kpis{gap:14px!important}
+#kpis .kpi,#docKpis .kpi,.kpi{border:0!important;border-left:5px solid #35a4ef!important;border-radius:18px!important;padding:18px!important;box-shadow:0 8px 24px rgba(27,105,165,.09)!important}
+#kpis .kpi .num,.kpi .num{font-size:30px!important;font-weight:900!important;color:#12395b!important}
+#kpis .kpi .label,.kpi .label{font-size:15px!important;font-weight:700!important;color:#60788c!important}
+.command-hero{border-radius:26px!important;padding:24px!important;background:linear-gradient(120deg,#0d4f80,#167fc2 58%,#49b8e8)!important;color:#fff!important;border:0!important;box-shadow:0 14px 32px rgba(13,79,128,.20)!important}
+.command-hero h3,.command-hero p,.command-eyebrow{color:#fff!important}.command-tags span,.command-tags span:first-child{background:rgba(255,255,255,.14)!important;color:#fff!important;border-color:rgba(255,255,255,.55)!important}
+.data-card,.action-card{border-radius:20px!important;border:1px solid #d8ebf8!important;box-shadow:0 8px 24px rgba(25,105,165,.08)!important}
+.btn,.btn-primary,.btn-green,button{border-radius:12px!important}
+input,select,textarea{border-radius:12px!important}
+.nav{border-radius:22px 22px 0 0!important;padding:8px!important}.nav button{border-radius:15px!important}.nav button.active{background:#dff2ff!important;color:#0d6faf!important}
+@media(max-width:760px){
+ .topbar{margin:0!important;border-radius:0 0 24px 24px!important;padding:12px!important}
+ .panel{border-radius:20px!important;padding:14px!important}
+ .command-hero{border-radius:22px!important;padding:20px!important}
+ #kpis,.kpis{gap:10px!important}
+ #kpis .kpi,.kpi{padding:15px!important;min-height:82px!important}
+ #kpis .kpi .num,.kpi .num{font-size:25px!important}
+}
+</style></head>`);
  src=src.replace('</head>',`<style id="cfm-v144-blue-white-force">
 html,body{background:#f4faff!important;color:#13233b!important}
 .topbar{background:linear-gradient(135deg,#ffffff,#e7f5ff)!important;border-bottom:2px solid #b9def7!important}
