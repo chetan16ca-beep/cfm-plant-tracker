@@ -81,7 +81,7 @@ window.CFMNotify=sendCFMNotification;
 function refreshNotifyButton(){
   const b=document.getElementById('notifyBtn');
   if(!('Notification' in window)){b.style.display='none';return}
-  if(Notification.permission==='granted'){b.style.display='none'}
+  if(Notification.permission==='granted'){b.style.display='block';b.textContent='🔔 Notifications ON';b.disabled=true}
   else{
     b.style.display='block';
     b.textContent=Notification.permission==='denied'?'🔕 Notification Blocked':'🔔 Enable Notifications';
@@ -109,7 +109,7 @@ window.addEventListener('message',e=>{
   }
 });
 
-registerSW().then(reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'})});
+registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V117 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
   if(sessionStorage.getItem('cfm-sw118-reload'))return;
@@ -152,7 +152,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe1ef!important;c
 .badge,.pill{border-color:#8fc8ee!important}
 @media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7e8f4!important;box-shadow:0 -6px 20px rgba(30,112,180,.09)!important}.nav button.active{background:#eaf6ff!important;color:#1269b2!important}}
 </style>`);
- src=src.replace('</head>',`<style id="cfm-final-v117">.command-hero{background:linear-gradient(115deg,#eef8ff 0%,#dff2ff 58%,#cbeaff 100%)!important;color:#17375e!important}.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}.command-tags span{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}</style></head>`);
+ src=src.replace('</head>',`<style id="cfm-final-v117">.command-hero{background:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;background-image:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;color:#17375e!important;border:1px solid #bcdff6!important;box-shadow:0 10px 26px rgba(22,116,201,.10)!important}.command-hero:after{border-color:rgba(22,116,201,.08)!important}.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}.command-tags span,.command-tags span:first-child{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}</style></head>`);
  const app=document.getElementById('app');
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
  app.style.visibility='visible';app.style.opacity='1';app.srcdoc=src;
