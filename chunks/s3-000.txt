@@ -133,9 +133,13 @@ window.syncBillCompanySearch=function(){const s=$('billRequestCompanySearch'),el
 window.billCompanySearchChanged=function(){
  const s=$('billRequestCompanySearch'),el=$('billRequestCompany');if(!s||!el)return;
  const q=normalize(s.value),opts=[...el.options].filter(o=>o.value);
- const exact=opts.find(o=>normalize(o.value)===q), starts=opts.filter(o=>normalize(o.value).includes(q));
- if(exact)el.value=exact.value; else if(starts.length===1)el.value=starts[0].value; else el.value='';
+ const exact=opts.find(o=>normalize(o.value)===q), hits=opts.filter(o=>normalize(o.value).includes(q));
+ if(exact)el.value=exact.value; else if(hits.length===1)el.value=hits[0].value; else el.value='';
+ if(!el.value&&q){const box=$('billRequestWorkChecks');if(box)box.innerHTML=hits.length?'<div class="empty">Niche dropdown se company select karo</div>':'<div class="empty">Company not found</div>';return}
  populateBillRequestWork();updateBillRequestPreview();
+}
+window.billCompanyPick=function(){
+ const el=$('billRequestCompany');if(!el)return;syncBillCompanySearch();populateBillRequestWork();updateBillRequestPreview();
 }
 window.populateBillRequestWork=function(){
   const el=$('billRequestWork');if(!el)return;
