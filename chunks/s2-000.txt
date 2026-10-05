@@ -244,8 +244,12 @@
         </div>
         <div class="bill-request-grid">
           <div>
-            <label>Work No</label>
-            <select id="billRequestWork" onchange="updateBillRequestPreview()"></select>
+            <label>Company</label>
+            <select id="billRequestCompany" onchange="populateBillRequestWork();updateBillRequestPreview()"></select>
+            <div style="height:8px"></div>
+            <label>Work No. (multiple select)</label>
+            <select id="billRequestWork" multiple size="6" onchange="updateBillRequestPreview()"></select>
+            <div class="inline-help">Ek company ke multiple Work No. select kar sakte ho.</div>
             <div style="height:8px"></div>
             <label>Request Type</label>
             <select id="billRequestType" onchange="updateBillRequestPreview()">
