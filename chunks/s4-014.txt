@@ -448,3 +448,38 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(enhance,700);
 })();
 </script>
+
+<script id="cfm-v106-stock-control">
+(function(){
+ const N=v=>String(v==null?'':v).trim().toUpperCase().replace(/\s+/g,' '),Q=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
+ const fam=v=>{const s=N(v);return ['333 ANT','333 AS','333 A'].includes(s)?'333 ANT/AS/A':s};
+ state.srlMovement=state.srlMovement||[];
+ function log(srl,type,mtr,work,before,after,note){state.srlMovement.push({id:Date.now()+'-'+Math.random().toString(36).slice(2,6),date:new Date().toISOString(),srlNo:srl,type,mtr:Q(mtr),workNo:work||'',before:Q(before),after:Q(after),note:note||''});}
+ window.cfmIssueCutting=function(srl,workNo){
+  const s=(state.store||[]).find(x=>N(x.srlNo)===N(srl));if(!s)return toast('SRL not found');
+  const bal=srlBalance(s),v=prompt('Cutting Issue MTR • '+srl+'\nAvailable '+fmt(bal)+' MTR','');if(v===null)return;const m=Q(v);if(m<=0)return toast('Valid MTR dalo');if(m>bal)return toast('Balance se jyada issue nahi kar sakte');
+  const w=prompt('Wastage MTR (optional)','0');if(w===null)return;const waste=Math.max(0,Q(w));if(m+w>bal)return toast('Issue + wastage balance se jyada hai');
+  const before=bal,total=m+w;
+  if('usedMtr' in s)s.usedMtr=Q(s.usedMtr)+total;else if('issueMtr' in s)s.issueMtr=Q(s.issueMtr)+total;else{s.manualUsedMtr=Q(s.manualUsedMtr)+total;s.openingMtr=Q(s.openingMtr);window.srlUsedMtr=(r=>Q(r.usedMtr||r.issueMtr||r.manualUsedMtr))}
+  const after=Math.max(0,before-total);log(s.srlNo,'CUTTING ISSUE',m,workNo,before,after,waste?'Wastage '+fmt(waste)+' MTR':'');if(waste)log(s.srlNo,'WASTAGE',waste,workNo,before-m,after,'Cutting wastage');
+  if(after<=0){s.status='CLOSED';s.closeDate=new Date().toISOString().slice(0,10);s.assignedWorkNo=''}save();toast('Cutting issued • Balance '+fmt(after)+' MTR');
+ };
+ window.cfmSrlLedger=function(srl){
+  const s=(state.store||[]).find(x=>N(x.srlNo)===N(srl));if(!s)return toast('SRL not found');const a=(state.srlMovement||[]).filter(x=>N(x.srlNo)===N(srl)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const w=window.open('','_blank','width=900,height=800');if(!w)return toast('Popup allow karo');
+  w.document.write('<!doctype html><html><head><title>SRL Ledger '+esc(srl)+'</title><style>body{font-family:Arial;padding:18px}h2{margin:0 0 5px}table{width:100%;border-collapse:collapse;margin-top:14px}th,td{border:1px solid #bbb;padding:7px;text-align:left;font-size:12px}th{background:#eee}.sum{padding:10px;border:1px solid #bbb;margin-top:10px}</style></head><body><h2>SRL MOVEMENT LEDGER • '+esc(srl)+'</h2><div class="sum">Cloth <b>'+esc(s.quality||s.cloth||'-')+'</b> • Width <b>'+esc(s.width||'-')+'"</b> • Current Balance <b>'+fmt(srlBalance(s))+' MTR</b></div><table><tr><th>Date</th><th>Type</th><th>Work</th><th>MTR</th><th>Before</th><th>After</th><th>Note</th></tr>'+a.map(x=>'<tr><td>'+esc(new Date(x.date).toLocaleString())+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.workNo||'-')+'</td><td>'+fmt(x.mtr)+'</td><td>'+fmt(x.before)+'</td><td>'+fmt(x.after)+'</td><td>'+esc(x.note||'')+'</td></tr>').join('')+'</table></body></html>');w.document.close();
+ };
+ function requirements(){
+  const m={};(state.pending||[]).filter(r=>!['DONE','CLOSED','DISPATCHED','CANCELLED'].includes(N(r.status))).forEach(r=>{const p=(state.productMaster||[]).find(x=>N(x.eagleCode)===N(r.eagleCode));const std=Q(p?.stdClothMtrNos||p?.standardConsumption||p?.consumptionMtr),req=Q(r.requiredClothMtr)||(std*Q(r.orderQty));if(!r.cloth||!req)return;const k=fam(r.cloth)+'|'+Q(r.width);m[k]=m[k]||{cloth:r.cloth,width:r.width,required:0};m[k].required+=req});
+  return Object.values(m).map(x=>{const stock=(state.store||[]).filter(s=>fam(s.quality||s.cloth)===fam(x.cloth)&&(!Q(x.width)||Q(s.width)===Q(x.width))&&srlBalance(s)>0).reduce((a,s)=>a+srlBalance(s),0);return {...x,stock,short:Math.max(0,x.required-stock)}}).sort((a,b)=>b.short-a.short);
+ }
+ window.cfmRequirementReport=function(){
+  const a=requirements(),w=window.open('','_blank','width=900,height=800');if(!w)return toast('Popup allow karo');w.document.write('<!doctype html><html><head><title>Cloth Requirement</title><style>body{font-family:Arial;padding:18px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:8px}th{background:#eee}.short{font-weight:bold}</style></head><body><h2>CLOTH REQUIREMENT / SHORTAGE</h2><table><tr><th>Cloth</th><th>Width</th><th>Required MTR</th><th>Available MTR</th><th>Short MTR</th></tr>'+a.map(x=>'<tr><td>'+esc(x.cloth)+'</td><td>'+esc(x.width||'ANY')+'</td><td>'+fmt(x.required)+'</td><td>'+fmt(x.stock)+'</td><td class="short">'+fmt(x.short)+'</td></tr>').join('')+'</table></body></html>');w.document.close();
+ };
+ function enhanceStore(){
+  const list=document.getElementById('storeList');if(!list)return;[...list.querySelectorAll('.data-card')].forEach(card=>{if(card.querySelector('.v106-ledger'))return;const srl=card.querySelector('.work')?.textContent?.trim();if(!srl)return;let a=card.querySelector('.card-actions');if(!a){a=document.createElement('div');a.className='card-actions';card.appendChild(a)};const b=document.createElement('button');b.className='btn btn-sm v106-ledger';b.textContent='📒 SRL Ledger';b.onclick=e=>{e.stopPropagation();cfmSrlLedger(srl)};a.appendChild(b);const i=document.createElement('button');i.className='btn btn-sm';i.textContent='✂ Issue Cutting';i.onclick=e=>{e.stopPropagation();cfmIssueCutting(srl,'')};a.appendChild(i)});
+ }
+ function dash(){const d=document.getElementById('dashboard');if(!d||document.getElementById('v106ReqBtn'))return;const b=document.createElement('button');b.id='v106ReqBtn';b.className='btn btn-primary';b.textContent='📊 Cloth Requirement / Shortage';b.onclick=cfmRequirementReport;d.prepend(b)}
+ const mo=new MutationObserver(()=>setTimeout(()=>{enhanceStore();dash()},25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{enhanceStore();dash()},700);
+})();
+</script>
