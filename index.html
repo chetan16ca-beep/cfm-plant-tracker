@@ -67,7 +67,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=147',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=148',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -122,19 +122,19 @@ window.addEventListener('message',e=>{
   }
 });
 
-registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V147 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
+registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V148 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw147-reload'))return;
-  sessionStorage.setItem('cfm-sw147-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw148-reload'))return;
+  sessionStorage.setItem('cfm-sw148-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='147';
+ const urls=groups.flat(), ver='148';
  const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-147-'+u;
+   const cacheKey='cfm-chunk-148-'+u;
    try{
      const saved=null; // Always fetch current chunk; old PWA chunk cache caused stale mobile versions.
    }catch(_){}
@@ -146,7 +146,7 @@ if('serviceWorker' in navigator){
  }));
  let src=texts.join('')+'\n';
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
- src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V147 LIVE');
+ src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V148 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V117');
  src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
  src=src.replace('<head>',`<head><base href="${location.origin}${basePath}"><style id="cfm-v116-sky-theme">
