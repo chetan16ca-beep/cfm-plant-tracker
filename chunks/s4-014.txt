@@ -181,7 +181,7 @@ function draw(row){if(!row)return;let wrap=row.querySelector('.multi-srl-force')
 }
 function bind(row){if(!row||row.dataset.srlForce==='1')return;row.dataset.srlForce='1';const cl=row.querySelector('.multi-cloth'),wd=row.querySelector('.multi-width'),prod=row.querySelector('.multi-item-product');['input','change','blur'].forEach(ev=>{cl?.addEventListener(ev,()=>draw(row));wd?.addEventListener(ev,()=>draw(row))});prod?.addEventListener('change',()=>setTimeout(()=>draw(row),0));prod?.addEventListener('blur',()=>setTimeout(()=>draw(row),0));draw(row)}
 function scan(){document.querySelectorAll('#multiPoItems .multi-po-item-row').forEach(bind)}
-new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setInterval(scan,1200);setTimeout(scan,200);
+const scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObserver(()=>requestAnimationFrame(scan)).observe(scanRoot,{childList:true,subtree:true});setTimeout(scan,200);
 })();
 </script>
 </body>
