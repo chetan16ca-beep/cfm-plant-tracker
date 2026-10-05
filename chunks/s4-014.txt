@@ -516,3 +516,19 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(update,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(update,700);
 })();
 </script>
+
+<script id="cfm-v109-cloth-tag-a4-six-equal">
+(function(){
+ window.printClothTags5=function(srls){
+  const ids=(Array.isArray(srls)?srls:[srls]).filter(Boolean).slice(0,6);
+  const rows=ids.map(id=>(state.store||[]).find(r=>String(r.srlNo||'')===String(id))).filter(Boolean);
+  if(!rows.length)return toast('SRL select karo');
+  const tag=r=>{const bal=srlBalance(r),st=bal<=0?'CLOSED':storeStatus(r);return '<div class="tag"><div class="head"><b>CFM • CLOTH TAG</b><strong>'+esc(r.srlNo||'-')+'</strong></div><div class="g"><span><small>CLOTH</small><b>'+esc(r.quality||r.cloth||'-')+'</b></span><span><small>WIDTH</small><b>'+esc(r.width||'-')+'"</b></span><span><small>OPENING</small><b>'+fmt(r.openingMtr||0)+' MTR</b></span><span><small>BALANCE</small><b>'+fmt(bal)+' MTR</b></span><span><small>RACK</small><b>'+esc(r.rack||'-')+'</b></span><span><small>STATUS</small><b>'+esc(st)+'</b></span><span><small>ENTRY</small><b>'+esc(dateDisplay(r.entryDate||''))+'</b></span><span><small>BILL</small><b>'+esc(r.billNo||'-')+'</b></span></div><div class="scan">SRL '+esc(r.srlNo||'')+' • '+esc(r.quality||r.cloth||'')+' • '+esc(r.width||'')+'" • BAL '+fmt(bal)+'</div></div>'};
+  const blanks=Array.from({length:6-rows.length},()=>'<div class="tag blank"></div>').join('');
+  const w=window.open('','_blank','width=900,height=1000');if(!w)return toast('Print popup allow karo');
+  w.document.write('<!doctype html><html><head><title>Cloth Tags • A4 6 Equal</title><style>@page{size:A4 portrait;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;width:210mm;height:297mm;font-family:Arial,sans-serif}.sheet{width:210mm;height:297mm;display:grid;grid-template-columns:repeat(2,105mm);grid-template-rows:repeat(3,99mm)}.tag{width:105mm;height:99mm;border:.35mm solid #111;padding:4mm;overflow:hidden;page-break-inside:avoid}.head{display:flex;justify-content:space-between;align-items:center;border-bottom:.5mm solid #111;padding-bottom:2mm;margin-bottom:2mm;font-size:10pt}.head strong{font-size:18pt}.g{display:grid;grid-template-columns:1fr 1fr;border-left:.25mm solid #777;border-top:.25mm solid #777}.g span{padding:1.7mm 2mm;border-right:.25mm solid #777;border-bottom:.25mm solid #777;min-height:12mm}.g small{display:block;font-size:6.5pt;color:#555}.g b{font-size:9.5pt}.scan{font:7pt monospace;text-align:center;margin-top:2mm;border:.25mm dashed #777;padding:1.5mm;white-space:nowrap;overflow:hidden}.blank{border:.25mm dashed #bbb}@media print{html,body{width:210mm;height:297mm}}</style></head><body><div class="sheet">'+rows.map(tag).join('')+blanks+'</div><script>setTimeout(()=>window.print(),250)<\/script></body></html>');w.document.close();
+ };
+ function update(){const b=document.querySelector('#clothTag5Bar button');if(b)b.textContent='🏷 Print Cloth Tags • A4 6 Equal Parts';}
+ const mo=new MutationObserver(()=>setTimeout(update,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(update,700);
+})();
+</script>
