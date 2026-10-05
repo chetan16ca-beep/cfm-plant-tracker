@@ -54,7 +54,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=126',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=127',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -112,16 +112,16 @@ window.addEventListener('message',e=>{
 registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V117 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw126-reload'))return;
-  sessionStorage.setItem('cfm-sw126-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw127-reload'))return;
+  sessionStorage.setItem('cfm-sw127-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='126';
+ const urls=groups.flat(), ver='127';
  const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-126-'+u;
+   const cacheKey='cfm-chunk-127-'+u;
    try{
      const saved=localStorage.getItem(cacheKey);
      if(saved){done++;st.textContent='Loading '+done+'/'+total;return saved}
