@@ -423,3 +423,28 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(decorate,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(decorate,700);
 })();
 </script>
+
+<script id="cfm-v105-cloth-tag-5up">
+(function(){
+ window.printClothTags5=function(srls){
+  const ids=(Array.isArray(srls)?srls:[srls]).filter(Boolean).slice(0,5);
+  const rows=ids.map(id=>(state.store||[]).find(r=>String(r.srlNo||'')===String(id))).filter(Boolean);
+  if(!rows.length)return toast('SRL select karo');
+  const tag=r=>{const bal=srlBalance(r),st=bal<=0?'CLOSED':storeStatus(r);return '<div class="tag"><div class="top"><b>CFM • CLOTH / SRL TAG</b><strong>'+esc(r.srlNo||'-')+'</strong></div><div class="g"><span><small>CLOTH</small><b>'+esc(r.quality||r.cloth||'-')+'</b></span><span><small>WIDTH</small><b>'+esc(r.width||'-')+'"</b></span><span><small>OPENING</small><b>'+fmt(r.openingMtr||0)+' MTR</b></span><span><small>BALANCE</small><b>'+fmt(bal)+' MTR</b></span><span><small>RACK</small><b>'+esc(r.rack||'-')+'</b></span><span><small>STATUS</small><b>'+esc(st)+'</b></span><span><small>ENTRY</small><b>'+esc(dateDisplay(r.entryDate||''))+'</b></span><span><small>BILL</small><b>'+esc(r.billNo||'-')+'</b></span></div><div class="scan">SCAN: '+esc([r.srlNo,r.quality||r.cloth,r.width,bal].join('|'))+'</div></div>'};
+  const w=window.open('','_blank','width=850,height=950');if(!w)return toast('Print popup allow karo');
+  w.document.write('<!doctype html><html><head><title>Cloth Tags 5-UP</title><style>@page{size:A4 portrait;margin:6mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0}.sheet{height:285mm;display:grid;grid-template-rows:repeat(5,1fr);gap:2mm}.tag{border:2px solid #111;padding:5px 8px;overflow:hidden}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #111;padding-bottom:3px;margin-bottom:4px;font-size:13px}.top strong{font-size:20px}.g{display:grid;grid-template-columns:repeat(4,1fr);border-left:1px solid #777;border-top:1px solid #777}.g span{padding:3px 5px;border-right:1px solid #777;border-bottom:1px solid #777;min-height:31px}.g small{display:block;font-size:7px;color:#555}.g b{font-size:11px}.scan{font:8px monospace;text-align:center;margin-top:3px;white-space:nowrap;overflow:hidden}.blank{border:1px dashed #bbb}@media print{body{print-color-adjust:exact}}</style></head><body><div class="sheet">'+rows.map(tag).join('')+Array.from({length:5-rows.length},()=>'<div class="blank"></div>').join('')+'</div><script>setTimeout(()=>window.print(),250)<\/script></body></html>');w.document.close();
+ };
+ window.cfmTagSelection=window.cfmTagSelection||new Set();
+ function enhance(){
+  const list=document.getElementById('storeList');if(!list)return;
+  [...list.querySelectorAll('.data-card')].forEach(card=>{
+   if(card.querySelector('.tag-select-v105'))return;const srl=card.querySelector('.work')?.textContent?.trim();if(!srl)return;
+   const lab=document.createElement('label');lab.className='tag-select-v105 chip';lab.style.cursor='pointer';lab.innerHTML='<input type="checkbox" style="margin-right:5px"> Tag Select';
+   const cb=lab.querySelector('input');cb.checked=cfmTagSelection.has(srl);cb.onchange=e=>{e.stopPropagation();if(cb.checked){if(cfmTagSelection.size>=5){cb.checked=false;return toast('Ek page me maximum 5 tags')}cfmTagSelection.add(srl)}else cfmTagSelection.delete(srl)};
+   card.querySelector('.chips')?.appendChild(lab);
+  });
+  let bar=document.getElementById('clothTag5Bar');if(!bar){bar=document.createElement('div');bar.id='clothTag5Bar';bar.style.cssText='position:sticky;bottom:8px;z-index:20;padding:8px;text-align:center';bar.innerHTML='<button class="btn btn-primary" onclick="printClothTags5([...cfmTagSelection])">🏷 Print Selected Cloth Tags • 5/Page</button>';list.parentElement?.appendChild(bar)}
+ }
+ const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(enhance,700);
+})();
+</script>
