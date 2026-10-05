@@ -979,7 +979,10 @@ window.saveMultiPoItems=function(){
   const rows=multiPoRowsData().filter(x=>x.description||x.eagleCode||x.itemCode||x.orderQty);
   if(!rows.length)return fail('Kam se kam 1 item add karo',document.querySelector('.multi-item-product'));
   for(const x of rows){
-    if(!x.description)return fail('Description 1 required • item complete karo',x.row.querySelector('.multi-item-product'));
+    if(!x.description){
+      const fallback=[x.eagleCode,x.itemCode,x.cloth].filter(Boolean).join(' / ');
+      if(fallback)x.description=fallback; else return fail('Description 1 required • item complete karo',x.row.querySelector('.multi-item-product'));
+    }
     if(!(num(x.orderQty)>0))return fail('Order Qty required • 0 se jyada enter karo',x.row.querySelector('.multi-qty'));
   }
   // Re-check the latest work number at save time, useful when 3-4 mobiles are syncing.
