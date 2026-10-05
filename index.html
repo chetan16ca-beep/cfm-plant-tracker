@@ -54,7 +54,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=115',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=116',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -111,8 +111,8 @@ window.addEventListener('message',e=>{
 registerSW().then(reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'})});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw115-reload'))return;
-  sessionStorage.setItem('cfm-sw115-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw116-reload'))return;
+  sessionStorage.setItem('cfm-sw116-reload','1');location.reload();
  });
 }
 
@@ -120,7 +120,7 @@ if('serviceWorker' in navigator){
  let parts=[],done=0,total=groups.flat().length,st=document.getElementById('st');
  for(const g of groups){
    const x=await Promise.all(g.map(async u=>{
-     const r=await fetch('./'+u+'?v=115&t='+Date.now(),{cache:'no-store'});
+     const r=await fetch('./'+u+'?v=116&t='+Date.now(),{cache:'no-store'});
      if(!r.ok)throw Error(u);
      done++;st.textContent='Loading '+done+'/'+total;
      return r.text()
@@ -129,7 +129,25 @@ if('serviceWorker' in navigator){
  }
  let src=parts.join('')+'\n';
  src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
- src=src.replace('<head>','<head><base href="'+location.origin+basePath+'">');
+ src=src.replace('<head>','<head><base href="'+location.origin+basePath+'"><style id="cfm-v116-sky-theme">
+:root{--cfm-blue:#1674c9;--cfm-blue2:#49a8f2;--cfm-pale:#eef8ff;--cfm-line:#cfe5f6;--cfm-text:#13233b}
+html,body{background:#f6fbff!important;color:var(--cfm-text)!important}
+body,button,input,select,textarea{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif!important}
+.topbar{background:linear-gradient(135deg,#ffffff,#eef8ff)!important;color:#13233b!important;border-bottom:1px solid #d6e8f6!important;box-shadow:0 5px 18px rgba(22,116,201,.10)!important}
+.topbar .brand h1,.topbar .brand p{color:#17375e!important}.topbar .brand p{opacity:.75!important}
+.topbar .btn{background:#fff!important;color:#176db7!important;border-color:#cfe4f5!important}
+.panel,.data-card,.action-card{background:#fff!important;border-color:#d9e9f5!important;box-shadow:0 7px 22px rgba(30,112,180,.08)!important;border-radius:18px!important}
+.btn-primary{background:linear-gradient(135deg,#1674c9,#3ba3ef)!important;color:#fff!important;border-color:#2589d6!important}
+.btn-green{background:#2f91da!important;border-color:#2f91da!important;color:#fff!important}
+.work,.action-card b{color:#176db7!important}
+.nav button.active{background:#eaf6ff!important;color:#1269b2!important;border-color:#8dc9f3!important;box-shadow:none!important}
+#kpis .kpi,#docKpis .kpi{background:linear-gradient(145deg,#fff,#f1f9ff)!important;border:1px solid #d7eaf8!important;box-shadow:0 6px 18px rgba(30,112,180,.07)!important}
+#kpis .kpi .num,#docKpis .kpi .num{color:#10213c!important}
+#kpis .kpi .label,#docKpis .kpi .label{color:#60748c!important}
+input,select,textarea{background:#fff!important;border-color:#cfe1ef!important;color:#17283e!important}
+.badge,.pill{border-color:#8fc8ee!important}
+@media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7e8f4!important;box-shadow:0 -6px 20px rgba(30,112,180,.09)!important}.nav button.active{background:#eaf6ff!important;color:#1269b2!important}}
+</style>');
  const app=document.getElementById('app');
  app.srcdoc=src;
  document.getElementById('load').style.display='none';
