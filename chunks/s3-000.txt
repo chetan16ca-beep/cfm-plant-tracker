@@ -967,7 +967,7 @@ window.openMultiPendingForm=function(){
     <button type="button" class="multi-add-item" onclick="addMultiPoItem()">＋ Add Another Item</button>
     <div class="multi-cut-note"><b>✂ Cutting Entry Available</b><span>Save ke baad har Work No. ke liye SRL No., Cut Qty, Length, Height, Layer, Cloth, Width, Cutting By aur Wastage alag enter kar sakte ho.</span></div>
   </div>`;
-  openDialog('Add Pending Order • Multi-item PO',html,()=>saveMultiPoItems(),{type:'multiPending'});
+  openDialog('Add Pending Order • Multi-item PO',html,()=>window.saveMultiPoItems(),{type:'multiPending'});
   $('editDialog').classList.add('multi-po-dialog');
   $('saveFormBtn').textContent='Save PO Items';
   document.querySelectorAll('#multiPoItems .multi-po-item-row').forEach(bindMultiPoRow);
