@@ -5,7 +5,7 @@ html,body,#app{margin:0;width:100%;height:100%;overflow:hidden;background:#eef3f
 #app{border:0;display:block}
 .load{position:fixed;inset:0;display:grid;place-items:center;font-family:system-ui;color:#182433;z-index:20}
 .box{background:#fff;padding:24px;border-radius:16px;box-shadow:0 8px 30px #0002;text-align:center}
-#notifyBtn{position:fixed;right:14px;top:14px;bottom:auto;z-index:50;border:0;border-radius:999px;padding:12px 16px;background:#101820;color:#fff;font:600 14px system-ui;box-shadow:0 6px 22px #0004;display:none}
+#notifyBtn{position:fixed;right:14px;top:calc(env(safe-area-inset-top, 0px) + 10px);bottom:auto;z-index:999999;border:0;border-radius:999px;width:42px;height:42px;padding:0;background:#fff;color:#1674c9;border:1px solid #b9dcf5;font:700 20px system-ui;box-shadow:0 6px 22px #0004;display:none}
 #notifyBtn:active{transform:scale(.98)}
 </style>
 
@@ -155,7 +155,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe1ef!important;c
  src=src.replace('</head>',`<style id="cfm-final-v117">.command-hero{background:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;background-image:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;color:#17375e!important;border:1px solid #bcdff6!important;box-shadow:0 10px 26px rgba(22,116,201,.10)!important}.command-hero:after{border-color:rgba(22,116,201,.08)!important}.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}.command-tags span,.command-tags span:first-child{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}</style></head>`);
  const app=document.getElementById('app');
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
- app.style.visibility='visible';app.style.opacity='1';app.srcdoc=src;
+ app.style.visibility='visible';app.style.opacity='1';app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
 </script></body></html>
