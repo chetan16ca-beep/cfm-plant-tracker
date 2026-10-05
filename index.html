@@ -67,7 +67,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=143',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=144',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -122,19 +122,19 @@ window.addEventListener('message',e=>{
   }
 });
 
-registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V143 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
+registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V144 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw143-reload'))return;
-  sessionStorage.setItem('cfm-sw143-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw144-reload'))return;
+  sessionStorage.setItem('cfm-sw144-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='143';
+ const urls=groups.flat(), ver='144';
  const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-143-'+u;
+   const cacheKey='cfm-chunk-144-'+u;
    try{
      const saved=null; // Always fetch current chunk; old PWA chunk cache caused stale mobile versions.
    }catch(_){}
@@ -146,7 +146,7 @@ if('serviceWorker' in navigator){
  }));
  let src=texts.join('')+'\n';
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
- src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V143 LIVE');
+ src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V144 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V117');
  src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
  src=src.replace('<head>',`<head><base href="${location.origin}${basePath}"><style id="cfm-v116-sky-theme">
@@ -168,6 +168,19 @@ input,select,textarea{background:#fff!important;border-color:#cfe1ef!important;c
 .badge,.pill{border-color:#8fc8ee!important}
 @media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7e8f4!important;box-shadow:0 -6px 20px rgba(30,112,180,.09)!important}.nav button.active{background:#eaf6ff!important;color:#1269b2!important}}
 </style>`);
+ src=src.replace('</head>',`<style id="cfm-v144-blue-white-force">
+html,body{background:#f4faff!important;color:#13233b!important}
+.topbar{background:linear-gradient(135deg,#ffffff,#e7f5ff)!important;border-bottom:2px solid #b9def7!important}
+.panel,.data-card,.action-card,.kpi{background:#fff!important;border-color:#cfe7f8!important}
+.btn-primary{background:#1674c9!important;color:#fff!important;border-color:#1674c9!important}
+.btn-green{background:#258fd7!important;color:#fff!important;border-color:#258fd7!important}
+.work,.action-card b{color:#126db7!important}
+#kpis .kpi,#docKpis .kpi{background:#fff!important;border-left:5px solid #49a8f2!important}
+.nav{background:#fff!important}.nav button.active{background:#dff2ff!important;color:#126db7!important;border-color:#8ecaf2!important}
+.command-hero{background:linear-gradient(135deg,#ffffff 0%,#eaf7ff 58%,#d9efff 100%)!important;background-image:linear-gradient(135deg,#ffffff 0%,#eaf7ff 58%,#d9efff 100%)!important;color:#17375e!important;border:1px solid #bcdff6!important}
+.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}
+.command-tags span,.command-tags span:first-child{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}
+</style></head>`);
  src=src.replace('</head>',`<style id="cfm-final-v117">.command-hero{background:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;background-image:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;color:#17375e!important;border:1px solid #bcdff6!important;box-shadow:0 10px 26px rgba(22,116,201,.10)!important}.command-hero:after{border-color:rgba(22,116,201,.08)!important}.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}.command-tags span,.command-tags span:first-child{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}</style></head>`);
  const app=document.getElementById('app');
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
