@@ -247,9 +247,11 @@
             <label>Company</label>
             <select id="billRequestCompany" onchange="populateBillRequestWork();updateBillRequestPreview()"></select>
             <div style="height:8px"></div>
-            <label>Work No. (multiple select)</label>
-            <select id="billRequestWork" multiple size="6" onchange="updateBillRequestPreview()"></select>
-            <div class="inline-help">Ek company ke multiple Work No. select kar sakte ho.</div>
+            <label>Work No.</label>
+            <div style="display:flex;gap:8px;margin:6px 0"><button type="button" class="btn btn-sm" onclick="toggleAllBillWorks(true)">☑ Select All</button><button type="button" class="btn btn-sm" onclick="toggleAllBillWorks(false)">Clear</button></div>
+            <div id="billRequestWorkChecks" style="max-height:240px;overflow:auto;border:1px solid #cfe1ef;border-radius:12px;padding:8px;background:#fff"></div>
+            <select id="billRequestWork" multiple style="display:none"></select>
+            <div class="inline-help">Company select karo aur required Work No. ke checkbox tick karo.</div>
             <div style="height:8px"></div>
             <label>Request Type</label>
             <select id="billRequestType" onchange="updateBillRequestPreview()">
