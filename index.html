@@ -128,6 +128,9 @@ if('serviceWorker' in navigator){
    parts.push(x.join(''))
  }
  let src=parts.join('')+'\n';
+ // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
+ src=src.replace(/V\\s*(?:98|113|115)\\s*LIVE/gi,'V116 LIVE');
+ src=src.replace(/V(?:98|113|115)\\b/gi,'V116');
  src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
  src=src.replace('<head>','<head><base href="'+location.origin+basePath+'"><style id="cfm-v116-sky-theme">
 :root{--cfm-blue:#1674c9;--cfm-blue2:#49a8f2;--cfm-pale:#eef8ff;--cfm-line:#cfe5f6;--cfm-text:#13233b}
