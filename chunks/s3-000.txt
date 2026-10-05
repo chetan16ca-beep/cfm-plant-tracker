@@ -119,24 +119,56 @@ window.renderDocs=function(){
   if($('docsList'))$('docsList').innerHTML=rows.map(docsCard).join('')||'<div class="empty">No matching billing / challan / dispatch work</div>';
   populateBillRequestWork();updateBillRequestPreview();
 }
-function populateBillRequestWork(){
-  const el=$('billRequestWork');if(!el)return;const current=el.value;const rows=state.pending.slice().sort((a,b)=>String(b.workNo||'').localeCompare(String(a.workNo||''),undefined,{numeric:true}));
-  el.innerHTML='<option value="">Select Work No.</option>'+rows.map(r=>`<option value="${esc(r.workNo)}">${esc(r.workNo)} — ${esc(r.party||'')}</option>`).join('');
-  if(rows.some(r=>r.workNo===current))el.value=current;
+function populateBillRequestCompany(){
+  const el=$('billRequestCompany');if(!el)return;
+  const current=el.value, parties=[...new Set(state.pending.filter(r=>!isArchived(r)).map(r=>String(r.party||'').trim()).filter(Boolean))].sort();
+  el.innerHTML='<option value="">Select Company</option>'+parties.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+  if(parties.includes(current))el.value=current;
 }
-function selectedBillRequest(){const w=$('billRequestWork')?.value||'';return state.pending.find(r=>normalize(r.workNo)===normalize(w))}
+function populateBillRequestWork(){
+  const el=$('billRequestWork');if(!el)return;
+  const party=$('billRequestCompany')?.value||'';
+  const selected=new Set([...el.selectedOptions].map(o=>o.value));
+  const rows=state.pending.filter(r=>!isArchived(r)&&(!party||normalize(r.party)===normalize(party))).slice().sort(workSort);
+  el.innerHTML=rows.map(r=>'<option value="'+esc(r.workNo)+'">'+esc(r.workNo)+' — '+esc(r.description||'')+'</option>').join('');
+  [...el.options].forEach(o=>o.selected=selected.has(o.value));
+}
+function selectedBillRequests(){
+  const el=$('billRequestWork');if(!el)return [];
+  const works=[...el.selectedOptions].map(o=>normalize(o.value));
+  return state.pending.filter(r=>works.includes(normalize(r.workNo)));
+}
+function selectedBillRequest(){return selectedBillRequests()[0]||null}
 function billRequestMessage(){
-  const r=selectedBillRequest();if(!r)return 'Select a Work No.';const type=$('billRequestType')?.value||'BILL', remark=($('billRequestRemark')?.value||'').trim();
+  const rows=selectedBillRequests();if(!rows.length)return 'Select Work No.';
+  const type=$('billRequestType')?.value||'BILL', remark=($('billRequestRemark')?.value||'').trim();
   const title=type==='BOTH'?'BILL + CHALLAN REQUEST':type==='CHALLAN'?'CHALLAN REQUEST':'BILL REQUEST';
-  let t=`*${title}*\nCompany: ${r.party||'-'}\nWork No: ${r.workNo||'-'}\nPO / Ref: ${r.poNo||'-'}\nItem: ${r.description||'-'}\nOrder Qty: ${fmt(r.orderQty)}\nCut Qty: ${fmt(r.cutQty)}\nPending Qty: ${fmt(pendingQty(r))}`;
-  if(r.deliveryDate)t+=`\nDelivery Date: ${dateDisplay(r.deliveryDate)}`;if(r.eagleCode)t+=`\nEagle Code: ${r.eagleCode}`;if(remark)t+=`\nRemark: ${remark}`;
-  t+=`\n\nPlease prepare the ${type==='BOTH'?'bill and challan':type.toLowerCase()} for the above work order.\nRequest Date: ${dateDisplay(todayISO())}`;return t;
+  let t='*'+title+'*\nCompany: '+(rows[0].party||'-')+'\n\n';
+  rows.forEach((r,i)=>{t+=(i+1)+'. Work No: '+(r.workNo||'-')+'\nPO / Ref: '+(r.poNo||'-')+'\nItem: '+(r.description||'-')+'\nOrder Qty: '+fmt(r.orderQty)+' | Cut Qty: '+fmt(r.cutQty)+' | Pending: '+fmt(pendingQty(r))+(r.deliveryDate?'\nDelivery: '+dateDisplay(r.deliveryDate):'')+'\n\n'});
+  if(remark)t+='Remark: '+remark+'\n';
+  t+='Please prepare the '+(type==='BOTH'?'bill and challan':type.toLowerCase())+' for the above '+rows.length+' work order(s).\nRequest Date: '+dateDisplay(todayISO());
+  return t;
 }
 window.updateBillRequestPreview=function(){const p=$('billRequestPreview');if(p)p.textContent=billRequestMessage()}
-window.selectBillRequestWork=function(i){const r=state.pending[i];if(!r)return;showView('docs');populateBillRequestWork();$('billRequestWork').value=r.workNo;$('billRequestType').value='BILL';updateBillRequestPreview();$('billRequestWork').scrollIntoView({behavior:'smooth',block:'center'})}
-window.copyBillRequest=async function(){const t=billRequestMessage();if(t==='Select a Work No.')return toast('Select Work No.');try{await navigator.clipboard.writeText(t);toast('Bill request copied')}catch(e){prompt('Copy bill request:',t)}}
-window.shareBillRequest=async function(){const r=selectedBillRequest();if(!r)return toast('Select Work No.');const text=billRequestMessage();try{if(navigator.share){await navigator.share({title:`${r.workNo} Bill Request`,text});return}}catch(e){if(e?.name==='AbortError')return}window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank')}
-window.markBillRequested=function(){const r=selectedBillRequest();if(!r)return toast('Select Work No.');const type=$('billRequestType')?.value||'BILL',at=new Date().toISOString();if(type==='BILL'||type==='BOTH'){r.billStatus='REQUESTED';r.billRequestedAt=at}if(type==='CHALLAN'||type==='BOTH'){r.challanStatus='REQUESTED';r.challanRequestedAt=at}const rem=($('billRequestRemark')?.value||'').trim();if(rem)r.accountsRemark=[r.accountsRemark,rem].filter(Boolean).join(' | ');save();toast('Request marked REQUESTED')}
+window.selectBillRequestWork=function(i){
+  const r=state.pending[i];if(!r)return;showView('docs');populateBillRequestCompany();
+  const co=$('billRequestCompany');if(co)co.value=r.party||'';populateBillRequestWork();
+  const el=$('billRequestWork');if(el)[...el.options].forEach(o=>o.selected=normalize(o.value)===normalize(r.workNo));
+  $('billRequestType').value='BILL';updateBillRequestPreview();el?.scrollIntoView({behavior:'smooth',block:'center'})
+}
+window.copyBillRequest=async function(){const t=billRequestMessage();if(t==='Select Work No.')return toast('Select Work No.');try{await navigator.clipboard.writeText(t);toast('Combined request copied')}catch(e){prompt('Copy request:',t)}}
+window.shareBillRequest=async function(){
+  const rows=selectedBillRequests();if(!rows.length)return toast('Select Work No.');
+  const msg=billRequestMessage();try{if(navigator.share){await navigator.share({title:(rows[0].party||'CFM')+' Bill / Challan Request',text:msg});return}}catch(e){if(e?.name==='AbortError')return}
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank')
+}
+window.markBillRequested=function(){
+  const rows=selectedBillRequests();if(!rows.length)return toast('Select Work No.');
+  const type=$('billRequestType')?.value||'BILL',at=new Date().toISOString(),rem=($('billRequestRemark')?.value||'').trim();
+  rows.forEach(r=>{if(type==='BILL'||type==='BOTH'){r.billStatus='REQUESTED';r.billRequestedAt=at}if(type==='CHALLAN'||type==='BOTH'){r.challanStatus='REQUESTED';r.challanRequestedAt=at}if(rem)r.accountsRemark=[r.accountsRemark,rem].filter(Boolean).join(' | ');stampRecord(r)});
+  setNextUpdateNotification?.('🧾 Combined Bill / Challan Request',(rows[0].party||'Company')+' • '+rows.length+' work');
+  save();toast(rows.length+' work request marked REQUESTED')
+}
 function docsUpdateText(rows=null){
   const list=(rows||state.pending.filter(docsActionRequired)).slice().sort(workSort);
   let out=`CFM BILL / CHALLAN UPDATE — ${dateDisplay(todayISO())}\n`;
