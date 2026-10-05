@@ -54,7 +54,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=116',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=117',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -111,8 +111,8 @@ window.addEventListener('message',e=>{
 registerSW().then(reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'})});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw116-reload'))return;
-  sessionStorage.setItem('cfm-sw116-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw117-reload'))return;
+  sessionStorage.setItem('cfm-sw117-reload','1');location.reload();
  });
 }
 
@@ -120,7 +120,7 @@ if('serviceWorker' in navigator){
  let parts=[],done=0,total=groups.flat().length,st=document.getElementById('st');
  for(const g of groups){
    const x=await Promise.all(g.map(async u=>{
-     const r=await fetch('./'+u+'?v=116&t='+Date.now(),{cache:'no-store'});
+     const r=await fetch('./'+u+'?v=117&t='+Date.now(),{cache:'no-store'});
      if(!r.ok)throw Error(u);
      done++;st.textContent='Loading '+done+'/'+total;
      return r.text()
@@ -152,7 +152,8 @@ input,select,textarea{background:#fff!important;border-color:#cfe1ef!important;c
 @media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7e8f4!important;box-shadow:0 -6px 20px rgba(30,112,180,.09)!important}.nav button.active{background:#eaf6ff!important;color:#1269b2!important}}
 </style>`);
  const app=document.getElementById('app');
+ app.addEventListener('load',()=>{document.getElementById('load').style.display='none'},{once:true});
  app.srcdoc=src;
- document.getElementById('load').style.display='none';
+ setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
 </script></body></html>
