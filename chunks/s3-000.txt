@@ -626,14 +626,14 @@ function openDialog(title,html,onSave,resumeMeta=null){
     }
   },0);
 }
-$('saveFormBtn').addEventListener('click',async()=>{
+$('saveFormBtn').addEventListener('click',()=>{
   const btn=$('saveFormBtn');if(btn?.dataset.saving==='1')return;
-  const fd=new FormData($('editForm'));const obj=Object.fromEntries(fd.entries());
   try{
     if(btn){btn.dataset.saving='1';btn.disabled=true;btn.textContent='Saving…'}
-    const ok=await Promise.resolve(editContext?.(obj));
-    if(ok!==false){$('editDialog').close();setTimeout(()=>{try{renderAll()}catch(e){}},0)}
-  }catch(e){console.error('Save failed',e);toast('Save error • '+(e?.message||'please retry'))}
+    const fd=new FormData($('editForm')),obj=Object.fromEntries(fd.entries());
+    const ok=editContext?.(obj);
+    if(ok!==false){$('editDialog').close();try{renderAll()}catch(e){}}
+  }catch(e){console.error('Save failed',e);toast('SAVE ERROR: '+(e?.message||'please retry'))}
   finally{if(btn){btn.dataset.saving='0';btn.disabled=false;if($('editDialog')?.open)btn.textContent=$('editDialog')?.classList.contains('multi-po-dialog')?'Save PO Items':'Save'}}
 });
 $('editDialog').addEventListener('close',()=>{dialogResumeMeta=null;try{safeStorage.removeItem('cfm-ui-dialog-v1')}catch(e){}});
