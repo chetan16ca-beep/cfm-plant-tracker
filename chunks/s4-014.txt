@@ -532,3 +532,34 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(update,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(update,700);
 })();
 </script>
+
+<script id="cfm-v110-edit-width-srl">
+(function(){
+ const N=v=>String(v==null?'':v).trim().toUpperCase().replace(/\s+/g,' '), Q=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
+ const fam=v=>{const s=N(v);return ['333 ANT','333 AS','333 A'].includes(s)?'333 ANT/AS/A':s};
+ function product(o){return (state.productMaster||[]).find(p=>(o.eagleCode&&N(p.eagleCode)===N(o.eagleCode))||(o.itemCode&&N(p.itemCode)===N(o.itemCode)))}
+ function infer(o){
+   const p=product(o), pw=Q(p?.standardWidth);
+   if(pw)return {width:pw,source:'Product Master'};
+   const hist=(state.pending||[]).filter(x=>x!==o&&((o.eagleCode&&N(x.eagleCode)===N(o.eagleCode))||(o.itemCode&&N(x.itemCode)===N(o.itemCode)))&&Q(x.width)>0);
+   if(hist.length){const counts={};hist.forEach(x=>counts[Q(x.width)]=(counts[Q(x.width)]||0)+1);const a=Object.entries(counts).sort((a,b)=>b[1]-a[1]);if(a.length===1||a[0][1]>a[1][1])return {width:Q(a[0][0]),source:'Previous Order'};}
+   return null;
+ }
+ function stockHTML(cloth,width){
+   const F=fam(cloth),w=Q(width),all=(state.store||[]).filter(s=>srlBalance(s)>0&&!['CLOSED','ZERO','BLOCKED'].includes(N(storeStatus(s)))&&fam(s.quality||s.cloth)===F);
+   const ex=all.filter(s=>w&&Q(s.width)===w),use=ex.length?ex:all;
+   return '<div style="margin-top:8px"><b>'+(ex.length?'OPEN SRL • Exact Width':'STORE ALTERNATIVE')+'</b><div class="chips" style="margin-top:5px">'+(use.length?use.map(s=>'<span class="chip '+(ex.length?'green':'')+'">SRL '+esc(s.srlNo)+' • '+esc(s.quality||s.cloth||'')+' • '+esc(s.width||'-')+'" • '+fmt(srlBalance(s))+' MTR</span>').join(''):'<span class="chip red">NO STOCK</span>')+'</div></div>';
+ }
+ function enhance(){
+   const form=document.getElementById('editForm');if(!form)return;
+   const cloth=form.querySelector('[name=cloth]'),width=form.querySelector('[name=width]');if(!cloth||!width)return;
+   const work=form.querySelector('[name=workNo]')?.value||'',o=(state.pending||[]).find(x=>N(x.workNo)===N(work))||formValues?.()||{};
+   if(!Q(width.value)){const inf=infer(o);if(inf){width.value=inf.width;width.dispatchEvent(new Event('input',{bubbles:true}));let note=form.querySelector('#v110WidthNote');if(!note){note=document.createElement('div');note.id='v110WidthNote';note.className='hint';width.parentElement?.appendChild(note)}note.textContent='Width auto-filled from '+inf.source+' • '+inf.width+'"';}}
+   let box=form.querySelector('#v110EditSrl');if(!box){box=document.createElement('div');box.id='v110EditSrl';box.className='field full';width.closest('.field')?.after(box)}
+   const draw=()=>box.innerHTML=stockHTML(cloth.value,width.value);draw();
+   if(!cloth.dataset.v110){cloth.dataset.v110='1';cloth.addEventListener('input',draw);cloth.addEventListener('change',draw)}
+   if(!width.dataset.v110){width.dataset.v110='1';width.addEventListener('input',draw);width.addEventListener('change',draw)}
+ }
+ const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(enhance,700);
+})();
+</script>
