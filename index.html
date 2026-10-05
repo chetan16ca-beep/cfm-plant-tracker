@@ -153,8 +153,8 @@ input,select,textarea{background:#fff!important;border-color:#cfe1ef!important;c
 @media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7e8f4!important;box-shadow:0 -6px 20px rgba(30,112,180,.09)!important}.nav button.active{background:#eaf6ff!important;color:#1269b2!important}}
 </style>`);
  const app=document.getElementById('app');
- app.addEventListener('load',()=>{document.getElementById('load').style.display='none'},{once:true});
- app.srcdoc=src;
+ app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
+ app.style.visibility='visible';app.style.opacity='1';app.srcdoc=src;
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
 </script></body></html>
