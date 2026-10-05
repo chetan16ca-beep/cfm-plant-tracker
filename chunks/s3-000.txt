@@ -132,7 +132,15 @@ function populateBillRequestWork(){
   const rows=state.pending.filter(r=>!isArchived(r)&&(!party||normalize(r.party)===normalize(party))).slice().sort(workSort);
   el.innerHTML=rows.map(r=>'<option value="'+esc(r.workNo)+'">'+esc(r.workNo)+' — '+esc(r.description||'')+'</option>').join('');
   [...el.options].forEach(o=>o.selected=selected.has(o.value));
+  const box=$('billRequestWorkChecks');
+  if(box)box.innerHTML=rows.map(r=>'<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 5px;border-bottom:1px solid #edf3f7"><input type="checkbox" data-bill-work="'+esc(r.workNo)+'" onchange="syncBillWorkChecks()" style="width:20px;height:20px;flex:0 0 auto"><span><b>'+esc(r.workNo||'')+'</b><br><small>'+esc(r.party||'')+' — '+esc(r.description||'')+'</small></span></label>').join('')||'<div class="empty">Company select karo</div>';
 }
+window.syncBillWorkChecks=function(){
+ const el=$('billRequestWork');if(!el)return;const vals=new Set([...document.querySelectorAll('[data-bill-work]:checked')].map(x=>normalize(x.dataset.billWork)));
+ [...el.options].forEach(o=>o.selected=vals.has(normalize(o.value)));updateBillRequestPreview();
+}
+window.toggleAllBillWorks=function(on){document.querySelectorAll('[data-bill-work]').forEach(x=>x.checked=!!on);syncBillWorkChecks()}
+
 function selectedBillRequests(){
   const el=$('billRequestWork');if(!el)return [];
   const works=[...el.selectedOptions].map(o=>normalize(o.value));
