@@ -582,3 +582,37 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(add,30));mo.observe(document.body,{childList:true,subtree:true});setTimeout(add,700);
 })();
 </script>
+
+<script id="cfm-v112-notifications">
+(function(){
+ const KEY='cfm_notifications_enabled_v112', LOG='cfm_notification_log_v112';
+ const enabled=()=>localStorage.getItem(KEY)!=='0';
+ const getLog=()=>{try{return JSON.parse(localStorage.getItem(LOG)||'[]')}catch(e){return[]}};
+ const saveLog=a=>localStorage.setItem(LOG,JSON.stringify(a.slice(0,100)));
+ window.cfmNotify=function(title,body,type){
+   const a=getLog();a.unshift({id:Date.now(),title:String(title||'CFM Update'),body:String(body||''),type:type||'info',at:new Date().toISOString(),read:false});saveLog(a);updateBadge();
+   if(enabled()&&'Notification'in window&&Notification.permission==='granted'){try{new Notification(title||'CFM Plant ERP',{body:body||'',tag:'cfm-'+(type||'update')})}catch(e){}}
+ };
+ const old=window.setNextUpdateNotification;
+ window.setNextUpdateNotification=function(title,body){try{if(typeof old==='function')old(title,body)}catch(e){};cfmNotify(title,body,'update')};
+ function updateBadge(){const b=document.getElementById('cfmNotifBtnV112');if(!b)return;const n=getLog().filter(x=>!x.read).length;b.innerHTML='🔔 Notifications'+(n?' <b>('+n+')</b>':'')};
+ window.openCFMNotifications=function(){
+   const a=getLog(),old=document.getElementById('cfmNotifModalV112');if(old)old.remove();
+   const d=document.createElement('div');d.id='cfmNotifModalV112';d.className='modal';d.style.cssText='display:flex;position:fixed;inset:0;z-index:100000;background:#0008;align-items:center;justify-content:center;padding:12px';
+   d.innerHTML='<div class="dialog" style="background:#fff;max-width:650px;width:100%;max-height:90vh;overflow:auto;border-radius:16px;padding:15px"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">🔔 Notifications</h2><button class="btn" onclick="this.closest(\'.modal\').remove()">✕</button></div><div class="card-actions" style="margin:12px 0"><button class="btn btn-primary" id="v112Permission">Allow Phone Notifications</button><button class="btn" id="v112Toggle">'+(enabled()?'Notifications ON':'Notifications OFF')+'</button><button class="btn" id="v112Read">Mark All Read</button></div><div>'+(!a.length?'<div class="hint">No notifications yet.</div>':a.map(x=>'<div style="padding:9px;border-bottom:1px solid #ddd;'+(!x.read?'font-weight:700':'')+'"><div>'+esc(x.title)+'</div><div style="font-weight:400">'+esc(x.body)+'</div><small>'+esc(new Date(x.at).toLocaleString())+'</small></div>').join(''))+'</div></div>';
+   document.body.appendChild(d);
+   d.querySelector('#v112Permission').onclick=async()=>{if(!('Notification'in window))return toast('Is browser me notification support nahi hai');const p=await Notification.requestPermission();toast(p==='granted'?'Notifications allowed':'Notification permission '+p);if(p==='granted')cfmNotify('CFM Notifications ON','Phone notifications enabled','system')};
+   d.querySelector('#v112Toggle').onclick=()=>{localStorage.setItem(KEY,enabled()?'0':'1');d.remove();openCFMNotifications()};
+   d.querySelector('#v112Read').onclick=()=>{const z=getLog();z.forEach(x=>x.read=true);saveLog(z);updateBadge();d.remove();openCFMNotifications()};
+ };
+ function add(){
+   let b=document.getElementById('cfmNotifBtnV112');if(b){updateBadge();return}
+   b=document.createElement('button');b.id='cfmNotifBtnV112';b.className='btn';b.type='button';b.onclick=openCFMNotifications;
+   const settings=document.getElementById('cfmSettingsBtnV111');if(settings)settings.after(b);else document.getElementById('dashboard')?.prepend(b);updateBadge();
+ }
+ function lowStockScan(){
+   (state.store||[]).forEach(s=>{const bal=srlBalance(s),min=Number(s.minStock||s.minimumStock||0);if((bal<=0||min>0&&bal<=min)&&!s._v112LowAlert){s._v112LowAlert=true;cfmNotify(bal<=0?'SRL ZERO / CLOSED':'Low Stock','SRL '+(s.srlNo||'-')+' • '+(s.quality||s.cloth||'-')+' • '+fmt(bal)+' MTR','stock')}});
+ }
+ const mo=new MutationObserver(()=>setTimeout(add,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{add();lowStockScan()},800);setInterval(lowStockScan,60000);
+})();
+</script>
