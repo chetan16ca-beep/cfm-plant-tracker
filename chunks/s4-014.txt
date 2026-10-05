@@ -680,3 +680,29 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
 <script id="cfm-v115-force-version">
 (function(){function f(){document.querySelectorAll('body *').forEach(e=>{if(e.children.length===0&&/^\s*V\d+\s+LIVE\s*$/i.test(e.textContent||''))e.textContent='V115 LIVE'})}new MutationObserver(()=>setTimeout(f,20)).observe(document.body,{childList:true,subtree:false});setTimeout(f,300)})();
 </script>
+<script id="cfm-v148-smart-ops">
+(function(){
+ const U=v=>String(v==null?'':v).trim().toUpperCase(),Q=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
+ function stageOf(w){
+  const d=(state.departmentWork||[]).filter(x=>U(x.workNo)===U(w));if(!d.length)return 'CUTTING';
+  const p=U(d[d.length-1].process||d[d.length-1].department||'');
+  if(p.includes('PACK'))return 'PACKING';if(p.includes('CHECK')||p==='QC')return 'FINAL CHECKING';if(p.includes('FINISH')||p.includes('GUN'))return 'GUN / FINISHING';if(p.includes('THREAD'))return 'THREAD CUTTING';if(p.includes('STITCH'))return 'STITCHING';return 'CUTTING';
+ }
+ function injectOps(){
+  const h=document.querySelector('#view-dashboard .command-hero');if(!h||document.getElementById('cfmV148Ops'))return;
+  const today=typeof todayISO==='function'?todayISO():new Date().toISOString().slice(0,10),rows=(state.departmentWork||[]).filter(x=>String(x.date||'').slice(0,10)===today);
+  const names=['CUTTING','STITCHING','THREAD CUTTING','GUN / FINISHING','FINAL CHECKING','PACKING'];
+  const counts=names.map(s=>rows.filter(x=>{const p=U(x.process||x.department);return s==='GUN / FINISHING'?(p.includes('GUN')||p.includes('FINISH')):s==='FINAL CHECKING'?(p.includes('CHECK')||p==='QC'):s==='THREAD CUTTING'?p.includes('THREAD'):s==='CUTTING'?(p.includes('CUT')&&!p.includes('THREAD')):p.includes(s)}).reduce((a,x)=>a+Q(x.doneQty||x.qty||x.completedQty),0));
+  const open=(state.pending||[]).filter(x=>typeof orderOpen==='function'?orderOpen(x):!x.workDone),low=(state.store||[]).filter(x=>{try{const b=typeof srlBalance==='function'?srlBalance(x):Q(x.balanceMtr||x.openingMtr);return b>0&&b<=10}catch(e){return false}}),due=open.filter(x=>x.deliveryDate&&String(x.deliveryDate)<today);
+  const box=document.createElement('div');box.id='cfmV148Ops';box.innerHTML='<div class="v148-title"><b>Today Production</b><span>'+today+'</span></div><div class="v148-prod">'+names.map((n,i)=>'<span><small>'+n.replace('GUN / ','')+'</small><b>'+counts[i]+'</b></span>').join('')+'</div><div class="v148-alerts"><b>Smart Alerts</b><span>⚠ Low Stock '+low.length+'</span><span>⏰ Delivery Due '+due.length+'</span><span>📋 Open Work '+open.length+'</span></div>';
+  h.insertAdjacentElement('afterend',box);
+ }
+ function addProgress(){
+  document.querySelectorAll('#pendingList .data-card').forEach(el=>{if(el.querySelector('.v148-progress'))return;const w=el.querySelector('.work')?.textContent?.trim();if(!w)return;const st=stageOf(w),arr=['CUTTING','STITCHING','THREAD CUTTING','GUN / FINISHING','FINAL CHECKING','PACKING'],ix=arr.indexOf(st),d=document.createElement('div');d.className='v148-progress';d.innerHTML=arr.map((s,i)=>'<span class="'+(i<=ix?'done':'')+'" title="'+s+'">'+(i<ix?'✓':i===ix?'●':'○')+'</span>').join('')+'<small>'+st+'</small>';const a=el.querySelector('.card-actions');(a||el).insertAdjacentElement(a?'beforebegin':'beforeend',d)});
+ }
+ const mo=new MutationObserver(()=>requestAnimationFrame(()=>{injectOps();addProgress()}));mo.observe(document.body,{childList:true,subtree:false});setTimeout(()=>{injectOps();addProgress()},500);
+})();
+</script>
+<style id="cfm-v148-smart-style">
+#cfmV148Ops{margin:12px 0 18px;background:#fff;border:1px solid #d9ebf7;border-radius:20px;padding:14px;box-shadow:0 7px 20px rgba(20,95,150,.07)}.v148-title{display:flex;justify-content:space-between;color:#145b8d}.v148-prod{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:10px}.v148-prod span{background:#f1f9ff;border-radius:12px;padding:9px;text-align:center}.v148-prod small{display:block;font-size:9px;color:#64748b}.v148-prod b{font-size:18px;color:#0872c9}.v148-alerts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.v148-alerts span{background:#fff7e6;border:1px solid #ffe0a3;border-radius:999px;padding:6px 9px;font-size:11px}.v148-progress{display:flex;align-items:center;gap:6px;margin:8px 0}.v148-progress span{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#e8eef3;color:#8da0af;font-size:11px}.v148-progress span.done{background:#dff5e9;color:#13814b}.v148-progress small{font-weight:800;color:#176da8;margin-left:3px}@media(max-width:760px){.v148-prod{grid-template-columns:repeat(3,1fr)}}
+</style>
