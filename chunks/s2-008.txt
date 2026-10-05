@@ -206,7 +206,7 @@ const isPlanned=(r,date=planningDateValue())=>String(r.planDate||'')===String(da
 function clone(x){return JSON.parse(JSON.stringify(x));}
 function validState(x){return !!x&&Array.isArray(x.pending)&&Array.isArray(x.store)&&Array.isArray(x.cutting)}
 function historyList(){try{const h=JSON.parse(safeStorage.getItem(HISTORY_KEY)||'[]');return Array.isArray(h)?h:[]}catch(e){return []}}
-function pushHistory(raw){if(!raw)return;try{const parsed=JSON.parse(raw);if(!validState(parsed))return;const compact={pending:parsed.pending||[],store:parsed.store||[],cutting:parsed.cutting||[],departmentWork:parsed.departmentWork||[],customParties:parsed.customParties||[],customPersons:parsed.customPersons||[],masterDataVersion:parsed.masterDataVersion||''};const cRaw=JSON.stringify(compact);let h=historyList();if(h[0]?.raw===cRaw)return;h.unshift({at:new Date().toISOString(),raw:cRaw});h=h.slice(0,10);safeStorage.setItem(HISTORY_KEY,JSON.stringify(h))}catch(e){}}
+function pushHistory(raw){if(!raw)return;try{const parsed=JSON.parse(raw);if(!validState(parsed))return;const compact={pending:parsed.pending||[],store:parsed.store||[],cutting:parsed.cutting||[],departmentWork:parsed.departmentWork||[],customParties:parsed.customParties||[],customPersons:parsed.customPersons||[],masterDataVersion:parsed.masterDataVersion||''};const cRaw=JSON.stringify(compact);let h=historyList();if(h[0]?.raw===cRaw)return;h.unshift({at:new Date().toISOString(),raw:cRaw});h=h.slice(0,2);safeStorage.setItem(HISTORY_KEY,JSON.stringify(h))}catch(e){}}
 function load(){
   const raw=safeStorage.getItem(STORAGE_KEY);
   if(raw){try{const d=JSON.parse(raw);if(!validState(d))throw new Error('invalid');state=d}catch(e){const h=historyList();let recovered=null;for(const snap of h){try{const d=JSON.parse(snap.raw);if(validState(d)){recovered=d;break}}catch(_){}}state=recovered||clone(window.CFM_SEED||{pending:[],store:[],cutting:[]});}}
@@ -260,8 +260,20 @@ function save(doRender=true){
   const next=JSON.stringify(state),prev=safeStorage.getItem(STORAGE_KEY);
   const changed=!!prev&&prev!==next;
   if(changed)pushHistory(prev);
-  safeStorage.setItem(STORAGE_KEY,next);
-  safeStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));
+  try{safeStorage.setItem(STORAGE_KEY,next)}
+  catch(e){
+    if(e&&(e.name==='QuotaExceededError'||/quota/i.test(String(e.message||e)))){
+      try{safeStorage.removeItem(HISTORY_KEY)}catch(_){}
+      try{safeStorage.setItem(STORAGE_KEY,next)}
+      catch(e2){
+        cloudDirty=true;queueCloudPush();
+        toast('Local storage full • Cloud save queued');
+        if(doRender)renderAll();
+        return;
+      }
+    }else throw e;
+  }
+  try{safeStorage.setItem(SETTINGS_KEY,JSON.stringify(settings))}catch(e){}
   if(doRender)renderAll();
   queueCloudPush();
   if(changed){
