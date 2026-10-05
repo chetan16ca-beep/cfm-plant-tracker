@@ -973,44 +973,45 @@ window.openMultiPendingForm=function(){
   document.querySelectorAll('#multiPoItems .multi-po-item-row').forEach(bindMultiPoRow);
 };
 window.saveMultiPoItems=function(){
-  const party=String($('multiParty')?.value||'').trim();
-  const fail=(msg,el)=>{toast(msg);if(el){el.style.border='2px solid #dc2626';el.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>el.focus(),80)}return false};
-  if(!party)return fail('Party required • upar Party enter karo',$('multiParty'));
-  const rows=multiPoRowsData().filter(x=>x.description||x.eagleCode||x.itemCode||x.orderQty);
-  if(!rows.length)return fail('Kam se kam 1 item add karo',document.querySelector('.multi-item-product'));
-  for(const x of rows){
-    if(!x.description){
-      const fallback=[x.eagleCode,x.itemCode,x.cloth].filter(Boolean).join(' / ');
-      if(fallback)x.description=fallback; else return fail('Description 1 required • item complete karo',x.row.querySelector('.multi-item-product'));
+  try{
+    const party=String(document.getElementById('multiParty')?.value||'').trim();
+    const fail=(msg,el)=>{toast(msg);if(el){el.style.border='2px solid #dc2626';try{el.scrollIntoView({behavior:'smooth',block:'center'})}catch(e){};setTimeout(()=>el.focus(),50)}return false};
+    if(!party)return fail('Party required • upar Party enter karo',document.getElementById('multiParty'));
+    const raw=[...document.querySelectorAll('#multiPoItems .multi-po-item-row')];
+    if(!raw.length)return fail('Item row nahi mila • form reopen karo',document.getElementById('multiPoItems'));
+    const rows=raw.map(row=>({
+      row,
+      description:String(row.querySelector('.multi-item-product')?.value||'').trim(),
+      description2:String(row.querySelector('.multi-description2')?.value||'').trim(),
+      eagleCode:String(row.querySelector('.multi-eagle')?.value||'').trim(),
+      itemCode:String(row.querySelector('.multi-item-code')?.value||'').trim(),
+      cloth:String(row.querySelector('.multi-cloth')?.value||'').trim(),
+      width:String(row.querySelector('.multi-width')?.value||'').trim(),
+      orderQty:String(row.querySelector('.multi-qty')?.value||'').trim(),
+      selectedSrl:[...row.querySelectorAll('.multi-srl option:checked')].map(o=>o.value)
+    })).filter(x=>x.description||x.eagleCode||x.itemCode||x.cloth||x.orderQty);
+    if(!rows.length)return fail('Item details required',raw[0]?.querySelector('.multi-item-product'));
+    for(const x of rows){
+      if(!x.description)x.description=[x.eagleCode,x.itemCode,x.cloth,'WORK ITEM'].filter(Boolean).join(' / ');
+      if(!(Number(x.orderQty)>0))return fail('Order Qty required • 0 se jyada enter karo',x.row.querySelector('.multi-qty'));
     }
-    if(!(num(x.orderQty)>0))return fail('Order Qty required • 0 se jyada enter karo',x.row.querySelector('.multi-qty'));
-  }
-  // Re-check the latest work number at save time, useful when 3-4 mobiles are syncing.
-  multiPoBaseNo=nextWorkStartNo();renumberMultiPoRows();
-  const poNo=String($('multiPoNo')?.value||'').trim();
-  const orderDate=$('multiOrderDate')?.value||todayISO();
-  const deliveryDate=$('multiDeliveryDate')?.value||'';
-  const priority=$('multiPriority')?.value||'NORMAL';
-  const created=[];
-  rows.forEach((x,i)=>{
-    const p=findProductFromFields({description:x.description,eagleCode:x.eagleCode,itemCode:x.itemCode,productPick:x.description});
-    const r={
-      workNo:multiPoWorkNo(i),party,poNo,orderDate,deliveryDate,
-      eagleCode:(p?.eagleCode||x.eagleCode||''),itemCode:(p?.itemCode||x.itemCode||''),
-      description:(p?.description||x.description),description2:x.description2||'',cloth:(p?.standardCloth||x.cloth||''),
-      width:(x.width!==''?num(x.width):(p?.standardWidth!==''&&p?.standardWidth!=null?num(p.standardWidth):'')),
-      orderQty:num(x.orderQty),cutQty:0,priority,status:'PENDING',selectedSrl:(x.selectedSrl||[]).join(', '),reservedSrl:(x.selectedSrl||[]).join(', '),
-      billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''
-    };
-    const m=measurementInfo(r);r.measurementAuto=m.text;r.measurementSource=m.source;stampRecord(r);
-    state.pending.push(r);created.push(r);
-  });
-  saveCustomParty(party);
-  const workRange=created.length===1?created[0].workNo:(created[0].workNo+' – '+created.at(-1).workNo);
-  setNextUpdateNotification('🔔 New PO Added',`${party} • ${created.length} item • ${workRange}${poNo?' • PO '+poNo:''}`);
-  try{save()}catch(e){created.forEach(r=>{const j=state.pending.indexOf(r);if(j>=0)state.pending.splice(j,1)});toast('Work Order save error • '+(e?.message||'retry'));return false}
-  toast(`${created.length} PO item saved • ${workRange}`);
-  return true;
+    multiPoBaseNo=nextWorkStartNo();
+    const poNo=String(document.getElementById('multiPoNo')?.value||'').trim(),orderDate=document.getElementById('multiOrderDate')?.value||todayISO(),deliveryDate=document.getElementById('multiDeliveryDate')?.value||'',priority=document.getElementById('multiPriority')?.value||'NORMAL';
+    const created=[];
+    rows.forEach((x,i)=>{
+      let p=null;try{p=findProductFromFields({description:x.description,eagleCode:x.eagleCode,itemCode:x.itemCode,productPick:x.description})}catch(e){}
+      const r={workNo:'CFM-'+(multiPoBaseNo+i),party,poNo,orderDate,deliveryDate,eagleCode:(p?.eagleCode||x.eagleCode||''),itemCode:(p?.itemCode||x.itemCode||''),description:(p?.description||x.description),description2:x.description2||'',cloth:(p?.standardCloth||x.cloth||''),width:(x.width!==''?Number(x.width):(p?.standardWidth!==''&&p?.standardWidth!=null?Number(p.standardWidth):'')),orderQty:Number(x.orderQty),cutQty:0,priority,status:'PENDING',selectedSrl:(x.selectedSrl||[]).join(', '),reservedSrl:(x.selectedSrl||[]).join(', '),billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''};
+      try{const m=measurementInfo(r);r.measurementAuto=m.text;r.measurementSource=m.source}catch(e){}
+      try{stampRecord(r)}catch(e){}
+      state.pending.push(r);created.push(r);
+    });
+    try{saveCustomParty(party)}catch(e){}
+    const workRange=created.length===1?created[0].workNo:(created[0].workNo+' – '+created[created.length-1].workNo);
+    try{setNextUpdateNotification('🔔 New PO Added',party+' • '+created.length+' item • '+workRange)}catch(e){}
+    try{save()}catch(e){console.error('PO save persistence error',e);return fail('SAVE ERROR: '+(e?.message||'storage error'),document.getElementById('saveFormBtn'))}
+    toast(created.length+' PO item saved • '+workRange);
+    return true;
+  }catch(e){console.error('PO SAVE FATAL',e);toast('SAVE ERROR: '+(e?.message||String(e)));return false}
 };
 
 
