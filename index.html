@@ -67,7 +67,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=145',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=146',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -122,19 +122,19 @@ window.addEventListener('message',e=>{
   }
 });
 
-registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V145 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
+registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V146 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw145-reload'))return;
-  sessionStorage.setItem('cfm-sw145-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw146-reload'))return;
+  sessionStorage.setItem('cfm-sw146-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='145';
+ const urls=groups.flat(), ver='146';
  const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-145-'+u;
+   const cacheKey='cfm-chunk-146-'+u;
    try{
      const saved=null; // Always fetch current chunk; old PWA chunk cache caused stale mobile versions.
    }catch(_){}
@@ -146,7 +146,7 @@ if('serviceWorker' in navigator){
  }));
  let src=texts.join('')+'\n';
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
- src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V145 LIVE');
+ src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V146 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V117');
  src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
  src=src.replace('<head>',`<head><base href="${location.origin}${basePath}"><style id="cfm-v116-sky-theme">
@@ -205,6 +205,13 @@ body{background:#f4f9fd!important}
 .nav{background:#fff!important;border-top:1px solid #d8eaf6!important;box-shadow:0 -6px 20px rgba(20,95,150,.08)!important}.nav button.active{background:#dff2ff!important;color:#0872c9!important;border-color:#7fc8f3!important}
 .data-card,.action-card{background:#fff!important;border:1px solid #d9ebf7!important;border-radius:18px!important}
 input,select,textarea{background:#fff!important;border-color:#cde4f3!important;border-radius:12px!important}
+</style></head>`);
+ src=src.replace('</head>',`<style id="cfm-v146-photo-layout">
+.photo-quick-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 16px}.photo-quick-actions button{min-height:88px;border:1px solid #d7e9f6;background:#fff;border-radius:18px;box-shadow:0 7px 20px rgba(20,95,150,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:#164a70;font-weight:800}.photo-quick-actions button:first-child,.photo-quick-actions button:nth-child(2){background:linear-gradient(145deg,#087ee0,#219cf0);color:#fff;border:0}.photo-quick-actions span{font-size:29px}.photo-quick-actions b{font-size:14px}
+#view-dashboard>.section-head{margin-bottom:12px}.command-hero{min-height:190px;display:flex!important;flex-direction:column!important;justify-content:space-between!important}.command-hero h3{font-size:32px!important;margin:7px 0!important}.command-tags{display:flex!important;gap:8px!important;flex-wrap:wrap!important}
+#view-dashboard .kpis{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}#view-dashboard .kpi{min-height:92px!important}
+@media(min-width:900px){#view-dashboard .kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important}.photo-quick-actions{max-width:720px}}
+@media(max-width:760px){#view-dashboard{padding-bottom:90px}.photo-quick-actions{gap:9px}.photo-quick-actions button{min-height:76px;border-radius:16px}.photo-quick-actions span{font-size:24px}.photo-quick-actions b{font-size:12px}.command-hero{min-height:170px!important}.command-hero h3{font-size:26px!important}.exec-group{margin-top:18px!important}.module-command-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.module-command-card{min-height:105px!important;border-radius:17px!important}}
 </style></head>`);
  src=src.replace('</head>',`<style id="cfm-v144-blue-white-force">
 html,body{background:#f4faff!important;color:#13233b!important}
