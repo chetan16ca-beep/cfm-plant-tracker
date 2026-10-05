@@ -677,3 +677,6 @@ new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
  const mo=new MutationObserver(()=>setTimeout(()=>{add();settingsLink()},25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(add,600);
 })();
 </script>
+<script id="cfm-v115-force-version">
+(function(){function f(){document.querySelectorAll('body *').forEach(e=>{if(e.children.length===0&&/^\s*V\d+\s+LIVE\s*$/i.test(e.textContent||''))e.textContent='V115 LIVE'})}new MutationObserver(()=>setTimeout(f,20)).observe(document.body,{childList:true,subtree:true});setTimeout(f,300)})();
+</script>
