@@ -247,7 +247,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   if(!width.dataset.srlLive){width.dataset.srlLive='1';width.addEventListener('input',draw);width.addEventListener('change',draw)}
   draw();
  }
- const mo=new MutationObserver(()=>setTimeout(liveBox,0));mo.observe(document.body,{childList:true,subtree:true});setTimeout(liveBox,500);
+ const mo=new MutationObserver(()=>setTimeout(liveBox,0));mo.observe(document.body,{childList:true,subtree:false});setTimeout(liveBox,500);
 })();
 </script>
 
@@ -292,7 +292,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
    });
   });
  }
- const mo=new MutationObserver(()=>setTimeout(clean,20));mo.observe(document.body,{childList:true,subtree:true});setTimeout(clean,500);
+ const mo=new MutationObserver(()=>setTimeout(clean,20));mo.observe(document.body,{childList:true,subtree:false});setTimeout(clean,500);
 })();
 </script>
 
@@ -349,7 +349,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   draw();
  }
  window.cfmNextProductCode=nextCode;
- const mo=new MutationObserver(()=>{setTimeout(decorate,20);setTimeout(workPreview,20)});mo.observe(document.body,{childList:true,subtree:true});
+ const mo=new MutationObserver(()=>{setTimeout(decorate,20);setTimeout(workPreview,20)});mo.observe(document.body,{childList:true,subtree:false});
  setTimeout(()=>{decorate();workPreview()},600);
 })();
 </script>
@@ -373,7 +373,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
    let a=card.querySelector('.card-actions');if(!a){a=document.createElement('div');a.className='card-actions';card.appendChild(a)}a.appendChild(b);
   });
  }
- const mo=new MutationObserver(()=>setTimeout(addButtons,20));mo.observe(document.body,{childList:true,subtree:true});setTimeout(addButtons,700);
+ const mo=new MutationObserver(()=>setTimeout(addButtons,20));mo.observe(document.body,{childList:true,subtree:false});setTimeout(addButtons,700);
 })();
 </script>
 
@@ -420,7 +420,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
    card.appendChild(d);
   });
  }
- const mo=new MutationObserver(()=>setTimeout(decorate,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(decorate,700);
+ const mo=new MutationObserver(()=>setTimeout(decorate,25));mo.observe(document.body,{childList:true,subtree:false});setTimeout(decorate,700);
 })();
 </script>
 
@@ -445,7 +445,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   });
   let bar=document.getElementById('clothTag5Bar');if(!bar){bar=document.createElement('div');bar.id='clothTag5Bar';bar.style.cssText='position:sticky;bottom:8px;z-index:20;padding:8px;text-align:center';bar.innerHTML='<button class="btn btn-primary" onclick="printClothTags5([...cfmTagSelection])">🏷 Print Selected Cloth Tags • 5/Page</button>';list.parentElement?.appendChild(bar)}
  }
- const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(enhance,700);
+ const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:false});setTimeout(enhance,700);
 })();
 </script>
 
@@ -480,7 +480,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
   const list=document.getElementById('storeList');if(!list)return;[...list.querySelectorAll('.data-card')].forEach(card=>{if(card.querySelector('.v106-ledger'))return;const srl=card.querySelector('.work')?.textContent?.trim();if(!srl)return;let a=card.querySelector('.card-actions');if(!a){a=document.createElement('div');a.className='card-actions';card.appendChild(a)};const b=document.createElement('button');b.className='btn btn-sm v106-ledger';b.textContent='📒 SRL Ledger';b.onclick=e=>{e.stopPropagation();cfmSrlLedger(srl)};a.appendChild(b);const i=document.createElement('button');i.className='btn btn-sm';i.textContent='✂ Issue Cutting';i.onclick=e=>{e.stopPropagation();cfmIssueCutting(srl,'')};a.appendChild(i)});
  }
  function dash(){const d=document.getElementById('dashboard');if(!d||document.getElementById('v106ReqBtn'))return;const b=document.createElement('button');b.id='v106ReqBtn';b.className='btn btn-primary';b.textContent='📊 Cloth Requirement / Shortage';b.onclick=cfmRequirementReport;d.prepend(b)}
- const mo=new MutationObserver(()=>setTimeout(()=>{enhanceStore();dash()},25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{enhanceStore();dash()},700);
+ const mo=new MutationObserver(()=>setTimeout(()=>{enhanceStore();dash()},25));mo.observe(document.body,{childList:true,subtree:false});setTimeout(()=>{enhanceStore();dash()},700);
 })();
 </script>
 
