@@ -974,12 +974,13 @@ window.openMultiPendingForm=function(){
 };
 window.saveMultiPoItems=function(){
   const party=String($('multiParty')?.value||'').trim();
-  if(!party){toast('Party select / enter karo');$('multiParty')?.focus();return false}
+  const fail=(msg,el)=>{toast(msg);if(el){el.style.border='2px solid #dc2626';el.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>el.focus(),80)}return false};
+  if(!party)return fail('Party required • upar Party enter karo',$('multiParty'));
   const rows=multiPoRowsData().filter(x=>x.description||x.eagleCode||x.itemCode||x.orderQty);
-  if(!rows.length){toast('Kam se kam 1 item add karo');return false}
+  if(!rows.length)return fail('Kam se kam 1 item add karo',document.querySelector('.multi-item-product'));
   for(const x of rows){
-    if(!x.description){toast('Har item ka Description required hai');x.row.querySelector('.multi-item-product')?.focus();return false}
-    if(!(num(x.orderQty)>0)){toast('Har item ka Order Qty required hai');x.row.querySelector('.multi-qty')?.focus();return false}
+    if(!x.description)return fail('Description 1 required • item complete karo',x.row.querySelector('.multi-item-product'));
+    if(!(num(x.orderQty)>0))return fail('Order Qty required • 0 se jyada enter karo',x.row.querySelector('.multi-qty'));
   }
   // Re-check the latest work number at save time, useful when 3-4 mobiles are syncing.
   multiPoBaseNo=nextWorkStartNo();renumberMultiPoRows();
