@@ -748,8 +748,8 @@ main{
 .command-hero{
   display:flex;justify-content:space-between;gap:20px;align-items:center;
   background:
-    linear-gradient(115deg,#101820 0%,#172832 58%,#0f4d4a 100%)!important;
-  color:#fff;border-radius:16px;padding:22px 24px;margin-bottom:14px;
+    linear-gradient(115deg,#eef8ff 0%,#dff2ff 58%,#cbeaff 100%)!important;
+  color:#17375e;border-radius:16px;padding:22px 24px;margin-bottom:14px;
   box-shadow:0 16px 35px rgba(16,24,32,.16);
   position:relative;overflow:hidden
 }
@@ -758,16 +758,16 @@ main{
   right:-80px;top:-110px;border:34px solid rgba(255,255,255,.045)
 }
 .command-eyebrow{
-  font-size:10px;font-weight:850;letter-spacing:.16em;color:#6ce2d7;margin-bottom:7px
+  font-size:10px;font-weight:850;letter-spacing:.16em;color:#1674c9;margin-bottom:7px
 }
-.command-hero h3{margin:0 0 5px!important;color:#fff!important;font-size:24px!important}
-.command-hero p{margin:0;color:#c7d2d8;font-size:12px;max-width:680px}
+.command-hero h3{margin:0 0 5px!important;color:#17375e!important;font-size:24px!important}
+.command-hero p{margin:0;color:#4f6b82;font-size:12px;max-width:680px}
 .command-tags{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px;position:relative;z-index:2}
 .command-tags span{
-  border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);
+  border:1px solid #9dcced;background:#fff;
   padding:7px 9px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.04em
 }
-.command-tags span:first-child{color:#83f1df;border-color:rgba(20,184,166,.35);background:rgba(20,184,166,.08)}
+.command-tags span:first-child{color:#1674c9;border-color:#8fc8ee;background:#fff}
 
 .kpis{
   grid-template-columns:repeat(4,minmax(0,1fr))!important;
