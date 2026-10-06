@@ -65,6 +65,16 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
   }
 }
 </style>
+<style id="cfm-pc-sidebar-header-fix">
+@media (min-width:701px){
+  aside h1, aside h2, aside [class*="brand" i], aside [class*="title" i],
+  .sidebar h1,.sidebar h2,.sidebar [class*="brand" i],.sidebar [class*="title" i]{
+    line-height:1.2!important;
+  }
+  aside, .sidebar{padding-top:18px!important}
+  aside > *:first-child, .sidebar > *:first-child{margin-bottom:12px!important}
+}
+</style>
 </head>
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
