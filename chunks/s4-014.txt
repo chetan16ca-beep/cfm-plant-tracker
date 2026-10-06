@@ -948,3 +948,22 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
  window.cfmRefreshStoreAlternatives=draw;
 })();
 </script>
+
+<script id="cfm-recover-confirmed-655-656-v168">
+(function(){
+ const N=v=>String(v==null?'':v).trim().toUpperCase();
+ function run(){
+  try{
+   if(!window.state||!Array.isArray(state.pending)||typeof save!=='function')return;
+   const confirmed=[
+    {workNo:'CFM-655',party:'ACUTAS JHGDIA',itemCode:'ENG8320',description:'ANFD BAG 106" # 350 MESH 10 MICRON',description2:'ANTI-STATIC CLOTH',cloth:'222 ANT',width:'80',poNo:'U327/601183',orderQty:10,cutQty:0,status:'PENDING',recovered:true,recoverySource:'Confirmed PC screenshot'},
+    {workNo:'CFM-656',party:'ACUTAS JHGDIA',itemCode:'ENG5015',description:'CF-48" BAG 550 MESH (8/9/10)',description2:'ANTI-STATIC CLOTH',cloth:'333 ANT',width:'50',poNo:'U327/601183',orderQty:10,cutQty:0,status:'PENDING',recovered:true,recoverySource:'Confirmed PC screenshot'}
+   ];
+   let added=0;
+   confirmed.forEach(r=>{if(!(state.pending||[]).some(x=>N(x.workNo)===N(r.workNo))){state.pending.push({...r,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});added++}});
+   if(added){save();if(typeof renderPending==='function')renderPending();if(typeof toast==='function')toast(added+' confirmed missing work order restored');}
+  }catch(e){console.warn('Confirmed work recovery skipped',e)}
+ }
+ setTimeout(run,1200);
+})();
+</script>
