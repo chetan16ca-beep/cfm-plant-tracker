@@ -796,14 +796,22 @@ function applyPreviousOrderToForm(){
 }
 function findProductFromFields(o){
   const rows=(state.productMaster||[]);
-  const eagle=normalize(o?.eagleCode), item=normalize(o?.itemCode), desc=normalize(o?.description), pick=String(o?.productPick||'').trim();
+  const eagle=normalize(o?.eagleCode), item=normalize(o?.itemCode), desc=normalize(o?.description), party=normalize(o?.party), pick=String(o?.productPick||'').trim();
   if(pick){
     const code=(pick.match(/\bEFP-P\d+\b/i)||[])[0];
     if(code){const p=rows.find(x=>normalize(x.eagleCode)===normalize(code));if(p)return p}
   }
   if(eagle){const p=rows.find(x=>normalize(x.eagleCode)===eagle);if(p)return p}
   if(item){
-    const arr=rows.filter(x=>normalize(x.itemCode)===item);if(arr.length===1)return arr[0];
+    const master=rows.filter(x=>normalize(x.itemCode)===item);
+    if(master.length===1)return master[0];
+    const oldOrders=(state.pending||[]).filter(x=>normalize(x.itemCode)===item&&(!party||normalize(x.party)===party)&&String(x.eagleCode||'').trim());
+    if(oldOrders.length){
+      const code=normalize(oldOrders.slice().sort((a,b)=>String(b.orderDate||'').localeCompare(String(a.orderDate||'')))[0].eagleCode);
+      const p=rows.find(x=>normalize(x.eagleCode)===code);
+      if(p)return p;
+      return {eagleCode:oldOrders[0].eagleCode,itemCode:oldOrders[0].itemCode,description:oldOrders[0].description,standardCloth:oldOrders[0].cloth,standardWidth:oldOrders[0].width};
+    }
   }
   if(desc){
     let arr=rows.filter(x=>normalize(x.description)===desc);if(arr.length===1)return arr[0];
