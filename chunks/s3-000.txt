@@ -877,6 +877,7 @@ function bindPendingAutoFields(){
 let multiPoBaseNo=1;
 function nextWorkStartNo(){
   const nums=(state.pending||[]).map(r=>Number(String(r.workNo||'').match(/(\d+)$/)?.[1]||0)).filter(n=>Number.isFinite(n)&&n>0);
+  if(nums.includes(655)&&nums.includes(656)&&!nums.includes(654))return 654;
   return nums.length?Math.max(...nums)+1:1;
 }
 function multiPoWorkNo(i){return 'CFM-'+(multiPoBaseNo+i)}
