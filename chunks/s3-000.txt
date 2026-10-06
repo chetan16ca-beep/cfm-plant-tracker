@@ -320,6 +320,37 @@ function bindDeptWorkForm(){
   f.elements.namedItem('doneQty')?.addEventListener('input',deptFormQtyChanged);
   deptFormToggleNewPerson();deptFormWorkChanged();deptFormQtyChanged();
 }
+function deptProcessKey(p){p=normalize(p);if(p==='GUN'||p.includes('GUN FINISH'))return 'GUN';if(p.includes('THREAD'))return 'THREAD CUTTING';if(p.includes('STITCH'))return 'STITCHING';if(p.includes('PACK'))return 'PACKING';if(p.includes('CUT'))return 'CUTTING';return p}
+function deptStageDone(workNo,process,skipIndex=null){
+  const key=deptProcessKey(process);
+  if(key==='CUTTING'){
+    return (state.cutting||[]).filter(x=>normalize(x.workNo)===normalize(workNo)).reduce((a,x)=>a+num(x.cutQty),0);
+  }
+  return (state.departmentWork||[]).reduce((a,x,idx)=>a+(idx!==skipIndex&&normalize(x.workNo)===normalize(workNo)&&deptProcessKey(x.process)===key?num(x.doneQty):0),0);
+}
+function deptStageLimit(workNo,process){
+  const p=getPending(workNo);if(!p)return Infinity;
+  const oq=num(p.orderQty),key=deptProcessKey(process);
+  if(key==='CUTTING')return oq;
+  if(key==='STITCHING')return Math.min(oq,deptStageDone(workNo,'CUTTING'));
+  if(key==='THREAD CUTTING')return Math.min(oq,deptStageDone(workNo,'STITCHING'));
+  if(key==='GUN')return Math.min(oq,deptStageDone(workNo,'THREAD CUTTING'));
+  if(key==='PACKING')return Math.min(oq,deptStageDone(workNo,'GUN'));
+  return oq;
+}
+function deptValidateFlow(rec,editIndex=null){
+  if(!rec.workNo)return '';
+  const key=deptProcessKey(rec.process);
+  if(!['CUTTING','STITCHING','THREAD CUTTING','GUN','PACKING'].includes(key))return '';
+  const p=getPending(rec.workNo);if(!p)return '';
+  const oq=num(p.orderQty),done=num(rec.doneQty),existing=deptStageDone(rec.workNo,key,editIndex);
+  const limit=deptStageLimit(rec.workNo,key);
+  if(done<0)return 'Qty 0 se kam nahi ho sakti';
+  if(existing+done>oq)return key+' total '+fmt(existing+done)+' hai, Work Order Qty '+fmt(oq)+' se jyada nahi ho sakti';
+  if(key!=='CUTTING'&&existing+done>limit)return key+' Qty '+fmt(existing+done)+' previous process available Qty '+fmt(limit)+' se jyada nahi ho sakti';
+  return '';
+}
+
 window.openDeptWorkForm=function(i=null){
   const r=i==null?{
     date:deptSelectedDate(),process:'CUTTING',person:'',workNo:'',party:'',description:'',description2:'',
@@ -370,6 +401,7 @@ window.openDeptWorkForm=function(i=null){
     rec.pendingQty=deptEntryPending(rec);
     if(!rec.person){toast('Person select karo');return false}
     if(!String(rec.description||'').trim()){toast('Activity / Work Details enter karo');return false}
+    const flowError=deptValidateFlow(rec,i);if(flowError){toast('⚠️ Quantity Mismatch • '+flowError);return false}
     const isNewEntry=i==null;
     if(isNewEntry)state.departmentWork.push(rec);else state.departmentWork[i]=rec;
     if($('deptWorkDate'))$('deptWorkDate').value=rec.date;
