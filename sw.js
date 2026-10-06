@@ -1,4 +1,4 @@
-const CACHE='cfm-plant-v170-shell';
+const CACHE='cfm-plant-v167-shell';
 const BASE=self.registration.scope;
 const SHELL=[BASE+'manifest.json',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
 
@@ -14,15 +14,30 @@ self.addEventListener('activate',e=>{
 
 self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET')return;
-  if(e.request.mode==='navigate'){e.respondWith(fetch(e.request,{cache:'no-store'}));return;}
+  if(e.request.mode==='navigate'){
+    e.respondWith(fetch(e.request,{cache:'no-store'}).catch(()=>caches.match(BASE+'index.html')));
+    return;
+  }
+  const url=new URL(e.request.url);
+  const isChunk=url.origin===location.origin&&url.pathname.includes('/chunks/');
+  if(isChunk){
+    e.respondWith((async()=>{
+      const cache=await caches.open(CACHE);
+      const hit=await cache.match(e.request);
+      const fresh=fetch(e.request).then(r=>{
+        if(r&&r.ok)cache.put(e.request,r.clone()).catch(()=>{});
+        return r;
+      }).catch(()=>null);
+      if(hit){e.waitUntil(fresh);return hit;}
+      return (await fresh)||Response.error();
+    })());
+    return;
+  }
   e.respondWith(
-    fetch(e.request,{cache:'no-store'}).then(r=>{
-      if(r&&r.status===200){
-        const cp=r.clone();
-        caches.open(CACHE).then(c=>c.put(e.request,cp)).catch(()=>{});
-      }
+    caches.match(e.request).then(hit=>hit||fetch(e.request).then(r=>{
+      if(r&&r.status===200){const cp=r.clone();caches.open(CACHE).then(c=>c.put(e.request,cp)).catch(()=>{});}
       return r;
-    }).catch(()=>caches.match(e.request).then(r=>r||caches.match(BASE+'index.html')))
+    }))
   );
 });
 
