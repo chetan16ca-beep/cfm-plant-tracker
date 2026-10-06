@@ -128,7 +128,7 @@ setTimeout(()=>{registerSW().then(reg=>{if(reg&&reg.waiting)reg.waiting.postMess
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
  const urls=groups.flat(), ver='171';
- const chunkCache=('caches' in window)?await caches.open('cfm-chunks-v171'):null;
+ const chunkCache=('caches' in window)?await caches.open('cfm-chunks-v172'):null;
  const texts=await Promise.all(urls.map(async u=>{
    const req=new Request('./'+u+'?v='+ver);
    let r=chunkCache?await chunkCache.match(req):null;
