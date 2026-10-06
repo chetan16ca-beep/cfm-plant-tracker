@@ -887,3 +887,25 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
  #pendingList{padding-bottom:130px!important}
 }
 </style>
+
+
+<script id="cfm-v167-daily-print-visible-pending-only">
+(function(){
+ const previous=window.printDailyCuttingPlan;
+ window.printDailyCuttingPlan=function(){
+   try{
+     const visible=[...document.querySelectorAll('#pendingList .data-card')].filter(el=>{
+       const s=getComputedStyle(el); return s.display!=='none' && s.visibility!=='hidden';
+     });
+     const workNos=visible.map(el=>(el.querySelector('.work')?.textContent||'').trim()).filter(Boolean);
+     const rows=(state.pending||[]).filter(r=>workNos.some(w=>String(w).trim().toUpperCase()===String(r.workNo||'').trim().toUpperCase()));
+     if(rows.length){
+       const date=$('printDate')?.value||todayISO(),open=rows.slice().sort(workSort);
+       const pages=[];for(let i=0;i<open.length;i+=5){const chunk=open.slice(i,i+5);pages.push('<div class="page"><div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">DAILY PLANT CUTTING PLAN — OPEN PENDING ONLY</div><div class="meta"><span>PAGE '+(Math.floor(i/5)+1)+'</span><span>DATE: '+esc(dateDisplay(date))+'</span></div></div>'+chunk.map((r,j)=>window.dailyWorkBlock(r,i+j+1,date)).join('')+'</div>')}
+       return openPrintWindow('Daily Plant Cutting Plan',pages.join(''));
+     }
+   }catch(e){}
+   return previous();
+ };
+})();
+</script>
