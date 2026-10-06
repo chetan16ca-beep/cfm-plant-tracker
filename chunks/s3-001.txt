@@ -49,6 +49,9 @@ window.openPendingForm=function(i=null){
       if(!o.cloth)o.cloth=p.standardCloth||'';
       if(!o.width)o.width=p.standardWidth||'';
     }
+    if(i==null&&!String(o.eagleCode||'').trim()&&typeof cfmNextProductCode==='function'){
+      o.eagleCode=cfmNextProductCode();
+    }
     ['width','orderQty','cutQty'].forEach(k=>o[k]=o[k]===''?'':num(o[k]));
     const m=measurementInfo(o);o.measurementAuto=m.text;o.measurementSource=m.source;
     const wasArchived=i!=null&&isArchived(state.pending[i]);o.status=wasArchived?'ARCHIVED':(!hasOrderQty(o)?'QTY REQUIRED':(pendingQty(o)<=0?'COMPLETED':'PENDING'));stampRecord(o);
