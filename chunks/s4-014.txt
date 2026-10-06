@@ -909,3 +909,26 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
  };
 })();
 </script>
+
+
+<style id="cfm-compact-pending-print-v167">
+@media print{
+ .cfm-srl-assist{display:none!important}
+}
+</style>
+<script id="cfm-compact-daily-cutting-print-v167">
+(function(){
+ const base=window.dailyWorkBlock;
+ if(typeof base!=='function')return;
+ window.dailyWorkBlock=function(r,n,date){
+   const html=base(r,n,date);
+   const box=document.createElement('div');box.innerHTML=html;
+   box.querySelectorAll('.cfm-srl-assist').forEach(x=>x.remove());
+   box.querySelectorAll('*').forEach(x=>{
+     const t=(x.textContent||'').trim().toUpperCase();
+     if(t.includes('STORE ALTERNATIVE')||t.startsWith('OPEN SRL')||t.includes('OPENING SRL')) x.remove();
+   });
+   return box.innerHTML;
+ };
+})();
+</script>
