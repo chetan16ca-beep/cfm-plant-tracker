@@ -209,7 +209,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
    if(!rows.length)return '<div style="margin-top:5px;padding:5px 7px;border:1px solid #f0b9b9;background:#fff1f1;color:#a32222;font-size:10px"><b>STORE SRL:</b> NO OPEN STOCK for '+esc(p.cloth||'-')+'</div>';
    const exact=rows.filter(x=>x.exact), alt=rows.filter(x=>!x.exact);
    const line=x=>'<span style="display:inline-block;margin:2px 5px 2px 0;padding:3px 5px;border-radius:5px;border:1px solid '+(x.exact?'#a8d8b8':'#d8d8c5')+';background:'+(x.exact?'#eefaf1':'#fffdf0')+'"><b>'+esc(x.s.srlNo||'-')+'</b> • '+esc(x.s.quality||x.s.cloth||'-')+' • W '+esc(x.s.width||'-')+'" • '+fmt(x.bal)+' MTR</span>';
-   return '<div style="margin-top:5px;padding:5px 7px;border:1px solid #cddbd2;background:#f8fbf9;font-size:9.5px"><b>OPEN SRL'+(req?' • REQUIRED W '+esc(req)+'"':'')+':</b> '+(exact.length?exact.map(line).join(''):'<b style="color:#b06b00">EXACT WIDTH NOT AVAILABLE</b>')+(alt.length?'<div><b>STORE ALTERNATIVE:</b> '+alt.map(line).join('')+'</div>':'')+'</div>';
+   return '<div style="margin-top:5px;padding:5px 7px;border:1px solid #cddbd2;background:#f8fbf9;font-size:9.5px"><b>OPEN SRL'+(req?' • REQUIRED W '+esc(req)+'"':'')+':</b> '+(exact.length?exact.map(line).join(''):'<b style="color:#b06b00">EXACT WIDTH NOT AVAILABLE — see Store Alternative SRL</b>')+'</div>';
  }
  const oldBlock=window.dailyWorkBlock||dailyWorkBlock;
  window.dailyWorkBlock=function(r,n,date){
@@ -930,5 +930,21 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
    });
    return box.innerHTML;
  };
+})();
+</script>
+
+<script id="cfm-store-alternative-srl-v168">
+(function(){
+ const N=v=>String(v==null?'':v).trim().toUpperCase().replace(/\s+/g,' '),Q=v=>Number(v)||0;
+ function fam(v){const s=N(v);return /^333(\s|$)/.test(s)?'333':s}
+ function draw(){
+  const view=document.getElementById('view-store');if(!view)return;
+  let box=document.getElementById('cfmStoreAltSrl');if(!box){box=document.createElement('div');box.id='cfmStoreAltSrl';box.className='panel';box.style.cssText='margin:12px 0;padding:12px';const list=document.getElementById('storeList');(list?.parentElement||view).insertBefore(box,list||null)}
+  const open=(state.store||[]).filter(s=>srlBalance(s)>0&&!['CLOSED','ZERO'].includes(N(storeStatus(s))));
+  const groups={};open.forEach(s=>{const k=fam(s.quality||s.cloth);(groups[k]||(groups[k]=[])).push(s)});
+  box.innerHTML='<b>STORE • ALTERNATIVE OPEN SRL</b><div class="muted" style="font-size:10px;margin:4px 0 8px">Work cards me sirf exact-width OPEN SRL dikhte hain. Other open widths yahan hain.</div>'+Object.keys(groups).sort().map(k=>'<details><summary><b>'+esc(k||'-')+'</b> • '+groups[k].length+' open</summary><div style="padding:6px 0">'+groups[k].sort((a,b)=>Q(a.width)-Q(b.width)).map(s=>'<span style="display:inline-block;margin:3px;padding:5px 7px;border:1px solid #d8e5ee;border-radius:7px"><b>'+esc(s.srlNo||'-')+'</b> • W '+esc(s.width||'-')+'″ • '+fmt(srlBalance(s))+' MTR</span>').join('')+'</div></details>').join('');
+ }
+ setTimeout(draw,700);document.addEventListener('click',e=>{if(e.target.closest?.('[data-view="store"]'))setTimeout(draw,80)});
+ window.cfmRefreshStoreAlternatives=draw;
 })();
 </script>
