@@ -133,16 +133,16 @@ if('serviceWorker' in navigator){
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
  const urls=groups.flat(), ver='171';
- try{if('caches' in window){const ks=await caches.keys();await Promise.all(ks.filter(k=>k!=='cfm-plant-v171-shell').map(k=>caches.delete(k)))}}catch(_){}
+ const chunkCache=('caches' in window)?await caches.open('cfm-chunks-v171'):null;
  const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-171-'+u;
-   try{
-     const saved=null; // Always fetch current chunk; old PWA chunk cache caused stale mobile versions.
-   }catch(_){}
-   const r=await fetch('./'+u+'?v='+ver,{cache:'no-store'});
-   if(!r.ok)throw Error(u);
+   const req=new Request('./'+u+'?v='+ver);
+   let r=chunkCache?await chunkCache.match(req):null;
+   if(!r){
+     r=await fetch(req,{cache:'default'});
+     if(!r.ok)throw Error(u);
+     if(chunkCache)chunkCache.put(req,r.clone()).catch(()=>{});
+   }
    const txt=await r.text();
-   /* chunk localStorage cache disabled: prevents quota/stale-version issues */
    done++;st.textContent='Loading '+done+'/'+total;return txt
  }));
  let src=texts.join('')+'\n';
