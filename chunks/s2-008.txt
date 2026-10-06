@@ -171,7 +171,14 @@ async function cloudPoll(){
   if(cloudBusy||cloudDirty||document.hidden)return;
   try{
     const meta=await cloudFetchMeta();if(!meta)return;const v=num(meta.version)||0;
-    if(v>cloudVersion){const row=await cloudFetch();if(row&&validState(row.payload)){const prevRaw=JSON.stringify(state);state=clone(row.payload);ensureExcelMasterData();syncDerivedState();cloudVersion=v;cloudUpdatedAt=row.updated_at||'';const nextRaw=JSON.stringify(state);safeStorage.setItem(STORAGE_KEY,nextRaw);renderAll();setCloudBadge('☁️ Updated from other mobile','green');const notice=genericUpdateNotification(prevRaw,nextRaw);showLocalNotification('☁️ Other Device • '+notice.title.replace(/^🔔\s*/,''),notice.body||notificationSummary());}}
+    if(v>cloudVersion){const row=await cloudFetch();if(row&&validState(row.payload)){
+      const local654=(state.pending||[]).find(x=>normalize(x.workNo)==='CFM-654');
+      const cloudHas654=(row.payload.pending||[]).some(x=>normalize(x.workNo)==='CFM-654');
+      if(local654&&!cloudHas654){
+        cloudDirty=true;setCloudBadge('☁️ Protecting CFM-654 • syncing','amber');queueCloudPush();return;
+      }
+      const prevRaw=JSON.stringify(state);state=clone(row.payload);ensureExcelMasterData();syncDerivedState();cloudVersion=v;cloudUpdatedAt=row.updated_at||'';const nextRaw=JSON.stringify(state);safeStorage.setItem(STORAGE_KEY,nextRaw);renderAll();setCloudBadge('☁️ Updated from other mobile','green');const notice=genericUpdateNotification(prevRaw,nextRaw);showLocalNotification('☁️ Other Device • '+notice.title.replace(/^🔔\s*/,''),notice.body||notificationSummary());
+    }}
     else if(cloudReady)setCloudBadge('☁️ 3-4 Mobile LIVE','green');
   }catch(e){setCloudBadge('☁️ Offline – will retry','red');}
 }
