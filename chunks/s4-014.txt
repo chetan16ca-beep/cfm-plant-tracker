@@ -24,7 +24,7 @@
   document.querySelectorAll('#storeList .data-card').forEach(el=>{if(el.querySelector('.srl-history-btn'))return;const s=el.querySelector('.work')?.textContent?.trim();if(!s)return;const a=el.querySelector('.card-actions')||el,b=document.createElement('button');b.className='btn btn-sm btn-primary srl-history-btn';b.textContent='🔗 SRL History';b.onclick=()=>openSrlHistory(s);a.appendChild(b)});
   document.querySelectorAll('#pendingList .data-card').forEach(el=>{if(el.querySelector('.work-track-btn'))return;const w=el.querySelector('.work')?.textContent?.trim();if(!w||w==='No Work No')return;const a=el.querySelector('.card-actions')||el,b=document.createElement('button');b.className='btn btn-sm btn-primary work-track-btn';b.textContent='📍 Track Work / Batch';b.onclick=()=>{if(confirm('OK = Track Work\nCancel = Batch Report'))openWorkTrack(w);else if(typeof openWorkBatchReport==='function')openWorkBatchReport(w);else alert('Batch Report loading • Refresh ERP once')};a.appendChild(b)});
  }
- const obs=new MutationObserver(addButtons);obs.observe(document.body,{childList:true,subtree:true});setTimeout(addButtons,300);
+ const obs=new MutationObserver(addButtons);obs.observe(document.body,{childList:true,subtree:false});setTimeout(addButtons,300);
 })();
 </script>
 
@@ -89,7 +89,7 @@ function mobilePolish(){
  '.app-header,.topbar{padding-top:6px!important;padding-bottom:6px!important}'+
  '}';document.head.appendChild(st);
 }
-const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{inject();styleBatch();mobilePolish();batchPhotoStyle()},500);
+const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:false});setTimeout(()=>{inject();styleBatch();mobilePolish();batchPhotoStyle()},500);
 })();
 </script>
 
@@ -106,7 +106,7 @@ const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,s
    const b=document.createElement('button');b.className='btn btn-sm btn-green work-done-btn';b.textContent='✓ Work Done';b.onclick=()=>markWorkDone(i);a.appendChild(b);
   });
  }
- const mo=new MutationObserver(addDoneButtons);mo.observe(document.body,{childList:true,subtree:true});setTimeout(addDoneButtons,400);
+ const mo=new MutationObserver(addDoneButtons);mo.observe(document.body,{childList:true,subtree:false});setTimeout(addDoneButtons,400);
 })();
 </script>
 <script id="cfm-safe-batch-v88">
@@ -149,7 +149,7 @@ function saveAll(w){const p=work(w),d=drafts[N(w)]||[];if(!d.length)return toast
   setTimeout(()=>{const done=document.getElementById('batchDoneOne'),pen=document.getElementById('batchPendingOne'),p0=work(w);if(done&&pen)done.oninput=()=>pen.value=String(Math.max(0,Q(p0?.orderQty)-Q(done.value)));drawDrafts(w);const ad=document.getElementById('batchAddOne');if(ad)ad.onclick=()=>addDraft(w);const sv=document.getElementById('batchSaveAll');if(sv)sv.onclick=()=>saveAll(w);const big=document.getElementById('batchBigV88');if(big)big.onclick=()=>{const dlg=big.closest('.dialog')||big.closest('[role="dialog"]')||big.parentElement?.parentElement?.parentElement;if(!dlg)return;const on=dlg.dataset.batchBig==='1';if(on){dlg.style.cssText=dlg.dataset.oldStyle||'';dlg.dataset.batchBig='0';big.textContent='⛶ Big Screen'}else{dlg.dataset.oldStyle=dlg.getAttribute('style')||'';dlg.dataset.batchBig='1';dlg.style.setProperty('width','96vw','important');dlg.style.setProperty('max-width','96vw','important');dlg.style.setProperty('height','92vh','important');dlg.style.setProperty('max-height','92vh','important');big.textContent='↙ Normal Screen'}};const pr=document.getElementById('batchPrintV88');if(pr)pr.onclick=()=>cfmSafeBatchPrint(w)},0);
  };
  function inject(){document.querySelectorAll('#pendingList .data-card').forEach(el=>{if(el.querySelector('.safe-batch-btn'))return;const w=el.querySelector('.work')?.textContent?.trim(),a=el.querySelector('.card-actions');if(!w||!a)return;const b=document.createElement('button');b.type='button';b.className='btn btn-sm btn-primary safe-batch-btn';b.textContent='📋 Batch Report';b.onclick=e=>{e.preventDefault();e.stopPropagation();cfmSafeBatchOpen(w)};a.appendChild(b)})}
- const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:true});setTimeout(inject,500);
+ const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,subtree:false});setTimeout(inject,500);
 })();
 </script>
 <script id="cfm-work-srl-simple">
@@ -167,7 +167,7 @@ window.cfmWorkSrl=function(w){
  setTimeout(()=>{document.getElementById('wsSave').onclick=()=>{p.cloth=document.getElementById('wsCloth').value.trim();p.width=document.getElementById('wsWidth').value.trim();p.selectedSrl=document.getElementById('wsSrl').value;p.materialStatus=p.selectedSrl?'READY':'SRL PENDING';save();toast('Cloth / SRL saved')}},0)
 };
 function add(){document.querySelectorAll('#pendingList .data-card').forEach(e=>{if(e.querySelector('.wsbtn'))return;const w=e.querySelector('.work')?.textContent?.trim(),a=e.querySelector('.card-actions');if(!w||!a)return;const p=(state.pending||[]).find(x=>n(x.workNo)===n(w));if(p){const rr=rolls(p.cloth||'',p.width||'');const d=document.createElement('div');d.className='muted active-srl-list';d.style.cssText='margin:8px 0;padding:8px;border:1px solid #d9e7df;border-radius:9px;background:#f7fbf8;font-size:11px';d.innerHTML='<b>Active SRL ('+esc(p.cloth||'-')+' / W '+esc(p.width||'-')+')</b><br>'+(rr.length?rr.map(x=>esc(s(x))+' — '+fmt(b(x))+' MTR').join('<br>'):'No matching active SRL');e.insertBefore(d,a)}const z=document.createElement('button');z.className='btn btn-sm btn-primary wsbtn';z.textContent='Cloth / SRL';z.onclick=()=>cfmWorkSrl(w);a.appendChild(z)})}
-new MutationObserver(add).observe(document.body,{childList:true,subtree:true});setTimeout(add,500);
+new MutationObserver(add).observe(document.body,{childList:true,subtree:false});setTimeout(add,500);
 })();
 </script>
 <script id="cfm-multi-srl-force-v104">
@@ -560,7 +560,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
    if(!cloth.dataset.v110){cloth.dataset.v110='1';cloth.addEventListener('input',draw);cloth.addEventListener('change',draw)}
    if(!width.dataset.v110){width.dataset.v110='1';width.addEventListener('input',draw);width.addEventListener('change',draw)}
  }
- const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:true});setTimeout(enhance,700);
+ const mo=new MutationObserver(()=>setTimeout(enhance,25));mo.observe(document.body,{childList:true,subtree:false});setTimeout(enhance,700);
 })();
 </script>
 
@@ -790,7 +790,7 @@ window.cfmRequestProtectedChange=function(type,ref,detail){cfmRequestApproval(ty
 function snap(){try{const cur=JSON.parse(localStorage.getItem('cfm-plant-tracker-data-v1')||'{}'),old=JSON.parse(localStorage.getItem(SNAP)||'{}');['pending','store','cutting','departmentWork'].forEach(k=>{const A=old[k]||[],B=cur[k]||[];if(JSON.stringify(A)!==JSON.stringify(B)){const ref=(B[0]&&(B[0].workNo||B[0].serial||B[0].srlNo))||'';audit('DATA CHANGE',ref,k+' updated','Records '+A.length,'Records '+B.length)}});s(SNAP,cur)}catch(e){}}
 const oldSave=window.save;if(typeof oldSave==='function'&&!oldSave.__v165){const w=function(){snap();const r=oldSave.apply(this,arguments);setTimeout(snap,0);return r};w.__v165=true;window.save=w}
 function enhance(){document.querySelectorAll('button').forEach(b=>{const t=(b.textContent||'').trim().toLowerCase();if((t.includes('delete')||t.includes('remove')||t.includes('stock adjust'))&&!b.dataset.v165){b.dataset.v165='1';b.addEventListener('click',function(e){if(this.dataset.v165approved==='1'){this.dataset.v165approved='';return}e.preventDefault();e.stopImmediatePropagation();const ref=this.closest('tr')?.innerText?.slice(0,100)||'';cfmRequestApproval(t.includes('stock')?'STOCK ADJUSTMENT':'DELETE/REMOVE',ref,'Protected change requested');},true)}})}
-function ver(){const x=document.querySelector('.app-version-badge');if(x)x.textContent='V168 LIVE'}setTimeout(()=>{snap();enhance();ver()},700);new MutationObserver(()=>requestAnimationFrame(()=>{enhance();ver()})).observe(document.body,{childList:true,subtree:true});
+function ver(){const x=document.querySelector('.app-version-badge');if(x)x.textContent='V168 LIVE'}setTimeout(()=>{snap();enhance();ver()},700);new MutationObserver(()=>requestAnimationFrame(()=>{enhance();ver()})).observe(document.body,{childList:true,subtree:false});
 })();</script><style id="cfm-v166-control">.v166-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:10px 0 16px}.v166-card{background:#fff;border:1px solid #dceaf4;border-radius:14px;padding:11px;box-shadow:0 4px 14px #0b5d8b0d}.v166-card b{font-size:12px;color:#155f91;display:block}.v166-card small{font-size:9px;color:#6b8190}.v166-num{font-size:20px;font-weight:800;margin:5px 0}.v166-warn{color:#b64b2a}@media(max-width:760px){.v166-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v166-card:last-child{grid-column:1/-1}}</style>
 <script id="cfm-v166-control-js">(function(){
 function n(v){v=Number(v);return isFinite(v)?v:0} function arr(x){return Array.isArray(x)?x:[]}
