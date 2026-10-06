@@ -229,7 +229,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
      const d=document.createElement('div');d.className='cfm-srl-assist';d.innerHTML=cfmSrlAssistHTML(p);const a=el.querySelector('.card-actions');if(a)a.before(d);else el.appendChild(d);
    });
  }
- const mo=new MutationObserver(decoratePending);mo.observe(document.body,{childList:true,subtree:true});setTimeout(decoratePending,500);
+ let cfmDecorateQueued=false;const mo=new MutationObserver(muts=>{if(cfmDecorateQueued||!muts.some(m=>m.target.closest?.('#pendingList')||m.target.id==='pendingList'))return;cfmDecorateQueued=true;requestAnimationFrame(()=>{cfmDecorateQueued=false;decoratePending()})});const pendingRoot=document.getElementById('pendingList');if(pendingRoot)mo.observe(pendingRoot,{childList:true,subtree:false});setTimeout(decoratePending,500);
 })();
 </script>
 
@@ -878,7 +878,7 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
  window.cfmRecoverPendingV168=recoverPending;
  setTimeout(recoverPending,300);
  setTimeout(recoverPending,1200);
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(recoverPending,150)});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden){const search=document.querySelector('#pendingSearch,input[placeholder*="Search work" i]');if(search&&search.value===''){/* no full re-render on resume */}}});
 })();
 </script>
 <style id="cfm-v168-overlap-fix">
