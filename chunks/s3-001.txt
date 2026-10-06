@@ -28,7 +28,7 @@ window.deleteAnyAttachment=async function(idx){
 }
 
 window.openPendingForm=function(i=null){
-  const r=i==null?{workNo:nextWorkNo(),party:'',poNo:'',orderDate:todayISO(),deliveryDate:'',eagleCode:'',itemCode:'',description:'',description2:'',cloth:'',width:'',orderQty:'',cutQty:0,priority:'NORMAL',status:'PENDING',billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''}:clone(state.pending[i]);
+  const r=i==null?{workNo:((state.pending||[]).some(x=>normalize(x.workNo)==='CFM-654')?nextWorkNo():'CFM-654'),party:'',poNo:'',orderDate:todayISO(),deliveryDate:'',eagleCode:'',itemCode:'',description:'',description2:'',cloth:'',width:'',orderQty:'',cutQty:0,priority:'NORMAL',status:'PENDING',billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''}:clone(state.pending[i]);
   const mi=measurementInfo(r);
   const html=field('workNo','Work No.',r.workNo)+partySelectHTML(r.party)+field('poNo','PO / Reference (New order)',r.poNo)+field('orderDate','Order Date',r.orderDate,'date')+field('deliveryDate','Delivery Date',r.deliveryDate,'date')+
     productPickerHTML(r)+
@@ -53,7 +53,11 @@ window.openPendingForm=function(i=null){
     const m=measurementInfo(o);o.measurementAuto=m.text;o.measurementSource=m.source;
     const wasArchived=i!=null&&isArchived(state.pending[i]);o.status=wasArchived?'ARCHIVED':(!hasOrderQty(o)?'QTY REQUIRED':(pendingQty(o)<=0?'COMPLETED':'PENDING'));stampRecord(o);
     const isNewWork=i==null;
-    if(isNewWork)state.pending.push(o);else state.pending[i]={...state.pending[i],...o,archived:wasArchived,...(wasArchived?{}:{archivedAt:'',archivedBy:''})};
+    if(isNewWork){
+      const dup=state.pending.some(x=>normalize(x.workNo)===normalize(o.workNo));
+      if(dup){toast('Work No. '+o.workNo+' already exists');return false}
+      state.pending.push(o);
+    }else state.pending[i]={...state.pending[i],...o,archived:wasArchived,...(wasArchived?{}:{archivedAt:'',archivedBy:''})};
     if(isNewWork){
       const msg=[o.workNo||'New Work',o.party||'',o.orderQty!==''?('Qty '+fmt(o.orderQty)):''].filter(Boolean).join(' • ');
       setNextUpdateNotification('🔔 New Work Added',msg);
