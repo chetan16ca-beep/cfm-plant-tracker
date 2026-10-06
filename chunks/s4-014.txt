@@ -967,3 +967,25 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
  setTimeout(run,1200);
 })();
 </script>
+
+<script id="cfm-v168-performance-guard">
+(function(){
+  if(window.__cfmPerfGuard)return;window.__cfmPerfGuard=1;
+  let timer=0;
+  const run=()=>{
+    timer=0;
+    try{typeof addButtons==='function'&&addButtons()}catch(e){}
+    try{typeof decoratePending==='function'&&decoratePending()}catch(e){}
+  };
+  window.cfmLightUiRefresh=function(){
+    if(timer)return;
+    timer=setTimeout(run,80);
+  };
+  document.addEventListener('click',e=>{
+    if(e.target.closest('#view-pending,#view-store,#view-dashboard,#editDialog'))window.cfmLightUiRefresh();
+  },{passive:true});
+})();
+</script>
+<style id="cfm-v168-performance-css">
+*{scroll-behavior:auto!important}
+</style>
