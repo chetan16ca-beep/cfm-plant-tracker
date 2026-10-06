@@ -859,3 +859,31 @@ window.cfmPackingPrint=function(no){
 function v(){const x=document.querySelector('.app-version-badge');if(x)x.textContent='V168 LIVE'}
 setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(document.body,{childList:true,subtree:false});
 })();</script>
+
+<script id="cfm-v168-pending-recovery">
+(function(){
+ function recoverPending(){
+   try{
+     const sel=document.querySelector('#pendingStatus,select[id*="pending" i],select[name*="pending" i]');
+     if(sel){
+       const open=[...sel.options].find(o=>/open pending/i.test(o.textContent||''));
+       if(open && sel.value!==open.value){sel.value=open.value;sel.dispatchEvent(new Event('change',{bubbles:true}));}
+     }
+     const search=document.querySelector('#pendingSearch,input[placeholder*="Search work" i]');
+     if(search && search.value){search.value='';search.dispatchEvent(new Event('input',{bubbles:true}));}
+     if(typeof renderPending==='function') renderPending();
+     else if(typeof render==='function') render();
+   }catch(e){console.warn('Pending recovery',e)}
+ }
+ window.cfmRecoverPendingV168=recoverPending;
+ setTimeout(recoverPending,300);
+ setTimeout(recoverPending,1200);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(recoverPending,150)});
+})();
+</script>
+<style id="cfm-v168-overlap-fix">
+@media(max-width:700px){
+ .toast,.snackbar,[class*="toast" i],[class*="snackbar" i]{bottom:110px!important;z-index:99999!important;max-width:calc(100vw - 28px)!important}
+ #pendingList{padding-bottom:130px!important}
+}
+</style>
