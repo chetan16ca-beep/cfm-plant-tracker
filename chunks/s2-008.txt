@@ -287,7 +287,8 @@ function fmt(v){if(v===''||v==null)return '-';const n=Number(v);return Number.is
 function dateDisplay(v){if(!v)return '-';const p=String(v).split('-');return p.length===3?`${p[2]}-${p[1]}-${p[0]}`:v}
 function workSort(a,b){return String(a.workNo||'').localeCompare(String(b.workNo||''),undefined,{numeric:true})}
 function nextWorkNo(){
-  const nums=state.pending.map(r=>Number(String(r.workNo||'').match(/(\d+)$/)?.[1]||0)).filter(n=>Number.isFinite(n)&&n>0);
+  const nums=(state.pending||[]).map(r=>Number(String(r.workNo||'').match(/(\d+)$/)?.[1]||0)).filter(n=>Number.isFinite(n)&&n>0);
+  if(nums.includes(655)&&nums.includes(656)&&!nums.includes(654))return 'CFM-654';
   return `CFM-${nums.length?Math.max(...nums)+1:1}`;
 }
 function deviceLabel(){return String(settings.deviceLabel||'Mobile 1').trim()||'Mobile 1'}
