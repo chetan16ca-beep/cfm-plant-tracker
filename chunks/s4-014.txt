@@ -217,7 +217,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
  };
  const oldPrint=window.printDailyCuttingPlan;
  window.printDailyCuttingPlan=function(){
-   const date=$('printDate')?.value||todayISO(),open=(state.pending||[]).filter(r=>pendingQty(r)>0).slice().sort(workSort);
+   const date=$('printDate')?.value||todayISO(),open=(state.pending||[]).filter(r=>{const oq=Number(r.orderQty||r.qty||r.requiredQty||0),cq=Number(r.cutQty||r.cuttingQty||r.doneQty||0);if(oq>0)return Math.max(0,oq-cq)>0;return typeof pendingQty==='function'&&pendingQty(r)>0}).slice().sort(workSort);
    if(!open.length)return toast('No open pending work');
    const pages=[];for(let i=0;i<open.length;i+=5){const chunk=open.slice(i,i+5);pages.push('<div class="page"><div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">DAILY PLANT CUTTING PLAN — SRL STOCK ASSIST</div><div class="meta"><span>PAGE '+(Math.floor(i/5)+1)+'</span><span>DATE: '+esc(dateDisplay(date))+'</span></div></div>'+chunk.map((r,j)=>window.dailyWorkBlock(r,i+j+1,date)).join('')+'</div>')}
    openPrintWindow('Daily Plant Cutting Plan',pages.join(''));
