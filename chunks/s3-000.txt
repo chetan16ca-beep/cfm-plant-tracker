@@ -1001,7 +1001,8 @@ window.saveMultiPoItems=function(){
     const created=[];
     rows.forEach((x,i)=>{
       let p=null;try{p=findProductFromFields({description:x.description,eagleCode:x.eagleCode,itemCode:x.itemCode,productPick:x.description})}catch(e){}
-      const r={workNo:'CFM-'+(multiPoBaseNo+i),party,poNo,orderDate,deliveryDate,eagleCode:(p?.eagleCode||x.eagleCode||''),itemCode:(p?.itemCode||x.itemCode||''),description:(p?.description||x.description),description2:x.description2||'',cloth:(p?.standardCloth||x.cloth||''),width:(x.width!==''?Number(x.width):(p?.standardWidth!==''&&p?.standardWidth!=null?Number(p.standardWidth):'')),orderQty:Number(x.orderQty),cutQty:0,priority,status:'PENDING',selectedSrl:(x.selectedSrl||[]).join(', '),reservedSrl:(x.selectedSrl||[]).join(', '),billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''};
+      const autoProductCode=(p?.eagleCode||x.eagleCode||((typeof cfmNextProductCode==='function')?cfmNextProductCode():''));
+      const r={workNo:'CFM-'+(multiPoBaseNo+i),party,poNo,orderDate,deliveryDate,eagleCode:autoProductCode,itemCode:(p?.itemCode||x.itemCode||''),description:(p?.description||x.description),description2:x.description2||'',cloth:(p?.standardCloth||x.cloth||''),width:(x.width!==''?Number(x.width):(p?.standardWidth!==''&&p?.standardWidth!=null?Number(p.standardWidth):'')),orderQty:Number(x.orderQty),cutQty:0,priority,status:'PENDING',selectedSrl:(x.selectedSrl||[]).join(', '),reservedSrl:(x.selectedSrl||[]).join(', '),billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''};
       try{const m=measurementInfo(r);r.measurementAuto=m.text;r.measurementSource=m.source}catch(e){}
       try{stampRecord(r)}catch(e){}
       state.pending.push(r);created.push(r);
