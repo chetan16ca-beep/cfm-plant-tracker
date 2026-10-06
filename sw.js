@@ -1,4 +1,4 @@
-const CACHE='cfm-plant-v167-shell';
+const CACHE='cfm-plant-v168r5-shell';
 const BASE=self.registration.scope;
 const SHELL=[BASE+'manifest.json',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
 
@@ -23,13 +23,13 @@ self.addEventListener('fetch',e=>{
   if(isChunk){
     e.respondWith((async()=>{
       const cache=await caches.open(CACHE);
-      const hit=await cache.match(e.request);
-      const fresh=fetch(e.request).then(r=>{
-        if(r&&r.ok)cache.put(e.request,r.clone()).catch(()=>{});
-        return r;
-      }).catch(()=>null);
-      if(hit){e.waitUntil(fresh);return hit;}
-      return (await fresh)||Response.error();
+      try{
+        const fresh=await fetch(e.request,{cache:'no-store'});
+        if(fresh&&fresh.ok)cache.put(e.request,fresh.clone()).catch(()=>{});
+        return fresh;
+      }catch(_){
+        return (await cache.match(e.request))||Response.error();
+      }
     })());
     return;
   }
