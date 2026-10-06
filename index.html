@@ -85,6 +85,18 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
   }
 }
 </style>
+<style id="cfm-pc-nav-brand-move-exact">
+@media (min-width:1000px){
+ .nav:before,.nav:after{display:none!important;content:none!important}
+ .topbar:after{
+   content:'CFM • ERP V81  |  EAGLE FILTRATION • PLANT CONTROL';
+   display:block;position:absolute;right:190px;top:50%;transform:translateY(-50%);
+   font-size:11px;font-weight:900;letter-spacing:.06em;color:#526b7b;
+   white-space:nowrap;pointer-events:none
+ }
+ .nav{padding-top:20px!important}
+}
+</style>
 </head>
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
