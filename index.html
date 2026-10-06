@@ -110,7 +110,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=168r9',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=168r10',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -175,14 +175,14 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='168r9';
+ const urls=groups.flat(), ver='168r10';
  try{if('caches' in window){const ks=await caches.keys();await Promise.all(ks.filter(k=>k!=='cfm-plant-v167-shell').map(k=>caches.delete(k)))}}catch(_){}
  const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-168r9-'+u;
+   const cacheKey='cfm-chunk-168r10-'+u;
    try{
      const saved=null; // Always fetch current chunk; old PWA chunk cache caused stale mobile versions.
    }catch(_){}
-   const r=await fetch('./'+u+'?v='+ver+'&t=9',{cache:'reload'});
+   const r=await fetch('./'+u+'?v='+ver+'&t=10',{cache:'reload'});
    if(!r.ok)throw Error(u);
    const txt=await r.text();
    /* chunk localStorage cache disabled: prevents quota/stale-version issues */
