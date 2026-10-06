@@ -392,7 +392,22 @@ function restoreUiResumeState(){
 }
 
 function renderAll(){syncDerivedState();renderDashboard();renderPending();renderStore();renderCutting();renderDocs();renderExcelView();renderPlanning();renderDeptWork();renderDeviceLabel();if($('globalSearch')?.value)renderGlobalSearch();renderNotificationStatus();if($('printDate')&&!$('printDate').value)$('printDate').value=todayISO();if($('planningDate')&&!$('planningDate').value)$('planningDate').value=settings.planningDate||tomorrowISO();if($('deptWorkDate')&&!$('deptWorkDate').value)$('deptWorkDate').value=todayISO();if($('monthlyMonth')&&!$('monthlyMonth').value)$('monthlyMonth').value=todayISO().slice(0,7)}
-load();renderAll();restoreUiResumeState();setTimeout(cloudInit,300);
+load();
+(function recoverConfirmedWorkBeforeCloud(){
+ const N=v=>String(v==null?'':v).trim().toUpperCase();
+ const rows=[
+  {workNo:'CFM-655',party:'ACUTAS JHGDIA',itemCode:'ENG8320',description:'ANFD BAG 106" # 350 MESH 10 MICRON',description2:'ANTI-STATIC CLOTH',cloth:'222 ANT',width:'80',poNo:'U327/601183',orderQty:10,cutQty:0,status:'PENDING',recovered:true,recoverySource:'Confirmed PC screenshot'},
+  {workNo:'CFM-656',party:'ACUTAS JHGDIA',itemCode:'ENG5015',description:'CF-48" BAG 550 MESH (8/9/10)',description2:'ANTI-STATIC CLOTH',cloth:'333 ANT',width:'50',poNo:'U327/601183',orderQty:10,cutQty:0,status:'PENDING',recovered:true,recoverySource:'Confirmed PC screenshot'}
+ ];
+ let added=0;
+ rows.forEach(r=>{if(!state.pending.some(x=>N(x.workNo)===N(r.workNo))){state.pending.push({...r,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});added++;}});
+ if(added){
+   syncDerivedState();
+   safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+   cloudDirty=true;
+ }
+})();
+renderAll();restoreUiResumeState();setTimeout(cloudInit,300);
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(console.warn);
 setInterval(checkScheduledNotification,30000);setInterval(cloudPoll,3000);
 document.addEventListener('visibilitychange',()=>{
