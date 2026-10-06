@@ -945,7 +945,24 @@ function matchMultiProduct(row){
 function multiClothFamily(v){let s=normalize(v).replace(/[^A-Z0-9]+/g,' ').trim();if(/^333( |$)/.test(s))return '333';return s}
 function multiClothFamily(v){let s=normalize(v).replace(/[^A-Z0-9]+/g,' ').trim();if(/^333(\s|$)/.test(s))return '333';return s}
 function multiActiveSrl(row){const cl=String(row.querySelector('.multi-cloth')?.value||'').trim(),wd=String(row.querySelector('.multi-width')?.value||'').trim(),box=row.querySelector('.multi-srl-list'),sel=row.querySelector('.multi-srl');if(!box||!sel)return;const reqW=num(wd),fam=multiClothFamily(cl);const rr=(state.store||[]).filter(x=>{const sx=String(x.srlNo||'').trim(),cq=String(x.quality||x.cloth||x.description||'').trim(),ww=num(x.width),bb=typeof srlBalance==='function'?num(srlBalance(x)):num(x.openingMtr);return sx&&bb>0&&!['CLOSED','ZERO','BLOCKED'].includes(normalize(x.status))&&(!cl||multiClothFamily(cq)===fam)&&(!reqW||ww>=reqW)}).sort((a,b)=>num(a.width)-num(b.width));box.innerHTML=rr.length?rr.map(x=>'<b>'+esc(x.srlNo)+'</b> — '+esc(String(x.quality||x.cloth||x.description||'-'))+' • '+fmt(x.width)+'″ • '+fmt(typeof srlBalance==='function'?srlBalance(x):x.openingMtr)+' MTR').join('<br>'):'No matching ACTIVE SRL';sel.innerHTML=rr.map(x=>'<option value="'+esc(x.srlNo)+'">'+esc(x.srlNo)+' — '+esc(String(x.quality||x.cloth||x.description||'-'))+' — '+fmt(x.width)+'″ — '+fmt(typeof srlBalance==='function'?srlBalance(x):x.openingMtr)+' MTR</option>').join('')}
-function bindMultiPoRow(row){if(!row)return;const inp=row.querySelector('.multi-item-product'),cl=row.querySelector('.multi-cloth'),wd=row.querySelector('.multi-width');if(inp){inp.addEventListener('change',()=>{matchMultiProduct(row);multiActiveSrl(row)});inp.addEventListener('blur',()=>{if(inp.value){matchMultiProduct(row);multiActiveSrl(row)}})};cl?.addEventListener('input',()=>multiActiveSrl(row));wd?.addEventListener('input',()=>multiActiveSrl(row));multiActiveSrl(row)}
+function bindMultiPoRow(row){
+  if(!row)return;
+  const inp=row.querySelector('.multi-item-product'),cl=row.querySelector('.multi-cloth'),wd=row.querySelector('.multi-width'),ec=row.querySelector('.multi-eagle');
+  const liveCode=()=>{
+    const party=String(document.getElementById('multiParty')?.value||'').trim();
+    let p=null;try{p=findProductFromFields({party,productPick:inp?.value||'',description:inp?.value||'',eagleCode:ec?.value||'',itemCode:row.querySelector('.multi-item-code')?.value||''})}catch(e){}
+    if(p?.eagleCode){ec.value=p.eagleCode;return p.eagleCode}
+    if(inp?.value&&ec&&!ec.value&&typeof cfmNextProductCode==='function'){ec.value=cfmNextProductCode();return ec.value}
+    return ec?.value||'';
+  };
+  if(inp){
+    inp.addEventListener('input',()=>{if(!inp.value&&ec)ec.value=''});
+    inp.addEventListener('change',()=>{matchMultiProduct(row);liveCode();multiActiveSrl(row)});
+    inp.addEventListener('blur',()=>{if(inp.value){matchMultiProduct(row);liveCode();multiActiveSrl(row)}});
+  }
+  row.querySelector('.multi-item-code')?.addEventListener('change',()=>{liveCode();multiActiveSrl(row)});
+  cl?.addEventListener('input',()=>multiActiveSrl(row));wd?.addEventListener('input',()=>multiActiveSrl(row));multiActiveSrl(row);
+}
 function multiPoRowsData(){
   return [...document.querySelectorAll('#multiPoItems .multi-po-item-row')].map(row=>({
     row,
