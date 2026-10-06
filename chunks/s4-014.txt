@@ -954,7 +954,7 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
  const N=v=>String(v==null?'':v).trim().toUpperCase();
  function run(){
   try{
-   if(!window.state||!Array.isArray(state.pending)||typeof save!=='function')return;
+   if(!Array.isArray(state.pending)||typeof save!=='function')return;
    const confirmed=[
     {workNo:'CFM-655',party:'ACUTAS JHGDIA',itemCode:'ENG8320',description:'ANFD BAG 106" # 350 MESH 10 MICRON',description2:'ANTI-STATIC CLOTH',cloth:'222 ANT',width:'80',poNo:'U327/601183',orderQty:10,cutQty:0,status:'PENDING',recovered:true,recoverySource:'Confirmed PC screenshot'},
     {workNo:'CFM-656',party:'ACUTAS JHGDIA',itemCode:'ENG5015',description:'CF-48" BAG 550 MESH (8/9/10)',description2:'ANTI-STATIC CLOTH',cloth:'333 ANT',width:'50',poNo:'U327/601183',orderQty:10,cutQty:0,status:'PENDING',recovered:true,recoverySource:'Confirmed PC screenshot'}
