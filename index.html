@@ -54,7 +54,18 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 .nav button.active{background:#e5f4ff!important;color:#1269b0!important;border-color:#c9e5f8!important}
 .chip.blue{background:#e8f5ff!important;color:#1269b0!important;border-color:#c9e5f8!important}
 @media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7eaf8!important;box-shadow:0 -5px 18px rgba(22,116,201,.08)!important}}
-</style></head>
+</style><style id="cfm-pc-overlap-only">
+@media (min-width:701px){
+  .toast,.snackbar,[class*="toast" i],[class*="snackbar" i]{
+    bottom:24px!important;
+    right:24px!important;
+    left:auto!important;
+    max-width:360px!important;
+    z-index:99999!important;
+  }
+}
+</style>
+</head>
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker"></iframe>
