@@ -351,6 +351,16 @@ function deptValidateFlow(rec,editIndex=null){
   return '';
 }
 
+window.cfmDeptQuickList=function(kind){
+  const isWork=kind==='work';
+  const rows=isWork?(state.pending||[]).filter(r=>!isArchived(r)&&pendingQty(r)>0):(state.productMaster||[]).filter(r=>String(r.eagleCode||'').trim());
+  const title=isWork?'📋 Pending Work List':'🏷️ Product Code List';
+  const options=rows.map((r,i)=>'<option value="'+i+'">'+esc(isWork?((r.workNo||'')+' • '+(r.party||'')+' • Pending '+fmt(pendingQty(r))+' • '+(r.description||'')):((r.eagleCode||'')+' • '+(r.itemCode||'')+' • '+(r.description||'')))+'</option>').join('');
+  const html='<div class="field full"><label>🔎 Search / Select</label><input id="deptQuickSearch" placeholder="Search..." autocomplete="off"></div><div class="field full"><select id="deptQuickSelect" size="10" style="width:100%;min-height:260px">'+options+'</select></div>';
+  openDialog(title,html,()=>true,{type:'deptQuickList'});
+  const s=$('deptQuickSearch'),sel=$('deptQuickSelect');
+  if(s&&sel)s.addEventListener('input',()=>{const q=normalize(s.value);[...sel.options].forEach(o=>o.hidden=!!q&&!normalize(o.textContent).includes(q))});
+};
 window.openDeptWorkForm=function(i=null){
   const r=i==null?{
     date:deptSelectedDate(),process:'CUTTING',person:'',workNo:'',party:'',description:'',description2:'',
@@ -358,6 +368,7 @@ window.openDeptWorkForm=function(i=null){
   }:clone(state.departmentWork[i]);
   const processOptions=DEPT_PROCESSES;
   const html=
+    `<div class="field full" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-primary" onclick="cfmDeptQuickList('work')">📋 Pending Work List</button><button type="button" class="btn" onclick="cfmDeptQuickList('product')">🏷️ Product Code List</button></div>`+
     field('date','Date',r.date||deptSelectedDate(),'date')+
     `<div class="field"><label>Person *</label><select name="person">${deptPersonOptions('',r.person||'')}</select><div id="deptNewPersonWrap" style="display:none;margin-top:8px"><input id="deptNewPersonInput" name="newPerson" placeholder="New Person Name"><div class="inline-help">New person ek baar add karo; baad me dropdown me rahega.</div></div></div>`+
     field('process','Department / Process',r.process||'CUTTING','text',false,processOptions)+
