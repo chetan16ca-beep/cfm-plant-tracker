@@ -298,7 +298,7 @@ function deptFormWorkChanged(){
     const given=f.elements.namedItem('givenQty');
     if(desc && !String(desc.value||'').trim())desc.value=p.description||p.orderDetails||'';
     if(desc2 && !String(desc2.value||'').trim())desc2.value=p.description2||p.measurement||'';
-    if(given && !String(given.value||'').trim())given.value=pendingQty(p)||p.orderQty||'';
+    if(given)given.value=p.orderQty||'';
     deptFormQtyChanged();
     const hint=$('deptWorkHint');
     if(hint)hint.innerHTML=`<b>Optional link:</b> ${esc(p.workNo||'')} • ${esc(p.party||'')}<br>${esc(p.description||'')} • Order Qty ${fmt(p.orderQty)} • Work Pending ${fmt(pendingQty(p))}`;
@@ -308,12 +308,16 @@ function deptFormWorkChanged(){
 }
 function deptFormQtyChanged(){
   const f=$('editForm');if(!f)return;
-  const g=num(f.elements.namedItem('givenQty')?.value),d=num(f.elements.namedItem('doneQty')?.value);
-  const el=$('deptPendingPreview');if(el)el.textContent=fmt(Math.max(0,g-d));
+  const work=f.elements.namedItem('workNo')?.value||'',process=f.elements.namedItem('process')?.value||'';
+  const p=getPending(work),order=p?num(p.orderQty):num(f.elements.namedItem('givenQty')?.value);
+  const already=work?deptStageDone(work,process):0,d=num(f.elements.namedItem('doneQty')?.value);
+  const balance=Math.max(0,order-already);
+  const given=f.elements.namedItem('givenQty');if(p&&given)given.value=order;
+  const el=$('deptPendingPreview');if(el)el.innerHTML=work&&p?'<b>Order '+fmt(order)+' • Already Done '+fmt(already)+' • Balance '+fmt(balance)+'</b><div class="inline-help">Is entry ke baad balance: '+fmt(Math.max(0,balance-d))+'</div>':fmt(Math.max(0,order-d));
 }
 function bindDeptWorkForm(){
   const f=$('editForm');if(!f)return;
-  f.elements.namedItem('process')?.addEventListener('change',()=>{deptFormRefreshPerson();deptFormToggleNewPerson()});
+  f.elements.namedItem('process')?.addEventListener('change',()=>{deptFormRefreshPerson();deptFormToggleNewPerson();deptFormQtyChanged()});
   f.elements.namedItem('person')?.addEventListener('change',deptFormToggleNewPerson);
   f.elements.namedItem('workNo')?.addEventListener('change',deptFormWorkChanged);
   f.elements.namedItem('givenQty')?.addEventListener('input',deptFormQtyChanged);
