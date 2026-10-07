@@ -416,7 +416,8 @@ window.openDeptWorkForm=function(i=null){
     rec.pendingQty=deptEntryPending(rec);
     if(!rec.person){toast('Person select karo');return false}
     if(!String(rec.description||'').trim()){toast('Activity / Work Details enter karo');return false}
-    const flowError=deptValidateFlow(rec,i);if(flowError){toast('⚠️ Quantity Mismatch • '+flowError);return false}
+    /* Department daily entry stays open even when legacy/previous-process totals differ.
+       Order / Already Done / Balance remain visible for operator reference. */
     const isNewEntry=i==null;
     if(isNewEntry)state.departmentWork.push(rec);else state.departmentWork[i]=rec;
     if($('deptWorkDate'))$('deptWorkDate').value=rec.date;
