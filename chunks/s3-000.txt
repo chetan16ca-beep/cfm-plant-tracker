@@ -355,6 +355,32 @@ function deptValidateFlow(rec,editIndex=null){
   return '';
 }
 
+const CFM_PLANT_HEAD_TASKS=[
+['09:00','Attendance & Manpower Check'],['09:20','Pending / Urgent Work Orders Check'],['09:40','Work Order Label dena'],
+['10:00','Cutting Plan + SRL / Cloth Issue'],['10:30','Cutting / Stitching Floor Round'],['11:00','Thread Cutting / Gun / Packing Check'],
+['11:30','Quality / Measurement Check'],['12:00','Store & Material Shortage Check'],['14:00','Target vs Actual Production'],
+['14:30','Pending Work / Manpower Adjustment'],['15:00','Rejection / Rework Check'],['15:30','Tomorrow Material Requirement'],
+['16:00','Packing Pending / Ready Qty Check'],['16:30','Dispatch Readiness Check'],['17:00','ERP Department Entries Verify'],
+['17:30','Today Done + Balance / Tomorrow Priority']
+];
+function cfmPlantHeadKey(){return 'cfm-plant-head-plan-'+todayISO()}
+window.cfmPlantHeadPlan=function(){
+  let saved={};try{saved=JSON.parse(localStorage.getItem(cfmPlantHeadKey())||'{}')||{}}catch(e){}
+  const rows=CFM_PLANT_HEAD_TASKS.map((x,i)=>'<tr><td>'+esc(x[0])+'</td><td>'+esc(x[1])+'</td><td style="text-align:center"><input type="checkbox" id="phDone'+i+'" '+(saved[i]?.done?'checked':'')+'></td><td><input id="phRemark'+i+'" value="'+esc(saved[i]?.remark||'')+'" placeholder="Remark" style="width:100%"></td></tr>').join('');
+  const html='<div class="field full"><b>Date: '+esc(dateDisplay(todayISO()))+'</b></div><div class="field full" style="overflow:auto"><table class="table"><thead><tr><th>Time</th><th>Work / Check / Action</th><th>Done</th><th>Remark</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="field full" style="display:flex;gap:8px"><button type="button" class="btn" onclick="cfmPlantHeadSave()">💾 Save</button><button type="button" class="btn btn-primary" onclick="cfmPlantHeadPrint()">🖨️ Print A4</button></div>';
+  openDialog('Plant Head – Today Work List',html,()=>{cfmPlantHeadSave();return true},{type:'plantHeadPlan'});
+};
+window.cfmPlantHeadSave=function(){
+  const out={};CFM_PLANT_HEAD_TASKS.forEach((x,i)=>{out[i]={done:!!$('phDone'+i)?.checked,remark:$('phRemark'+i)?.value||''}});
+  localStorage.setItem(cfmPlantHeadKey(),JSON.stringify(out));toast('Plant Head work list saved');
+};
+window.cfmPlantHeadPrint=function(){
+  cfmPlantHeadSave();let saved={};try{saved=JSON.parse(localStorage.getItem(cfmPlantHeadKey())||'{}')||{}}catch(e){}
+  const body=CFM_PLANT_HEAD_TASKS.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x[0])+'</td><td>'+esc(x[1])+'</td><td style="text-align:center">'+(saved[i]?.done?'✓ Done':'☐ Pending')+'</td><td>'+esc(saved[i]?.remark||'')+'</td></tr>').join('');
+  const w=window.open('','_blank');if(!w){toast('Allow pop-ups for print preview');return}
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Plant Head Daily Work List</title><style>@page{size:A4 portrait;margin:10mm}body{font-family:Arial,sans-serif;color:#111}h1{text-align:center;font-size:20px;margin:0 0 4px}.sub{text-align:center;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #444;padding:6px}th{background:#eee}.sign{margin-top:25px;display:flex;justify-content:space-between}</style></head><body><h1>PLANT HEAD – DAILY WORK LIST</h1><div class="sub">Date: '+esc(dateDisplay(todayISO()))+'</div><table><thead><tr><th>Sr.</th><th>Time</th><th>Work / Check / Action</th><th>Status</th><th>Remark</th></tr></thead><tbody>'+body+'</tbody></table><div class="sign"><span>Plant Head Sign: ____________</span><span>Supervisor Sign: ____________</span></div><script>setTimeout(()=>window.print(),350)<\/script></body></html>');w.document.close();
+};
+
 window.cfmDeptQuickList=function(kind){
   const isWork=kind==='work';
   const rows=isWork?(state.pending||[]).filter(r=>!isArchived(r)&&pendingQty(r)>0):(state.productMaster||[]).filter(r=>String(r.eagleCode||'').trim());
@@ -372,7 +398,7 @@ window.openDeptWorkForm=function(i=null){
   }:clone(state.departmentWork[i]);
   const processOptions=DEPT_PROCESSES;
   const html=
-    `<div class="field full" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-primary" onclick="cfmDeptQuickList('work')">📋 Pending Work List</button><button type="button" class="btn" onclick="cfmDeptQuickList('product')">🏷️ Product Code List</button></div>`+
+    `<div class="field full" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-primary" onclick="cfmDeptQuickList('work')">📋 Pending Work List</button><button type="button" class="btn" onclick="cfmDeptQuickList('product')">🏷️ Product Code List</button><button type="button" class="btn" onclick="cfmPlantHeadPlan()">🗓️ Plant Head Work List</button></div>`+
     field('date','Date',r.date||deptSelectedDate(),'date')+
     `<div class="field"><label>Person *</label><select name="person">${deptPersonOptions('',r.person||'')}</select><div id="deptNewPersonWrap" style="display:none;margin-top:8px"><input id="deptNewPersonInput" name="newPerson" placeholder="New Person Name"><div class="inline-help">New person ek baar add karo; baad me dropdown me rahega.</div></div></div>`+
     field('process','Department / Process',r.process||'CUTTING','text',false,processOptions)+
