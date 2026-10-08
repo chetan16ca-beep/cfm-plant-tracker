@@ -688,7 +688,7 @@ function openDialog(title,html,onSave,resumeMeta=null){
   $('editDialog').classList.remove('multi-po-dialog');
   $('dialogTitle').textContent=title;
   $('formFields').innerHTML=html;
-  $('saveFormBtn').textContent='Save';
+  $('saveFormBtn').textContent=resumeMeta?.type==='cutting'&&resumeMeta?.i==null?'Save & Next Cutting':'Save';
   $('editDialog').showModal();
   setTimeout(()=>{
     window.captureUiDialogState?.();
@@ -710,16 +710,26 @@ $('saveFormBtn').addEventListener('click',()=>{
       const nextCutting=dialogResumeMeta?.type==='cutting' && dialogResumeMeta?.i==null;
       const priorCutting=nextCutting?{...obj}:null;
       $('editDialog').close();try{renderAll()}catch(e){}
-      if(nextCutting)setTimeout(()=>{
-        try{
-          openCuttingForm(null,{workNo:priorCutting.workNo||'',party:priorCutting.party||'',description:priorCutting.description||'',cloth:priorCutting.cloth||'',width:priorCutting.plannedWidth||''});
-          const form=$('editForm');
-          if(form){for(const key of ['length','height','layer','cuttingBy','sizeLine','plannedWidth','entryType','date']){
-            const el=form.elements.namedItem(key);if(el&&priorCutting[key]!=null)el.value=priorCutting[key];
-          }const qty=form.elements.namedItem('cutQty');if(qty)qty.value='';const srl=form.elements.namedItem('srlNo');if(srl)srl.value='';}
-          toast('Cutting saved • Next entry ready');
-        }catch(e){console.error('Next cutting entry failed',e)}
-      },80);
+      if(nextCutting){
+        const reopenNext=()=>{
+          try{
+            if($('editDialog').open){setTimeout(reopenNext,120);return;}
+            openCuttingForm(null,{workNo:priorCutting.workNo||'',party:priorCutting.party||'',description:priorCutting.description||'',cloth:priorCutting.cloth||'',width:priorCutting.plannedWidth||''});
+            const form=$('editForm');
+            if(form){
+              for(const key of ['length','height','layer','cuttingBy','sizeLine','plannedWidth','entryType','date']){
+                const el=form.elements.namedItem(key);
+                if(el&&priorCutting[key]!=null)el.value=priorCutting[key];
+              }
+              for(const key of ['cutQty','srlNo']){
+                const el=form.elements.namedItem(key);if(el)el.value='';
+              }
+            }
+            toast('Cutting saved • Enter next cutting (same work order)');
+          }catch(e){console.error('Next cutting form error',e);toast('Saved. Tap Add Cutting for next entry.')}
+        };
+        setTimeout(reopenNext,250);
+      }
     }
   }catch(e){console.error('Save failed',e);toast('SAVE ERROR: '+(e?.message||'please retry'))}
   finally{if(btn){btn.dataset.saving='0';btn.disabled=false;if($('editDialog')?.open)btn.textContent=$('editDialog')?.classList.contains('multi-po-dialog')?'Save PO Items':'Save'}}
