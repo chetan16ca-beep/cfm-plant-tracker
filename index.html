@@ -289,12 +289,15 @@ html,body{background:#f4faff!important;color:#13233b!important}
  <label>Issued To<input id="cfmLabelTo" required></label>
  <label>Date<input id="cfmLabelDate" type="date" required></label>
  <button type="submit">Save Label Issue</button></form>
- <div id="cfmLabelList"></div></section>
+ <div id="cfmLabelList"></div><button type="button" onclick="cfmExportLabels()">Export Labels</button><button type="button" onclick="document.getElementById('cfmLabelImport').click()">Import Labels</button><input id="cfmLabelImport" type="file" accept=".json" style="display:none" onchange="cfmImportLabels(this)"><p><small>Manual mobile-PC transfer only; cloud sync not enabled.</small></p></section>
  <script>
  function cfmOpenLabels(){document.getElementById('cfmLabelPanel').style.display='block';document.getElementById('cfmLabelDate').value=new Date().toLocaleDateString('en-CA');cfmDrawLabels()}
  function cfmLabelData(){try{return JSON.parse(localStorage.getItem('cfm-label-issued-v1')||'[]')}catch(e){return []}}
  function cfmSaveLabel(ev){ev.preventDefault();const wo=document.getElementById('cfmLabelWO').value.trim().toUpperCase(),qty=+document.getElementById('cfmLabelQty').value,to=document.getElementById('cfmLabelTo').value.trim(),date=document.getElementById('cfmLabelDate').value;const data=cfmLabelData();const old=data.filter(x=>x.wo===wo).reduce((a,x)=>a+x.qty,0);if(old&&!confirm('This work order already has '+old+' issued labels. Add '+qty+' more?'))return;data.push({wo,qty,to,date,createdAt:new Date().toISOString()});localStorage.setItem('cfm-label-issued-v1',JSON.stringify(data));ev.target.reset();cfmDrawLabels()}
  function cfmDrawLabels(){const data=cfmLabelData();const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));document.getElementById('cfmLabelList').innerHTML='<h3>Issued History ('+data.length+')</h3><p>Saved on this device only. Existing work orders remain unchanged.</p><table><tr><th>Work No</th><th>Qty</th><th>Issued To</th><th>Date</th></tr>'+data.slice().reverse().map(x=>'<tr><td>'+esc(x.wo)+'</td><td>'+x.qty+'</td><td>'+esc(x.to)+'</td><td>'+esc(x.date)+'</td></tr>').join('')+'</table>'}
+
+ function cfmExportLabels(){const b=new Blob([JSON.stringify({app:'CFM Label Register',version:1,rows:cfmLabelData()},null,2)],{type:'application/json'}),url=URL.createObjectURL(b),a=document.createElement('a');a.href=url;a.download='CFM-Labels.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000)}
+ function cfmImportLabels(input){const file=input.files&&input.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const p=JSON.parse(reader.result);if(p.app!=='CFM Label Register'||!Array.isArray(p.rows))throw Error('Invalid backup');const old=cfmLabelData(),key=x=>[x.wo,x.qty,x.to,x.date,x.createdAt].join('|'),seen=new Set(old.map(key));let added=0;for(const x of p.rows){if(typeof x.wo!=='string'||!(+x.qty>0))continue;if(!seen.has(key(x))){old.push(x);seen.add(key(x));added++}}if(added&&confirm('Import '+added+' new records?')){localStorage.setItem('cfm-label-issued-v1',JSON.stringify(old));cfmDrawLabels()}}catch(e){alert(e.message)}input.value=''};reader.readAsText(file)}
  <\/script></body>`);
 
  const app=document.getElementById('app');
