@@ -271,6 +271,32 @@ html,body{background:#f4faff!important;color:#13233b!important}
 .command-tags span,.command-tags span:first-child{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}
 </style></head>`);
  src=src.replace('</head>',`<style id="cfm-final-v117">.command-hero{background:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;background-image:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;color:#17375e!important;border:1px solid #bcdff6!important;box-shadow:0 10px 26px rgba(22,116,201,.10)!important}.command-hero:after{border-color:rgba(22,116,201,.08)!important}.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}.command-tags span,.command-tags span:first-child{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}</style></head>`);
+
+ // Label issue register (additive, never changes production/order records).
+ src=src.replace('</body>',`<style>
+ #cfmLabelBtn{position:fixed;right:12px;bottom:88px;z-index:99990;background:#126db7;color:white;border:0;border-radius:14px;padding:12px 15px;font-weight:800;box-shadow:0 4px 18px #0003}
+ #cfmLabelPanel{display:none;position:fixed;inset:5% 3%;z-index:99991;background:white;border:2px solid #126db7;border-radius:15px;padding:16px;overflow:auto;box-shadow:0 0 0 100vmax #0008;font:14px Arial;color:#152c42}
+ #cfmLabelPanel input{width:100%;padding:10px;margin:5px 0 12px;border:1px solid #b5cbdc;border-radius:7px}
+ #cfmLabelPanel button{padding:10px;margin:4px;border:0;border-radius:7px;background:#126db7;color:white}
+ #cfmLabelPanel table{border-collapse:collapse;width:100%;font-size:12px}
+ #cfmLabelPanel th,#cfmLabelPanel td{border:1px solid #ccdbe5;padding:7px;text-align:left}
+ </style><button id="cfmLabelBtn" onclick="cfmOpenLabels()">🏷 Label Issued</button>
+ <section id="cfmLabelPanel"><button onclick="document.getElementById('cfmLabelPanel').style.display='none'">✕ Close</button><h2>🏷 Label Issue Register</h2>
+ <p>Record labels already handed over. This register does not close or remove work orders.</p>
+ <form onsubmit="cfmSaveLabel(event)">
+ <label>Work Order No.<input id="cfmLabelWO" required placeholder="CFM-577"></label>
+ <label>Labels Issued Qty<input id="cfmLabelQty" type="number" min="1" required></label>
+ <label>Issued To<input id="cfmLabelTo" required></label>
+ <label>Date<input id="cfmLabelDate" type="date" required></label>
+ <button type="submit">Save Label Issue</button></form>
+ <div id="cfmLabelList"></div></section>
+ <script>
+ function cfmOpenLabels(){document.getElementById('cfmLabelPanel').style.display='block';document.getElementById('cfmLabelDate').value=new Date().toLocaleDateString('en-CA');cfmDrawLabels()}
+ function cfmLabelData(){try{return JSON.parse(localStorage.getItem('cfm-label-issued-v1')||'[]')}catch(e){return []}}
+ function cfmSaveLabel(ev){ev.preventDefault();const wo=document.getElementById('cfmLabelWO').value.trim().toUpperCase(),qty=+document.getElementById('cfmLabelQty').value,to=document.getElementById('cfmLabelTo').value.trim(),date=document.getElementById('cfmLabelDate').value;const data=cfmLabelData();const old=data.filter(x=>x.wo===wo).reduce((a,x)=>a+x.qty,0);if(old&&!confirm('This work order already has '+old+' issued labels. Add '+qty+' more?'))return;data.push({wo,qty,to,date,createdAt:new Date().toISOString()});localStorage.setItem('cfm-label-issued-v1',JSON.stringify(data));ev.target.reset();cfmDrawLabels()}
+ function cfmDrawLabels(){const data=cfmLabelData();const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));document.getElementById('cfmLabelList').innerHTML='<h3>Issued History ('+data.length+')</h3><p>Saved on this device only. Existing work orders remain unchanged.</p><table><tr><th>Work No</th><th>Qty</th><th>Issued To</th><th>Date</th></tr>'+data.slice().reverse().map(x=>'<tr><td>'+esc(x.wo)+'</td><td>'+x.qty+'</td><td>'+esc(x.to)+'</td><td>'+esc(x.date)+'</td></tr>').join('')+'</table>'}
+ <\/script></body>`);
+
  const app=document.getElementById('app');
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
  app.style.visibility='visible';app.style.opacity='1';app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
