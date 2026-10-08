@@ -277,4 +277,47 @@ html,body{background:#f4faff!important;color:#13233b!important}
  app.style.visibility='visible';app.style.opacity='1';app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
-</script></body></html>
+</script>
+<style id="cfm-label-safe-css">
+#cfmLabelToggle{position:fixed;left:12px;bottom:85px;z-index:1000001;border:0;border-radius:12px;background:#126db7;color:#fff;padding:12px;font:700 13px Arial;box-shadow:0 5px 20px #0003;cursor:pointer}
+#cfmLabelDialog[hidden]{display:none!important}
+#cfmLabelDialog{position:fixed;inset:4% 3%;z-index:1000002;overflow:auto;background:#fff;color:#1b3043;padding:18px;border-radius:14px;box-shadow:0 0 0 100vmax #0009;font:14px Arial}
+#cfmLabelDialog input{display:block;width:100%;padding:10px;margin:6px 0 12px;border:1px solid #b4cad8;border-radius:7px;box-sizing:border-box}
+#cfmLabelDialog button{padding:10px;border:0;border-radius:8px;background:#126db7;color:white;margin:3px;cursor:pointer}
+#cfmLabelDialog table{width:100%;border-collapse:collapse;font-size:12px}
+#cfmLabelDialog th,#cfmLabelDialog td{border:1px solid #ccdbe5;padding:7px;text-align:left}
+</style>
+<button id="cfmLabelToggle" type="button">🏷 Label Issued</button>
+<div id="cfmLabelDialog" hidden>
+<button type="button" id="cfmLabelClose">✕ Close</button><h2>Label Issued Register</h2>
+<p>Work orders remain pending until separately completed. Label issue records are stored on this device.</p>
+<form id="cfmLabelForm">
+<label>Work Order No.<input name="wo" required placeholder="CFM-577"></label>
+<label>Labels Issued Qty<input name="qty" type="number" min="1" required></label>
+<label>Issued To<input name="to" required></label>
+<label>Issued Date<input name="date" type="date" required></label>
+<button type="submit">Save Label Issue</button>
+</form>
+<div id="cfmLabelHistory"></div>
+<button type="button" id="cfmLabelExport">⬇ Export</button>
+<button type="button" id="cfmLabelImportButton">⬆ Import</button>
+<input type="file" id="cfmLabelImportFile" accept=".json,application/json" hidden>
+<p><small>Mobile-PC transfer: export on one device, import on the other. No automatic cloud sync.</small></p>
+</div>
+<script>
+(function(){
+'use strict';
+const key='cfm-label-issued-v1';
+const toggle=document.getElementById('cfmLabelToggle'),dialog=document.getElementById('cfmLabelDialog'),form=document.getElementById('cfmLabelForm');
+function get(){try{const a=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
+function safe(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function draw(){const a=get();document.getElementById('cfmLabelHistory').innerHTML='<h3>Issued Labels ('+a.length+')</h3><table><thead><tr><th>Work Order</th><th>Qty</th><th>Issued To</th><th>Date</th></tr></thead><tbody>'+a.slice().reverse().map(x=>'<tr><td>'+safe(x.wo)+'</td><td>'+safe(x.qty)+'</td><td>'+safe(x.to)+'</td><td>'+safe(x.date)+'</td></tr>').join('')+'</tbody></table>'}
+toggle.addEventListener('click',()=>{dialog.hidden=false;form.elements.date.value=new Date().toLocaleDateString('en-CA');draw()});
+document.getElementById('cfmLabelClose').addEventListener('click',()=>{dialog.hidden=true});
+form.addEventListener('submit',ev=>{ev.preventDefault();const wo=form.elements.wo.value.trim().toUpperCase(),qty=Number(form.elements.qty.value),to=form.elements.to.value.trim(),date=form.elements.date.value;if(!wo||!to||!date||!Number.isInteger(qty)||qty<1)return;const a=get(),prior=a.filter(x=>x.wo===wo).reduce((n,x)=>n+Number(x.qty||0),0);if(prior&&!confirm('Already issued '+prior+' labels for '+wo+'. Issue '+qty+' more?'))return;a.push({wo,qty,to,date,createdAt:new Date().toISOString()});try{localStorage.setItem(key,JSON.stringify(a));form.reset();draw()}catch(e){alert('Could not save: '+e.message)}});
+document.getElementById('cfmLabelExport').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({app:'CFM Label Register',version:1,rows:get()},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='CFM-Label-Issued.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)});
+document.getElementById('cfmLabelImportButton').addEventListener('click',()=>document.getElementById('cfmLabelImportFile').click());
+document.getElementById('cfmLabelImportFile').addEventListener('change',async ev=>{const file=ev.target.files[0];if(!file)return;try{const p=JSON.parse(await file.text());if(p.app!=='CFM Label Register'||!Array.isArray(p.rows))throw Error('Invalid backup file');const a=get(),ids=new Set(a.map(x=>[x.wo,x.qty,x.to,x.date,x.createdAt].join('|')));let n=0;for(const x of p.rows){if(!x||typeof x.wo!=='string'||!Number.isInteger(Number(x.qty))||Number(x.qty)<1)continue;const id=[x.wo,x.qty,x.to,x.date,x.createdAt].join('|');if(!ids.has(id)){a.push(x);ids.add(id);n++}}if(n&&confirm('Import '+n+' new label records?')){localStorage.setItem(key,JSON.stringify(a));draw()}else if(!n)alert('No new label records')}catch(e){alert('Import error: '+e.message)}ev.target.value=''});
+})();
+</script>
+</body></html>
