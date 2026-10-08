@@ -290,7 +290,7 @@ html,body{background:#f4faff!important;color:#13233b!important}
  <label>Date<input id="cfmLabelDate" type="date" required></label>
  <button type="submit">Save Label Issue</button></form>
  <div id="cfmLabelList"></div><button type="button" onclick="cfmExportLabels()">Export Labels</button><button type="button" onclick="document.getElementById('cfmLabelImport').click()">Import Labels</button><input id="cfmLabelImport" type="file" accept=".json" style="display:none" onchange="cfmImportLabels(this)"><p><small>Manual mobile-PC transfer only; cloud sync not enabled.</small></p></section>
- <script>
+ <scr\u0069pt>
  function cfmOpenLabels(){document.getElementById('cfmLabelPanel').style.display='block';document.getElementById('cfmLabelDate').value=new Date().toLocaleDateString('en-CA');cfmDrawLabels()}
  function cfmLabelData(){try{return JSON.parse(localStorage.getItem('cfm-label-issued-v1')||'[]')}catch(e){return []}}
  function cfmSaveLabel(ev){ev.preventDefault();const wo=document.getElementById('cfmLabelWO').value.trim().toUpperCase(),qty=+document.getElementById('cfmLabelQty').value,to=document.getElementById('cfmLabelTo').value.trim(),date=document.getElementById('cfmLabelDate').value;const data=cfmLabelData();const old=data.filter(x=>x.wo===wo).reduce((a,x)=>a+x.qty,0);if(old&&!confirm('This work order already has '+old+' issued labels. Add '+qty+' more?'))return;data.push({wo,qty,to,date,createdAt:new Date().toISOString()});localStorage.setItem('cfm-label-issued-v1',JSON.stringify(data));ev.target.reset();cfmDrawLabels()}
