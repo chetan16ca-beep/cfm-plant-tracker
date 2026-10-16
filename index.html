@@ -100,88 +100,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 </head>
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
-<iframe id="app" title="CFM Plant Tracker"></iframe><a href="./work-orders.html" style="position:fixed;top:12px;left:8px;z-index:2147483647;background:#075f62;color:white;padding:9px 11px;border-radius:9px;text-decoration:none;font:600 12px system-ui">📋 Recover All Orders</a>
-<script>
-document.addEventListener('DOMContentLoaded',()=>{
- const list=document.getElementById('cfmGlobalList');
- if(!list)return;
- const old=window.setInterval;
- const observer=new MutationObserver(()=>{
-  for(const el of list.children){
-   if(el.dataset.cfmNav)return;
-   el.dataset.cfmNav='1';el.style.cursor='pointer';
-   const src=(el.querySelector('small')?.textContent||'').toLowerCase();
-   const work=(el.querySelector('b')?.textContent||'').trim();
-   const module=(el.textContent.includes('root.cutting[')?'cutting':el.textContent.includes('root.pending[')?'pending':el.textContent.includes('root.issueRegister[')?'issue':src.includes('cutting')?'cutting':src.includes('issue')?'issue':src.includes('pending')?'pending':null);
-   if(!module||!work||work.startsWith('('))continue;
-   const btn=document.createElement('button');btn.textContent='Open '+module+' ↗';btn.style.cssText='margin:7px 0;padding:8px;background:#176db7;color:white;border:0;border-radius:7px';
-   btn.onclick=()=>{
-    try{
-     const w=document.getElementById('app').contentWindow;
-     if(typeof w.showView!=='function'){alert('Module unavailable; record is preserved.');return}
-     w.showView(module);
-     const field=w.document.getElementById(module==='cutting'?'cutSearch':module==='pending'?'pendingSearch':'issueSearch');
-     if(field){field.value=work;field.dispatchEvent(new Event('input',{bubbles:true}))}
-     document.getElementById('cfmGlobalResults').style.display='none';
-    }catch(e){alert('Could not open module: '+e.message)}
-   };el.appendChild(btn);
-  }
- });
- observer.observe(list,{childList:true});
-});
-</script>
-<button id="cfmAllOrdersBtn" type="button" style="position:fixed;left:12px;top:161px;z-index:999999;background:#086b54;color:white;border:0;border-radius:9px;padding:10px">📋 All Orders</button><div id="cfmAllOrdersPanel" style="display:none;position:fixed;inset:5%;z-index:9999999;background:white;overflow:auto;padding:15px;color:#222;font:14px Arial"><button id="cfmAllOrdersClose">Close ✕</button><h3>All Work Orders</h3><input id="cfmAllOrdersInput" placeholder="Search Work No or Party" style="padding:12px;width:90%"><p id="cfmAllOrdersStatus"></p><div id="cfmAllOrdersList"></div></div><script>document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('cfmAllOrdersBtn'),p=document.getElementById('cfmAllOrdersPanel');if(b&&p){b.style.setProperty('z-index','2147483647','important');b.addEventListener('click',function(){p.style.setProperty('display','block','important');p.style.setProperty('z-index','2147483647','important')});document.getElementById('cfmAllOrdersClose').addEventListener('click',function(){p.style.setProperty('display','none','important')})}})</script><button id="cfmGlobalFind" type="button" style="position:fixed;left:12px;top:112px;z-index:999999;background:#176db7;color:white;border:0;border-radius:10px;padding:10px;font:600 12px system-ui">🔎 All Work Search</button>
-<div id="cfmGlobalResults" style="display:none;position:fixed;inset:8% 3% 5%;z-index:9999999;background:white;border:2px solid #176db7;border-radius:14px;padding:12px;overflow:auto;font:14px system-ui;color:#172033"><button id="cfmGlobalClose" style="float:right;padding:7px">✕ Close</button><h3>All Saved Work Records</h3><input id="cfmGlobalQuery" placeholder="Work No / Party / OZONE" style="width:95%;padding:12px;border:1px solid #aaa;border-radius:8px"><p id="cfmGlobalSummary"></p><div id="cfmGlobalList"></div></div>
-<script>
-document.addEventListener('DOMContentLoaded',()=>{
- const $=id=>document.getElementById(id), panel=$('cfmGlobalResults');
- $('cfmGlobalClose').onclick=()=>panel.style.display='none';
- $('cfmGlobalFind').onclick=()=>{panel.style.display='block';$('cfmGlobalQuery').focus();run()};
- $('cfmGlobalQuery').oninput=run;
- function run(){
-  const q=$('cfmGlobalQuery').value.trim().toLowerCase(),rows=[],seen=new Set();let checked=0;
-  const esc=x=>String(x??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  try{
-   const ls=$('app').contentWindow.localStorage;
-   for(let i=0;i<ls.length;i++){
-    const key=ls.key(i);if(!key||key.startsWith('cfm-chunk-'))continue;
-    let obj;try{obj=JSON.parse(ls.getItem(key))}catch(e){continue}
-    checked++;
-    function walk(v,path,depth){
-     if(rows.length>600||depth>5||!v||typeof v!=='object')return;
-     if(Array.isArray(v)){for(let j=0;j<v.length&&j<20000;j++)walk(v[j],path+'['+j+']',depth+1);return}
-     const work=String(v.workNo??v.work_no??v.workOrder??v.work_order??v.wo??'');
-     const party=String(v.party??v.partyName??v.customer??v.customerName??'');
-     const desc=String(v.description??v.item??v.product??v.cloth??'');
-     const matches=q&&(work+' '+party+' '+desc).toLowerCase().includes(q);
-     if(matches&&(work||party||desc)){const id=key+':'+path;if(!seen.has(id)){seen.add(id);rows.push({key,work,party,desc,path})}}
-     for(const [k,val] of Object.entries(v)){if(val&&typeof val==='object')walk(val,path+'.'+k,depth+1)}
-    }
-    walk(obj,'root',0)
-   }
-   $('cfmGlobalSummary').textContent=q?rows.length+' matching saved entries (read-only)':'Enter a Work No or Party to search all local records';
-   $('cfmGlobalList').innerHTML=rows.slice(0,200).map(r=>'<div style="padding:10px;border-bottom:1px solid #ddd"><b>'+esc(r.work||'(No Work No)')+'</b> — '+esc(r.party)+'<div>'+esc(r.desc).slice(0,250)+'</div><small>Source: '+esc(r.key)+'</small></div>').join('')||(q?'<p>No matching saved record found on this device.</p>':'');
-  }catch(e){$('cfmGlobalSummary').textContent='Search unavailable: '+e.message}
- }
-});
-</script>
-<button id="cfmEmergencyBackup" type="button" style="position:fixed;left:12px;top:65px;z-index:999999;background:#0b4961;color:#fff;border:0;border-radius:10px;padding:10px;font:600 12px system-ui">💾 Save CFM Data</button>
-<script>
-document.addEventListener('DOMContentLoaded',function(){
- const b=document.getElementById('cfmEmergencyBackup');
- b.onclick=function(){
-  try{
-   const frame=document.getElementById('app');
-   const win=frame.contentWindow;
-   const keys={};
-   for(let i=0;i<win.localStorage.length;i++){const k=win.localStorage.key(i);if(k!==null)keys[k]=win.localStorage.getItem(k)}
-   if(!Object.keys(keys).length){alert('No stored records found in this browser. Nothing was changed.');return}
-   const blob=new Blob([JSON.stringify({app:'CFM Plant Tracker',type:'read-only emergency localStorage export',createdAt:new Date().toISOString(),keys},null,2)],{type:'application/json'});
-   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='CFM-EMERGENCY-BACKUP-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-  }catch(e){alert('Backup could not open: '+e.message+' — data was not changed.')}
- };
-});
-</script>
+<iframe id="app" title="CFM Plant Tracker"></iframe>
 <button id="notifyBtn" type="button">🔔 Enable Notifications</button>
 <script>
 const groups=[["chunks/s1-000.txt"],["chunks/s2-000.txt","chunks/s2-001.txt","chunks/s2-002.txt","chunks/s2-003.txt","chunks/s2-004.txt","chunks/s2-005.txt","chunks/s2-006.txt","chunks/s2-007.txt","chunks/s2-008.txt"],["chunks/s3-000.txt","chunks/s3-001.txt"],["chunks/s4-000.txt","chunks/s4-001.txt","chunks/s4-002.txt","chunks/s4-003.txt","chunks/s4-004.txt","chunks/s4-005.txt","chunks/s4-006.txt","chunks/s4-007.txt","chunks/s4-008.txt","chunks/s4-009.txt","chunks/s4-010.txt","chunks/s4-011.txt","chunks/s4-012.txt","chunks/s4-013.txt","chunks/s4-014.txt"]];
@@ -399,48 +318,6 @@ form.addEventListener('submit',ev=>{ev.preventDefault();const wo=form.elements.w
 document.getElementById('cfmLabelExport').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({app:'CFM Label Register',version:1,rows:get()},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='CFM-Label-Issued.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)});
 document.getElementById('cfmLabelImportButton').addEventListener('click',()=>document.getElementById('cfmLabelImportFile').click());
 document.getElementById('cfmLabelImportFile').addEventListener('change',async ev=>{const file=ev.target.files[0];if(!file)return;try{const p=JSON.parse(await file.text());if(p.app!=='CFM Label Register'||!Array.isArray(p.rows))throw Error('Invalid backup file');const a=get(),ids=new Set(a.map(x=>[x.wo,x.qty,x.to,x.date,x.createdAt].join('|')));let n=0;for(const x of p.rows){if(!x||typeof x.wo!=='string'||!Number.isInteger(Number(x.qty))||Number(x.qty)<1)continue;const id=[x.wo,x.qty,x.to,x.date,x.createdAt].join('|');if(!ids.has(id)){a.push(x);ids.add(id);n++}}if(n&&confirm('Import '+n+' new label records?')){localStorage.setItem(key,JSON.stringify(a));draw()}else if(!n)alert('No new label records')}catch(e){alert('Import error: '+e.message)}ev.target.value=''});
-})();
-</script>
-<script>
-(function(){
-function init(){
-var button=document.getElementById('cfmAllOrdersBtn'),panel=document.getElementById('cfmAllOrdersPanel'),input=document.getElementById('cfmAllOrdersInput'),list=document.getElementById('cfmAllOrdersList'),status=document.getElementById('cfmAllOrdersStatus');
-if(!button||!panel||!input||!list||!status)return;
-function render(){
-status.textContent='Reading work orders...';
-var app=document.getElementById('app'),w=app&&app.contentWindow,raw='',db={};
-try{raw=w.localStorage.getItem('cfm-plant-tracker-data-v1')||''}catch(e){}
-if(!raw)try{raw=localStorage.getItem('cfm-plant-tracker-data-v1')||''}catch(e){}
-try{db=raw?JSON.parse(raw):w.state||{}}catch(e){status.textContent='Data parse error: '+e.message;return}
-var map=new Map();
-[['Pending',db.pending],['Cutting',db.cutting],['Issue',db.issueRegister]].forEach(function(group){
-(group[1]||[]).forEach(function(item){
-var no=String(item.workNo||item.workOrder||item.wo||'').trim();if(!no)return;
-var key=no.toUpperCase(),v=map.get(key)||{no:no,party:'',cutting:0,pending:0,issue:0};
-v.party=v.party||item.party||item.partyName||'';
-if(group[0]==='Pending')v.pending++;
-if(group[0]==='Cutting')v.cutting++;
-if(group[0]==='Issue')v.issue++;
-map.set(key,v);
-});
-});
-var q=input.value.trim().toLowerCase(),matches=Array.from(map.values()).filter(function(x){return (x.no+' '+x.party).toLowerCase().includes(q)});
-status.textContent=map.size+' Work Numbers available; '+matches.length+' matching'+(raw?' (saved data)':' (live data)');
-list.replaceChildren();
-matches.slice(0,400).forEach(function(x){
-var row=document.createElement('div');row.style.cssText='padding:12px;border-bottom:1px solid #ccc';
-var title=document.createElement('strong');title.textContent=x.no+' — '+x.party;row.appendChild(title);
-var detail=document.createElement('div');detail.textContent='Pending '+x.pending+' | Cutting '+x.cutting+' | Issue '+x.issue;row.appendChild(detail);
-var b=document.createElement('button');b.textContent='Open Cutting';b.style.cssText='padding:8px;margin-top:6px';
-b.onclick=function(){try{w.showView('cutting');var field=w.document.getElementById('cutSearch');if(field){field.value=x.no;field.dispatchEvent(new Event('input',{bubbles:true}))}panel.style.display='none'}catch(e){alert('Unable to open Cutting: '+e.message)}};row.appendChild(b);list.appendChild(row);
-});
-if(map.size===0)status.textContent='No records loaded from current app storage. Backup recovery is required.';
-}
-button.onclick=function(){panel.style.display='block';render()};
-input.oninput=render;
-document.getElementById('cfmAllOrdersClose').onclick=function(){panel.style.display='none'};
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
 </body></html>
