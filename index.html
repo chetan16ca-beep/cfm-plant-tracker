@@ -401,56 +401,46 @@ document.getElementById('cfmLabelImportButton').addEventListener('click',()=>doc
 document.getElementById('cfmLabelImportFile').addEventListener('change',async ev=>{const file=ev.target.files[0];if(!file)return;try{const p=JSON.parse(await file.text());if(p.app!=='CFM Label Register'||!Array.isArray(p.rows))throw Error('Invalid backup file');const a=get(),ids=new Set(a.map(x=>[x.wo,x.qty,x.to,x.date,x.createdAt].join('|')));let n=0;for(const x of p.rows){if(!x||typeof x.wo!=='string'||!Number.isInteger(Number(x.qty))||Number(x.qty)<1)continue;const id=[x.wo,x.qty,x.to,x.date,x.createdAt].join('|');if(!ids.has(id)){a.push(x);ids.add(id);n++}}if(n&&confirm('Import '+n+' new label records?')){localStorage.setItem(key,JSON.stringify(a));draw()}else if(!n)alert('No new label records')}catch(e){alert('Import error: '+e.message)}ev.target.value=''});
 })();
 </script>
-<script>(function(){
-'use strict';
-const $=id=>document.getElementById(id);
-const esc=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;':'&quot;'}[c]));
-const panel=$('cfmAllOrdersPanel'),btn=$('cfmAllOrdersBtn');
-if(!panel||!btn)return;
-$('cfmAllOrdersClose').onclick=()=>panel.style.display='none';
-btn.onclick=()=>{panel.style.display='block';render()};
-$('cfmAllOrdersInput').oninput=render;
+<script>
+(function(){
+function init(){
+var button=document.getElementById('cfmAllOrdersBtn'),panel=document.getElementById('cfmAllOrdersPanel'),input=document.getElementById('cfmAllOrdersInput'),list=document.getElementById('cfmAllOrdersList'),status=document.getElementById('cfmAllOrdersStatus');
+if(!button||!panel||!input||!list||!status)return;
 function render(){
-const out=$('cfmAllOrdersList'),status=$('cfmAllOrdersStatus');let db;
-try{const w=$('app').contentWindow;let raw='';try{raw=w.localStorage.getItem('cfm-plant-tracker-data-v1')||''}catch(_e){};if(!raw)try{raw=localStorage.getItem('cfm-plant-tracker-data-v1')||''}catch(_e){};db=raw?JSON.parse(raw):(w.state||{});if(!db||!Array.isArray(db.pending)&&!Array.isArray(db.cutting)){try{db=w.state||db}catch(_e){}}}
-catch(e){status.textContent='Unable to read saved data: '+e.message;return}
-const records=new Map();
-for(const [source,items] of [['pending',db.pending],['cutting',db.cutting],['issueRegister',db.issueRegister]]){
-if(!Array.isArray(items))continue;
-for(const item of items){
-const no=String(item.workNo||item.workOrder||item.wo||'').trim();if(!no)continue;
-const key=no.toUpperCase();
-if(!records.has(key))records.set(key,{no,party:'',description:'',pending:null,cutting:0,issue:0});
-const r=records.get(key);r.party=r.party||item.party||item.partyName||'';r.description=r.description||item.description||item.item||'';
-if(source==='pending')r.pending=item;
-if(source==='cutting')r.cutting++;
-if(source==='issueRegister')r.issue++;
+status.textContent='Reading work orders...';
+var app=document.getElementById('app'),w=app&&app.contentWindow,raw='',db={};
+try{raw=w.localStorage.getItem('cfm-plant-tracker-data-v1')||''}catch(e){}
+if(!raw)try{raw=localStorage.getItem('cfm-plant-tracker-data-v1')||''}catch(e){}
+try{db=raw?JSON.parse(raw):w.state||{}}catch(e){status.textContent='Data parse error: '+e.message;return}
+var map=new Map();
+[['Pending',db.pending],['Cutting',db.cutting],['Issue',db.issueRegister]].forEach(function(group){
+(group[1]||[]).forEach(function(item){
+var no=String(item.workNo||item.workOrder||item.wo||'').trim();if(!no)return;
+var key=no.toUpperCase(),v=map.get(key)||{no:no,party:'',cutting:0,pending:0,issue:0};
+v.party=v.party||item.party||item.partyName||'';
+if(group[0]==='Pending')v.pending++;
+if(group[0]==='Cutting')v.cutting++;
+if(group[0]==='Issue')v.issue++;
+map.set(key,v);
+});
+});
+var q=input.value.trim().toLowerCase(),matches=Array.from(map.values()).filter(function(x){return (x.no+' '+x.party).toLowerCase().includes(q)});
+status.textContent=map.size+' Work Numbers available; '+matches.length+' matching'+(raw?' (saved data)':' (live data)');
+list.replaceChildren();
+matches.slice(0,400).forEach(function(x){
+var row=document.createElement('div');row.style.cssText='padding:12px;border-bottom:1px solid #ccc';
+var title=document.createElement('strong');title.textContent=x.no+' — '+x.party;row.appendChild(title);
+var detail=document.createElement('div');detail.textContent='Pending '+x.pending+' | Cutting '+x.cutting+' | Issue '+x.issue;row.appendChild(detail);
+var b=document.createElement('button');b.textContent='Open Cutting';b.style.cssText='padding:8px;margin-top:6px';
+b.onclick=function(){try{w.showView('cutting');var field=w.document.getElementById('cutSearch');if(field){field.value=x.no;field.dispatchEvent(new Event('input',{bubbles:true}))}panel.style.display='none'}catch(e){alert('Unable to open Cutting: '+e.message)}};row.appendChild(b);list.appendChild(row);
+});
+if(map.size===0)status.textContent='No records loaded from current app storage. Backup recovery is required.';
 }
+button.onclick=function(){panel.style.display='block';render()};
+input.oninput=render;
+document.getElementById('cfmAllOrdersClose').onclick=function(){panel.style.display='none'};
 }
-const q=$('cfmAllOrdersInput').value.trim().toLowerCase();
-const found=[...records.values()].filter(r=>(r.no+' '+r.party+' '+r.description).toLowerCase().includes(q)).sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true}));
-status.textContent=records.size+' unique work numbers found · '+found.length+' matches · no data changed';if(records.size===0)status.textContent+=' · Live data unavailable in search; check main Pending/Cutting and keep backup safe';
-out.innerHTML='';
-for(const r of found.slice(0,350)){
-const card=document.createElement('div');card.style.cssText='padding:12px 0;border-bottom:1px solid #ddd';
-card.innerHTML='<b>'+esc(r.no)+'</b> — '+esc(r.party)+'<div>'+esc(r.description)+'</div><small>'+(r.pending?'Pending saved':'History only')+' · Cutting: '+r.cutting+' · Issue: '+r.issue+'</small><div></div>';
-const actions=card.lastElementChild;
-function action(label,view,field){
-const b=document.createElement('button');b.textContent=label;b.style.cssText='padding:8px;margin:6px 6px 0 0;border:1px solid #aaa;border-radius:7px';
-b.onclick=()=>{try{
-const w=$('app').contentWindow;if(typeof w.showView!=='function')throw Error('Module not ready');
-w.showView(view);const input=w.document.getElementById(field);
-if(input){input.value=r.no;input.dispatchEvent(new w.Event('input',{bubbles:true}))}
-if(view==='pending'){const sel=w.document.getElementById('pendingStatus');if(sel){sel.value='ALL';if(typeof w.renderPending==='function')w.renderPending()}}
-panel.style.display='none';
-}catch(e){alert('Cannot open: '+e.message)}};
-actions.appendChild(b);
-}
-action('View Cutting','cutting','cutSearch');
-if(r.pending)action('View Order','pending','pendingSearch');
-action('View Documents','docs','docSearch');
-out.appendChild(card);
-}
-}
-})();</script>
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
 </body></html>
