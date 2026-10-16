@@ -101,6 +101,35 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker"></iframe>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+ const list=document.getElementById('cfmGlobalList');
+ if(!list)return;
+ const old=window.setInterval;
+ const observer=new MutationObserver(()=>{
+  for(const el of list.children){
+   if(el.dataset.cfmNav)return;
+   el.dataset.cfmNav='1';el.style.cursor='pointer';
+   const src=(el.querySelector('small')?.textContent||'').toLowerCase();
+   const work=(el.querySelector('b')?.textContent||'').trim();
+   const module=src.includes('cutting')?'cutting':src.includes('issue')?'issue':src.includes('pending')?'pending':null;
+   if(!module||!work||work.startsWith('('))continue;
+   const btn=document.createElement('button');btn.textContent='Open '+module+' ↗';btn.style.cssText='margin:7px 0;padding:8px;background:#176db7;color:white;border:0;border-radius:7px';
+   btn.onclick=()=>{
+    try{
+     const w=document.getElementById('app').contentWindow;
+     if(typeof w.showView!=='function'){alert('Module unavailable; record is preserved.');return}
+     w.showView(module);
+     const field=w.document.getElementById(module==='cutting'?'cutSearch':module==='pending'?'pendingSearch':'issueSearch');
+     if(field){field.value=work;field.dispatchEvent(new Event('input',{bubbles:true}))}
+     document.getElementById('cfmGlobalResults').style.display='none';
+    }catch(e){alert('Could not open module: '+e.message)}
+   };el.appendChild(btn);
+  }
+ });
+ observer.observe(list,{childList:true});
+});
+</script>
 <button id="cfmGlobalFind" type="button" style="position:fixed;left:12px;top:112px;z-index:999999;background:#176db7;color:white;border:0;border-radius:10px;padding:10px;font:600 12px system-ui">🔎 All Work Search</button>
 <div id="cfmGlobalResults" style="display:none;position:fixed;inset:8% 3% 5%;z-index:9999999;background:white;border:2px solid #176db7;border-radius:14px;padding:12px;overflow:auto;font:14px system-ui;color:#172033"><button id="cfmGlobalClose" style="float:right;padding:7px">✕ Close</button><h3>All Saved Work Records</h3><input id="cfmGlobalQuery" placeholder="Work No / Party / OZONE" style="width:95%;padding:12px;border:1px solid #aaa;border-radius:8px"><p id="cfmGlobalSummary"></p><div id="cfmGlobalList"></div></div>
 <script>
