@@ -101,6 +101,23 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker"></iframe>
+<button id="cfmEmergencyBackup" type="button" style="position:fixed;left:12px;top:65px;z-index:999999;background:#0b4961;color:#fff;border:0;border-radius:10px;padding:10px;font:600 12px system-ui">💾 Save CFM Data</button>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+ const b=document.getElementById('cfmEmergencyBackup');
+ b.onclick=function(){
+  try{
+   const frame=document.getElementById('app');
+   const win=frame.contentWindow;
+   const keys={};
+   for(let i=0;i<win.localStorage.length;i++){const k=win.localStorage.key(i);if(k!==null)keys[k]=win.localStorage.getItem(k)}
+   if(!Object.keys(keys).length){alert('No stored records found in this browser. Nothing was changed.');return}
+   const blob=new Blob([JSON.stringify({app:'CFM Plant Tracker',type:'read-only emergency localStorage export',createdAt:new Date().toISOString(),keys},null,2)],{type:'application/json'});
+   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='CFM-EMERGENCY-BACKUP-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(e){alert('Backup could not open: '+e.message+' — data was not changed.')}
+ };
+});
+</script>
 <button id="notifyBtn" type="button">🔔 Enable Notifications</button>
 <script>
 const groups=[["chunks/s1-000.txt"],["chunks/s2-000.txt","chunks/s2-001.txt","chunks/s2-002.txt","chunks/s2-003.txt","chunks/s2-004.txt","chunks/s2-005.txt","chunks/s2-006.txt","chunks/s2-007.txt","chunks/s2-008.txt"],["chunks/s3-000.txt","chunks/s3-001.txt"],["chunks/s4-000.txt","chunks/s4-001.txt","chunks/s4-002.txt","chunks/s4-003.txt","chunks/s4-004.txt","chunks/s4-005.txt","chunks/s4-006.txt","chunks/s4-007.txt","chunks/s4-008.txt","chunks/s4-009.txt","chunks/s4-010.txt","chunks/s4-011.txt","chunks/s4-012.txt","chunks/s4-013.txt","chunks/s4-014.txt"]];
