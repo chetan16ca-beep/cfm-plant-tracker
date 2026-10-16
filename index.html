@@ -130,58 +130,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  observer.observe(list,{childList:true});
 });
 </script>
-<button id="cfmAllOrdersBtn" type="button" style="position:fixed;left:12px;top:161px;z-index:999999;background:#086b54;color:white;border:0;border-radius:9px;padding:10px">📋 All Orders</button><div id="cfmAllOrdersPanel" style="display:none;position:fixed;inset:5%;z-index:9999999;background:white;overflow:auto;padding:15px;color:#222;font:14px Arial"><button id="cfmAllOrdersClose">Close ✕</button><h3>All Work Orders</h3><input id="cfmAllOrdersInput" placeholder="Search Work No or Party" style="padding:12px;width:90%"><p id="cfmAllOrdersStatus"></p><div id="cfmAllOrdersList"></div></div><script>(function(){
-'use strict';
-const $=id=>document.getElementById(id);
-const esc=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;':'&quot;'}[c]));
-const panel=$('cfmAllOrdersPanel'),btn=$('cfmAllOrdersBtn');
-if(!panel||!btn)return;
-$('cfmAllOrdersClose').onclick=()=>panel.style.display='none';
-btn.onclick=()=>{panel.style.display='block';render()};
-$('cfmAllOrdersInput').oninput=render;
-function render(){
-const out=$('cfmAllOrdersList'),status=$('cfmAllOrdersStatus');let db;
-try{const w=$('app').contentWindow;let raw='';try{raw=w.localStorage.getItem('cfm-plant-tracker-data-v1')||''}catch(_e){};if(!raw)try{raw=localStorage.getItem('cfm-plant-tracker-data-v1')||''}catch(_e){};db=raw?JSON.parse(raw):(w.state||{});if(!db||!Array.isArray(db.pending)&&!Array.isArray(db.cutting)){try{db=w.state||db}catch(_e){}}}
-catch(e){status.textContent='Unable to read saved data: '+e.message;return}
-const records=new Map();
-for(const [source,items] of [['pending',db.pending],['cutting',db.cutting],['issueRegister',db.issueRegister]]){
-if(!Array.isArray(items))continue;
-for(const item of items){
-const no=String(item.workNo||item.workOrder||item.wo||'').trim();if(!no)continue;
-const key=no.toUpperCase();
-if(!records.has(key))records.set(key,{no,party:'',description:'',pending:null,cutting:0,issue:0});
-const r=records.get(key);r.party=r.party||item.party||item.partyName||'';r.description=r.description||item.description||item.item||'';
-if(source==='pending')r.pending=item;
-if(source==='cutting')r.cutting++;
-if(source==='issueRegister')r.issue++;
-}
-}
-const q=$('cfmAllOrdersInput').value.trim().toLowerCase();
-const found=[...records.values()].filter(r=>(r.no+' '+r.party+' '+r.description).toLowerCase().includes(q)).sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true}));
-status.textContent=records.size+' unique work numbers found · '+found.length+' matches · no data changed';if(records.size===0)status.textContent+=' · Live data unavailable in search; check main Pending/Cutting and keep backup safe';
-out.innerHTML='';
-for(const r of found.slice(0,350)){
-const card=document.createElement('div');card.style.cssText='padding:12px 0;border-bottom:1px solid #ddd';
-card.innerHTML='<b>'+esc(r.no)+'</b> — '+esc(r.party)+'<div>'+esc(r.description)+'</div><small>'+(r.pending?'Pending saved':'History only')+' · Cutting: '+r.cutting+' · Issue: '+r.issue+'</small><div></div>';
-const actions=card.lastElementChild;
-function action(label,view,field){
-const b=document.createElement('button');b.textContent=label;b.style.cssText='padding:8px;margin:6px 6px 0 0;border:1px solid #aaa;border-radius:7px';
-b.onclick=()=>{try{
-const w=$('app').contentWindow;if(typeof w.showView!=='function')throw Error('Module not ready');
-w.showView(view);const input=w.document.getElementById(field);
-if(input){input.value=r.no;input.dispatchEvent(new w.Event('input',{bubbles:true}))}
-if(view==='pending'){const sel=w.document.getElementById('pendingStatus');if(sel){sel.value='ALL';if(typeof w.renderPending==='function')w.renderPending()}}
-panel.style.display='none';
-}catch(e){alert('Cannot open: '+e.message)}};
-actions.appendChild(b);
-}
-action('View Cutting','cutting','cutSearch');
-if(r.pending)action('View Order','pending','pendingSearch');
-action('View Documents','docs','docSearch');
-out.appendChild(card);
-}
-}
-})();</script><script>document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('cfmAllOrdersBtn'),p=document.getElementById('cfmAllOrdersPanel');if(b&&p){b.style.setProperty('z-index','2147483647','important');b.addEventListener('click',function(){p.style.setProperty('display','block','important');p.style.setProperty('z-index','2147483647','important')});document.getElementById('cfmAllOrdersClose').addEventListener('click',function(){p.style.setProperty('display','none','important')})}})</script><button id="cfmGlobalFind" type="button" style="position:fixed;left:12px;top:112px;z-index:999999;background:#176db7;color:white;border:0;border-radius:10px;padding:10px;font:600 12px system-ui">🔎 All Work Search</button>
+<button id="cfmAllOrdersBtn" type="button" style="position:fixed;left:12px;top:161px;z-index:999999;background:#086b54;color:white;border:0;border-radius:9px;padding:10px">📋 All Orders</button><div id="cfmAllOrdersPanel" style="display:none;position:fixed;inset:5%;z-index:9999999;background:white;overflow:auto;padding:15px;color:#222;font:14px Arial"><button id="cfmAllOrdersClose">Close ✕</button><h3>All Work Orders</h3><input id="cfmAllOrdersInput" placeholder="Search Work No or Party" style="padding:12px;width:90%"><p id="cfmAllOrdersStatus"></p><div id="cfmAllOrdersList"></div></div><script>document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('cfmAllOrdersBtn'),p=document.getElementById('cfmAllOrdersPanel');if(b&&p){b.style.setProperty('z-index','2147483647','important');b.addEventListener('click',function(){p.style.setProperty('display','block','important');p.style.setProperty('z-index','2147483647','important')});document.getElementById('cfmAllOrdersClose').addEventListener('click',function(){p.style.setProperty('display','none','important')})}})</script><button id="cfmGlobalFind" type="button" style="position:fixed;left:12px;top:112px;z-index:999999;background:#176db7;color:white;border:0;border-radius:10px;padding:10px;font:600 12px system-ui">🔎 All Work Search</button>
 <div id="cfmGlobalResults" style="display:none;position:fixed;inset:8% 3% 5%;z-index:9999999;background:white;border:2px solid #176db7;border-radius:14px;padding:12px;overflow:auto;font:14px system-ui;color:#172033"><button id="cfmGlobalClose" style="float:right;padding:7px">✕ Close</button><h3>All Saved Work Records</h3><input id="cfmGlobalQuery" placeholder="Work No / Party / OZONE" style="width:95%;padding:12px;border:1px solid #aaa;border-radius:8px"><p id="cfmGlobalSummary"></p><div id="cfmGlobalList"></div></div>
 <script>
 document.addEventListener('DOMContentLoaded',()=>{
@@ -452,4 +401,56 @@ document.getElementById('cfmLabelImportButton').addEventListener('click',()=>doc
 document.getElementById('cfmLabelImportFile').addEventListener('change',async ev=>{const file=ev.target.files[0];if(!file)return;try{const p=JSON.parse(await file.text());if(p.app!=='CFM Label Register'||!Array.isArray(p.rows))throw Error('Invalid backup file');const a=get(),ids=new Set(a.map(x=>[x.wo,x.qty,x.to,x.date,x.createdAt].join('|')));let n=0;for(const x of p.rows){if(!x||typeof x.wo!=='string'||!Number.isInteger(Number(x.qty))||Number(x.qty)<1)continue;const id=[x.wo,x.qty,x.to,x.date,x.createdAt].join('|');if(!ids.has(id)){a.push(x);ids.add(id);n++}}if(n&&confirm('Import '+n+' new label records?')){localStorage.setItem(key,JSON.stringify(a));draw()}else if(!n)alert('No new label records')}catch(e){alert('Import error: '+e.message)}ev.target.value=''});
 })();
 </script>
+<script>(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;':'&quot;'}[c]));
+const panel=$('cfmAllOrdersPanel'),btn=$('cfmAllOrdersBtn');
+if(!panel||!btn)return;
+$('cfmAllOrdersClose').onclick=()=>panel.style.display='none';
+btn.onclick=()=>{panel.style.display='block';render()};
+$('cfmAllOrdersInput').oninput=render;
+function render(){
+const out=$('cfmAllOrdersList'),status=$('cfmAllOrdersStatus');let db;
+try{const w=$('app').contentWindow;let raw='';try{raw=w.localStorage.getItem('cfm-plant-tracker-data-v1')||''}catch(_e){};if(!raw)try{raw=localStorage.getItem('cfm-plant-tracker-data-v1')||''}catch(_e){};db=raw?JSON.parse(raw):(w.state||{});if(!db||!Array.isArray(db.pending)&&!Array.isArray(db.cutting)){try{db=w.state||db}catch(_e){}}}
+catch(e){status.textContent='Unable to read saved data: '+e.message;return}
+const records=new Map();
+for(const [source,items] of [['pending',db.pending],['cutting',db.cutting],['issueRegister',db.issueRegister]]){
+if(!Array.isArray(items))continue;
+for(const item of items){
+const no=String(item.workNo||item.workOrder||item.wo||'').trim();if(!no)continue;
+const key=no.toUpperCase();
+if(!records.has(key))records.set(key,{no,party:'',description:'',pending:null,cutting:0,issue:0});
+const r=records.get(key);r.party=r.party||item.party||item.partyName||'';r.description=r.description||item.description||item.item||'';
+if(source==='pending')r.pending=item;
+if(source==='cutting')r.cutting++;
+if(source==='issueRegister')r.issue++;
+}
+}
+const q=$('cfmAllOrdersInput').value.trim().toLowerCase();
+const found=[...records.values()].filter(r=>(r.no+' '+r.party+' '+r.description).toLowerCase().includes(q)).sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true}));
+status.textContent=records.size+' unique work numbers found · '+found.length+' matches · no data changed';if(records.size===0)status.textContent+=' · Live data unavailable in search; check main Pending/Cutting and keep backup safe';
+out.innerHTML='';
+for(const r of found.slice(0,350)){
+const card=document.createElement('div');card.style.cssText='padding:12px 0;border-bottom:1px solid #ddd';
+card.innerHTML='<b>'+esc(r.no)+'</b> — '+esc(r.party)+'<div>'+esc(r.description)+'</div><small>'+(r.pending?'Pending saved':'History only')+' · Cutting: '+r.cutting+' · Issue: '+r.issue+'</small><div></div>';
+const actions=card.lastElementChild;
+function action(label,view,field){
+const b=document.createElement('button');b.textContent=label;b.style.cssText='padding:8px;margin:6px 6px 0 0;border:1px solid #aaa;border-radius:7px';
+b.onclick=()=>{try{
+const w=$('app').contentWindow;if(typeof w.showView!=='function')throw Error('Module not ready');
+w.showView(view);const input=w.document.getElementById(field);
+if(input){input.value=r.no;input.dispatchEvent(new w.Event('input',{bubbles:true}))}
+if(view==='pending'){const sel=w.document.getElementById('pendingStatus');if(sel){sel.value='ALL';if(typeof w.renderPending==='function')w.renderPending()}}
+panel.style.display='none';
+}catch(e){alert('Cannot open: '+e.message)}};
+actions.appendChild(b);
+}
+action('View Cutting','cutting','cutSearch');
+if(r.pending)action('View Order','pending','pendingSearch');
+action('View Documents','docs','docSearch');
+out.appendChild(card);
+}
+}
+})();</script>
 </body></html>
