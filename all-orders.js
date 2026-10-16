@@ -9,7 +9,7 @@ btn.onclick=()=>{panel.style.display='block';render()};
 $('cfmAllOrdersInput').oninput=render;
 function render(){
 const out=$('cfmAllOrdersList'),status=$('cfmAllOrdersStatus');let db;
-try{db=JSON.parse($('app').contentWindow.localStorage.getItem('cfm-plant-tracker-data-v1')||'{}')}
+try{db=JSON.parse($('app').contentWindow.localStorage.getItem('cfm-plant-tracker-data-v1')||localStorage.getItem('cfm-plant-tracker-data-v1')||'{}')}
 catch(e){status.textContent='Unable to read saved data: '+e.message;return}
 const records=new Map();
 for(const [source,items] of [['pending',db.pending],['cutting',db.cutting],['issueRegister',db.issueRegister]]){
