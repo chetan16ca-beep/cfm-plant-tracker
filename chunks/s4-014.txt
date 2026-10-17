@@ -997,3 +997,29 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
 <style id="cfm-v168-performance-css">
 *{scroll-behavior:auto!important}
 </style>
+
+<script id="cfm-simple-pending-print">
+(function(){
+ window.printSimplePendingWorkList=function(){
+  const rows=(state.pending||[]).filter(r=>pendingQty(r)>0).slice().sort(workSort);
+  if(!rows.length)return toast('No pending work');
+  const date=$('printDate')?.value||todayISO(),pages=[],pageSize=22;
+  for(let i=0;i<rows.length;i+=pageSize){
+   const part=rows.slice(i,i+pageSize);
+   const body='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr><th>SR</th><th>WORK NO</th><th>COMPANY / PARTY</th><th>ORDER DETAILS</th><th>CLOTH / WIDTH</th><th>ORDER QTY</th><th>PENDING</th></tr></thead><tbody>'+
+   part.map((r,j)=>'<tr><td>'+(i+j+1)+'</td><td>'+esc(r.workNo||'')+'</td><td>'+esc(r.party||'')+'</td><td>'+esc(r.description||'')+'</td><td>'+esc(r.cloth||'')+' '+(r.width!==''&&r.width!=null?'W:'+esc(r.width):'')+'</td><td>'+fmt(r.orderQty||0)+'</td><td>'+fmt(pendingQty(r))+'</td></tr>').join('')+'</tbody></table>';
+   pages.push('<div class="page"><div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">DAILY PLANT PENDING ORDER LIST</div><div class="meta"><span>PAGE '+(Math.floor(i/pageSize)+1)+'</span><span>DATE: '+esc(dateDisplay(date))+'</span><span>TOTAL WORKS: '+rows.length+'</span></div></div>'+body+'</div>');
+  }
+  openPrintWindow('Daily Plant Pending Order List',pages.join(''),true);
+ };
+ function add(){
+  const v=document.getElementById('view-print');
+  if(!v||document.getElementById('cfmSimplePendingPrintBtn'))return;
+  const b=document.createElement('button');b.id='cfmSimplePendingPrintBtn';b.className='action-card';b.type='button';
+  b.innerHTML='<b>Daily Pending Order List (Simple)</b><span>Work No, Company, Order Details, Cloth, Qty and Pending only</span>';
+  b.onclick=window.printSimplePendingWorkList;
+  const grid=v.querySelector('.action-grid');if(grid)grid.insertBefore(b,grid.firstChild);else v.appendChild(b);
+ }
+ add();setTimeout(add,800);
+})();
+</script>
