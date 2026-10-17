@@ -889,24 +889,32 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
 </style>
 
 
-<script id="cfm-v167-daily-print-visible-pending-only">
+<script id="cfm-v169-daily-print-selector-fix">
 (function(){
- const previous=window.printDailyCuttingPlan;
- window.printDailyCuttingPlan=function(){
-   try{
-     const visible=[...document.querySelectorAll('#pendingList .data-card')].filter(el=>{
-       const s=getComputedStyle(el); return s.display!=='none' && s.visibility!=='hidden';
-     });
-     const workNos=visible.map(el=>(el.querySelector('.work')?.textContent||'').trim()).filter(Boolean);
-     const rows=(state.pending||[]).filter(r=>workNos.some(w=>String(w).trim().toUpperCase()===String(r.workNo||'').trim().toUpperCase()));
-     if(rows.length){
-       const date=$('printDate')?.value||todayISO(),open=rows.slice().sort(workSort);
-       const pages=[];for(let i=0;i<open.length;i+=5){const chunk=open.slice(i,i+5);pages.push('<div class="page"><div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">DAILY PLANT CUTTING PLAN — OPEN PENDING ONLY</div><div class="meta"><span>PAGE '+(Math.floor(i/5)+1)+'</span><span>DATE: '+esc(dateDisplay(date))+'</span></div></div>'+chunk.map((r,j)=>window.dailyWorkBlock(r,i+j+1,date)).join('')+'</div>')}
-       return openPrintWindow('Daily Plant Cutting Plan',pages.join(''));
-     }
-   }catch(e){}
-   return previous();
- };
+  // Keep the earlier checkbox selector as the final print action.
+  // The previous visible-pending-only override bypassed selection and printed all 13 pages.
+  window.printDailyCuttingPlan=function(){
+    const date=$('printDate')?.value||todayISO();
+    const open=(state.pending||[]).filter(r=>pendingQty(r)>0).slice().sort(workSort);
+    if(!open.length)return toast('No open pending work');
+    document.getElementById('cfmCutPlanSelector')?.remove();
+    const overlay=document.createElement('div');overlay.id='cfmCutPlanSelector';
+    overlay.style.cssText='position:fixed;inset:0;z-index:999999;background:#0009;padding:12px;display:flex;align-items:center;justify-content:center';
+    const panel=document.createElement('div');panel.style.cssText='width:min(650px,100%);max-height:92vh;display:flex;flex-direction:column;gap:10px;background:white;color:#18344a;padding:15px;border-radius:14px';
+    const title=document.createElement('strong');title.textContent='Tick Orders to Print';
+    const search=document.createElement('input');search.placeholder='Search Work No / Party';search.style.cssText='width:100%;box-sizing:border-box;padding:12px';
+    const counter=document.createElement('b'),list=document.createElement('div');list.style.cssText='overflow:auto;min-height:100px;flex:1';
+    const selected=new Set();
+    function draw(){list.replaceChildren();const q=search.value.trim().toLowerCase();open.forEach((r,i)=>{if(q&&!String(r.workNo||'').toLowerCase().includes(q)&&!String(r.party||'').toLowerCase().includes(q))return;const row=document.createElement('label');row.style.cssText='display:flex;gap:10px;align-items:center;padding:10px 5px;border-bottom:1px solid #ddd';const c=document.createElement('input');c.type='checkbox';c.checked=selected.has(i);c.style.cssText='width:23px;height:23px';c.onchange=()=>{c.checked?selected.add(i):selected.delete(i);counter.textContent=selected.size+' selected'};const name=document.createElement('span');name.textContent=(r.workNo||'')+' — '+(r.party||'')+' | Pending '+pendingQty(r);row.append(c,name);list.append(row)});counter.textContent=selected.size+' selected'}
+    search.oninput=draw;
+    const bar=document.createElement('div');bar.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+    function button(label,fn,primary){const b=document.createElement('button');b.type='button';b.textContent=label;b.style.cssText='padding:11px;border-radius:8px;border:1px solid #aac6dd;background:'+(primary?'#126db7':'#f3f8fc')+';color:'+(primary?'white':'#123')+';font-weight:700';b.onclick=fn;bar.append(b)}
+    button('Select Visible',()=>{const q=search.value.trim().toLowerCase();open.forEach((r,i)=>{if(!q||String(r.workNo||'').toLowerCase().includes(q)||String(r.party||'').toLowerCase().includes(q))selected.add(i)});draw()});
+    button('Clear',()=>{selected.clear();draw()});
+    button('Cancel',()=>overlay.remove());
+    button('Print Selected',()=>{const rows=open.filter((r,i)=>selected.has(i));if(!rows.length)return alert('Tick at least one order');const pages=[];for(let i=0;i<rows.length;i+=5){const chunk=rows.slice(i,i+5);pages.push('<div class="page"><div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">DAILY PLANT CUTTING PLAN — SELECTED ORDERS ONLY</div><div class="meta"><span>PAGE '+(Math.floor(i/5)+1)+'</span><span>DATE: '+esc(dateDisplay(date))+'</span></div></div>'+chunk.map((r,j)=>window.dailyWorkBlock(r,i+j+1,date)).join('')+'</div>')}openPrintWindow('Daily Plant Cutting Plan',pages.join(''));overlay.remove()},true);
+    panel.append(title,search,counter,list,bar);overlay.append(panel);document.body.append(overlay);draw();
+  };
 })();
 </script>
 
