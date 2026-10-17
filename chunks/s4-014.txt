@@ -1001,8 +1001,13 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
 <script id="cfm-simple-pending-print">
 (function(){
  window.printSimplePendingWorkList=function(){
-  const rows=(state.pending||[]).filter(r=>pendingQty(r)>0).slice().sort(workSort);
-  if(!rows.length)return toast('No pending work');
+  const chosen=window.cfmSimplePrintSelection;
+
+  const all=(state.pending||[]).filter(r=>pendingQty(r)>0).slice().sort(workSort);
+  if(!window.cfmSimplePrintSelection){window.cfmSimplePrintSelection=new Set();}
+  const rows=all.filter(r=>window.cfmSimplePrintSelection.has(String(r.workNo||'')));
+  if(!rows.length)return toast('Tick work orders first');
+
   const date=$('printDate')?.value||todayISO(),pages=[],pageSize=22;
   for(let i=0;i<rows.length;i+=pageSize){
    const part=rows.slice(i,i+pageSize);
@@ -1017,9 +1022,31 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
   if(!v||document.getElementById('cfmSimplePendingPrintBtn'))return;
   const b=document.createElement('button');b.id='cfmSimplePendingPrintBtn';b.className='action-card';b.type='button';
   b.innerHTML='<b>Daily Pending Order List (Simple)</b><span>Work No, Company, Order Details, Cloth, Qty and Pending only</span>';
-  b.onclick=window.printSimplePendingWorkList;
+  b.onclick=window.cfmOpenSimplePrintSelection;
   const grid=v.querySelector('.action-grid');if(grid)grid.insertBefore(b,grid.firstChild);else v.appendChild(b);
  }
+ window.cfmOpenSimplePrintSelection=function(){
+   const all=(state.pending||[]).filter(r=>pendingQty(r)>0).slice().sort(workSort);
+   if(!all.length)return toast('No pending work');
+   const chosen=window.cfmSimplePrintSelection=new Set();
+   document.getElementById('cfmSimplePrintDialog')?.remove();
+   const layer=document.createElement('div');layer.id='cfmSimplePrintDialog';
+   layer.style.cssText='position:fixed;inset:0;z-index:999999;background:#0009;display:flex;align-items:center;justify-content:center;padding:12px';
+   const panel=document.createElement('div');panel.style.cssText='background:#fff;color:#17364c;border-radius:14px;padding:14px;width:min(650px,100%);max-height:92vh;display:flex;flex-direction:column;gap:10px';
+   const title=document.createElement('strong');title.textContent='Select Pending Orders for Simple Print';
+   const search=document.createElement('input');search.placeholder='Search Work No or Company';search.style.cssText='padding:12px;border:1px solid #ccd7df;border-radius:8px;width:100%;box-sizing:border-box';
+   const count=document.createElement('b');
+   const list=document.createElement('div');list.style.cssText='overflow:auto;flex:1;min-height:100px';
+   function draw(){list.replaceChildren();const q=search.value.trim().toLowerCase();all.forEach(r=>{const id=String(r.workNo||'');if(q&&!id.toLowerCase().includes(q)&&!String(r.party||'').toLowerCase().includes(q))return;const line=document.createElement('label');line.style.cssText='display:flex;align-items:center;gap:9px;padding:10px 4px;border-bottom:1px solid #ddd';const cb=document.createElement('input');cb.type='checkbox';cb.checked=chosen.has(id);cb.style.cssText='width:22px;height:22px;flex:none';cb.onchange=()=>{cb.checked?chosen.add(id):chosen.delete(id);count.textContent=chosen.size+' selected'};const info=document.createElement('span');info.textContent=id+' | '+(r.party||'')+' | '+(r.description||'')+' | Pending '+pendingQty(r);line.append(cb,info);list.append(line)});count.textContent=chosen.size+' selected'}
+   search.oninput=draw;
+   const bar=document.createElement('div');bar.style.cssText='display:flex;gap:7px;flex-wrap:wrap';
+   function button(label,fn,main){const x=document.createElement('button');x.type='button';x.textContent=label;x.style.cssText='padding:10px;border-radius:8px;border:1px solid #aac6dd;background:'+(main?'#1674c9':'#f2f7fa')+';color:'+(main?'white':'#123')+';font-weight:700';x.onclick=fn;bar.append(x)}
+   button('Select All',()=>{all.forEach(r=>chosen.add(String(r.workNo||'')));draw()});
+   button('Clear All',()=>{chosen.clear();draw()});
+   button('Cancel',()=>layer.remove());
+   button('Print Selected',()=>{if(!chosen.size)return alert('Tick at least one work order');window.printSimplePendingWorkList();layer.remove()},true);
+   panel.append(title,search,count,list,bar);layer.append(panel);document.body.append(layer);draw();
+ };
  add();setTimeout(add,800);
 })();
 </script>
