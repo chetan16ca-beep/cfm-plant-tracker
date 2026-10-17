@@ -1,0 +1,15 @@
+(()=>{'use strict';
+const KEY='cfm-plant-tracker-data-v1',DB='cfm-auto-backups-v2',STORE='history';let last='',busy=false;
+function valid(s){try{const x=JSON.parse(s);return x&&typeof x==='object'&&Array.isArray(x.pending)&&Array.isArray(x.cutting)&&Array.isArray(x.store)}catch{return false}}
+function db(){return new Promise((ok,no)=>{const q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE,{keyPath:'time'})};q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error)})}
+async function rows(){const d=await db();return new Promise((ok,no)=>{const q=d.transaction(STORE).objectStore(STORE).getAll();q.onsuccess=()=>{d.close();ok(q.result.sort((a,b)=>b.time-a.time))};q.onerror=()=>{d.close();no(q.error)}})}
+async function save(force=false){if(busy)return;busy=true;try{const raw=localStorage.getItem(KEY);if(!valid(raw)||(!force&&raw===last))return;const d=await db(),time=Date.now();await new Promise((ok,no)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).put({time,raw});t.oncomplete=ok;t.onerror=()=>no(t.error)});d.close();last=raw;const old=await rows();if(old.length>30){const d2=await db();await new Promise((ok,no)=>{const t=d2.transaction(STORE,'readwrite');for(const r of old.slice(30))t.objectStore(STORE).delete(r.time);t.oncomplete=ok;t.onerror=()=>no(t.error)});d2.close()}}catch(e){console.warn('CFM automatic backup failed',e)}finally{busy=false}}
+async function recoverIfMissing(){try{const current=localStorage.getItem(KEY);if(current!==null)return;const old=(await rows()).find(x=>valid(x.raw));if(!old)return;localStorage.setItem(KEY,old.raw);last=old.raw;console.info('CFM: missing local state recovered from snapshot')}catch(e){console.warn('CFM automatic recovery unavailable',e)}}
+window.cfmSafetyReady=recoverIfMissing();
+window.cfmSaveBackup=()=>save(true);
+window.cfmDownloadBackup=()=>{const raw=localStorage.getItem(KEY);if(!valid(raw))return alert('No valid CFM data to export');const u=URL.createObjectURL(new Blob([raw],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='CFM-AUTO-BACKUP-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),2000)};
+window.cfmRestoreLastBackup=async()=>{const old=(await rows()).find(x=>valid(x.raw));if(!old)return alert('No valid backup found on this device');if(!confirm('Restore backup from '+new Date(old.time).toLocaleString()+'? Current data will be replaced. Download current backup first.'))return;const raw=localStorage.getItem(KEY);if(valid(raw))window.cfmDownloadBackup();localStorage.setItem(KEY,old.raw);location.reload()};
+window.cfmSafetyReady.then(()=>save(true));
+setInterval(()=>save(false),30000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')save(true)});
+})();
