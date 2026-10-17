@@ -101,6 +101,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker"></iframe>
+<script src="./backup-safe.js?v=2"></script>
 <button id="cfmDashboardHome" type="button" style="position:fixed;top:106px;right:12px;z-index:2147483646;background:#1674c9;color:#fff;border:0;border-radius:10px;padding:10px 14px;font:700 14px system-ui;box-shadow:0 3px 10px #0003" onclick="try{document.getElementById('app').contentWindow.showView('dashboard')}catch(e){alert('Dashboard unavailable: '+e.message)}">🏠 Dashboard</button>
 <button id="notifyBtn" type="button">🔔 Enable Notifications</button>
 <script>
@@ -275,7 +276,7 @@ html,body{background:#f4faff!important;color:#13233b!important}
 
  const app=document.getElementById('app');
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
- app.style.visibility='visible';app.style.opacity='1';app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
+ app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
 </script>
