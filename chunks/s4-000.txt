@@ -77,9 +77,28 @@ function dailyWorkBlock(r,n,date){
   return `<div class="work-block"><div class="row"><div><b>WORK ${n}</b></div><div><b>WORK NO.</b> ${esc(r.workNo||'')}</div><div><b>ORDER QTY</b></div><div>${fmt(r.orderQty)}</div><div><b>PENDING</b></div><div>${fmt(pendingQty(r))}</div></div><div class="info"><div><b>PARTY</b></div><div>${esc(r.party||'')}</div><div><b>ITEM</b></div><div>${esc(r.description||'')}</div><div><b>CLOTH</b></div><div>${esc(r.cloth||'')} ${r.width!==''?`W:${esc(r.width)}`:''}</div></div><div class="code"><b>EAGLE CODE:</b> ${esc(r.eagleCode||'')} &nbsp; | &nbsp; <b>SRL:</b> ${esc(firstSrl)} &nbsp; | &nbsp; <b>MEASUREMENT:</b> ${esc(measurement)}</div><div class="cut-head"><div>DATE</div><div>SIZE CUT</div><div>SRL NO.</div><div>TODAY CUT QTY</div><div>BALANCE QTY</div><div>CUTTING BY</div></div>${cuts.map(c=>`<div class="cut-row"><div>${c.date?esc(dateDisplay(c.date)):''}</div><div>${esc(c.sizeLine||'')}</div><div>${esc(c.srlNo||'')}</div><div>${c.cutQty!==undefined&&c.cutQty!==''?fmt(c.cutQty):''}</div><div>${c.workNo?fmt(pendingQty(r)):''}</div><div>${esc(c.cuttingBy||'')}</div></div>`).join('')}</div>`
 }
 window.printDailyCuttingPlan=function(){
-  const date=$('printDate')?.value||todayISO();const open=state.pending.filter(r=>pendingQty(r)>0).slice().sort(workSort);if(!open.length)return toast('No open pending work');
-  const pages=[];for(let i=0;i<open.length;i+=5){const chunk=open.slice(i,i+5);pages.push(`<div class="page"><div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">DAILY PLANT CUTTING PLAN — 5 WORKS PER PAGE</div><div class="meta"><span>PAGE ${Math.floor(i/5)+1}</span><span>DATE: ${esc(dateDisplay(date))}</span></div></div>${chunk.map((r,j)=>dailyWorkBlock(r,i+j+1,date)).join('')}</div>`)}
-  openPrintWindow('Daily Plant Cutting Plan',pages.join(''))
+  const date=$('printDate')?.value||todayISO();
+  const open=state.pending.filter(r=>pendingQty(r)>0).slice().sort(workSort);
+  if(!open.length)return toast('No open pending work');
+  const existing=document.getElementById('cfmCutPlanSelector');if(existing)existing.remove();
+  const overlay=document.createElement('div');overlay.id='cfmCutPlanSelector';
+  overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:#0009;display:flex;align-items:center;justify-content:center;padding:12px';
+  const panel=document.createElement('div');panel.style.cssText='background:#fff;color:#18344a;border-radius:16px;padding:16px;width:min(620px,100%);max-height:90vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 40px #0004';
+  const heading=document.createElement('h3');heading.textContent='Select Work Orders for Daily Plant Print';heading.style.margin='0';
+  const search=document.createElement('input');search.placeholder='Search Work No / Party';search.style.cssText='padding:12px;border:1px solid #ccd7df;border-radius:8px;width:100%;box-sizing:border-box';
+  const count=document.createElement('div');count.style.fontWeight='700';
+  const list=document.createElement('div');list.style.cssText='overflow:auto;flex:1;min-height:120px;border:1px solid #e0e7ee;border-radius:8px;padding:5px';
+  const selected=new Set();
+  function draw(){const q=search.value.trim().toLowerCase();list.replaceChildren();open.forEach((r,i)=>{if(q&&!String(r.workNo||'').toLowerCase().includes(q)&&!String(r.party||'').toLowerCase().includes(q))return;const row=document.createElement('label');row.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 7px;border-bottom:1px solid #edf1f5;cursor:pointer';const cb=document.createElement('input');cb.type='checkbox';cb.checked=selected.has(i);cb.style.cssText='width:22px;height:22px;flex:none';cb.onchange=()=>{if(cb.checked)selected.add(i);else selected.delete(i);updateCount()};const name=document.createElement('span');name.textContent=String(r.workNo||'')+' — '+String(r.party||'')+' | Pending '+pendingQty(r);row.append(cb,name);list.appendChild(row)});updateCount()}
+  function updateCount(){count.textContent=selected.size+' of '+open.length+' Work Orders selected'}
+  search.oninput=draw;
+  const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+  function btn(label,fn,primary){const b=document.createElement('button');b.type='button';b.textContent=label;b.style.cssText='border:1px solid #bdd0df;border-radius:8px;padding:10px 12px;font-weight:700;background:'+(primary?'#1674c9':'#f3f8fc')+';color:'+(primary?'#fff':'#173e5c');b.onclick=fn;actions.appendChild(b)}
+  btn('Select visible',()=>{const q=search.value.trim().toLowerCase();open.forEach((r,i)=>{if(!q||String(r.workNo||'').toLowerCase().includes(q)||String(r.party||'').toLowerCase().includes(q))selected.add(i)});draw()});
+  btn('Clear all',()=>{selected.clear();draw()});
+  btn('Cancel',()=>overlay.remove());
+  btn('Print selected',()=>{const rows=open.filter((r,i)=>selected.has(i));if(!rows.length){alert('Tick at least one Work Order');return}const pages=[];for(let i=0;i<rows.length;i+=5){const chunk=rows.slice(i,i+5);pages.push(`<div class="page"><div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">DAILY PLANT CUTTING PLAN — 5 WORKS PER PAGE</div><div class="meta"><span>PAGE ${Math.floor(i/5)+1}</span><span>DATE: ${esc(dateDisplay(date))}</span></div></div>${chunk.map((r,j)=>dailyWorkBlock(r,i+j+1,date)).join('')}</div>`)}openPrintWindow('Daily Plant Cutting Plan',pages.join(''));overlay.remove()},true);
+  panel.append(heading,search,count,list,actions);overlay.appendChild(panel);document.body.appendChild(overlay);draw();
 }
 window.printTodayCutting=function(){
   const date=$('printDate')?.value||todayISO();const rows=state.cutting.filter(r=>r.date===date);if(!rows.length)return toast('No cutting entries for selected date');
