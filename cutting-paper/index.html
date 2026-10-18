@@ -99,6 +99,10 @@ function paperBounds(){
 const paper=paperBounds();
 const all=[];
 const bands=[[.085,.255],[.255,.425],[.425,.595],[.595,.765],[.765,.965]];
+// Scan the handwritten grid at several vertical offsets: printed work headers
+// are not equally spaced in photographs, and a single fixed row offset misses ink.
+const rowOffsets=[.40,.48,.56,.64,.72,.80];
+
 const workHasCutting=rows=>rows.some(r=>Number(r.length)>0&&Number(r.width)>0&&Number(r.qty)>0&&r.srl);
 for(let n=0;n<5;n++){
  progress.textContent='Reading Work '+(n+1)+'/5 — printed heading and cutting grid...';
@@ -115,8 +119,8 @@ for(let n=0;n<5;n++){
  // Read individual size, serial and quantity columns independently, not one long OCR line.
  // Multiple crop heights compensate for skew and different print scales.
  const seen=new Set();
- for(let j=0;j<4;j++){
-  const yy=y+bh*(.53+j*.105),rh=bh*.115;
+ for(let j=0;j<rowOffsets.length;j++){
+  const yy=y+bh*rowOffsets[j],rh=bh*.13;
   if(yy+rh>paper.y+paper.h)break;
   const sizeCanvas=crop(base,paper.x+.105*paper.w,yy,.275*paper.w,rh,3,false);
   const serialCanvas=crop(base,paper.x+.385*paper.w,yy,.135*paper.w,rh,3,false);
