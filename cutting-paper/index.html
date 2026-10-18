@@ -99,6 +99,7 @@ function paperBounds(){
 const paper=paperBounds();
 const all=[];
 const bands=[[.085,.255],[.255,.425],[.425,.595],[.595,.765],[.765,.965]];
+const workHasCutting=rows=>rows.some(r=>Number(r.length)>0&&Number(r.width)>0&&Number(r.qty)>0&&r.srl);
 for(let n=0;n<5;n++){
  progress.textContent='Reading Work '+(n+1)+'/5 — printed heading and cutting grid...';
  const [top,bottom]=bands[n],y=paper.y+top*paper.h,bh=(bottom-top)*paper.h;
@@ -141,7 +142,7 @@ const proposed=[];
 all.forEach((group,i)=>{
 const block=document.createElement('div');block.className='cutrow';
 const label=document.createElement('strong');label.textContent='Work '+(i+1)+' — '+(group.work||'Work No not readable');block.append(label);
-const rows=group.rows.length?group.rows:(group.work?[{work:group.work,length:'',width:'',srl:'',qty:'',meter:'',worker:''}]:[]);
+const rows=group.rows.length?group.rows:[];
 if(!rows.length){const note=document.createElement('p');note.textContent='No readable work number or cutting rows. This section needs review; it will not be saved.';block.append(note)}
 rows.forEach((row,j)=>{
 const r={...row,work:group.work||row.work};proposed.push(r);
@@ -154,7 +155,7 @@ block.append(line);
 const apply=document.createElement('button');apply.type='button';apply.textContent='✓ Use Auto-Scanned Rows';apply.onclick=()=>{
 const valid=proposed.filter(r=>/^CFM-\d+$/.test(String(r.work||''))&&Number(r.length)>0&&Number(r.width)>0&&/^EFPPL03\/\d{4,5}$/.test(cleanShort(String(r.srl||'')))&&Number.isInteger(Number(r.qty))&&Number(r.qty)>0);
 const incomplete=proposed.length-valid.length;
-if(all.some(g=>!g.work)){progress.textContent='One or more Work Numbers could not be read. Review original photo; automatic import is blocked to prevent missing orders.';return}
+if(all.some(g=>!g.work&&workHasCutting(g.rows))){progress.textContent='A section with cutting rows has no readable Work Number. Import blocked.';return}
 if(incomplete){progress.textContent=incomplete+' incomplete/unclear rows need correction before importing the whole sheet. Nothing saved.';return}
 if(!valid.length){progress.textContent='No complete rows could be read safely. Nothing was imported or saved.';return}
 
