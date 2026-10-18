@@ -191,6 +191,35 @@ if('serviceWorker' in navigator){
    done++;st.textContent='Loading '+done+'/'+total;return txt
  }));
  let src=texts.join('')+'\n';
+ // Premium visual layer is injected into the assembled ERP, without touching business records.
+ const visualStyle=`<style id="cfm-premium-dashboard-v1">
+ :root{--blue:#175cd3;--blue2:#397df1;--bg:#f3f6fc;--card:#fff;--text:#172640;--muted:#64748b;--line:#e0e8f4;--shadow:0 5px 20px rgba(28,59,105,.07)}
+ html,body{background:#f3f6fc!important;color:#172640!important}
+ .topbar{background:#fff!important;color:#172640!important;border-bottom:1px solid #e1e9f4!important;box-shadow:0 3px 16px rgba(26,55,100,.06)!important}
+ .topbar .brand h1{color:#142c50!important;font-weight:850!important;letter-spacing:-.4px}
+ .topbar .brand p{color:#637996!important}
+ .topbar .btn{background:#f1f6ff!important;color:#1754b4!important;border:1px solid #dce9fb!important}
+ .nav{background:#fff!important;border-color:#e0e8f4!important}
+ .nav button{background:#f3f6fc!important;color:#50627d!important;border-radius:12px!important;cursor:pointer!important}
+ .nav button.active{background:#e8f0ff!important;color:#175cd3!important;box-shadow:none!important}
+ .panel,.data-card,.kpi,.action-card{background:#fff!important;border:1px solid #e0e8f4!important;border-radius:17px!important;box-shadow:0 5px 20px rgba(28,59,105,.06)!important}
+ .action-grid{gap:12px!important}
+ .action-card{position:relative;min-height:108px!important;padding:17px!important;transition:transform .14s,box-shadow .14s,border-color .14s!important;touch-action:manipulation}
+ .action-card b{color:#163c78!important;font-size:15px!important}
+ .action-card span{color:#65758d!important}
+ .action-card:hover,.action-card:focus-visible{border-color:#86b4f8!important;box-shadow:0 9px 24px rgba(30,96,195,.13)!important;transform:translateY(-2px)}
+ .action-card:active{transform:scale(.985)!important}
+ button:focus-visible,.action-card:focus-visible{outline:3px solid #7eaffb!important;outline-offset:2px}
+ .btn-primary{background:#175cd3!important;color:#fff!important;border-color:#175cd3!important}
+ .btn-green{background:#16875b!important;color:#fff!important}
+ .kpi .num{color:#175cd3!important}
+ input,select,textarea{border-radius:11px!important;border-color:#dbe5f2!important}
+ .section-head h2{color:#19375f!important;letter-spacing:-.5px}
+ @media(max-width:760px){.action-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}.action-card{min-height:108px!important;padding:13px!important}.action-card b{font-size:13px!important}.action-card span{font-size:11px!important}.brand h1{font-size:15px!important}.nav{background:#fff!important}}
+ @media(max-width:370px){.action-grid{grid-template-columns:1fr!important}}
+ </style>`;
+ src=src.replace('</head>',visualStyle+'</head>');
+
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V167');
