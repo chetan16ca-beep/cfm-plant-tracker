@@ -14,7 +14,17 @@ if(new URLSearchParams(location.search).get('importDraft')==='1'){
    const btn=document.createElement('button');btn.type='button';btn.textContent='Prepare '+work+' ('+list.length+' rows)';
    btn.onclick=()=>{
     document.getElementById('wo').value=work;rows.innerHTML='';
-    for(const r of list)add({size:r.length+' x '+r.width,serial:r.srl,pieces:r.qty,meters:r.meter||''});
+    try{
+     const db=JSON.parse(localStorage.getItem('cfm-plant-tracker-data-v1')||'{}');
+     const order=(Array.isArray(db.pending)?db.pending:[]).find(x=>String(x.workNo||x.workOrder||x.wo||'').trim().toUpperCase()===work);
+     if(order){
+      document.getElementById('party').value=String(order.party||order.partyName||'');
+      const cloth=String(order.cloth||order.clothCode||'').trim();
+      const rollWidth=String(order.clothWidth||order.rollWidth||'').trim();
+      for(const r of list)r._lookupCloth=cloth,r._lookupWidth=rollWidth;
+     }
+    }catch(e){document.getElementById('summary').textContent='Order lookup unavailable; draft data remains intact.'}
+    for(const r of list)add({cloth:r._lookupCloth||'',width:r._lookupWidth||'',size:r.length+' x '+r.width,serial:r.srl,pieces:r.qty,meters:r.meter||''});
     document.getElementById('operator').value=list[0].worker||'';
     document.getElementById('summary').textContent='Review '+work+'; fill missing fields before Save Cutting Batch.';
     window.scrollTo({top:0,behavior:'smooth'});
