@@ -46,12 +46,12 @@ el('csvImportBtn').onclick=()=>el('csvImportFile').click();
 el('csvImportFile').onchange=async()=>{
  const file=el('csvImportFile').files[0];if(!file)return;
  try{
-  const text=await file.text();const lines=text.replace(/^\\uFEFF/,'').trim().split(/\\r?\\n/);
+  const text=await file.text();const lines=text.replace(/^\uFEFF/,'').trim().split(/\r?\n/);
   const header=lines.shift().split(',').map(v=>v.trim().toLowerCase());
   const required=['work','length','width','srl','qty'];
   if(required.some(k=>!header.includes(k)))throw Error('CSV needs work,length,width,srl,qty columns');
   const rows=lines.filter(Boolean).map(line=>{const cells=line.split(',').map(v=>v.trim());return Object.fromEntries(['work','length','width','srl','qty','meter','worker'].map(k=>[k,cells[header.indexOf(k)]||'']))});
-  if(!rows.length||rows.some(x=>!/^CFM-\\d+$/.test(x.work)||!(Number(x.length)>0)||!(Number(x.width)>0)||!x.srl||!(Number(x.qty)>0)||!Number.isInteger(Number(x.qty))))throw Error('Invalid or incomplete cutting rows');
+  if(!rows.length||rows.some(x=>!/^CFM-\d+$/.test(x.work)||!(Number(x.length)>0)||!(Number(x.width)>0)||!x.srl||!(Number(x.qty)>0)||!Number.isInteger(Number(x.qty))))throw Error('Invalid or incomplete cutting rows');
   if(multi.length&&!confirm('Replace '+multi.length+' unsaved rows with '+rows.length+' imported rows?'))return;
   multi=rows;renderMulti();el('multiVerify').checked=false;
   el('multiStatus').textContent=rows.length+' rows imported for REVIEW only. Verify against original paper before saving draft. No ERP stock changed.';
