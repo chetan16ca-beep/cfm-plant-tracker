@@ -102,7 +102,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker"></iframe>
 <script src="./backup-safe.js?v=2"></script>
-<button id="cfmDashboardHome" type="button" style="display:none;position:fixed;top:106px;right:12px;z-index:2147483646;background:#1674c9;color:#fff;border:0;border-radius:10px;padding:10px 14px;font:700 14px system-ui;box-shadow:0 3px 10px #0003" onclick="try{document.getElementById('app').contentWindow.showView('dashboard')}catch(e){alert('Dashboard unavailable: '+e.message)}">🏠 Dashboard</button>
+<button id="cfmDashboardHome" type="button" style="position:fixed;top:106px;right:12px;z-index:2147483646;background:#1674c9;color:#fff;border:0;border-radius:10px;padding:10px 14px;font:700 14px system-ui;box-shadow:0 3px 10px #0003" onclick="try{document.getElementById('app').contentWindow.showView('dashboard')}catch(e){alert('Dashboard unavailable: '+e.message)}">🏠 Dashboard</button>
 <button id="notifyBtn" type="button">🔔 Enable Notifications</button>
 <script>
 const groups=[["chunks/s1-000.txt"],["chunks/s2-000.txt","chunks/s2-001.txt","chunks/s2-002.txt","chunks/s2-003.txt","chunks/s2-004.txt","chunks/s2-005.txt","chunks/s2-006.txt","chunks/s2-007.txt","chunks/s2-008.txt"],["chunks/s3-000.txt","chunks/s3-001.txt"],["chunks/s4-000.txt","chunks/s4-001.txt","chunks/s4-002.txt","chunks/s4-003.txt","chunks/s4-004.txt","chunks/s4-005.txt","chunks/s4-006.txt","chunks/s4-007.txt","chunks/s4-008.txt","chunks/s4-009.txt","chunks/s4-010.txt","chunks/s4-011.txt","chunks/s4-012.txt","chunks/s4-013.txt","chunks/s4-014.txt"]];
@@ -191,35 +191,6 @@ if('serviceWorker' in navigator){
    done++;st.textContent='Loading '+done+'/'+total;return txt
  }));
  let src=texts.join('')+'\n';
- // Premium visual layer is injected into the assembled ERP, without touching business records.
- const visualStyle=`<style id="cfm-premium-dashboard-v1">
- :root{--blue:#175cd3;--blue2:#397df1;--bg:#f3f6fc;--card:#fff;--text:#172640;--muted:#64748b;--line:#e0e8f4;--shadow:0 5px 20px rgba(28,59,105,.07)}
- html,body{background:#f3f6fc!important;color:#172640!important}
- .topbar{background:#fff!important;color:#172640!important;border-bottom:1px solid #e1e9f4!important;box-shadow:0 3px 16px rgba(26,55,100,.06)!important}
- .topbar .brand h1{color:#142c50!important;font-weight:850!important;letter-spacing:-.4px}
- .topbar .brand p{color:#637996!important}
- .topbar .btn{background:#f1f6ff!important;color:#1754b4!important;border:1px solid #dce9fb!important}
- .nav{background:#fff!important;border-color:#e0e8f4!important}
- .nav button{background:#f3f6fc!important;color:#50627d!important;border-radius:12px!important;cursor:pointer!important}
- .nav button.active{background:#e8f0ff!important;color:#175cd3!important;box-shadow:none!important}
- .panel,.data-card,.kpi,.action-card{background:#fff!important;border:1px solid #e0e8f4!important;border-radius:17px!important;box-shadow:0 5px 20px rgba(28,59,105,.06)!important}
- .action-grid{gap:12px!important}
- .action-card{position:relative;min-height:108px!important;padding:17px!important;transition:transform .14s,box-shadow .14s,border-color .14s!important;touch-action:manipulation}
- .action-card b{color:#163c78!important;font-size:15px!important}
- .action-card span{color:#65758d!important}
- .action-card:hover,.action-card:focus-visible{border-color:#86b4f8!important;box-shadow:0 9px 24px rgba(30,96,195,.13)!important;transform:translateY(-2px)}
- .action-card:active{transform:scale(.985)!important}
- button:focus-visible,.action-card:focus-visible{outline:3px solid #7eaffb!important;outline-offset:2px}
- .btn-primary{background:#175cd3!important;color:#fff!important;border-color:#175cd3!important}
- .btn-green{background:#16875b!important;color:#fff!important}
- .kpi .num{color:#175cd3!important}
- input,select,textarea{border-radius:11px!important;border-color:#dbe5f2!important}
- .section-head h2{color:#19375f!important;letter-spacing:-.5px}
- @media(max-width:760px){.action-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}.action-card{min-height:108px!important;padding:13px!important}.action-card b{font-size:13px!important}.action-card span{font-size:11px!important}.brand h1{font-size:15px!important}.nav{background:#fff!important}}
- @media(max-width:370px){.action-grid{grid-template-columns:1fr!important}}
- </style>`;
- src=src.replace('</body>',visualStyle+'</body>');
-
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V167');
@@ -303,48 +274,6 @@ html,body{background:#f4faff!important;color:#13233b!important}
 </style></head>`);
  src=src.replace('</head>',`<style id="cfm-final-v117">.command-hero{background:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;background-image:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;color:#17375e!important;border:1px solid #bcdff6!important;box-shadow:0 10px 26px rgba(22,116,201,.10)!important}.command-hero:after{border-color:rgba(22,116,201,.08)!important}.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}.command-tags span,.command-tags span:first-child{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}</style></head>`);
 
- // Final design override after all legacy theme layers, including v117.
- src=src.replace('</head>',`<style id="cfm-modern-final-v2">
- :root{--blue:#3159c9!important;--bg:#f4f7fc!important;--text:#182943!important;--line:#e2e9f4!important}
- html,body{background:#f4f7fc!important;color:#182943!important}
- .topbar{background:#fff!important;background-image:none!important;color:#1c3558!important;border-bottom:1px solid #e1e8f3!important;box-shadow:0 2px 12px #1d3e7210!important}
- .topbar .brand h1{color:#1b3559!important}.topbar .brand p{color:#70829b!important}
- .command-hero{background:#fff!important;background-image:none!important;border:1px solid #e0e8f4!important;border-radius:22px!important;color:#1b3559!important;box-shadow:0 8px 28px #193b6910!important;min-height:0!important}
- .command-hero:before,.command-hero:after{display:none!important}
- .command-hero h3,.command-hero h2{color:#173456!important;text-shadow:none!important}
- .command-hero p{color:#647895!important}
- .command-eyebrow{color:#3159c9!important}
- .command-tags span,.command-tags span:first-child{color:#3159c9!important;background:#f0f5ff!important;border-color:#d9e5ff!important}
- .panel,.data-card,.kpi,.action-card{background:#fff!important;background-image:none!important;border:1px solid #e2e9f4!important;border-radius:19px!important;box-shadow:0 5px 20px #1c42700b!important}
- .action-grid{gap:12px!important}
- .action-card{padding:16px!important;min-height:108px!important;cursor:pointer!important;touch-action:manipulation!important}
- .action-card b{color:#243c66!important}.action-card span{color:#73839a!important}
- .action-card:active{transform:scale(.98)!important}
- .nav{background:#fff!important;border-color:#e2e9f4!important}
- .nav button.active{background:#e7eeff!important;color:#3159c9!important;border:1px solid #d5e1ff!important}
- .btn-primary{background:#3159c9!important;border-color:#3159c9!important;color:#fff!important}
- .kpi .num{color:#3159c9!important}
- @media(max-width:760px){
- .action-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
- .action-card{min-height:104px!important;padding:13px!important}
- .command-hero{padding:20px!important}
- .nav{background:#fff!important}
- }
- </style></head>`);
-
- // Capture navigation taps before legacy handlers; route through existing ERP showView.
- src=src.replace('</body>',`<script>
- (function(){
-   document.addEventListener('click',function(e){
-     var target=e.target.closest('[data-view="pending"],[onclick*="showView(\\'pending\\')"]');
-     if(!target)return;
-     if(typeof window.showView==='function'){
-       e.preventDefault();e.stopImmediatePropagation();
-       window.showView('pending');
-     }
-   },true);
- })();
- <\/script></body>`);
  const app=document.getElementById('app');
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
