@@ -35,4 +35,98 @@ el('guidedScan').onclick=async()=>{const file=el('scanFile').files[0]||el('photo
 el('dailyScan').onclick=()=>{el('uploadBtn').click()};
 el('dailyReview').onclick=()=>{if(!multi.length){multi.push({work:'',length:'',width:'',srl:'',qty:'',meter:'',by:''});renderMulti()}el('reviewSection').scrollIntoView({behavior:'smooth'})};
 el('dailyRead').onclick=async()=>{const f=el('scanFile').files[0]||el('photo').files[0];if(!f){el('dailyStatus').textContent='First select a cutting paper photo.';return}el('dailyRead').disabled=true;el('dailyStatus').textContent='Reading full paper. This may take a minute...';try{if(!window.Tesseract){await new Promise((ok,fail)=>{const a=document.createElement('script');a.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';a.onload=ok;a.onerror=()=>fail(Error('OCR library not loaded'));document.head.append(a)})}const out=await Tesseract.recognize(f,'eng');const txt=out.data.text||'';el('recognized').value=txt;const works=[...new Set([...txt.matchAll(/CFM\s*[-–]?\s*(\d{2,6})/gi)].map(m=>'CFM-'+m[1]))];if(works.length===0){el('dailyStatus').textContent='Work Numbers could not be read. Enter them manually in Cutting Rows. Photo remains available.';el('reviewSection').scrollIntoView({behavior:'smooth'});return}const sections=works.map((work,i)=>{const start=txt.search(new RegExp(work.replace('-','\\s*[-–]?\\s*'),'i'));let end=txt.length;for(const w of works){if(w===work)continue;const j=txt.search(new RegExp(w.replace('-','\\s*[-–]?\\s*'),'i'));if(j>start&&j<end)end=j}const block=txt.slice(Math.max(0,start),end);const lines=block.split('\n');const headerEnd=lines.findIndex(l=>/TODAY\s*CUT|SIZE\s*CUT/i.test(l));const body=headerEnd>=0?lines.slice(headerEnd+1).join('\n'):'';return{work,body}});const suggestions=sections.flatMap(x=>parseCutRows(x.body,x.work).filter(r=>r.srl&&r.qty));if(multi.length&&!confirm('Replace unsaved review rows with the new OCR suggestions?'))return;multi=suggestions;renderMulti();el('multiVerify').checked=false;el('dailyStatus').textContent=works.length+' possible Work Numbers: '+works.join(', ')+'\n'+suggestions.length+' complete cutting suggestions found. Missing rows must be added manually. Never trust OCR without checking the photo.';el('reviewSection').scrollIntoView({behavior:'smooth'})}catch(e){el('dailyStatus').textContent='OCR unavailable: '+e.message+'. Use Add Cutting Row for manual entry.'}finally{el('dailyRead').disabled=false}};
+</script>
+<style>
+#dailyWorkflow .notice{display:none}
+#autoScanBtn{background:#087b63;font-weight:700;width:100%;font-size:18px}
+#autoProgress{white-space:pre-wrap;background:#eaf7f2;border-radius:10px;padding:12px}
+#autoResult table{border-collapse:collapse;width:100%;font-size:14px}
+#autoResult th,#autoResult td{border:1px solid #b8d0df;padding:7px}
+#autoResult input{padding:7px;min-width:0}
+#autoResult .cutrow{background:#f2f7fc;border-radius:10px;padding:12px;margin:10px 0}
+</style>
+<script>
+(function(){
+const flow=document.getElementById('dailyWorkflow');
+flow.querySelector('h2').textContent='📷 Auto Cutting Paper Scanner';
+flow.querySelector('p').textContent='Upload one 5-work cutting paper. The scanner reads each printed Work No and handwritten Size Cut, SRL and Qty. Review results before saving; main ERP stock is unchanged.';
+const btn=document.createElement('button');btn.id='autoScanBtn';btn.type='button';btn.textContent='🔍 Auto Scan 5 Work Orders';
+const progress=document.createElement('p');progress.id='autoProgress';progress.setAttribute('aria-live','polite');
+const result=document.createElement('div');result.id='autoResult';
+flow.append(btn,progress,result);
+document.getElementById('dailyReview').style.display='none';
+const scanFile=document.getElementById('scanFile'),uploadFile=document.getElementById('photo');
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+async function loadOCR(){if(window.Tesseract)return;await new Promise((ok,fail)=>{const x=document.createElement('script');x.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';x.onload=ok;x.onerror=()=>fail(Error('OCR library needs internet'));document.head.append(x)})}
+function crop(canvas,x,y,w,h,zoom=2,contrast=false){
+const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w*zoom));c.height=Math.max(1,Math.round(h*zoom));
+const ctx=c.getContext('2d',{willReadFrequently:true});ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(canvas,x,y,w,h,0,0,c.width,c.height);
+if(contrast){const im=ctx.getImageData(0,0,c.width,c.height);for(let i=0;i<im.data.length;i+=4){let v=.299*im.data[i]+.587*im.data[i+1]+.114*im.data[i+2];v=v<155?0:v>210?255:(v-155)*255/55;im.data[i]=im.data[i+1]=im.data[i+2]=v}ctx.putImageData(im,0,0)}
+return c;
+}
+function parseWork(text){const m=text.match(/C\s*F\s*M\s*[-–:. ]*([0-9]{3,5})/i);return m?'CFM-'+m[1]:''}
+function parseSize(text){const m=text.replace(/[oO]/g,'0').match(/(\d{1,3}(?:\.\d+)?)\s*[xX×*]\s*(\d{1,3}(?:\.\d+)?)/);return m?[m[1],m[2]]:['','']}
+function parseSerial(text){let m=text.match(/E\s*[-–.]?\s*(\d{2,4})/i);return m?'E-'+m[1]:''}
+function parseQty(text){const t=text.replace(/[|✓✔]/g,' ').trim();const nums=t.match(/\b\d{1,2}\b/g)||[];return nums.length?nums[0]:''}
+let busy=false;
+btn.onclick=async()=>{
+if(busy)return;const file=scanFile.files[0]||uploadFile.files[0];if(!file){progress.textContent='Please upload the cutting paper photo first.';return}
+busy=true;btn.disabled=true;result.innerHTML='';progress.textContent='Loading scanner...';
+try{
+await loadOCR();
+const bmp=await createImageBitmap(file),base=document.createElement('canvas');const factor=Math.min(1,2200/bmp.width);base.width=Math.round(bmp.width*factor);base.height=Math.round(bmp.height*factor);base.getContext('2d').drawImage(bmp,0,0,base.width,base.height);
+const w=base.width,h=base.height;
+// Fixed 5-work print layout. Crops use the paper's relative grid positions.
+const bands=[[.115,.292],[.292,.452],[.452,.615],[.615,.783],[.783,.956]];
+const all=[];
+for(let n=0;n<5;n++){
+progress.textContent='Reading work '+(n+1)+' of 5...';
+const [top,bottom]=bands[n],y=top*h,bh=(bottom-top)*h;
+const header=crop(base,.08*w,y,.78*w,.39*bh,2);
+const headText=(await Tesseract.recognize(header,'eng',{tessedit_pageseg_mode:6})).data.text||'';
+const work=parseWork(headText);
+const rowResults=[];
+for(let j=0;j<3;j++){
+const yy=y+bh*(.42+j*.17);
+if(yy+bh*.17>h)break;
+const line=crop(base,.14*w,yy,.72*w,bh*.18,3,true);
+const o=await Tesseract.recognize(line,'eng',{tessedit_pageseg_mode:7});
+const txt=o.data.text||'';
+const size=parseSize(txt);
+const serial=parseSerial(txt);
+const right=txt.match(/(?:E\s*[-–.]?\s*\d{2,4})\s*([0-9]{1,2})/i);
+const qty=right?right[1]:'';
+if(size[0]||serial||qty)rowResults.push({work,length:size[0],width:size[1],srl:serial,qty,meter:'',worker:'',raw:txt,confidence:Math.round(o.data.confidence||0)});
+}
+all.push({work,rows:rowResults,headText});
+}
+const heading=document.createElement('h3');heading.textContent='Scan Results — 5 Work Orders';result.append(heading);
+const hint=document.createElement('p');hint.textContent='Unclear readings are left blank, never guessed. Please check the photo before saving. No stock is deducted.';result.append(hint);
+const proposed=[];
+all.forEach((group,i)=>{
+const block=document.createElement('div');block.className='cutrow';
+const label=document.createElement('strong');label.textContent='Work '+(i+1)+' — '+(group.work||'Work No not readable');block.append(label);
+const rows=group.rows.length?group.rows:[{work:group.work,length:'',width:'',srl:'',qty:'',meter:'',worker:''}];
+rows.forEach((row,j)=>{
+const r={...row,work:group.work||row.work};proposed.push(r);
+const line=document.createElement('div');line.style='display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px';
+for(const [key,name] of [['work','Work No'],['length','Length (inch)'],['width','Width (inch)'],['srl','SRL'],['qty','Cut Qty']]){
+const lab=document.createElement('label');lab.textContent=name;lab.style='margin:0';const input=document.createElement('input');input.value=r[key]||'';input.placeholder='Not read';input.oninput=()=>{r[key]=input.value;document.getElementById('multiVerify').checked=false};lab.append(input);line.append(lab)}
+block.append(line);
+});result.append(block);
+});
+const apply=document.createElement('button');apply.type='button';apply.textContent='✓ Use Auto-Scanned Rows';apply.onclick=()=>{
+if(multi.length&&!confirm('Replace unsaved cutting rows with auto-scan results?'))return;
+multi=proposed.map(r=>({work:r.work||'',length:r.length||'',width:r.width||'',srl:r.srl||'',qty:r.qty||'',meter:'',worker:''}));
+renderMulti();document.getElementById('multiVerify').checked=false;
+progress.textContent='Prepared '+multi.length+' suggested rows. Check blank/unclear values and verify against the paper before Save Draft. No ERP stock changes.';
+document.getElementById('reviewSection').scrollIntoView({behavior:'smooth'});
+};result.append(apply);
+progress.textContent='Auto scan completed: '+all.filter(g=>g.work).length+'/5 work numbers and '+all.reduce((n,g)=>n+g.rows.length,0)+' possible handwritten cutting rows. Results need checking.';
+}catch(e){progress.textContent='Auto scan failed: '+e.message+'. Original paper and existing ERP data are unchanged.'}
+finally{busy=false;btn.disabled=false}
+};
+const auto=()=>{const f=scanFile.files[0]||uploadFile.files[0];if(f){progress.textContent='Photo ready. Starting automatic scan...';pause(400).then(()=>btn.click())}};
+scanFile.addEventListener('change',auto);uploadFile.addEventListener('change',auto);
+})();
 </script></html>
