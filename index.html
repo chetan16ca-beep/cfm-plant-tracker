@@ -318,6 +318,29 @@ html,body{background:#f4faff!important;color:#13233b!important}
  }
  </style></head>`);
  const app=document.getElementById('app');
+ // Apply last, after the iframe document and its own theme CSS have loaded.
+ app.addEventListener('load',()=>{
+   try{
+     const doc=app.contentDocument;
+     if(!doc||doc.getElementById('cfm-postload-animated-design'))return;
+     const style=doc.createElement('style');
+     style.id='cfm-postload-animated-design';
+     style.textContent=`
+     #view-dashboard .photo-quick-actions{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important;margin:14px 0 18px!important}
+     #view-dashboard .photo-quick-actions button{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;min-height:124px!important;padding:15px 8px!important;background:#fff!important;background-image:none!important;border:1px solid #d8e5f5!important;border-radius:22px!important;color:#1d3555!important;box-shadow:0 8px 20px #205ba022!important;gap:9px!important}
+     #view-dashboard .photo-quick-actions button span{display:grid!important;place-items:center!important;width:58px!important;height:58px!important;background:#e4efff!important;border-radius:18px!important;font-size:30px!important}
+     #view-dashboard .photo-quick-actions button:nth-child(2) span{background:#e0f6ec!important}
+     #view-dashboard .photo-quick-actions button:nth-child(3) span{background:#efe8ff!important}
+     #view-dashboard .photo-quick-actions button:nth-child(4) span{background:#fff0db!important}
+     #view-dashboard .photo-quick-actions button b{color:#1d3555!important;font-size:14px!important}
+     #view-dashboard .command-hero{background:#194b96!important;background-image:linear-gradient(120deg,#16478e,#3282df)!important;color:#fff!important;border:0!important;border-radius:24px!important;box-shadow:0 12px 28px #1e5fb844!important}
+     #view-dashboard .command-hero h3,#view-dashboard .command-hero h2,#view-dashboard .command-hero p,#view-dashboard .command-eyebrow{color:#fff!important}
+     @media(max-width:760px){#view-dashboard .photo-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}#view-dashboard .photo-quick-actions button{min-height:114px!important}}
+     @media(prefers-reduced-motion:no-preference){#view-dashboard .photo-quick-actions button{animation:cfmLastCard 4s ease-in-out infinite!important}#view-dashboard .photo-quick-actions button:nth-child(even){animation-delay:-2s!important}#view-dashboard .photo-quick-actions button span{animation:cfmLastIcon 3s ease-in-out infinite!important}#view-dashboard .photo-quick-actions button:active{animation-play-state:paused!important;transform:scale(.96)!important}@keyframes cfmLastCard{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@keyframes cfmLastIcon{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}}
+     `;
+     (doc.body||doc.head).appendChild(style);
+   }catch(e){console.warn('Dashboard visual layer:',e)}
+ });
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
