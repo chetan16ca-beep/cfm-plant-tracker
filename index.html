@@ -274,6 +274,23 @@ html,body{background:#f4faff!important;color:#13233b!important}
 </style></head>`);
  src=src.replace('</head>',`<style id="cfm-final-v117">.command-hero{background:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;background-image:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;color:#17375e!important;border:1px solid #bcdff6!important;box-shadow:0 10px 26px rgba(22,116,201,.10)!important}.command-hero:after{border-color:rgba(22,116,201,.08)!important}.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}.command-tags span,.command-tags span:first-child{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}</style></head>`);
 
+ // Visible dashboard-only redesign; CSS does not intercept clicks or change navigation.
+ src=src.replace('</head>',`<style id="cfm-visible-animated-dashboard-v2">
+ #view-dashboard{background:#f3f7ff!important;color:#1c3152!important}
+ #view-dashboard .photo-quick-actions{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important;padding:10px 0!important}
+ #view-dashboard .photo-quick-actions button{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:10px!important;background:#fff!important;background-image:none!important;color:#1b355d!important;border:1px solid #dce7f7!important;border-radius:22px!important;min-height:124px!important;box-shadow:0 8px 20px rgba(35,89,166,.10)!important;font-weight:800!important;cursor:pointer!important;position:relative!important}
+ #view-dashboard .photo-quick-actions button span{display:grid!important;place-items:center!important;width:58px!important;height:58px!important;border-radius:18px!important;background:#e7f0ff!important;font-size:30px!important}
+ #view-dashboard .photo-quick-actions button:nth-child(2) span{background:#dff7ed!important}
+ #view-dashboard .photo-quick-actions button:nth-child(3) span{background:#f0e7ff!important}
+ #view-dashboard .photo-quick-actions button:nth-child(4) span{background:#fff0de!important}
+ #view-dashboard .photo-quick-actions button b{color:#1b355d!important;font-size:14px!important}
+ #view-dashboard .command-hero{background:linear-gradient(125deg,#17468f,#327fe0)!important;background-image:linear-gradient(125deg,#17468f,#327fe0)!important;color:white!important;border-radius:22px!important;border:0!important;box-shadow:0 12px 28px #1b61ba33!important;padding:24px!important}
+ #view-dashboard .command-hero h3,#view-dashboard .command-hero h2{color:#fff!important;text-shadow:none!important}
+ #view-dashboard .command-hero p,#view-dashboard .command-eyebrow{color:#e3f0ff!important}
+ #view-dashboard .panel,#view-dashboard .kpi{border-radius:18px!important;box-shadow:0 6px 22px #254e8512!important}
+ @media(max-width:760px){#view-dashboard .photo-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}#view-dashboard .photo-quick-actions button{min-height:116px!important;padding:13px 6px!important}}
+ @media(prefers-reduced-motion:no-preference){#view-dashboard .photo-quick-actions button{animation:cfmVisibleFloat 3.8s ease-in-out infinite!important;transition:box-shadow .2s ease!important}#view-dashboard .photo-quick-actions button:nth-child(even){animation-delay:-1.9s!important}#view-dashboard .photo-quick-actions button span{animation:cfmVisibleIcon 2.9s ease-in-out infinite!important}#view-dashboard .photo-quick-actions button:active{animation-play-state:paused!important;transform:scale(.96)!important}@keyframes cfmVisibleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@keyframes cfmVisibleIcon{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}}
+ </style></head>`);
  // Minimal Animated dashboard: CSS-only; preserves every existing click handler and data flow.
  src=src.replace('</head>',`<style id="cfm-safe-animated-dashboard-v1">
  @media(prefers-reduced-motion:no-preference){
