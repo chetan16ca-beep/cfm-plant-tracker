@@ -151,8 +151,11 @@ block.append(line);
 });result.append(block);
 });
 const apply=document.createElement('button');apply.type='button';apply.textContent='✓ Use Auto-Scanned Rows';apply.onclick=()=>{
+const valid=proposed.filter(r=>/^CFM-\d+$/.test(String(r.work||''))&&Number(r.length)>0&&Number(r.width)>0&&/^EFPPL03\/\d{4,5}$/.test(cleanShort(String(r.srl||'')))&&Number.isInteger(Number(r.qty))&&Number(r.qty)>0);
+if(!valid.length){progress.textContent='No complete rows could be read safely. Nothing was imported or saved.';return}
+
 if(multi.length&&!confirm('Replace unsaved cutting rows with auto-scan results?'))return;
-multi=proposed.map(r=>({work:r.work||'',length:r.length||'',width:r.width||'',srl:r.srl||'',qty:r.qty||'',meter:'',worker:''}));
+multi=valid.map(r=>({work:r.work||'',length:r.length||'',width:r.width||'',srl:cleanShort(r.srl||''),qty:r.qty||'',meter:'',worker:''}));
 renderMulti();document.getElementById('multiVerify').checked=false;
 progress.textContent='Prepared '+multi.length+' suggested rows. Check blank/unclear values and verify against the paper before Save Draft. No ERP stock changes.';
 document.getElementById('reviewSection').scrollIntoView({behavior:'smooth'});
