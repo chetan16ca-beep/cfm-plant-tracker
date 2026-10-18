@@ -110,6 +110,8 @@ for(let n=0;n<5;n++){
  // Extra full-section OCR pass helps when handwritten rows fall outside fixed cell crops.
  const sectionImage=crop(base,paper.x+.06*paper.w,y+bh*.43,.87*paper.w,bh*.55,2.5,false);
  const sectionText=(await Tesseract.recognize(sectionImage,'eng',{tessedit_pageseg_mode:6})).data.text||'';
+ // Store each work section as an on-screen visual for checking crop alignment.
+ const sectionPreview=crop(base,paper.x,y,paper.w,bh,1.2,false).toDataURL('image/jpeg',.82);
  // Read individual size, serial and quantity columns independently, not one long OCR line.
  // Multiple crop heights compensate for skew and different print scales.
  const seen=new Set();
@@ -134,7 +136,7 @@ for(let n=0;n<5;n++){
  }
  const fallback=parseCutRows(sectionText,work).filter(r=>work&&r.length&&r.width&&r.srl&&r.qty).map(r=>({...r,srl:cleanShort(r.srl)}));
  for(const r of fallback){if(!rowResults.some(x=>x.length===r.length&&x.width===r.width&&x.srl===r.srl&&x.qty===r.qty))rowResults.push({...r,raw:'Full-section OCR suggestion',confidence:0})}
- all.push({work,rows:rowResults,headText});
+ all.push({work,rows:rowResults,headText,sectionPreview});
 }
 const heading=document.createElement('h3');heading.textContent='Scan Results — 5 Work Orders';result.append(heading);
 const hint=document.createElement('p');hint.textContent='Unclear readings are left blank, never guessed. Please check the photo before saving. No stock is deducted.';result.append(hint);
@@ -142,6 +144,7 @@ const proposed=[];
 all.forEach((group,i)=>{
 const block=document.createElement('div');block.className='cutrow';
 const label=document.createElement('strong');label.textContent='Work '+(i+1)+' — '+(group.work||'Work No not readable');block.append(label);
+const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='View scanner crop for Work '+(i+1);const preview=document.createElement('img');preview.src=group.sectionPreview;preview.alt='Scanner crop Work '+(i+1);preview.style='width:100%;max-height:260px;object-fit:contain';details.append(summary,preview);block.append(details);
 const rows=group.rows.length?group.rows:[];
 if(!rows.length){const note=document.createElement('p');note.textContent='No readable work number or cutting rows. This section needs review; it will not be saved.';block.append(note)}
 rows.forEach((row,j)=>{
