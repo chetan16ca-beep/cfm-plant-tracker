@@ -101,6 +101,9 @@ for(let n=0;n<5;n++){
  const headText=(await Tesseract.recognize(header,'eng',{tessedit_pageseg_mode:6})).data.text||'';
  let work=parseWork(headText);
  const rowResults=[];
+ // Extra full-section OCR pass helps when handwritten rows fall outside fixed cell crops.
+ const sectionImage=crop(base,paper.x+.06*paper.w,y+bh*.30,.87*paper.w,bh*.67,2.5,false);
+ const sectionText=(await Tesseract.recognize(sectionImage,'eng',{tessedit_pageseg_mode:6})).data.text||'';
  // Read individual size, serial and quantity columns independently, not one long OCR line.
  // Multiple crop heights compensate for skew and different print scales.
  const seen=new Set();
@@ -123,6 +126,8 @@ for(let n=0;n<5;n++){
   if(seen.has(key))continue;seen.add(key);
   rowResults.push({work,length:size[0],width:size[1],srl:serial,qty:serial?qty:'',meter:'',worker:'',raw:[sz.data.text,sr.data.text,qt.data.text].join(' | '),confidence:Math.round(Math.min(sz.data.confidence||0,sr.data.confidence||0,qt.data.confidence||0))});
  }
+ const fallback=parseCutRows(sectionText,work).filter(r=>r.length&&r.width&&r.srl&&r.qty);
+ for(const r of fallback){if(!rowResults.some(x=>x.length===r.length&&x.width===r.width&&x.srl===r.srl&&x.qty===r.qty))rowResults.push({...r,raw:'Full-section OCR suggestion',confidence:0})}
  all.push({work,rows:rowResults,headText});
 }
 const heading=document.createElement('h3');heading.textContent='Scan Results — 5 Work Orders';result.append(heading);
