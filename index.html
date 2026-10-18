@@ -332,6 +332,19 @@ html,body{background:#f4faff!important;color:#13233b!important}
  }
  </style></head>`);
 
+ // Capture navigation taps before legacy handlers; route through existing ERP showView.
+ src=src.replace('</body>',`<script>
+ (function(){
+   document.addEventListener('click',function(e){
+     var target=e.target.closest('[data-view="pending"],[onclick*="showView(\\'pending\\')"]');
+     if(!target)return;
+     if(typeof window.showView==='function'){
+       e.preventDefault();e.stopImmediatePropagation();
+       window.showView('pending');
+     }
+   },true);
+ })();
+ <\/script></body>`);
  const app=document.getElementById('app');
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
