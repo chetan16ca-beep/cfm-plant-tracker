@@ -6,7 +6,7 @@ if(new URLSearchParams(location.search).get('importDraft')==='1'){
   const transfer=JSON.parse(raw||'null');
   if(!transfer||!Array.isArray(transfer.rows)||!transfer.rows.length)throw Error('No transferred draft found');
   const groups=new Map();
-  for(const r of transfer.rows){if(!/^CFM-\\d+$/.test(r.work))continue;if(!groups.has(r.work))groups.set(r.work,[]);groups.get(r.work).push(r)}
+  for(const r of transfer.rows){if(!/^CFM-\d+$/.test(r.work))continue;if(!groups.has(r.work))groups.set(r.work,[]);groups.get(r.work).push(r)}
   const panel=document.createElement('div');panel.className='card';
   const heading=document.createElement('h2');heading.textContent='Cutting Draft Transfer Review';panel.append(heading);
   const note=document.createElement('p');note.className='warn';note.textContent='Received '+transfer.rows.length+' rows. Select a Work No below, complete Item ID, Cloth, roll Width and actual Used Meter before saving. Store stock will NOT change.';panel.append(note);
