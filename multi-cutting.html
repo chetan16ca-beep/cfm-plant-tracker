@@ -15,7 +15,8 @@ if(new URLSearchParams(location.search).get('importDraft')==='1'){
    btn.onclick=()=>{
     document.getElementById('wo').value=work;rows.innerHTML='';
     try{
-     const db=JSON.parse(localStorage.getItem('cfm-plant-tracker-data-v1')||'{}');
+     const candidates=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(!/cfm|plant|erp|tracker/i.test(key))continue;try{const val=JSON.parse(localStorage.getItem(key));if(val&&typeof val==='object')candidates.push(val)}catch(_){}}
+     const db=candidates.find(v=>Array.isArray(v.pending)&&v.pending.some(x=>String(x.workNo||x.workOrder||x.wo||'').trim().toUpperCase()===work))||{};
      const order=(Array.isArray(db.pending)?db.pending:[]).find(x=>String(x.workNo||x.workOrder||x.wo||'').trim().toUpperCase()===work);
      if(order){
       document.getElementById('party').value=String(order.party||order.partyName||'');
