@@ -2,7 +2,7 @@
 /* Simple production-safe mode: old OCR tools remain in source but are hidden */
 #photoSection> :not(label:first-child):not(#scanBtn):not(#uploadBtn):not(#scanFile):not(#photo):not(#photoStatus):not(#paperPreview){display:none!important}
 #reviewSection>p:first-of-type,#extractRows{display:none!important}
-#dailyRead{display:none!important}
+#dailyRead{display:inline-block!important}
 #reviewSection+section{display:none!important}
 #dailyWorkflow{margin-bottom:14px}
 #multiRows>div{margin-bottom:12px}
@@ -71,7 +71,7 @@ return c;
 }
 function parseWork(text){const m=text.match(/C\s*F\s*M\s*[-–:. ]*([0-9]{3,5})/i);return m?'CFM-'+m[1]:''}
 function parseSize(text){const m=text.replace(/[oO]/g,'0').match(/(\d{1,3}(?:\.\d+)?)\s*[xX×*]\s*(\d{1,3}(?:\.\d+)?)/);return m?[m[1],m[2]]:['','']}
-function parseSerial(text){let m=text.match(/E\s*[-–.]?\s*(\d{2,4})/i);return m?'E-'+m[1]:''}
+function parseSerial(text){let m=text.match(/EFPPL\s*0*3\s*\/\s*0*(\d{2,5})/i)||text.match(/E\s*[-–.]?\s*0*(\d{2,5})/i);return m?'EFPPL03/'+m[1].padStart(4,'0'):''}
 function parseQty(text){const t=text.replace(/[|✓✔]/g,' ').trim();const nums=t.match(/\b\d{1,2}\b/g)||[];return nums.length?nums[0]:''}
 let busy=false;
 btn.onclick=async()=>{
@@ -131,7 +131,7 @@ for(let n=0;n<5;n++){
   if(seen.has(key))continue;seen.add(key);
   rowResults.push({work,length:size[0],width:size[1],srl:serial,qty:serial?qty:'',meter:'',worker:'',raw:[sz.data.text,sr.data.text,qt.data.text].join(' | '),confidence:Math.round(Math.min(sz.data.confidence||0,sr.data.confidence||0,qt.data.confidence||0))});
  }
- const fallback=parseCutRows(sectionText,work).filter(r=>r.length&&r.width&&r.srl&&r.qty);
+ const fallback=parseCutRows(sectionText,work).filter(r=>work&&r.length&&r.width&&r.srl&&r.qty).map(r=>({...r,srl:cleanShort(r.srl)}));
  for(const r of fallback){if(!rowResults.some(x=>x.length===r.length&&x.width===r.width&&x.srl===r.srl&&x.qty===r.qty))rowResults.push({...r,raw:'Full-section OCR suggestion',confidence:0})}
  all.push({work,rows:rowResults,headText});
 }
@@ -141,7 +141,7 @@ const proposed=[];
 all.forEach((group,i)=>{
 const block=document.createElement('div');block.className='cutrow';
 const label=document.createElement('strong');label.textContent='Work '+(i+1)+' — '+(group.work||'Work No not readable');block.append(label);
-const rows=group.rows.length?group.rows:[{work:group.work,length:'',width:'',srl:'',qty:'',meter:'',worker:''}];
+const rows=group.rows.length?group.rows:(group.work?[{work:group.work,length:'',width:'',srl:'',qty:'',meter:'',worker:''}]:[]);
 rows.forEach((row,j)=>{
 const r={...row,work:group.work||row.work};proposed.push(r);
 const line=document.createElement('div');line.style='display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px';
