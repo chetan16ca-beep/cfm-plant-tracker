@@ -274,6 +274,32 @@ html,body{background:#f4faff!important;color:#13233b!important}
 </style></head>`);
  src=src.replace('</head>',`<style id="cfm-final-v117">.command-hero{background:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;background-image:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;color:#17375e!important;border:1px solid #bcdff6!important;box-shadow:0 10px 26px rgba(22,116,201,.10)!important}.command-hero:after{border-color:rgba(22,116,201,.08)!important}.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}.command-tags span,.command-tags span:first-child{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}</style></head>`);
 
+ // Minimal Animated dashboard: CSS-only; preserves every existing click handler and data flow.
+ src=src.replace('</head>',`<style id="cfm-safe-animated-dashboard-v1">
+ @media(prefers-reduced-motion:no-preference){
+ #view-dashboard .photo-quick-actions button,
+ #view-dashboard .action-card,
+ #view-dashboard .action-grid button{
+   transition:transform .2s ease,box-shadow .2s ease,background-color .2s ease!important;
+   animation:cfmSafeCardFloat 4.5s ease-in-out infinite!important;
+ }
+ #view-dashboard .photo-quick-actions button:nth-child(2n),
+ #view-dashboard .action-card:nth-child(2n){animation-delay:-1.8s!important}
+ #view-dashboard .photo-quick-actions button:nth-child(3n),
+ #view-dashboard .action-card:nth-child(3n){animation-delay:-2.8s!important}
+ #view-dashboard .photo-quick-actions button:active,
+ #view-dashboard .action-card:active,
+ #view-dashboard .action-grid button:active{animation-play-state:paused!important;transform:scale(.96)!important}
+ #view-dashboard .photo-quick-actions button:focus-visible,
+ #view-dashboard .action-card:focus-visible{animation-play-state:paused!important;outline:3px solid #8eb9ff!important}
+ #view-dashboard .photo-quick-actions button span,
+ #view-dashboard .action-card .ico{display:inline-block;animation:cfmSafeIconFloat 3.2s ease-in-out infinite!important}
+ #view-dashboard .kpi{transition:transform .2s ease,box-shadow .2s ease!important}
+ #view-dashboard .kpi:active{transform:scale(.98)!important}
+ @keyframes cfmSafeCardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+ @keyframes cfmSafeIconFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+ }
+ </style></head>`);
  const app=document.getElementById('app');
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
