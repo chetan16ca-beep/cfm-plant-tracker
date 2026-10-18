@@ -1134,6 +1134,7 @@ window.saveMultiPoItems=function(){
     const workRange=created.length===1?created[0].workNo:(created[0].workNo+' – '+created[created.length-1].workNo);
     try{setNextUpdateNotification('🔔 New PO Added',party+' • '+created.length+' item • '+workRange)}catch(e){}
     try{save()}catch(e){console.error('PO save persistence error',e);return fail('SAVE ERROR: '+(e?.message||'storage error'),document.getElementById('saveFormBtn'))}
+    try{window.parent.postMessage({type:'CFM_NEW_ORDER_SAVED',party:String(party||''),workNumbers:created.map(x=>String(x.workNo||''))},'*')}catch(e){}
     toast(created.length+' PO item saved • '+workRange);
     return true;
   }catch(e){console.error('PO SAVE FATAL',e);toast('SAVE ERROR: '+(e?.message||String(e)));return false}
