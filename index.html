@@ -177,17 +177,17 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='170r2';
- try{if('caches' in window){const ks=await caches.keys();await Promise.all(ks.filter(k=>k!=='cfm-plant-v167-shell').map(k=>caches.delete(k)))}}catch(_){}
+ const urls=groups.flat(), ver='170r3';
+ const cacheName='cfm-code-chunks-'+ver;
  const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-170r2-'+u;
-   try{
-     const saved=null; // Always fetch current chunk; old PWA chunk cache caused stale mobile versions.
-   }catch(_){}
-   const r=await fetch('./'+u+'?v='+ver+'&t=20',{cache:'reload'});
+   const url=new URL('./'+u+'?v='+ver,location.href);
+   let cached=null;
+   try{if('caches' in window){const c=await caches.open(cacheName);cached=await c.match(url)}}catch(_){}
+   if(cached){done++;st.textContent='Loading '+done+'/'+total;return cached.text()}
+   const r=await fetch(url,{cache:'no-cache'});
    if(!r.ok)throw Error(u);
    const txt=await r.text();
-   /* chunk localStorage cache disabled: prevents quota/stale-version issues */
+   try{if('caches' in window){const c=await caches.open(cacheName);await c.put(url,new Response(txt,{headers:{'Content-Type':'text/plain;charset=utf-8'}}))}}catch(_){}
    done++;st.textContent='Loading '+done+'/'+total;return txt
  }));
  let src=texts.join('')+'\n';
