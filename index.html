@@ -400,6 +400,19 @@ document.getElementById('cfmDailyReportSnooze').addEventListener('click',()=>{wr
 check();setInterval(check,20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
 })();
 </script>
+<script id="cfm-new-order-voice-v1">
+(function(){
+let ctx=null;
+function ring(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ctx=ctx||new C();ctx.resume().catch(()=>{});const t=ctx.currentTime;for(let i=0;i<2;i++){const o=ctx.createOscillator(),g=ctx.createGain();o.type='sawtooth';o.frequency.setValueAtTime(720,t+i*.35);o.frequency.linearRampToValueAtTime(980,t+i*.35+.22);g.gain.setValueAtTime(.0001,t+i*.35);g.gain.exponentialRampToValueAtTime(.09,t+i*.35+.03);g.gain.exponentialRampToValueAtTime(.0001,t+i*.35+.28);o.connect(g);g.connect(ctx.destination);o.start(t+i*.35);o.stop(t+i*.35+.29)}}catch(e){}}
+window.addEventListener('message',function(e){
+if(e.source!==document.getElementById('app').contentWindow||!e.data||e.data.type!=='CFM_NEW_ORDER_SAVED')return;
+const party=String(e.data.party||'Unknown Party').slice(0,120),numbers=Array.isArray(e.data.workNumbers)?e.data.workNumbers.map(x=>String(x).slice(0,50)).slice(0,30):[];
+ring();
+try{if(window.speechSynthesis){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('New order received. Party name '+party+'. Work number '+numbers.join(', ')+'.');u.lang='en-IN';u.rate=.86;speechSynthesis.speak(u)}}catch(err){}
+try{const n=document.createElement('div');n.setAttribute('role','status');n.style.cssText='position:fixed;z-index:1000030;top:12px;left:12px;right:65px;background:#fff4df;border:2px solid #e89b19;border-radius:12px;padding:12px;font:700 14px Arial;color:#493014;box-shadow:0 5px 20px #0004';n.textContent='🚨 New Order: '+party+' • '+numbers.join(', ');document.body.appendChild(n);setTimeout(()=>n.remove(),12000)}catch(err){}
+});
+})();
+</script>
 <style id="cfm-operations-siren-v1">
 #cfmOpsOpen{position:fixed;top:108px;right:12px;z-index:1000018;border:0;border-radius:11px;background:#ad391c;color:#fff;padding:9px 11px;font:700 12px Arial;box-shadow:0 4px 14px #0003}
 #cfmOpsDialog[hidden]{display:none!important}
