@@ -366,6 +366,36 @@ html,body{background:#f4faff!important;color:#13233b!important}
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
 </script>
+<style id="cfm-daily-plant-siren-v1">
+#cfmDailyReportAlert[hidden]{display:none!important}
+#cfmDailyReportAlert{position:fixed;z-index:1000020;top:16px;left:50%;transform:translateX(-50%);width:min(420px,calc(100vw - 28px));box-sizing:border-box;padding:17px;background:#fff8e7;color:#442e12;border:2px solid #e89b19;border-radius:17px;box-shadow:0 12px 40px #0005;font:14px Arial}
+#cfmDailyReportAlert strong{font-size:17px}#cfmDailyReportAlert p{line-height:1.45}
+#cfmDailyReportAlert button{border:0;border-radius:9px;padding:11px 13px;margin:3px;font-weight:700;cursor:pointer;background:#0f5fa8;color:white}
+#cfmDailyReportAlert button:last-child{background:#f1dfc2;color:#442e12}
+</style>
+<div id="cfmDailyReportAlert" hidden role="alertdialog" aria-labelledby="cfmDailyReportTitle">
+<strong id="cfmDailyReportTitle">🚨 4:00 PM — Daily Plant Report</strong>
+<p>आज का Plant Report लें: Pending Orders, Cutting, Stitching, Packing, Dispatch और Store Stock.</p>
+<button id="cfmDailyReportDone" type="button">✓ Report Received / Done</button>
+<button id="cfmDailyReportSnooze" type="button">⏰ 5 Min Snooze</button>
+</div>
+<script>
+(function(){
+'use strict';
+const key='cfm-daily-report-siren-v1',panel=document.getElementById('cfmDailyReportAlert');
+let audio=null,unlocked=false,lastSound=0;
+function day(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function read(){try{return JSON.parse(localStorage.getItem(key)||'{}')}catch(e){return {}}}
+function write(v){try{localStorage.setItem(key,JSON.stringify(v))}catch(e){}}
+function sound(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audio=audio||new C();if(audio.state==='suspended')audio.resume().catch(()=>{});if(audio.state!=='running')return;const t=audio.currentTime;for(let i=0;i<3;i++){const o=audio.createOscillator(),g=audio.createGain();o.type='sawtooth';o.frequency.setValueAtTime(650,t+i*.34);o.frequency.linearRampToValueAtTime(920,t+i*.34+.23);g.gain.setValueAtTime(.0001,t+i*.34);g.gain.exponentialRampToValueAtTime(.10,t+i*.34+.035);g.gain.exponentialRampToValueAtTime(.0001,t+i*.34+.29);o.connect(g);g.connect(audio.destination);o.start(t+i*.34);o.stop(t+i*.34+.3)}}catch(e){}}
+function voice(){try{if(!('speechSynthesis' in window))return;window.speechSynthesis.cancel();const m=new SpeechSynthesisUtterance('Attention. Four PM daily plant report pending. Please check pending orders, cutting, stitching, packing, dispatch and stock.');m.lang='en-IN';m.rate=.95;window.speechSynthesis.speak(m)}catch(e){}}
+function check(){const n=new Date(),d=day(),v=read();if(n.getHours()<16||v.done===d||Date.now()<Number(v.snoozeUntil||0)){panel.hidden=true;return}panel.hidden=false;if(Date.now()-lastSound>=300000){lastSound=Date.now();sound();voice()}}
+document.addEventListener('pointerdown',()=>{if(unlocked)return;unlocked=true;try{const C=window.AudioContext||window.webkitAudioContext;if(C){audio=audio||new C();audio.resume().catch(()=>{})}}catch(e){}},{once:true,passive:true});
+document.getElementById('cfmDailyReportDone').addEventListener('click',()=>{write({done:day()});panel.hidden=true;try{speechSynthesis.cancel()}catch(e){}});
+document.getElementById('cfmDailyReportSnooze').addEventListener('click',()=>{write({snoozeUntil:Date.now()+300000});panel.hidden=true;try{speechSynthesis.cancel()}catch(e){}});
+check();setInterval(check,20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
+})();
+</script>
 <style id="cfm-label-safe-css">
 #cfmLabelToggle{position:fixed;left:12px;bottom:calc(92px + env(safe-area-inset-bottom, 0px));z-index:1000001;border:0;border-radius:12px;background:#126db7;color:#fff;padding:9px 11px;font:700 12px Arial;box-shadow:0 5px 20px #0003;cursor:pointer;opacity:.9}
 #cfmLabelDialog[hidden]{display:none!important}
