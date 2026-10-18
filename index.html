@@ -218,7 +218,7 @@ if('serviceWorker' in navigator){
  @media(max-width:760px){.action-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}.action-card{min-height:108px!important;padding:13px!important}.action-card b{font-size:13px!important}.action-card span{font-size:11px!important}.brand h1{font-size:15px!important}.nav{background:#fff!important}}
  @media(max-width:370px){.action-grid{grid-template-columns:1fr!important}}
  </style>`;
- src=src.replace('</head>',visualStyle+'</head>');
+ src=src.replace('</body>',visualStyle+'</body>');
 
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
