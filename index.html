@@ -400,6 +400,53 @@ document.getElementById('cfmDailyReportSnooze').addEventListener('click',()=>{wr
 check();setInterval(check,20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
 })();
 </script>
+<style id="cfm-operations-siren-v1">
+#cfmOpsOpen{position:fixed;top:108px;right:12px;z-index:1000018;border:0;border-radius:11px;background:#ad391c;color:#fff;padding:9px 11px;font:700 12px Arial;box-shadow:0 4px 14px #0003}
+#cfmOpsDialog[hidden]{display:none!important}
+#cfmOpsDialog{position:fixed;z-index:1000022;inset:5% 3%;overflow:auto;background:#fff;color:#182a40;border-radius:16px;padding:17px;box-shadow:0 0 0 100vmax #0009;font:14px Arial}
+#cfmOpsDialog input,#cfmOpsDialog select{display:block;width:100%;box-sizing:border-box;padding:11px;margin:5px 0 12px;border:1px solid #b9cbdc;border-radius:9px;background:#fff;color:#182a40}
+#cfmOpsDialog button,#cfmOpsToast button{border:0;border-radius:9px;padding:10px;margin:3px;background:#1665aa;color:white;font-weight:bold}
+#cfmOpsDialog .opsRow{padding:12px;margin:9px 0;background:#f3f7fc;border:1px solid #d8e4f2;border-radius:12px}
+#cfmOpsToast[hidden]{display:none!important}
+#cfmOpsToast{position:fixed;z-index:1000023;left:10px;right:10px;top:15px;max-width:440px;margin:auto;background:#fff3db;border:2px solid #e68a16;border-radius:15px;padding:16px;color:#442a12;box-shadow:0 10px 30px #0005;font:14px Arial}
+</style>
+<button id="cfmOpsOpen" type="button">🚨 Plant Alerts</button>
+<section id="cfmOpsDialog" hidden aria-label="Plant Siren Alerts">
+<button id="cfmOpsClose" type="button">✕ Close</button><h2>🚨 Plant Siren Control</h2>
+<p>Urgent Order, Bill, Dispatch और Store SRL के Alerts दर्ज करें। यह रिकॉर्ड इसी डिवाइस पर रहेगा।</p>
+<form id="cfmOpsForm">
+<label>Alert Type<select name="type"><option value="urgent">Urgent Order — Immediately</option><option value="bill">Bill Request — After 5 Minutes</option><option value="dispatch">Dispatch Pending — After 5 Minutes</option><option value="srl">Low Stock SRL — Immediately</option></select></label>
+<label>Work No. / Serial No.<input name="number" maxlength="90" required placeholder="CFM-643 / 333 ANT"></label>
+<label>Details (Optional)<input name="details" maxlength="180" placeholder="Party, quantity, cloth, etc."></label>
+<button type="submit">+ Activate Alert</button>
+</form><h3>Active Alerts</h3><div id="cfmOpsList"></div>
+<p><small>Alerts repeat every 5 minutes while this ERP page is open. Browser background restrictions apply.</small></p>
+</section>
+<div id="cfmOpsToast" hidden role="alertdialog" aria-live="assertive"><strong id="cfmOpsToastTitle">🚨 Plant Alert</strong><p id="cfmOpsToastBody"></p><button id="cfmOpsDone" type="button">✓ Done</button><button id="cfmOpsSnooze" type="button">⏰ 5 Min Snooze</button><button id="cfmOpsView" type="button">All Alerts</button></div>
+<script>
+(function(){
+'use strict';
+const key='cfm-operations-siren-v1',five=300000,dlg=document.getElementById('cfmOpsDialog'),toast=document.getElementById('cfmOpsToast'),form=document.getElementById('cfmOpsForm');let activeId=null,lastCheck=0,audio=null;
+const labels={urgent:'Urgent Order',bill:'Bill Request',dispatch:'Dispatch Pending',srl:'Low Stock Serial Number'};
+function get(){try{const a=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
+function save(a){try{localStorage.setItem(key,JSON.stringify(a));return true}catch(e){alert('Alert could not be saved: '+e.message);return false}}
+function esc(x){return String(x||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function render(){document.getElementById('cfmOpsList').innerHTML=get().filter(x=>!x.done).map(x=>'<div class="opsRow"><b>'+esc(labels[x.type])+'</b> — '+esc(x.number)+'<p>'+esc(x.details)+'</p><small>Next alert: '+new Date(x.next).toLocaleTimeString('en-IN')+'</small> <button type="button" data-opsdone="'+esc(x.id)+'">Done</button></div>').join('')||'<p>No active alerts.</p>'}
+function tone(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audio=audio||new C();audio.resume().catch(()=>{});const t=audio.currentTime;for(let i=0;i<3;i++){const o=audio.createOscillator(),g=audio.createGain();o.type='sawtooth';o.frequency.setValueAtTime(650,t+i*.33);o.frequency.linearRampToValueAtTime(900,t+i*.33+.22);g.gain.setValueAtTime(.0001,t+i*.33);g.gain.exponentialRampToValueAtTime(.10,t+i*.33+.03);g.gain.exponentialRampToValueAtTime(.0001,t+i*.33+.28);o.connect(g);g.connect(audio.destination);o.start(t+i*.33);o.stop(t+i*.33+.29)}}catch(e){}}
+function speak(x){try{if(!window.speechSynthesis)return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('Attention. '+labels[x.type]+'. '+x.number+'. '+(x.details||'')+'. Please check and complete.');u.lang='en-IN';u.rate=.87;window.speechSynthesis.speak(u)}catch(e){}}
+function alertNow(x){activeId=x.id;document.getElementById('cfmOpsToastTitle').textContent='🚨 '+labels[x.type];document.getElementById('cfmOpsToastBody').textContent=x.number+(x.details?' — '+x.details:'');toast.hidden=false;tone();speak(x)}
+function check(){if(!toast.hidden)return;const now=Date.now(),a=get(),x=a.find(v=>!v.done&&v.next<=now);if(!x)return;x.next=now+five;if(save(a))alertNow(x);render()}
+function finish(done){const a=get(),x=a.find(v=>v.id===activeId);if(x){if(done)x.done=true;else x.next=Date.now()+five;save(a)}toast.hidden=true;activeId=null;try{speechSynthesis.cancel()}catch(e){}render();check()}
+document.getElementById('cfmOpsOpen').addEventListener('click',()=>{dlg.hidden=false;render()});
+document.getElementById('cfmOpsClose').addEventListener('click',()=>dlg.hidden=true);
+document.getElementById('cfmOpsView').addEventListener('click',()=>{dlg.hidden=false;render()});
+document.getElementById('cfmOpsDone').addEventListener('click',()=>finish(true));
+document.getElementById('cfmOpsSnooze').addEventListener('click',()=>finish(false));
+document.getElementById('cfmOpsList').addEventListener('click',e=>{const b=e.target.closest('[data-opsdone]');if(!b)return;const a=get(),x=a.find(v=>v.id===b.dataset.opsdone);if(x){x.done=true;save(a);if(activeId===x.id){toast.hidden=true;activeId=null}render()}});
+form.addEventListener('submit',e=>{e.preventDefault();const type=form.elements.type.value,number=form.elements.number.value.trim(),details=form.elements.details.value.trim();if(!labels[type]||!number)return;const a=get(),now=Date.now();a.push({id:String(now)+'-'+Math.random().toString(36).slice(2),type,number,details,next:now+((type==='bill'||type==='dispatch')?five:0),done:false});if(save(a)){form.reset();render();check()}});
+setInterval(check,15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});render();check();
+})();
+</script>
 <style id="cfm-label-safe-css">
 #cfmLabelToggle{position:fixed;left:12px;bottom:calc(92px + env(safe-area-inset-bottom, 0px));z-index:1000001;border:0;border-radius:12px;background:#126db7;color:#fff;padding:9px 11px;font:700 12px Arial;box-shadow:0 5px 20px #0003;cursor:pointer;opacity:.9}
 #cfmLabelDialog[hidden]{display:none!important}
