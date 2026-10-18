@@ -152,6 +152,8 @@ block.append(line);
 });
 const apply=document.createElement('button');apply.type='button';apply.textContent='✓ Use Auto-Scanned Rows';apply.onclick=()=>{
 const valid=proposed.filter(r=>/^CFM-\d+$/.test(String(r.work||''))&&Number(r.length)>0&&Number(r.width)>0&&/^EFPPL03\/\d{4,5}$/.test(cleanShort(String(r.srl||'')))&&Number.isInteger(Number(r.qty))&&Number(r.qty)>0);
+const incomplete=proposed.length-valid.length;
+if(incomplete){progress.textContent=incomplete+' incomplete/unclear rows need correction before importing the whole sheet. Nothing saved.';return}
 if(!valid.length){progress.textContent='No complete rows could be read safely. Nothing was imported or saved.';return}
 
 if(multi.length&&!confirm('Replace unsaved cutting rows with auto-scan results?'))return;
