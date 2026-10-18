@@ -98,7 +98,14 @@ function paperBounds(){
 }
 const paper=paperBounds();
 const all=[];
-const bands=[[.085,.255],[.255,.425],[.425,.595],[.595,.765],[.765,.965]];
+// Locate each printed work header independently instead of dividing a skewed
+// photo into five equal bands. The header row is dark across most of the page.
+const headerLines=[];
+const detect=document.createElement('canvas');detect.width=220;detect.height=440;
+const dc=detect.getContext('2d',{willReadFrequently:true});dc.drawImage(base,paper.x,paper.y,paper.w,paper.h,0,0,220,440);
+const pixels=dc.getImageData(0,0,220,440).data;
+for(let yy=10;yy<425;yy++){let dark=0;for(let xx=20;xx<195;xx++){const k=(yy*220+xx)*4;if(pixels[k]<135&&pixels[k+1]<135&&pixels[k+2]<135)dark++}if(dark>82&&(headerLines.length===0||yy-headerLines[headerLines.length-1]>38))headerLines.push(yy)}
+const bands=headerLines.length===5?headerLines.map((v,i)=>[v/440,(i<4?headerLines[i+1]/440:Math.min(1,v/440+.19))]):[[.085,.255],[.255,.425],[.425,.595],[.595,.765],[.765,.965]];
 // Scan the handwritten grid at several vertical offsets: printed work headers
 // are not equally spaced in photographs, and a single fixed row offset misses ink.
 const rowOffsets=[.40,.48,.56,.64,.72,.80];
