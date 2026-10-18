@@ -318,6 +318,21 @@ html,body{background:#f4faff!important;color:#13233b!important}
  }
  </style></head>`);
  const app=document.getElementById('app');
+ // Official medium-sized dashboard icons and restrained card motion.
+ app.addEventListener('load',()=>{
+  try{
+   const d=app.contentDocument;if(!d)return;
+   const st=d.createElement('style');st.id='cfm-official-medium-icons-v1';
+   st.textContent=`
+   #view-dashboard .photo-quick-actions button{min-height:104px!important;padding:12px 8px!important;border-radius:16px!important;gap:7px!important;box-shadow:0 4px 14px rgba(25,63,114,.10)!important;border:1px solid #dce5ef!important}
+   #view-dashboard .photo-quick-actions button span{width:46px!important;height:46px!important;border-radius:12px!important;font-size:24px!important}
+   #view-dashboard .photo-quick-actions button b{font-size:13px!important;font-weight:750!important;letter-spacing:0!important}
+   @media(max-width:760px){#view-dashboard .photo-quick-actions button{min-height:100px!important;padding:10px 6px!important}#view-dashboard .photo-quick-actions button span{width:44px!important;height:44px!important;font-size:23px!important}}
+   @media(prefers-reduced-motion:no-preference){#view-dashboard .photo-quick-actions button{animation:cfmOfficialCard 6s ease-in-out infinite!important}#view-dashboard .photo-quick-actions button span{animation:cfmOfficialIcon 4s ease-in-out infinite!important}@keyframes cfmOfficialCard{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}@keyframes cfmOfficialIcon{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}}
+   `;
+   (d.body||d.head).appendChild(st);
+  }catch(e){console.warn('Official icon styling:',e)}
+ });
  // Parent overlay controls: bottom navigation already has Dashboard.
  const dashboardShortcut=document.getElementById('cfmDashboardHome');
  if(dashboardShortcut){dashboardShortcut.style.setProperty('display','none','important');}
