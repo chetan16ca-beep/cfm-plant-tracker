@@ -93,7 +93,7 @@ function paperBounds(){
 }
 const paper=paperBounds();
 const all=[];
-const bands=[[.105,.285],[.285,.445],[.445,.615],[.615,.785],[.785,.97]];
+const bands=[[.085,.255],[.255,.425],[.425,.595],[.595,.765],[.765,.965]];
 for(let n=0;n<5;n++){
  progress.textContent='Reading Work '+(n+1)+'/5 — printed heading and cutting grid...';
  const [top,bottom]=bands[n],y=paper.y+top*paper.h,bh=(bottom-top)*paper.h;
@@ -102,17 +102,17 @@ for(let n=0;n<5;n++){
  let work=parseWork(headText);
  const rowResults=[];
  // Extra full-section OCR pass helps when handwritten rows fall outside fixed cell crops.
- const sectionImage=crop(base,paper.x+.06*paper.w,y+bh*.30,.87*paper.w,bh*.67,2.5,false);
+ const sectionImage=crop(base,paper.x+.06*paper.w,y+bh*.43,.87*paper.w,bh*.55,2.5,false);
  const sectionText=(await Tesseract.recognize(sectionImage,'eng',{tessedit_pageseg_mode:6})).data.text||'';
  // Read individual size, serial and quantity columns independently, not one long OCR line.
  // Multiple crop heights compensate for skew and different print scales.
  const seen=new Set();
  for(let j=0;j<4;j++){
-  const yy=y+bh*(.40+j*.145),rh=bh*.16;
+  const yy=y+bh*(.53+j*.105),rh=bh*.115;
   if(yy+rh>paper.y+paper.h)break;
-  const sizeCanvas=crop(base,paper.x+.15*paper.w,yy,.30*paper.w,rh,3,false);
-  const serialCanvas=crop(base,paper.x+.43*paper.w,yy,.18*paper.w,rh,3,false);
-  const qtyCanvas=crop(base,paper.x+.59*paper.w,yy,.13*paper.w,rh,3,false);
+  const sizeCanvas=crop(base,paper.x+.105*paper.w,yy,.275*paper.w,rh,3,false);
+  const serialCanvas=crop(base,paper.x+.385*paper.w,yy,.135*paper.w,rh,3,false);
+  const qtyCanvas=crop(base,paper.x+.535*paper.w,yy,.105*paper.w,rh,3,false);
   const [sz,sr,qt]=await Promise.all([
    Tesseract.recognize(sizeCanvas,'eng',{tessedit_pageseg_mode:7}),
    Tesseract.recognize(serialCanvas,'eng',{tessedit_pageseg_mode:7}),
