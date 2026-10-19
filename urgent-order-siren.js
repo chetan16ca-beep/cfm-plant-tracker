@@ -43,6 +43,21 @@ async function ring(){
   }
   return true;
 }
+function announceUrgent(workNumbers){
+  if(!('speechSynthesis' in window))return;
+  const clean=workNumbers.filter(Boolean).slice(0,8);
+  if(!clean.length)return;
+  const say=()=>{
+    try{
+      window.speechSynthesis.cancel();
+      const names=clean.map(id=>id.toUpperCase().replace(/CFM[\\s-]*/,'C F M ').replace(/(\\d)/g,'$1 ')).join('. ');
+      const utterance=new SpeechSynthesisUtterance('New urgent order. Work number '+names+'. Please check immediately.');
+      utterance.lang='en-IN';utterance.rate=0.87;utterance.pitch=1;utterance.volume=1;
+      window.speechSynthesis.speak(utterance);
+    }catch(e){console.warn('Urgent voice announcement:',e);}
+  };
+  setTimeout(say,2200);
+}
 function scan(){
   bindFrame();
   try{
@@ -54,15 +69,15 @@ function scan(){
     const orders=w.eval('typeof state!=="undefined" && state && Array.isArray(state.pending) ? state.pending.map(r=>({id:String(r.workNo||r.id||""),priority:String(r.priority||r.urgency||""),archived:!!r.archived})) : null');
     if(!orders)return;
     if(!baseline){orders.forEach(r=>{if(r.id){seen.add(r.id);priorityById.set(r.id,r.priority.toUpperCase());}});baseline=true;return;}
-    let newUrgent=false;
+    const newUrgent=[];
     for(const r of orders){
       if(!r.id)continue;
       const previous=priorityById.get(r.id);
       const urgent=/urgent/i.test(r.priority);
-      if(!r.archived&&urgent&&(previous===undefined||!/urgent/i.test(previous)))newUrgent=true;
+      if(!r.archived&&urgent&&(previous===undefined||!/urgent/i.test(previous)))newUrgent.push(r.id);
       seen.add(r.id);priorityById.set(r.id,r.priority.toUpperCase());
     }
-    if(newUrgent){ring();test.textContent='🚨 URGENT Alert';setTimeout(()=>test.textContent='🔊 Test Siren',3500);}
+    if(newUrgent.length){ring();announceUrgent(newUrgent);test.textContent='🚨 '+newUrgent.join(', ');setTimeout(()=>test.textContent='🔊 Test Siren',3500);}
   }catch(e){}
 }
 frame.addEventListener('load',()=>{baseline=false;seen.clear();priorityById.clear();setTimeout(scan,900)});
