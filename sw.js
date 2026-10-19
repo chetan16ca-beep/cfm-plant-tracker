@@ -1,4 +1,4 @@
-const CACHE='cfm-plant-v168r5-shell';
+const CACHE='cfm-plant-v178-shell';
 const BASE=self.registration.scope;
 const SHELL=[BASE+'manifest.json',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
 
@@ -19,7 +19,7 @@ self.addEventListener('fetch',e=>{
     return;
   }
   const url=new URL(e.request.url);
-  const isChunk=url.origin===location.origin&&url.pathname.includes('/chunks/');
+  const isChunk=url.origin===location.origin&&(url.pathname.includes('/chunks/')||url.pathname.endsWith('/urgent-order-siren.js')||url.pathname.endsWith('/index.html'));
   if(isChunk){
     e.respondWith((async()=>{
       const cache=await caches.open(CACHE);
