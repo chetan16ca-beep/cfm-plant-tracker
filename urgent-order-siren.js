@@ -81,15 +81,15 @@ function scan(){
       if(!r.archived&&urgent&&(previous===undefined||!/urgent/i.test(previous)))newUrgent.push(r.id);
       seen.add(r.id);priorityById.set(r.id,r.priority.toUpperCase());
     }
-    if(newUrgent.length){ring();announceUrgent(newUrgent);test.textContent='🚨 '+newUrgent.join(', ');setTimeout(()=>test.textContent='🔊 Test Siren',3500);}
+    if(newUrgent.length){ring();announceUrgent(newUrgent);test.textContent='🚨 '+newUrgent.join(', ');setTimeout(()=>test.textContent='🚨 URGENT Alert Active',3500);}
   }catch(e){}
 }
 frame.addEventListener('load',()=>{baseline=false;seen.clear();priorityById.clear();setTimeout(scan,900)});
 window.cfmUrgentSirenTest=()=>ring();
 const test=document.createElement('button');
-test.type='button';test.textContent='🔊 Test Siren';
+test.type='button';test.textContent='🚨 URGENT Alert Active';
 test.style.cssText='position:fixed;right:12px;top:174px;z-index:2147483646;background:#9b1c1c;color:white;border:0;border-radius:10px;padding:9px 12px;font:700 13px Arial';
-test.onclick=async()=>{test.textContent='🔊 Playing…';const ok=await ring();if(ok)announceUrgent(['CFM-678']);setTimeout(()=>{test.textContent=ok?'🔊 Test Siren':'⚠ Audio blocked'},5000)};
+test.onclick=()=>{test.textContent='🚨 Only new URGENT orders';setTimeout(()=>test.textContent='🔊 Test Siren',2500)};
 document.body.appendChild(test);
 setInterval(scan,3000);setTimeout(scan,2000);
 })();
