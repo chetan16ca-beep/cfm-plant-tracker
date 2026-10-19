@@ -2,14 +2,17 @@
 (()=>{'use strict';
 const types={urgent:'Urgent Order',bill:'Bill Request',dispatch:'Ready to Dispatch',stock:'Low Stock SRL'};
 let ctx;
+let audioReady=false;
+function unlockAudio(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ctx=ctx||new C();ctx.resume().then(()=>{audioReady=ctx.state==='running';showStatus(audioReady?'✓ Audio enabled • monitoring':'⚠ Audio blocked')}).catch(()=>showStatus('⚠ Tap Plant Siren to enable sound'))}catch(e){}}
+document.addEventListener('pointerdown',unlockAudio,{once:true});
 function sound(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ctx=ctx||new C();ctx.resume();const t=ctx.currentTime;for(let i=0;i<3;i++){const o=ctx.createOscillator(),g=ctx.createGain();o.type='sawtooth';o.frequency.setValueAtTime(660,t+i*.3);o.frequency.linearRampToValueAtTime(950,t+i*.3+.2);g.gain.setValueAtTime(.001,t+i*.3);g.gain.linearRampToValueAtTime(.12,t+i*.3+.04);g.gain.linearRampToValueAtTime(.001,t+i*.3+.25);o.connect(g);g.connect(ctx.destination);o.start(t+i*.3);o.stop(t+i*.3+.26)}}catch(e){console.warn('Siren sound',e)}}
 function say(msg){try{if(!window.speechSynthesis)return;const u=new SpeechSynthesisUtterance(msg);u.lang='en-IN';u.rate=.94;speechSynthesis.speak(u)}catch(e){}}
 function alertSiren(type,detail){const label=types[type]||'Plant Alert';sound();say(label+(detail?' '+detail:''));return label}
 window.CFMPlantSiren=alertSiren;
 const panel=document.createElement('div');panel.id='cfm-safe-siren-panel';panel.style.cssText='position:fixed;right:10px;bottom:14px;z-index:1000022;background:#fff;border:1px solid #ddd;border-radius:12px;padding:8px;box-shadow:0 3px 16px #0003;font:12px Arial;max-width:220px';
 const toggle=document.createElement('button');toggle.textContent='🔔 Plant Siren';toggle.style.cssText='background:#a52a19;color:#fff;border:0;border-radius:8px;padding:9px;font-weight:bold';panel.appendChild(toggle);
-const menu=document.createElement('div');menu.hidden=true;menu.style.cssText='padding-top:8px;display:grid;gap:5px';for(const [type,label] of Object.entries(types)){const b=document.createElement('button');b.textContent='🔊 '+label;b.style.cssText='padding:8px;border:1px solid #ddd;border-radius:6px;background:#f6f8fa';b.addEventListener('click',()=>alertSiren(type));menu.appendChild(b)}panel.appendChild(menu);
-toggle.addEventListener('click',()=>{menu.hidden=!menu.hidden;menu.style.display=menu.hidden?'none':'grid';if(!menu.hidden)sound()});menu.style.display='none';
+const menu=document.createElement('div');menu.hidden=true;menu.style.cssText='padding-top:8px;display:grid;gap:5px';for(const [type,label] of Object.entries(types)){const b=document.createElement('button');b.textContent='🔊 '+label;b.style.cssText='padding:8px;border:1px solid #ddd;border-radius:6px;background:#f6f8fa';b.addEventListener('click',()=>{unlockAudio();alertSiren(type)});menu.appendChild(b)}panel.appendChild(menu);
+toggle.addEventListener('click',()=>{unlockAudio();menu.hidden=!menu.hidden;menu.style.display=menu.hidden?'none':'grid';if(!menu.hidden)sound()});menu.style.display='none';
 document.body.appendChild(panel);
 
 /* Read-only observation of the running ERP. Never mutate its state or navigation. */
@@ -25,7 +28,7 @@ function scan(){
   if(!win||!win.document||win.document.readyState!=='complete')return;
   const snap=win.eval('(()=>{if(typeof state==="undefined"||!state)return null;const pending=(state.pending||[]).map(r=>({id:String(r.workNo||r.id||""),priority:String(r.priority||r.urgency||""),bill:String(r.billStatus||""),dispatch:String(r.dispatchStatus||"")}));const stock=(state.store||[]).map(r=>({id:String(r.srlNo||r.srl||r.serial||""),balance:typeof srlBalance==="function"?Number(srlBalance(r)):NaN}));const missing=[];for(const r of state.pending||[]){try{if(typeof pendingQty==='function'&&pendingQty(r)<=0)continue;const cloth=String(r.cloth||'').trim(),width=String(r.width||'').trim();if(!cloth)continue;const matches=(state.store||[]).filter(x=>String(x.quality||x.cloth||'').trim().toUpperCase()===cloth.toUpperCase()&&(!width||!String(x.width||'').trim()||String(x.width||'').trim()===width));const open=matches.some(x=>typeof srlBalance==='function'&&Number(srlBalance(x))>0);if(!open)missing.push({id:String(r.workNo||r.id||''),cloth,width})}catch(e){}}return {pending,stock,missing}})()');
   if(!snap){showStatus('⚠ ERP data not accessible');return;}
-  showStatus('✓ Alert monitoring active');
+  showStatus((audioReady?'✓ Audio ON':'⚠ Audio needs tap')+' • '+snap.pending.length+' orders checked');
   const current=new Map();
   for(const r of snap.pending){
    if(!r.id)continue;
@@ -44,8 +47,10 @@ function scan(){
   initialized=true;
  }catch(e){showStatus('⚠ Alert scan error');if(!scan.warned){console.warn('CFM siren scan unavailable:',e);scan.warned=true}}
 }
-setInterval(scan,15000);
+setInterval(scan,5000);
+function bindFrameEvents(){try{const d=document.getElementById('app')?.contentDocument;if(!d||d.__cfmSirenBound)return;d.__cfmSirenBound=true;d.addEventListener('pointerdown',unlockAudio,{once:true});d.addEventListener('click',()=>setTimeout(scan,600));d.addEventListener('change',()=>setTimeout(scan,600));}catch(e){}}
+setInterval(bindFrameEvents,2000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)scan()});
-document.getElementById('app')?.addEventListener('load',()=>{initialized=false;seen.clear();setTimeout(scan,1200)});
+document.getElementById('app')?.addEventListener('load',()=>{initialized=false;seen.clear();setTimeout(()=>{bindFrameEvents();scan()},1200)});
 setTimeout(scan,2500);
 })();
