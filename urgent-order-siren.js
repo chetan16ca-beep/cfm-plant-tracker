@@ -62,7 +62,7 @@ frame.addEventListener('load',()=>{baseline=false;seen.clear();priorityById.clea
 window.cfmUrgentSirenTest=()=>{unlock();setTimeout(ring,250)};
 const test=document.createElement('button');
 test.type='button';test.textContent='🔊 Test Siren';
-test.style.cssText='position:fixed;right:12px;bottom:132px;z-index:2147483646;background:#9b1c1c;color:white;border:0;border-radius:10px;padding:9px 12px;font:700 13px Arial';
+test.style.cssText='position:fixed;right:12px;top:174px;z-index:2147483646;background:#9b1c1c;color:white;border:0;border-radius:10px;padding:9px 12px;font:700 13px Arial';
 test.onclick=()=>{unlock();setTimeout(ring,150)};
 document.body.appendChild(test);
 setInterval(scan,3000);setTimeout(scan,2000);
