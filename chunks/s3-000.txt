@@ -3,6 +3,8 @@
   return n;
 }
 window.deleteMistakeWork=async function(i){
+  alert('Work Order permanent delete disabled. Archive option use karein.');
+  return;
   const r=state.pending[i];if(!r)return;
   const work=r.workNo||'this work', a=workHasLinkedActivity(r);
   if(a.hasCut){
