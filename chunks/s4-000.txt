@@ -67,7 +67,7 @@ function openPrintWindow(title,body,landscape=false){
 <meta name="apple-mobile-web-app-title" content="CFM Tracker">
 <link rel="manifest" href="./manifest.json">
 ${style}<meta name="color-scheme" content="light">
-</head><body>${body}</body></html>`);w.document.close();
+</head><body>${body}<script>setTimeout(()=>window.print(),400)<\/script></body></html>`);w.document.close();
 }
 function dailyWorkBlock(r,n,date){
   const todayCuts=state.cutting.filter(c=>normalize(c.workNo)===normalize(r.workNo)&&(!date||c.date===date)).slice(-3);
