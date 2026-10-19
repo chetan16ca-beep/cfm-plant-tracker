@@ -22,6 +22,7 @@ function bindFrame(){
     if(!doc||doc.__cfmUrgentSirenBound)return;
     doc.__cfmUrgentSirenBound=true;
     doc.addEventListener('pointerdown',unlock,{capture:true});
+    doc.addEventListener('click',e=>{const label=(e.target?.textContent||'').trim();if(/^(save|update|submit)$/i.test(label)){setTimeout(scan,350);setTimeout(scan,1100);setTimeout(scan,2200);}},true);
   }catch(e){}
 }
 async function ring(){
@@ -61,7 +62,7 @@ function scan(){
       if(!r.archived&&urgent&&(previous===undefined||!/urgent/i.test(previous)))newUrgent=true;
       seen.add(r.id);priorityById.set(r.id,r.priority.toUpperCase());
     }
-    if(newUrgent)ring();
+    if(newUrgent){ring();test.textContent='🚨 URGENT Alert';setTimeout(()=>test.textContent='🔊 Test Siren',3500);}
   }catch(e){}
 }
 frame.addEventListener('load',()=>{baseline=false;seen.clear();priorityById.clear();setTimeout(scan,900)});
