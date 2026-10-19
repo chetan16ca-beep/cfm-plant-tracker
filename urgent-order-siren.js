@@ -3,6 +3,7 @@
 const frame=document.getElementById('app');
 let audio=null,ready=false,baseline=false;
 const seen=new Set();
+const priorityById=new Map();
 let lastSnapshot='';
 function unlock(){
   try{
@@ -42,17 +43,19 @@ function scan(){
     if(!w||!w.document||w.document.readyState!=='complete')return;
     const orders=w.eval('typeof state!=="undefined" && state && Array.isArray(state.pending) ? state.pending.map(r=>({id:String(r.workNo||r.id||""),priority:String(r.priority||r.urgency||""),archived:!!r.archived})) : null');
     if(!orders)return;
-    if(!baseline){orders.forEach(r=>{if(r.id)seen.add(r.id)});baseline=true;return;}
+    if(!baseline){orders.forEach(r=>{if(r.id){seen.add(r.id);priorityById.set(r.id,r.priority.toUpperCase());}});baseline=true;return;}
     let newUrgent=false;
     for(const r of orders){
-      if(!r.id||seen.has(r.id))continue;
-      seen.add(r.id);
-      if(!r.archived&&/urgent/i.test(r.priority))newUrgent=true;
+      if(!r.id)continue;
+      const previous=priorityById.get(r.id);
+      const urgent=/urgent/i.test(r.priority);
+      if(!r.archived&&urgent&&(previous===undefined||!/urgent/i.test(previous)))newUrgent=true;
+      seen.add(r.id);priorityById.set(r.id,r.priority.toUpperCase());
     }
     if(newUrgent)ring();
   }catch(e){}
 }
-frame.addEventListener('load',()=>{baseline=false;seen.clear();setTimeout(scan,900)});
+frame.addEventListener('load',()=>{baseline=false;seen.clear();priorityById.clear();setTimeout(scan,900)});
 window.cfmUrgentSirenTest=()=>{unlock();setTimeout(ring,250)};
 const test=document.createElement('button');
 test.type='button';test.textContent='🔊 Test Siren';
