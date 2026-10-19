@@ -112,8 +112,8 @@ async function cloudInit(){
     cloudUpdatedAt=row?.updated_at||'';
     cloudReady=true;
     if(cloudDirty){
-      await cloudPush(true);
-      cloudDirty=false;
+      const ok=await cloudPush(true);
+      if(!ok)throw new Error('Pending local changes not yet synced');
     }else if(row&&validState(row.payload)){
       const upgraded=safeApplyCloud(row);if(upgraded){queueCloudPush();}
     }else{
