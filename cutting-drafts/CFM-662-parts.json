@@ -1,0 +1,34 @@
+{
+  "workNo": "CFM-662",
+  "kind": "CUTTING_PARTS_ONLY",
+  "status": "PREPARED_NOT_IMPORTED",
+  "entries": [
+    {
+      "srl": "E-317",
+      "size": "62 x 62 in",
+      "qty": 20
+    },
+    {
+      "srl": "E-317",
+      "size": "15 x 65 in",
+      "qty": 10
+    },
+    {
+      "srl": "E-318",
+      "size": "62 x 62 in",
+      "qty": 10
+    },
+    {
+      "srl": "E-319",
+      "size": "30 x 133 in",
+      "qty": 10
+    },
+    {
+      "srl": "E-319",
+      "size": "25 x 193 in",
+      "qty": 10
+    }
+  ],
+  "totalParts": 60,
+  "notes": "Five separate part entries. Do not change finished bags, pending order quantities or stock until reviewed and committed via ERP."
+}
