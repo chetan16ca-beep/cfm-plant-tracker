@@ -1085,7 +1085,7 @@ window.openMultiPendingForm=function(){
       <div class="field"><label>PO / Reference</label><input name="multiPoNo" id="multiPoNo" placeholder="PO Number"></div>
       <div class="field"><label>Order Date</label><input name="multiOrderDate" id="multiOrderDate" type="date" value="${todayISO()}"></div>
       <div class="field"><label>Delivery Date</label><input name="multiDeliveryDate" id="multiDeliveryDate" type="date"></div>
-      <div class="field"><label>Priority</label><select name="multiPriority" id="multiPriority"><option>NORMAL</option><option>HIGH</option><option>LOW</option></select></div>
+      <div class="field"><label>Priority</label><select name="multiPriority" id="multiPriority"><option>NORMAL</option><option>HIGH</option><option>URGENT</option><option>LOW</option></select></div>
     </div>
     <div class="multi-po-title"><div><h3>Items in this PO</h3><p>Ek company ke ek PO me 6–7 items ek saath add kar sakte ho.</p></div><div class="multi-po-info">ℹ️ Har item ka apna Work No. auto banega.</div></div>
     <datalist id="multiProductOptions">${multiPoProductOptions()}</datalist>
