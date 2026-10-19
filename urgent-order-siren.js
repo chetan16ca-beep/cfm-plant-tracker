@@ -3,6 +3,7 @@
 const frame=document.getElementById('app');
 let audio=null,ready=false,baseline=false;
 const seen=new Set();
+let scanInProgress=false;
 const priorityById=new Map();
 let lastSnapshot='';
 async function unlock(){
@@ -22,6 +23,7 @@ function bindFrame(){
     if(!doc||doc.__cfmUrgentSirenBound)return;
     doc.__cfmUrgentSirenBound=true;
     doc.addEventListener('pointerdown',unlock,{capture:true});
+    doc.addEventListener('click',()=>{setTimeout(scan,500);setTimeout(scan,1600);setTimeout(scan,3500);},true);
     doc.addEventListener('click',e=>{const label=(e.target?.textContent||'').trim();if(/^(save|update|submit)$/i.test(label)){setTimeout(scan,350);setTimeout(scan,1100);setTimeout(scan,2200);}},true);
   }catch(e){}
 }
@@ -85,7 +87,7 @@ window.cfmUrgentSirenTest=()=>ring();
 const test=document.createElement('button');
 test.type='button';test.textContent='🔊 Test Siren';
 test.style.cssText='position:fixed;right:12px;top:174px;z-index:2147483646;background:#9b1c1c;color:white;border:0;border-radius:10px;padding:9px 12px;font:700 13px Arial';
-test.onclick=async()=>{test.textContent='🔊 Playing…';const ok=await ring();setTimeout(()=>{test.textContent=ok?'🔊 Test Siren':'⚠ Audio blocked'},2300)};
+test.onclick=async()=>{test.textContent='🔊 Playing…';const ok=await ring();if(ok)announceUrgent(['CFM-678']);setTimeout(()=>{test.textContent=ok?'🔊 Test Siren':'⚠ Audio blocked'},5000)};
 document.body.appendChild(test);
 setInterval(scan,3000);setTimeout(scan,2000);
 })();
