@@ -442,4 +442,5 @@ document.getElementById('cfmLabelImportButton').addEventListener('click',()=>doc
 document.getElementById('cfmLabelImportFile').addEventListener('change',async ev=>{const file=ev.target.files[0];if(!file)return;try{const p=JSON.parse(await file.text());if(p.app!=='CFM Label Register'||!Array.isArray(p.rows))throw Error('Invalid backup file');const a=get(),ids=new Set(a.map(x=>[x.wo,x.qty,x.to,x.date,x.createdAt].join('|')));let n=0;for(const x of p.rows){if(!x||typeof x.wo!=='string'||!Number.isInteger(Number(x.qty))||Number(x.qty)<1)continue;const id=[x.wo,x.qty,x.to,x.date,x.createdAt].join('|');if(!ids.has(id)){a.push(x);ids.add(id);n++}}if(n&&confirm('Import '+n+' new label records?')){localStorage.setItem(key,JSON.stringify(a));draw()}else if(!n)alert('No new label records')}catch(e){alert('Import error: '+e.message)}ev.target.value=''});
 })();
 </script>
+<script src="./plant-siren-safe.js?v=auto-test-1" defer></script>
 </body></html>
