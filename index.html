@@ -101,6 +101,22 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker"></iframe>
+<button id="cfmSyncNow" type="button" style="position:fixed;right:12px;bottom:76px;z-index:2147483646;background:#1263ae;color:white;border:0;border-radius:12px;padding:12px 16px;font:700 14px Arial;box-shadow:0 3px 14px #0004">☁️ Sync Now</button>
+<script>
+document.getElementById('cfmSyncNow').addEventListener('click',async function(){
+  const btn=this;btn.textContent='☁️ Syncing…';btn.disabled=true;
+  try{
+    const w=document.getElementById('app').contentWindow;
+    if(!w||typeof w.manualCloudSync!=='function')throw Error('ERP not ready');
+    await w.manualCloudSync();
+    const badge=w.document.getElementById('cloudSyncBadge');
+    const status=badge?badge.textContent:'Sync requested';
+    btn.textContent=status.includes('failed')||status.includes('pending')?'⚠ Sync Pending':'✓ Sync Checked';
+    alert('CFM Sync Status: '+status);
+  }catch(e){btn.textContent='⚠ Retry Sync';alert('ERP load hone ke baad Sync dabayein. '+e.message);}
+  finally{btn.disabled=false;setTimeout(()=>{btn.textContent='☁️ Sync Now'},4000);}
+});
+</script>
 <script src="./backup-safe.js?v=2"></script>
 <button id="cfmDashboardHome" type="button" style="position:fixed;top:106px;right:12px;z-index:2147483646;background:#1674c9;color:#fff;border:0;border-radius:10px;padding:10px 14px;font:700 14px system-ui;box-shadow:0 3px 10px #0003" onclick="try{document.getElementById('app').contentWindow.showView('dashboard')}catch(e){alert('Dashboard unavailable: '+e.message)}">🏠 Dashboard</button>
 <button id="notifyBtn" type="button">🔔 Enable Notifications</button>
