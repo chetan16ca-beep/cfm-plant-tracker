@@ -46,7 +46,7 @@ async function ring(){
   return true;
 }
 function announceUrgent(workNumbers){
-  if(!('speechSynthesis' in window))return;
+  if(!('speechSynthesis' in window)){console.warn('CFM voice unavailable');return;}
   const clean=workNumbers.filter(Boolean).slice(0,8);
   if(!clean.length)return;
   const say=()=>{
@@ -55,7 +55,9 @@ function announceUrgent(workNumbers){
       const names=clean.map(id=>id.toUpperCase().replace(/CFM[\\s-]*/,'C F M ').replace(/(\\d)/g,'$1 ')).join('. ');
       const utterance=new SpeechSynthesisUtterance('New urgent order. Work number '+names+'. Please check immediately.');
       utterance.lang='en-IN';utterance.rate=0.87;utterance.pitch=1;utterance.volume=1;
+      utterance.onerror=e=>console.warn('CFM voice error',e.error);
       window.speechSynthesis.speak(utterance);
+      if(window.speechSynthesis.paused)window.speechSynthesis.resume();
     }catch(e){console.warn('Urgent voice announcement:',e);}
   };
   setTimeout(say,2200);
