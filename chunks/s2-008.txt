@@ -77,6 +77,33 @@ async function cloudFetch(){
   if(!r.ok)throw new Error('Cloud read '+r.status);
   const a=await r.json();return a[0]||null;
 }
+/* v2026.10.19-order-safe: preserve work orders on every cloud read/write. */
+function safeOrderMerge(remote,local,localWins=false){
+  const merged=clone(remote);
+  const items=new Map();
+  for(const x of remote.pending||[]){const id=normalize(x.workNo);if(id)items.set(id,x);}
+  for(const x of local.pending||[]){
+    const id=normalize(x.workNo);
+    if(!id)continue;
+    if(!items.has(id)||localWins)items.set(id,x);
+  }
+  merged.pending=Array.from(items.values());
+  return merged;
+}
+function safeApplyCloud(row){
+  const oldRaw=JSON.stringify(state);
+  const merged=safeOrderMerge(row.payload,state,false);
+  const restored=merged.pending.length-(row.payload.pending||[]).length;
+  if(restored>0){pushHistory(oldRaw);cloudDirty=true;}
+  state=merged;
+  ensureExcelMasterData();syncDerivedState();
+  cloudVersion=num(row.version)||cloudVersion;
+  cloudUpdatedAt=row.updated_at||cloudUpdatedAt;
+  safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  renderAll();
+  if(restored>0){setCloudBadge('☁️ '+restored+' orders protected • syncing','amber');queueCloudPush();}
+  return restored;
+}
 async function cloudInit(){
   setCloudBadge('☁️ Connecting…','amber');
   try{
@@ -88,7 +115,7 @@ async function cloudInit(){
       await cloudPush(true);
       cloudDirty=false;
     }else if(row&&validState(row.payload)){
-      state=clone(row.payload);const upgraded=ensureExcelMasterData();syncDerivedState();safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();if(upgraded){cloudDirty=true;await cloudPush(true);}
+      const upgraded=safeApplyCloud(row);if(upgraded){queueCloudPush();}
     }else{
       ensureExcelMasterData();await cloudPush(true);
     }
@@ -97,43 +124,39 @@ async function cloudInit(){
 }
 async function cloudPush(force=false){
   if(!cloudReady&&!force)return false;
-  if(cloudBusy)return false;
+  if(cloudBusy){cloudDirty=true;return false;}
   cloudBusy=true;
   const seqAtStart=localMutationSeq;
-  const snapshot=clone(state);
-  setCloudBadge('☁️ Syncing…','amber');
+  setCloudBadge('☁️ Syncing safely…','amber');
   try{
-    const latest=await cloudFetchMeta().catch(()=>null);
-    const baseVersion=Math.max(1,num(latest?.version)||cloudVersion||1);
-    const nextVersion=baseVersion+1;
-    const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main';
-    const r=await fetch(u,{
-      method:'PATCH',
-      headers:{...cloudHeaders(),'Prefer':'return=representation'},
-      body:JSON.stringify({payload:(()=>{const d=clone(snapshot);delete d.measurements;delete d.srlTracker;delete d.issueRegister;delete d.srlOpenClose;delete d.productMaster;return d})(),version:nextVersion,updated_at:new Date().toISOString()})
-    });
-    if(!r.ok)throw new Error('Cloud save '+r.status);
-    const a=await r.json();
-    if(!a.length)throw new Error('Cloud save returned no row');
-    cloudVersion=num(a[0].version)||nextVersion;
-    cloudUpdatedAt=a[0].updated_at||new Date().toISOString();
-    if(localMutationSeq===seqAtStart){
-      cloudDirty=false;
-      setCloudBadge('☁️ 3-4 Mobile LIVE','green');
-    }else{
-      cloudDirty=true;
-      setCloudBadge('☁️ Syncing latest…','amber');
-      setTimeout(()=>queueCloudPush(),80);
+    for(let attempt=0;attempt<4;attempt++){
+      const row=await cloudFetch();
+      if(!row||!validState(row.payload))throw new Error('Cloud data unavailable; no overwrite allowed');
+      const baseVersion=num(row.version);
+      if(!baseVersion)throw new Error('Cloud version missing; save blocked');
+      const snapshot=safeOrderMerge(state,row.payload,true);
+      const payload=clone(snapshot);
+      delete payload.measurements;delete payload.srlTracker;delete payload.issueRegister;delete payload.srlOpenClose;delete payload.productMaster;
+      const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+encodeURIComponent(baseVersion);
+      const response=await fetch(u,{method:'PATCH',headers:{...cloudHeaders(),'Prefer':'return=representation'},
+        body:JSON.stringify({payload,version:baseVersion+1,updated_at:new Date().toISOString()})});
+      if(!response.ok)throw new Error('Cloud save '+response.status);
+      const updated=await response.json();
+      if(!updated.length)continue; // Other mobile changed version: retry instead of overwriting.
+      cloudVersion=num(updated[0].version)||baseVersion+1;
+      cloudUpdatedAt=updated[0].updated_at||new Date().toISOString();
+      // Preserve new work orders found in cloud even when local device was behind.
+      const before=state.pending.length;
+      state.pending=safeOrderMerge(snapshot,state,false).pending;
+      if(state.pending.length!==before){safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();}
+      if(localMutationSeq===seqAtStart){cloudDirty=false;setCloudBadge('☁️ Synced • orders safe','green');}
+      else{cloudDirty=true;setCloudBadge('☁️ Syncing latest…','amber');setTimeout(()=>queueCloudPush(),100);}
+      return true;
     }
-    return true;
+    throw new Error('Cloud conflict; retry Sync');
   }catch(e){
-    console.warn(e);
-    cloudDirty=true;
-    setCloudBadge('☁️ Sync failed • tap Sync','red');
-    return false;
-  }finally{
-    cloudBusy=false;
-  }
+    console.warn('Safe cloud sync:',e);cloudDirty=true;setCloudBadge('☁️ Sync pending • tap Sync','red');return false;
+  }finally{cloudBusy=false;}
 }
 let cloudDirty=false;
 function queueCloudPush(){
@@ -155,9 +178,7 @@ window.manualCloudSync=async function(){
     if(v>cloudVersion){
       const row=await cloudFetch();
       if(row&&validState(row.payload)){
-        state=clone(row.payload);syncDerivedState();
-        cloudVersion=num(row.version)||cloudVersion;cloudUpdatedAt=row.updated_at||cloudUpdatedAt;
-        safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();
+        safeApplyCloud(row);
       }
     }
     toast('3-4 Mobile sync complete');
@@ -172,12 +193,10 @@ async function cloudPoll(){
   try{
     const meta=await cloudFetchMeta();if(!meta)return;const v=num(meta.version)||0;
     if(v>cloudVersion){const row=await cloudFetch();if(row&&validState(row.payload)){
-      const local654=(state.pending||[]).find(x=>normalize(x.workNo)==='CFM-654');
-      const cloudHas654=(row.payload.pending||[]).some(x=>normalize(x.workNo)==='CFM-654');
-      if(local654&&!cloudHas654){
-        cloudDirty=true;setCloudBadge('☁️ Protecting CFM-654 • syncing','amber');queueCloudPush();return;
-      }
-      const prevRaw=JSON.stringify(state);state=clone(row.payload);ensureExcelMasterData();syncDerivedState();cloudVersion=v;cloudUpdatedAt=row.updated_at||'';const nextRaw=JSON.stringify(state);safeStorage.setItem(STORAGE_KEY,nextRaw);renderAll();setCloudBadge('☁️ Updated from other mobile','green');const notice=genericUpdateNotification(prevRaw,nextRaw);showLocalNotification('☁️ Other Device • '+notice.title.replace(/^🔔\s*/,''),notice.body||notificationSummary());
+      const prevRaw=JSON.stringify(state);
+      safeApplyCloud(row);
+      const nextRaw=JSON.stringify(state);
+      if(prevRaw!==nextRaw){const notice=genericUpdateNotification(prevRaw,nextRaw);showLocalNotification('☁️ Other Device • '+notice.title.replace(/^🔔\\s*/,''),notice.body||notificationSummary());}
     }}
     else if(cloudReady)setCloudBadge('☁️ 3-4 Mobile LIVE','green');
   }catch(e){setCloudBadge('☁️ Offline – will retry','red');}
