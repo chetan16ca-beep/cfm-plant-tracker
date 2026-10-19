@@ -39,6 +39,9 @@ function ring(){
 function scan(){
   bindFrame();
   try{
+    const doc=frame.contentDocument;
+    if(doc){for(const el of doc.querySelectorAll('select')){const id=(el.id+' '+el.name+' '+(el.closest('.field')?.textContent||'')).toLowerCase();if(id.includes('priority')&&!Array.from(el.options).some(o=>o.value.toUpperCase()==='URGENT'))el.add(new Option('URGENT','URGENT'));}}
+
     const w=frame.contentWindow;
     if(!w||!w.document||w.document.readyState!=='complete')return;
     const orders=w.eval('typeof state!=="undefined" && state && Array.isArray(state.pending) ? state.pending.map(r=>({id:String(r.workNo||r.id||""),priority:String(r.priority||r.urgency||""),archived:!!r.archived})) : null');
