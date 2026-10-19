@@ -20,7 +20,7 @@ function scan(){
   const frame=document.getElementById('app');
   const win=frame&&frame.contentWindow;
   if(!win||!win.document||win.document.readyState!=='complete')return;
-  const snap=win.eval('(()=>{if(typeof state==="undefined"||!state)return null;const pending=(state.pending||[]).map(r=>({id:String(r.workNo||r.id||""),priority:String(r.priority||r.urgency||""),bill:String(r.billStatus||""),dispatch:String(r.dispatchStatus||"")}));const stock=(state.store||[]).map(r=>({id:String(r.srlNo||r.srl||r.serial||""),balance:typeof srlBalance==="function"?Number(srlBalance(r)):NaN}));return {pending,stock}})()');
+  const snap=win.eval('(()=>{if(typeof state==="undefined"||!state)return null;const pending=(state.pending||[]).map(r=>({id:String(r.workNo||r.id||""),priority:String(r.priority||r.urgency||""),bill:String(r.billStatus||""),dispatch:String(r.dispatchStatus||"")}));const stock=(state.store||[]).map(r=>({id:String(r.srlNo||r.srl||r.serial||""),balance:typeof srlBalance==="function"?Number(srlBalance(r)):NaN}));const missing=[];for(const r of state.pending||[]){try{if(typeof pendingQty==='function'&&pendingQty(r)<=0)continue;const cloth=String(r.cloth||'').trim(),width=String(r.width||'').trim();if(!cloth)continue;const matches=(state.store||[]).filter(x=>String(x.quality||x.cloth||'').trim().toUpperCase()===cloth.toUpperCase()&&(!width||!String(x.width||'').trim()||String(x.width||'').trim()===width));const open=matches.some(x=>typeof srlBalance==='function'&&Number(srlBalance(x))>0);if(!open)missing.push({id:String(r.workNo||r.id||''),cloth,width})}catch(e){}}return {pending,stock,missing}})()');
   if(!snap)return;
   const current=new Map();
   for(const r of snap.pending){
@@ -35,6 +35,7 @@ function scan(){
    const key='stock:'+r.id,active=r.balance<=5;current.set(key,active);
    if(initialized&&active&&!seen.get(key))alertSiren('stock',r.id);
   }
+  for(const r of snap.missing||[]){if(!r.id)continue;const key='missing:'+r.id+':'+r.cloth+':'+r.width;current.set(key,true);if(initialized&&!seen.get(key))alertSiren('stock',r.id+' '+r.cloth+' NO OPEN STOCK')}
   seen.clear();for(const [key,val] of current)seen.set(key,val);
   initialized=true;
  }catch(e){if(!scan.warned){console.warn('CFM siren scan unavailable:',e);scan.warned=true}}
