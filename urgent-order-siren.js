@@ -81,7 +81,7 @@ function scan(){
       if(!r.archived&&urgent&&(previous===undefined||!/urgent/i.test(previous)))newUrgent.push(r.id);
       seen.add(r.id);priorityById.set(r.id,r.priority.toUpperCase());
     }
-    if(newUrgent.length){ring();announceUrgent(newUrgent);test.textContent='🚨 '+newUrgent.join(', ');setTimeout(()=>test.textContent='🚨 URGENT Alert Active',3500);}
+    if(newUrgent.length){ring();announceUrgent(newUrgent);if(typeof window.CFMNotify==='function'){newUrgent.forEach(id=>window.CFMNotify('🚨 New URGENT Order','Work Number '+id+' — open CFM ERP',{tag:'cfm-urgent-'+id}).catch(()=>{}));}test.textContent='🚨 '+newUrgent.join(', ');setTimeout(()=>test.textContent='🚨 URGENT Alert Active',3500);}
   }catch(e){}
 }
 frame.addEventListener('load',()=>{baseline=false;seen.clear();priorityById.clear();setTimeout(scan,900)});
