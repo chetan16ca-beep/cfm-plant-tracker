@@ -3,6 +3,8 @@
   return n;
 }
 window.deleteMistakeWork=async function(i){
+  alert('WORK ORDER DELETE LOCKED: Data safety ke liye permanent deletion disabled hai. Order ko Archive karein.');
+  return;
   const r=state.pending[i];if(!r)return;
   const work=r.workNo||'this work', a=workHasLinkedActivity(r);
   if(a.hasCut){
