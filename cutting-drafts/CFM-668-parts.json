@@ -1,0 +1,28 @@
+{
+  "workNo": "CFM-668",
+  "status": "CONFIRMED_PENDING_LIVE_ERP_WRITE",
+  "date": "2026-10-17",
+  "srl": "E-348",
+  "cutting": [
+    {
+      "sizeInches": [
+        50,
+        50
+      ],
+      "parts": 6,
+      "consumptionMeters": 7.62
+    },
+    {
+      "sizeInches": [
+        20,
+        155
+      ],
+      "parts": 2,
+      "consumptionMeters": 7.874
+    }
+  ],
+  "totalParts": 8,
+  "totalConsumptionMeters": 15.494,
+  "cuttingMethod": "Separate lengthwise cuts",
+  "notes": "Confirmed by user. Do not update store until live record is verified and duplicate issue ruled out. Finished bag quantity unchanged."
+}
