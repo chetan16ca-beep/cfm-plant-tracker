@@ -191,6 +191,10 @@ if('serviceWorker' in navigator){
    done++;st.textContent='Loading '+done+'/'+total;return txt
  }));
  let src=texts.join('')+'\n';
+ // Escape embedded closing script tags in print HTML strings before iframe HTML parsing.
+ // Keep original ERP data, click handlers and print templates intact.
+ src=src.replace(/<\\\/script>/gi,'<\\\\/script>');
+
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V167');
