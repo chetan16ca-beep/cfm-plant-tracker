@@ -134,7 +134,7 @@ async function cloudPush(force=false){
       if(!row||!validState(row.payload))throw new Error('Cloud data unavailable; no overwrite allowed');
       const baseVersion=num(row.version);
       if(!baseVersion)throw new Error('Cloud version missing; save blocked');
-      const snapshot=safeOrderMerge(state,row.payload,true);
+      const snapshot=safeOrderMerge(row.payload,state,true);
       const payload=clone(snapshot);
       delete payload.measurements;delete payload.srlTracker;delete payload.issueRegister;delete payload.srlOpenClose;delete payload.productMaster;
       const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+encodeURIComponent(baseVersion);
