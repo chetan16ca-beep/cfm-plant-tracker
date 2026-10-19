@@ -5,13 +5,15 @@ let audio=null,ready=false,baseline=false;
 const seen=new Set();
 const priorityById=new Map();
 let lastSnapshot='';
-function unlock(){
+async function unlock(){
   try{
     const AC=window.AudioContext||window.webkitAudioContext;
-    if(!AC)return;
+    if(!AC)return false;
     if(!audio)audio=new AC();
-    audio.resume().then(()=>{ready=true;}).catch(()=>{});
-  }catch(e){}
+    if(audio.state!=='running')await audio.resume();
+    ready=audio.state==='running';
+    return ready;
+  }catch(e){console.warn('CFM siren audio',e);return false;}
 }
 document.addEventListener('pointerdown',unlock,{capture:true});
 function bindFrame(){
@@ -22,19 +24,23 @@ function bindFrame(){
     doc.addEventListener('pointerdown',unlock,{capture:true});
   }catch(e){}
 }
-function ring(){
-  unlock();
-  if(!audio||audio.state!=='running')return;
-  for(let k=0;k<3;k++){
-    const t=audio.currentTime+k*.47;
+async function ring(){
+  const ok=await unlock();
+  if(!ok){test.textContent='⚠ Audio blocked';return false;}
+  for(let k=0;k<4;k++){
+    const t=audio.currentTime+.04+k*.5;
     const o=audio.createOscillator(),g=audio.createGain();
-    o.type='square';o.frequency.setValueAtTime(750,t);
-    o.frequency.setValueAtTime(1050,t+.20);
-    g.gain.setValueAtTime(.0001,t);
-    g.gain.exponentialRampToValueAtTime(.16,t+.025);
-    g.gain.exponentialRampToValueAtTime(.0001,t+.40);
-    o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+.41);
+    o.type='sawtooth';
+    o.frequency.setValueAtTime(650,t);
+    o.frequency.linearRampToValueAtTime(1150,t+.23);
+    o.frequency.linearRampToValueAtTime(650,t+.43);
+    g.gain.setValueAtTime(.001,t);
+    g.gain.linearRampToValueAtTime(.22,t+.035);
+    g.gain.setValueAtTime(.22,t+.35);
+    g.gain.linearRampToValueAtTime(.001,t+.45);
+    o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+.46);
   }
+  return true;
 }
 function scan(){
   bindFrame();
@@ -59,11 +65,11 @@ function scan(){
   }catch(e){}
 }
 frame.addEventListener('load',()=>{baseline=false;seen.clear();priorityById.clear();setTimeout(scan,900)});
-window.cfmUrgentSirenTest=()=>{unlock();setTimeout(ring,250)};
+window.cfmUrgentSirenTest=()=>ring();
 const test=document.createElement('button');
 test.type='button';test.textContent='🔊 Test Siren';
 test.style.cssText='position:fixed;right:12px;top:174px;z-index:2147483646;background:#9b1c1c;color:white;border:0;border-radius:10px;padding:9px 12px;font:700 13px Arial';
-test.onclick=()=>{unlock();setTimeout(ring,150)};
+test.onclick=async()=>{test.textContent='🔊 Playing…';const ok=await ring();setTimeout(()=>{test.textContent=ok?'🔊 Test Siren':'⚠ Audio blocked'},2300)};
 document.body.appendChild(test);
 setInterval(scan,3000);setTimeout(scan,2000);
 })();
