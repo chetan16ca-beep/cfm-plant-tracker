@@ -3,6 +3,7 @@
 const frame=document.getElementById('app');
 let audio=null,ready=false,baseline=false;
 const seen=new Set();
+let lastSnapshot='';
 function unlock(){
   try{
     const AC=window.AudioContext||window.webkitAudioContext;
@@ -21,6 +22,7 @@ function bindFrame(){
   }catch(e){}
 }
 function ring(){
+  unlock();
   if(!audio||audio.state!=='running')return;
   for(let k=0;k<3;k++){
     const t=audio.currentTime+k*.47;
@@ -51,5 +53,11 @@ function scan(){
   }catch(e){}
 }
 frame.addEventListener('load',()=>{baseline=false;seen.clear();setTimeout(scan,900)});
+window.cfmUrgentSirenTest=()=>{unlock();setTimeout(ring,250)};
+const test=document.createElement('button');
+test.type='button';test.textContent='🔊 Test Siren';
+test.style.cssText='position:fixed;right:12px;bottom:132px;z-index:2147483646;background:#9b1c1c;color:white;border:0;border-radius:10px;padding:9px 12px;font:700 13px Arial';
+test.onclick=()=>{unlock();setTimeout(ring,150)};
+document.body.appendChild(test);
 setInterval(scan,3000);setTimeout(scan,2000);
 })();
