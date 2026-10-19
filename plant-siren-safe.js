@@ -20,7 +20,7 @@ function scan(){
   const frame=document.getElementById('app');
   const win=frame&&frame.contentWindow;
   if(!win||!win.document||win.document.readyState!=='complete')return;
-  const snap=win.eval('(()=>{if(typeof state==="undefined"||!state)return null;const pending=(state.pending||[]).map(r=>({id:String(r.workNo||r.id||""),priority:String(r.priority||r.urgency||""),bill:String(r.billStatus||""),dispatch:String(r.dispatchStatus||"")}));const stock=(state.store||[]).map(r=>({id:String(r.srl||r.srlNo||r.serial||""),balance:typeof srlBalance==="function"?Number(srlBalance(r)):NaN}));return {pending,stock}})()');
+  const snap=win.eval('(()=>{if(typeof state==="undefined"||!state)return null;const pending=(state.pending||[]).map(r=>({id:String(r.workNo||r.id||""),priority:String(r.priority||r.urgency||""),bill:String(r.billStatus||""),dispatch:String(r.dispatchStatus||"")}));const stock=(state.store||[]).map(r=>({id:String(r.srlNo||r.srl||r.serial||""),balance:typeof srlBalance==="function"?Number(srlBalance(r)):NaN}));return {pending,stock}})()');
   if(!snap)return;
   const current=new Map();
   for(const r of snap.pending){
