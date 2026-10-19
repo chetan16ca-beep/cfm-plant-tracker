@@ -11,4 +11,35 @@ const toggle=document.createElement('button');toggle.textContent='🔔 Plant Sir
 const menu=document.createElement('div');menu.hidden=true;menu.style.cssText='padding-top:8px;display:grid;gap:5px';for(const [type,label] of Object.entries(types)){const b=document.createElement('button');b.textContent='🔊 '+label;b.style.cssText='padding:8px;border:1px solid #ddd;border-radius:6px;background:#f6f8fa';b.addEventListener('click',()=>alertSiren(type));menu.appendChild(b)}panel.appendChild(menu);
 toggle.addEventListener('click',()=>{menu.hidden=!menu.hidden;menu.style.display=menu.hidden?'none':'grid';if(!menu.hidden)sound()});menu.style.display='none';
 document.body.appendChild(panel);
+
+/* Read-only observation of the running ERP. Never mutate its state or navigation. */
+const seen=new Map();
+let initialized=false;
+function scan(){
+ try{
+  const frame=document.getElementById('app');
+  const win=frame&&frame.contentWindow;
+  if(!win||!win.document||win.document.readyState!=='complete')return;
+  const snap=win.eval('(()=>{if(typeof state==="undefined"||!state)return null;const pending=(state.pending||[]).map(r=>({id:String(r.workNo||r.id||""),priority:String(r.priority||r.urgency||""),bill:String(r.billStatus||""),dispatch:String(r.dispatchStatus||"")}));const stock=(state.store||[]).map(r=>({id:String(r.srl||r.srlNo||r.serial||""),balance:typeof srlBalance==="function"?Number(srlBalance(r)):NaN}));return {pending,stock}})()');
+  if(!snap)return;
+  const current=new Map();
+  for(const r of snap.pending){
+   if(!r.id)continue;
+   for(const [type,value,active] of [['urgent',r.priority,/urgent|high/i.test(r.priority)],['bill',r.bill,/request/i.test(r.bill)],['dispatch',r.dispatch,/ready/i.test(r.dispatch)]]){
+    const key=type+':'+r.id;current.set(key,active);
+    if(initialized&&active&&!seen.get(key))alertSiren(type,r.id);
+   }
+  }
+  for(const r of snap.stock){
+   if(!r.id||!Number.isFinite(r.balance))continue;
+   const key='stock:'+r.id,active=r.balance<=5;current.set(key,active);
+   if(initialized&&active&&!seen.get(key))alertSiren('stock',r.id);
+  }
+  seen.clear();for(const [key,val] of current)seen.set(key,val);
+  initialized=true;
+ }catch(e){if(!scan.warned){console.warn('CFM siren scan unavailable:',e);scan.warned=true}}
+}
+setInterval(scan,15000);
+document.getElementById('app')?.addEventListener('load',()=>{initialized=false;seen.clear();setTimeout(scan,1200)});
+setTimeout(scan,2500);
 })();
