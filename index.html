@@ -191,10 +191,6 @@ if('serviceWorker' in navigator){
    done++;st.textContent='Loading '+done+'/'+total;return txt
  }));
  let src=texts.join('')+'\n';
- // Escape embedded closing script tags in print HTML strings before iframe HTML parsing.
- // Keep original ERP data, click handlers and print templates intact.
- src=src.replace(/<\\\/script>/gi,'<\\\\/script>');
-
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V167');
@@ -366,11 +362,6 @@ html,body{background:#f4faff!important;color:#13233b!important}
    }catch(e){console.warn('Dashboard visual layer:',e)}
  });
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
- const cfmAutoBridge=`<script id="cfm-auto-alert-bridge-v1">(function(){let baseline=null;function poll(){try{if(typeof state==='undefined'||!state||!Array.isArray(state.pending))return;const snap={};for(const r of state.pending){if(!r||!r.workNo)continue;const id=String(r.workNo),bill=String(r.billStatus||'').toUpperCase(),dispatch=String(r.dispatchStatus||'').toUpperCase(),priority=String(r.priority||'').toUpperCase();snap[id]={bill,dispatch,priority,party:String(r.party||''),billNo:String(r.billNo||''),dispatchDate:String(r.dispatchDate||'')};}if(baseline){for(const id of Object.keys(snap)){const n=snap[id],o=baseline[id];if(!o)continue;if(n.priority!==o.priority&&/URGENT|HIGH/.test(n.priority))window.parent.postMessage({type:'CFM_AUTO_PLANT_ALERT',kind:'urgent',number:id,party:n.party},'*');if(n.bill==='REQUESTED'&&o.bill!=='REQUESTED')window.parent.postMessage({type:'CFM_AUTO_PLANT_ALERT',kind:'bill',number:id,party:n.party},'*');if(n.dispatch==='READY'&&o.dispatch!=='READY'&&!n.dispatchDate)window.parent.postMessage({type:'CFM_AUTO_PLANT_ALERT',kind:'dispatch',number:id,party:n.party},'*');}}baseline=snap;
-if(Array.isArray(state.store)&&typeof srlBalance==='function'){const nextStock={};for(const roll of state.store){if(!roll||!roll.srlNo)continue;const id=String(roll.srlNo),bal=Number(srlBalance(roll));if(!Number.isFinite(bal))continue;const configured=Number(roll.minStock??roll.minMtr??roll.minimumStock??NaN),threshold=Number.isFinite(configured)&&configured>=0?configured:5;nextStock[id]={balance:bal,threshold};}if(window.__cfmStockBaseline){for(const id of Object.keys(nextStock)){const now=nextStock[id],prev=window.__cfmStockBaseline[id];if(prev&&prev.balance>now.threshold&&now.balance<=now.threshold){window.parent.postMessage({type:'CFM_AUTO_PLANT_ALERT',kind:'srl',number:id,party:'Balance '+now.balance.toFixed(2)+' meter. Minimum '+now.threshold+' meter.'},'*')}}}window.__cfmStockBaseline=nextStock;}
-}catch(e){}}setInterval(poll,4000);setTimeout(poll,1200)})();<\/script>`;src=src.replace('</body>',cfmAutoBridge+'</body>');
-
- src=src.replace('</body>',`<script id="cfm-pending-nav-repair-v1">(function(){function go(){try{if(typeof window.showView==='function'){window.showView('pending');return}var v=document.getElementById('view-pending');if(v){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));v.classList.add('active');v.style.display='block';window.scrollTo(0,0)}}catch(e){console.error('Pending navigation:',e);alert('Pending Order open error: '+e.message)}}document.addEventListener('click',function(e){var b=e.target.closest('button[onclick*="showView(\\'pending\\')"]');if(!b)return;setTimeout(function(){var v=document.getElementById('view-pending');if(v&&!v.classList.contains('active'))go()},60)},false);window.cfmOpenPending=go})();<\/script>`+'</body>');
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
@@ -407,67 +398,6 @@ openTest.addEventListener('click',()=>{unlocked=true;panel.hidden=false;sound();
 document.getElementById('cfmDailyReportDone').addEventListener('click',()=>{write({done:day()});panel.hidden=true;try{speechSynthesis.cancel()}catch(e){}});
 document.getElementById('cfmDailyReportSnooze').addEventListener('click',()=>{write({snoozeUntil:Date.now()+300000});panel.hidden=true;try{speechSynthesis.cancel()}catch(e){}});
 check();setInterval(check,20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
-})();
-</script>
-<script id="cfm-new-order-voice-v1">
-(function(){
-let ctx=null;
-function ring(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ctx=ctx||new C();ctx.resume().catch(()=>{});const t=ctx.currentTime;for(let i=0;i<2;i++){const o=ctx.createOscillator(),g=ctx.createGain();o.type='sawtooth';o.frequency.setValueAtTime(720,t+i*.35);o.frequency.linearRampToValueAtTime(980,t+i*.35+.22);g.gain.setValueAtTime(.0001,t+i*.35);g.gain.exponentialRampToValueAtTime(.09,t+i*.35+.03);g.gain.exponentialRampToValueAtTime(.0001,t+i*.35+.28);o.connect(g);g.connect(ctx.destination);o.start(t+i*.35);o.stop(t+i*.35+.29)}}catch(e){}}
-window.addEventListener('message',function(e){
-if(e.source!==document.getElementById('app').contentWindow||!e.data||e.data.type!=='CFM_NEW_ORDER_SAVED')return;
-const party=String(e.data.party||'Unknown Party').slice(0,120),numbers=Array.isArray(e.data.workNumbers)?e.data.workNumbers.map(x=>String(x).slice(0,50)).slice(0,30):[];
-ring();
-try{if(window.speechSynthesis){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('New order received. Party name '+party+'. Work number '+numbers.join(', ')+'.');u.lang='en-IN';u.rate=.86;speechSynthesis.speak(u)}}catch(err){}
-try{const n=document.createElement('div');n.setAttribute('role','status');n.style.cssText='position:fixed;z-index:1000030;top:12px;left:12px;right:65px;background:#fff4df;border:2px solid #e89b19;border-radius:12px;padding:12px;font:700 14px Arial;color:#493014;box-shadow:0 5px 20px #0004';n.textContent='🚨 New Order: '+party+' • '+numbers.join(', ');document.body.appendChild(n);setTimeout(()=>n.remove(),12000)}catch(err){}
-});
-})();
-</script>
-<style id="cfm-operations-siren-v1">
-#cfmOpsOpen{position:fixed;top:108px;right:12px;z-index:1000018;border:0;border-radius:11px;background:#ad391c;color:#fff;padding:9px 11px;font:700 12px Arial;box-shadow:0 4px 14px #0003}
-#cfmOpsDialog[hidden]{display:none!important}
-#cfmOpsDialog{position:fixed;z-index:1000022;inset:5% 3%;overflow:auto;background:#fff;color:#182a40;border-radius:16px;padding:17px;box-shadow:0 0 0 100vmax #0009;font:14px Arial}
-#cfmOpsDialog input,#cfmOpsDialog select{display:block;width:100%;box-sizing:border-box;padding:11px;margin:5px 0 12px;border:1px solid #b9cbdc;border-radius:9px;background:#fff;color:#182a40}
-#cfmOpsDialog button,#cfmOpsToast button{border:0;border-radius:9px;padding:10px;margin:3px;background:#1665aa;color:white;font-weight:bold}
-#cfmOpsDialog .opsRow{padding:12px;margin:9px 0;background:#f3f7fc;border:1px solid #d8e4f2;border-radius:12px}
-#cfmOpsToast[hidden]{display:none!important}
-#cfmOpsToast{position:fixed;z-index:1000023;left:10px;right:10px;top:15px;max-width:440px;margin:auto;background:#fff3db;border:2px solid #e68a16;border-radius:15px;padding:16px;color:#442a12;box-shadow:0 10px 30px #0005;font:14px Arial}
-</style>
-<button id="cfmOpsOpen" type="button">🚨 Plant Alerts</button>
-<section id="cfmOpsDialog" hidden aria-label="Plant Siren Alerts">
-<button id="cfmOpsClose" type="button">✕ Close</button><h2>🚨 Plant Siren Control</h2>
-<p>Urgent Order, Bill, Dispatch और Store SRL के Alerts दर्ज करें। यह रिकॉर्ड इसी डिवाइस पर रहेगा।</p>
-<form id="cfmOpsForm">
-<label>Alert Type<select name="type"><option value="urgent">Urgent Order — Immediately</option><option value="bill">Bill Request — After 5 Minutes</option><option value="dispatch">Dispatch Pending — After 5 Minutes</option><option value="srl">Low Stock SRL — Immediately</option></select></label>
-<label>Work No. / Serial No.<input name="number" maxlength="90" required placeholder="CFM-643 / 333 ANT"></label>
-<label>Details (Optional)<input name="details" maxlength="180" placeholder="Party, quantity, cloth, etc."></label>
-<button type="submit">+ Activate Alert</button>
-</form><h3>Active Alerts</h3><div id="cfmOpsList"></div>
-<p><small>Alerts repeat every 5 minutes while this ERP page is open. Browser background restrictions apply.</small></p>
-</section>
-<div id="cfmOpsToast" hidden role="alertdialog" aria-live="assertive"><strong id="cfmOpsToastTitle">🚨 Plant Alert</strong><p id="cfmOpsToastBody"></p><button id="cfmOpsDone" type="button">✓ Done</button><button id="cfmOpsSnooze" type="button">⏰ 5 Min Snooze</button><button id="cfmOpsView" type="button">All Alerts</button></div>
-<script>
-(function(){
-'use strict';
-const key='cfm-operations-siren-v1',five=300000,dlg=document.getElementById('cfmOpsDialog'),toast=document.getElementById('cfmOpsToast'),form=document.getElementById('cfmOpsForm');let activeId=null,lastCheck=0,audio=null;
-const labels={urgent:'Urgent Order',bill:'Bill Request',dispatch:'Dispatch Pending',srl:'Low Stock Serial Number'};
-function get(){try{const a=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
-function save(a){try{localStorage.setItem(key,JSON.stringify(a));return true}catch(e){alert('Alert could not be saved: '+e.message);return false}}
-function esc(x){return String(x||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function render(){document.getElementById('cfmOpsList').innerHTML=get().filter(x=>!x.done).map(x=>'<div class="opsRow"><b>'+esc(labels[x.type])+'</b> — '+esc(x.number)+'<p>'+esc(x.details)+'</p><small>Next alert: '+new Date(x.next).toLocaleTimeString('en-IN')+'</small> <button type="button" data-opsdone="'+esc(x.id)+'">Done</button></div>').join('')||'<p>No active alerts.</p>'}
-function tone(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audio=audio||new C();audio.resume().catch(()=>{});const t=audio.currentTime;for(let i=0;i<3;i++){const o=audio.createOscillator(),g=audio.createGain();o.type='sawtooth';o.frequency.setValueAtTime(650,t+i*.33);o.frequency.linearRampToValueAtTime(900,t+i*.33+.22);g.gain.setValueAtTime(.0001,t+i*.33);g.gain.exponentialRampToValueAtTime(.10,t+i*.33+.03);g.gain.exponentialRampToValueAtTime(.0001,t+i*.33+.28);o.connect(g);g.connect(audio.destination);o.start(t+i*.33);o.stop(t+i*.33+.29)}}catch(e){}}
-function speak(x){try{if(!window.speechSynthesis)return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('Attention. '+labels[x.type]+'. '+x.number+'. '+(x.details||'')+'. Please check and complete.');u.lang='en-IN';u.rate=.87;window.speechSynthesis.speak(u)}catch(e){}}
-function alertNow(x){activeId=x.id;document.getElementById('cfmOpsToastTitle').textContent='🚨 '+labels[x.type];document.getElementById('cfmOpsToastBody').textContent=x.number+(x.details?' — '+x.details:'');toast.hidden=false;tone();speak(x)}
-function check(){if(!toast.hidden)return;const now=Date.now(),a=get(),x=a.find(v=>!v.done&&v.next<=now);if(!x)return;x.next=now+five;if(save(a))alertNow(x);render()}
-function finish(done){const a=get(),x=a.find(v=>v.id===activeId);if(x){if(done)x.done=true;else x.next=Date.now()+five;save(a)}toast.hidden=true;activeId=null;try{speechSynthesis.cancel()}catch(e){}render();check()}
-document.getElementById('cfmOpsOpen').addEventListener('click',()=>{dlg.hidden=false;render()});
-document.getElementById('cfmOpsClose').addEventListener('click',()=>dlg.hidden=true);
-document.getElementById('cfmOpsView').addEventListener('click',()=>{dlg.hidden=false;render()});
-document.getElementById('cfmOpsDone').addEventListener('click',()=>finish(true));
-document.getElementById('cfmOpsSnooze').addEventListener('click',()=>finish(false));
-document.getElementById('cfmOpsList').addEventListener('click',e=>{const b=e.target.closest('[data-opsdone]');if(!b)return;const a=get(),x=a.find(v=>v.id===b.dataset.opsdone);if(x){x.done=true;save(a);if(activeId===x.id){toast.hidden=true;activeId=null}render()}});
-form.addEventListener('submit',e=>{e.preventDefault();const type=form.elements.type.value,number=form.elements.number.value.trim(),details=form.elements.details.value.trim();if(!labels[type]||!number)return;const a=get(),now=Date.now();a.push({id:String(now)+'-'+Math.random().toString(36).slice(2),type,number,details,next:now+((type==='bill'||type==='dispatch')?five:0),done:false});if(save(a)){form.reset();render();check()}});
-window.addEventListener('message',function(e){if(e.source!==document.getElementById('app').contentWindow||!e.data||e.data.type!=='CFM_AUTO_PLANT_ALERT')return;const m=e.data;if(!labels[m.kind])return;const number=String(m.number||'').slice(0,90),party=String(m.party||'').slice(0,180);if(!number)return;const a=get();if(a.some(x=>!x.done&&x.type===m.kind&&x.number===number))return;const now=Date.now();a.push({id:String(now)+'-'+Math.random().toString(36).slice(2),type:m.kind,number,details:party,next:now+(m.kind==='bill'||m.kind==='dispatch'?five:0),done:false});if(save(a)){render();check()}});
-setInterval(check,15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});render();check();
 })();
 </script>
 <style id="cfm-label-safe-css">
