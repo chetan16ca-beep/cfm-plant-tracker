@@ -184,7 +184,7 @@ window.manualCloudSync=async function(){
     toast('3-4 Mobile sync complete');
     setCloudBadge('☁️ 3-4 Mobile LIVE','green');
   }catch(e){
-    console.warn(e);setCloudBadge('☁️ Sync failed','red');toast('Sync failed • internet check karo');
+    console.warn(e);const reason=String(e?.message||e||'Unknown error').slice(0,140);setCloudBadge('☁️ Sync failed: '+reason,'red');toast('Sync failed • '+reason);
   }
 };
 
