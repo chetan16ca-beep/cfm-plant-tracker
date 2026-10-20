@@ -83,9 +83,14 @@ function safeOrderMerge(remote,local,localWins=false){
   const items=new Map();
   for(const x of remote.pending||[]){const id=normalize(x.workNo);if(id)items.set(id,x);}
   for(const x of local.pending||[]){
-    const id=normalize(x.workNo);
-    if(!id)continue;
-    if(!items.has(id)||localWins)items.set(id,x);
+    const id=normalize(x.workNo);if(!id)continue;
+    const current=items.get(id);
+    if(!current){items.set(id,x);continue;}
+    const a=Date.parse(current.updatedAt||current.modifiedAt||'')||0;
+    const b=Date.parse(x.updatedAt||x.modifiedAt||'')||0;
+    // Latest explicitly saved edit wins, even when an older device syncs later.
+    // Missing timestamps are not evidence that a stale record is newer.
+    if(b>a || (b===a&&localWins))items.set(id,x);
   }
   merged.pending=Array.from(items.values());
   return merged;
@@ -93,16 +98,17 @@ function safeOrderMerge(remote,local,localWins=false){
 function safeApplyCloud(row){
   const oldRaw=JSON.stringify(state);
   const merged=safeOrderMerge(row.payload,state,false);
-  const restored=merged.pending.length-(row.payload.pending||[]).length;
-  if(restored>0){pushHistory(oldRaw);cloudDirty=true;}
+  const remoteOrders=JSON.stringify((row.payload||{}).pending||[]);
+  const needsPush=JSON.stringify(merged.pending)!==remoteOrders;
+  if(needsPush)pushHistory(oldRaw);
   state=merged;
   ensureExcelMasterData();syncDerivedState();
   cloudVersion=num(row.version)||cloudVersion;
   cloudUpdatedAt=row.updated_at||cloudUpdatedAt;
   safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));
   renderAll();
-  if(restored>0){setCloudBadge('☁️ '+restored+' orders protected • syncing','amber');queueCloudPush();}
-  return restored;
+  if(needsPush){cloudDirty=true;setCloudBadge('☁️ Local orders/edits protected • syncing','amber');queueCloudPush();}
+  return needsPush?1:0;
 }
 async function cloudInit(){
   setCloudBadge('☁️ Connecting…','amber');
