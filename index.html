@@ -101,7 +101,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker"></iframe>
-<script src="./urgent-order-siren.js?v=180syncerror" defer></script>
+<script src="./urgent-order-siren.js?v=181siren" defer></script>
 <button id="cfmSyncNow" type="button" style="position:fixed;right:12px;bottom:76px;z-index:2147483646;background:#1263ae;color:white;border:0;border-radius:12px;padding:12px 16px;font:700 14px Arial;box-shadow:0 3px 14px #0004">☁️ Sync Now</button>
 <script>
 document.getElementById('cfmSyncNow').addEventListener('click',async function(){
@@ -129,7 +129,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=180syncerror',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=181siren',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -194,7 +194,7 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='180syncerror';
+ const urls=groups.flat(), ver='181siren';
  // Service worker manages its own cache; do not delete all caches on every ERP launch.
  const texts=await Promise.all(urls.map(async u=>{
    const cacheKey='cfm-chunk-169urgent-'+u;
@@ -296,7 +296,7 @@ html,body{background:#f4faff!important;color:#13233b!important}
  const app=document.getElementById('app');
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});src=src.replace(/(<select\b[^>]*(?:priority|Priority)[^>]*>)([\s\S]*?)(<\/select>)/gi,(full,open,options,close)=>/value=["']?URGENT|>URGENT</i.test(options)?full:open+options+'<option value="URGENT">URGENT</option>'+close);
- src=src.replace(/V167 LIVE|V168 LIVE|V169 LIVE|V170 LIVE/g,'V180 LIVE');
+ src=src.replace(/V167 LIVE|V168 LIVE|V169 LIVE|V170 LIVE/g,'V181 LIVE');
  app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
