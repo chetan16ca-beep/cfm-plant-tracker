@@ -29,7 +29,7 @@ function bindFrame(){
 }
 async function ring(){
   const ok=await unlock();
-  if(!ok){test.textContent='⚠ Audio blocked';return false;}
+  if(!ok){test.textContent='⚠ Sound blocked';return false;}
   for(let k=0;k<4;k++){
     const t=audio.currentTime+.04+k*.5;
     const o=audio.createOscillator(),g=audio.createGain();
@@ -89,7 +89,7 @@ window.cfmUrgentSirenTest=()=>ring();
 const test=document.createElement('button');
 test.type='button';test.textContent='🚨 URGENT Alert Active';
 test.style.cssText='position:fixed;right:12px;top:174px;z-index:2147483646;background:#9b1c1c;color:white;border:0;border-radius:10px;padding:9px 12px;font:700 13px Arial';
-test.onclick=()=>{test.textContent='🚨 Only new URGENT orders';setTimeout(()=>test.textContent='🔊 Test Siren',2500)};
+test.onclick=async()=>{const ok=await unlock();test.textContent=ok?'🔊 Sound enabled':'⚠ Sound blocked';setTimeout(()=>test.textContent='🚨 URGENT Alert Active',2500)};
 document.body.appendChild(test);
 setInterval(scan,3000);setTimeout(scan,2000);
 })();
