@@ -352,4 +352,34 @@ document.getElementById('cfmLabelImportFile').addEventListener('change',async ev
 </tbody></table><p style="font-size:12px;color:#596d7d">Verified against Cloud Store on 27 Oct 2026. Missing from this list does not prove deletion from the ERP. No automatic additions or deletions.</p>
 </section>
 <script>(function(){const b=document.getElementById('cfmMeterPendingBtn'),p=document.getElementById('cfmMeterPendingPanel');b.addEventListener('click',()=>{p.hidden=false});document.getElementById('cfmMeterPendingClose').addEventListener('click',()=>{p.hidden=true})})();</script>
+
+<!-- Material receiving worksheet and label printing; stock posting deliberately disabled until cloud atomic allocation is integrated -->
+<style>
+#mrOpen{position:fixed;right:12px;bottom:80px;z-index:2147483646;background:#234c70;color:white;border:0;border-radius:12px;padding:12px;font:700 13px system-ui}
+#mrPanel{position:fixed;inset:4% 3%;z-index:2147483647;background:#fff;color:#172333;border-radius:16px;padding:16px;overflow:auto;box-shadow:0 10px 50px #0008;font:14px system-ui}
+#mrPanel[hidden]{display:none}#mrPanel input{box-sizing:border-box;width:100%;padding:10px;margin:3px 0 10px;border:1px solid #bcc9d5;border-radius:8px}#mrPanel button{padding:9px;border:1px solid #9db0bf;border-radius:8px;margin:3px}#mrPanel .mrgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}#mrRows>div{display:flex;align-items:center;gap:8px}#mrRows input{flex:1;min-width:0}#mrRows button{flex:none}
+@media print{body>*{display:none!important}#mrPrint{display:block!important;position:static!important}#mrPrint .mrlabels{display:grid;grid-template-columns:90mm 90mm;grid-auto-rows:85mm;gap:5mm 8mm}#mrPrint .mrlabel{break-inside:avoid;border:1px solid #111;border-radius:3mm;padding:3mm;box-sizing:border-box;text-align:center;font-family:Arial}#mrPrint .mrserial{font-size:17pt;font-weight:900}#mrPrint .mrmajor{font-size:19pt;font-weight:900} @page{size:A4;margin:9mm}}
+#mrPrint{display:none}
+</style>
+<button id="mrOpen" type="button">📦 Material Receiving / Labels</button>
+<section id="mrPanel" hidden role="dialog" aria-label="Material Receiving">
+<button id="mrClose" style="float:right">✕ Close</button><h2>Material Receiving — Bill & Rolls</h2>
+<p style="color:#8a4700"><b>Worksheet / Label Preview only:</b> Cloud stock posting and automatic serial allocation are NOT active. Do not use sample serials as real stock serials.</p>
+<div class="mrgrid"><label>Supplier<input id="mrSupplier" autocomplete="off"></label><label>Bill Number<input id="mrBill" autocomplete="off"></label><label>Quality<input id="mrQuality" value="333 ANT"></label><label>Width (inch)<input id="mrWidth" value="60" type="number" min="1"></label></div>
+<label>Bill Total Meter<input id="mrTotal" type="number" min="0" step=".01" value="500"></label>
+<h3>Physical Roll Meters</h3><div id="mrRows"></div><button id="mrAdd">+ Add Roll</button>
+<p id="mrCheck"></p><button id="mrPrintBtn">🖨 Print A4 Labels (5 per page)</button>
+<p><small>Serials are not generated here. Print uses SAMPLE placeholders to prevent duplicates. No ERP stock changes.</small></p>
+</section><div id="mrPrint"></div>
+<script>
+(function(){
+const $=id=>document.getElementById(id),rows=$('mrRows');
+function add(v=''){const d=document.createElement('div');const i=document.createElement('input');i.type='number';i.min='0.01';i.step='.01';i.placeholder='Roll meter';i.value=v;i.addEventListener('input',check);const b=document.createElement('button');b.textContent='Remove';b.onclick=()=>{d.remove();check()};d.append(i,b);rows.append(d);check()}
+function meters(){return [...rows.querySelectorAll('input')].map(x=>Number(x.value))}
+function check(){const a=meters(),sum=a.reduce((x,y)=>x+y,0),total=Number($('mrTotal').value);$('mrCheck').textContent='Rolls: '+a.length+' | Total: '+sum.toFixed(2)+' MTR | Bill: '+total.toFixed(2)+' MTR | Difference: '+(total-sum).toFixed(2)+' MTR';$('mrCheck').style.color=Math.abs(total-sum)<.001?'green':'#a33'}
+$('mrOpen').onclick=()=>{$('mrPanel').hidden=false;check()};$('mrClose').onclick=()=>{$('mrPanel').hidden=true};$('mrAdd').onclick=()=>add();$('mrTotal').addEventListener('input',check);
+[120,85,100,95,100].forEach(x=>add(x));
+$('mrPrintBtn').onclick=()=>{const a=meters(),total=Number($('mrTotal').value);if(!a.length||a.some(x=>!Number.isFinite(x)||x<=0)||Math.abs(a.reduce((x,y)=>x+y,0)-total)>.001){alert('Roll meter total must match bill meter');return}const quality=$('mrQuality').value.trim(),width=$('mrWidth').value.trim(),bill=$('mrBill').value.trim();if(!quality||!width||!bill){alert('Enter Bill Number, Quality and Width');return}const safe=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));$('mrPrint').innerHTML='<div class="mrlabels">'+a.map((m,i)=>'<div class="mrlabel"><b>EAGLE FILTRATION</b><div>MATERIAL BUNDLE</div><hr><div>SERIAL NUMBER (SAMPLE)</div><div class="mrserial">NOT ALLOCATED</div><hr><div>QUALITY</div><div class="mrmajor">'+safe(quality)+'</div><div>METER</div><div class="mrmajor">'+m+' MTR</div><hr><div>WIDTH: '+safe(width)+'″ | BILL: '+safe(bill)+' | ROLL: '+(i+1)+'</div></div>').join('')+'</div>';window.print()};
+})();
+</script>
 </body></html>
