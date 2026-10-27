@@ -2,22 +2,45 @@
 (function(){
 const $=id=>document.getElementById(id);
 function parse(t){
- const lines=t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
- const po=t.match(/(?:purchase\s*order|p\.?o\.?)\s*(?:number|no\.?|#|:|-)*\s*([A-Z0-9][A-Z0-9\/-]{3,})/i);
- if(po && !/^(document|number|details|date|item|order|purchase)$/i.test(po[1]) && /\d/.test(po[1]))$('po').value=po[1];
- const date=t.match(/(?:p\.?o\.?\s*date|order\s*date|date)\s*[:\-]?\s*(\d{1,2}[\/-]\d{1,2}[\/-]\d{4})/i);
- if(date){const parts=date[1].split(/[\/-]/);$('date').value=parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0')}
- const buyer=lines.findIndex(x=>/^(buyer|bill\s*to|purchaser|customer|consignee)\s*:?$/i.test(x));
- if(buyer>=0&&lines[buyer+1])$('party').value=lines[buyer+1];
- else {const m=t.match(/(?:buyer|bill\s*to|purchaser|customer)\s*:\s*([^\n]+)/i);if(m)$('party').value=m[1].trim()}
- const items=[];
+ const raw=t.replace(/[‐‑–—]/g,'-').replace(/\u00a0/g,' ');
+ const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const pon=raw.match(/(?:P\.?\s*O\.?\s*(?:No|Number)|Purchase\s*Order\s*(?:No|Number))\s*[:.#-]*\s*(\d{2,}[\/\-]\d{2}(?:[\/\-]\d{2,4})?)/i);
+ $('po').value=pon?pon[1]:'';
+ const date=raw.match(/(?:P\.?\s*O\.?\s*Date|Date)\s*[:\-]?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/i);
+ if(date){const p=date[1].split(/[\/\-]/);$('date').value=p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0')}
+ const buyer=raw.match(/Buyer\s*Address\s*:?\s*\n\s*([^\n]+)/i);
+ const heading=raw.match(/COMMUNICATION\s*ADDRESS\s*:?\s*\n\s*([^\n]+)/i);
+ $('party').value=(buyer?.[1]||heading?.[1]||'').trim();
+ const found=[];let section='';
  for(const line of lines){
- if(/total|subtotal|tax|gst|amount|invoice|payment|terms|delivery|discount/i.test(line))continue;
- const m=line.match(/^\s*(?:\d{1,3}[.)\s]+)?(.{7,}?)\s+(\d{1,6})(?:\s*(?:nos|pcs|pieces|qty|ea|units))?(?:\s+\d[\d,.]*)?\s*$/i);
- if(m&&/[a-z]/i.test(m[1])&& !/^(date|order|phone|address)/i.test(m[1]))items.push({item:m[1].trim(),qty:m[2]});
+  if(/Centrifuge\s*Bag/i.test(line))section='Centrifuge Bag';
+  else if(/\bFBD\s*Bag\b/i.test(line))section='FBD Bag';
+  else if(/\bRCVD\s*Bag\b/i.test(line))section='RCVD Bag';
+  else if(/\bFilter\s*Bag\b/i.test(line))section='Filter Bag';
+  const code=line.match(/\b(I?CFG|I?FBD)[-\s]*(\d{3})\b/i);
+  if(code){
+   const qty=line.match(/\b(\d+)\s*(?:nos?|pcs?|pieces)\b/i);
+   const micron=line.match(/\b(\d+)\s*micron\b/i);
+   const size=line.match(/\b(\d{2})\s*["″]/);
+   const fingers=line.match(/\b(\d+)\s*fingers?\b/i);
+   found.push({description:[section,code[1].toUpperCase()+'-'+code[2],micron?micron[1]+' Micron':'',size?size[1]+'"':'',fingers?fingers[1]+' Finger':''].filter(Boolean).join(' | '),qty:qty?Number(qty[1]):null,group:section});
+  }else if(/RCVD\s*Bag\s*10\s*["″]\s*x\s*8\s*["″]/i.test(line))found.push({description:'RCVD Bag 10"x8" Lint Free Rope',qty:1,group:'RCVD Bag'});
+  else if(/^NF\s*102\b/i.test(line))found.push({description:'Filter Bag NF 102',qty:1,group:'Filter Bag'});
  }
- if(items.length){$('readStatus').textContent='OCR found possible product rows, but automatic quantity mapping is not reliable. Review recognized text and enter confirmed quantities before draft export. No unverified rows inserted.';}
- $('readStatus').textContent='Text extracted. Verify against original PO. Product lines are not automatically populated until their quantities can be reliably mapped.';
+ if(found.length){
+  $('lines').replaceChildren();
+  for(const x of found){$('add').click();const row=$('lines').lastElementChild;row.cells[0].querySelector('input').value=x.description;row.cells[1].querySelector('input').value=x.qty??'';}
+ }
+ const centrifuge=found.filter(x=>x.group==='Centrifuge Bag').reduce((n,x)=>n+(x.qty||0),0);
+ const fbd=found.filter(x=>x.group==='FBD Bag').reduce((n,x)=>n+(x.qty||0),0);
+ const issues=[];
+ if(!pon)issues.push('PO number not confidently detected');
+ if(!$('party').value)issues.push('Buyer name not detected');
+ if(centrifuge&&centrifuge!==22&&/Centrifuge\s*Bag/i.test(raw))issues.push('Centrifuge sub-line total '+centrifuge+' differs from printed group quantity 22 — verify original PO');
+ if(fbd&&fbd!==8&&/FBD\s*Bag/i.test(raw))issues.push('FBD sub-line total '+fbd+' differs from printed group quantity 8');
+ if(found.some(x=>!x.qty))issues.push('Some quantities are missing');
+ $('readStatus').textContent='Found '+found.length+' product lines. '+(issues.length?'VERIFY BEFORE EXPORT: '+issues.join('; '):'Verify all values against original PO before export.');
+ $('readStatus').style.color=issues.length?'#a22616':'#234b34';
 }
 $('readPO').onclick=async()=>{
  const file=$('poFile').files[0];if(!file){alert('Choose PO image or PDF first');return}
