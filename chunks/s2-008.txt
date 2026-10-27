@@ -21,6 +21,17 @@ function ensureExcelMasterData(){
   state.cutting=mergeByKey(m.cutting||[],state.cutting||[],excelCutKey);
   state.measurements=clone(m.measurements||[]);
   state.srlTracker=clone(m.srlTracker||[]);
+  // Physical count snapshot 27-Oct-2026: preserve historic master and issue records.
+  // This is a display-only overlay until the verified quantities can be reconciled with live cutting.
+  if(window.CFM_PHYSICAL_20261027 && Array.isArray(window.CFM_PHYSICAL_20261027.rows)){
+    const rows=window.CFM_PHYSICAL_20261027.rows;
+    const byId=new Map(rows.filter(x=>x.meters!==null&&x.meters!==''&&x.meters!==undefined).map(x=>[String(x.srl).replace(/^0+/,''),x]));
+    state.srlTracker=state.srlTracker.map(r=>{
+      const id=String(r.srlNo||'').split('/').pop().replace(/^0+/,'');
+      const x=byId.get(id);
+      return x?{...r,physicalCountMtr:Number(x.meters),physicalCountDate:'2026-10-27',physicalCountCloth:x.cloth,physicalCountWidth:x.width}:r;
+    });
+  }
   state.issueRegister=clone(m.issueRegister||[]);
   state.srlOpenClose=clone(m.srlOpenClose||[]);
   state.productMaster=clone(m.productMaster||[]);
