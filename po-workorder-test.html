@@ -45,8 +45,8 @@ function parse(t){
  }
  window.cfmPOExpectedGroups={};
  const headerPatterns=[
- ['Centrifuge Bag',/Centrifuge\\s*Bag[^\\n]{0,110}?\\b(\\d{1,4})\\s*Nos\\b/i],
- ['FBD Bag',/FBD\\s*Bag[^\\n]{0,110}?\\b(\\d{1,4})\\s*Nos\\b/i]
+ ['Centrifuge Bag',/Centrifuge\s*Bag[^\n]{0,110}?\b(\d{1,4})\s*Nos\b/i],
+ ['FBD Bag',/FBD\s*Bag[^\n]{0,110}?\b(\d{1,4})\s*Nos\b/i]
  ];
  for(const [group,re] of headerPatterns){const m=raw.match(re);if(m)window.cfmPOExpectedGroups[group]=Number(m[1]);}
  const centrifuge=found.filter(x=>x.group==='Centrifuge Bag').reduce((n,x)=>n+(x.qty||0),0);
@@ -97,7 +97,7 @@ $('recognized').addEventListener('change',e=>{if(e.target.value.trim())parse(e.t
 'use strict';
 const $=id=>document.getElementById(id);
 let prepared=null;
-function norm(s){return String(s||'').trim().replace(/\\s+/g,' ').toUpperCase()}
+function norm(s){return String(s||'').trim().replace(/\s+/g,' ').toUpperCase()}
 function safe(v){return String(v??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]))}
 function allLines(){
  return [...$('lines').querySelectorAll('tr')].map(tr=>({
@@ -105,7 +105,7 @@ function allLines(){
   quantity:Number(tr.cells[1]?.querySelector('input')?.value),
  })).filter(x=>x.description||x.quantity);
 }
-function groupOf(desc){const s=norm(desc);if(/\\bI?CFG[- ]?\\d{3}\\b/.test(s))return 'Centrifuge Bag';if(/\\bI?FBD[- ]?\\d{3}\\b/.test(s))return 'FBD Bag';return 'Other'}
+function groupOf(desc){const s=norm(desc);if(/\bI?CFG[- ]?\d{3}\b/.test(s))return 'Centrifuge Bag';if(/\bI?FBD[- ]?\d{3}\b/.test(s))return 'FBD Bag';return 'Other'}
 function mismatches(lines){
  const expected=window.cfmPOExpectedGroups||{};
  return Object.entries(expected).filter(([group,num])=>Number.isFinite(num)&&num>0).map(([group,expectedQty])=>({
@@ -117,7 +117,7 @@ function prepare(){
  reset();
  const party=$('party').value.trim(),poNumber=$('po').value.trim(),poDate=$('date').value;
  if(!party)throw Error('Buyer / Party Name is missing. Confirm it against PO.');
- if(!poNumber||!/\\d/.test(poNumber))throw Error('PO Number missing or invalid.');
+ if(!poNumber||!/\d/.test(poNumber))throw Error('PO Number missing or invalid.');
  if(!poDate)throw Error('PO Date missing.');
  const lines=allLines();
  if(!lines.length||lines.some(x=>!x.description||!Number.isSafeInteger(x.quantity)||x.quantity<1))throw Error('One or more product descriptions or quantities are incomplete.');
@@ -149,7 +149,7 @@ $('poTransfer').addEventListener('click',()=>{
  if(window.parent===window){$('poTransferStatus').textContent='Open this PO Reader from inside the main CFM ERP to transfer to its Work Order form.';return}
  const warning=prepared.issues.map(x=>x.group+': PO header '+x.expectedQty+' vs lines '+x.actualQty).join('; ');
  const reason=$('poDiscrepancyReason').value.trim();
- const payload={kind:'CFM_PO_DRAFT_TRANSFER_V1',party:prepared.party,poNumber:prepared.poNumber,poDate:prepared.poDate,verified:true,lines:items.map(x=>({...x,customerCode:(x.description.match(/\\b(?:I?CFG|I?FBD)[- ]?\\d{3}\\b/i)||[])[0]||''})),discrepancy:warning,discrepancyReason:reason};
+ const payload={kind:'CFM_PO_DRAFT_TRANSFER_V1',party:prepared.party,poNumber:prepared.poNumber,poDate:prepared.poDate,verified:true,lines:items.map(x=>({...x,customerCode:(x.description.match(/\b(?:I?CFG|I?FBD)[- ]?\d{3}\b/i)||[])[0]||''})),discrepancy:warning,discrepancyReason:reason};
  if(!confirm('Transfer '+items.length+' verified PO products to Main CFM ERP for final review? No orders will be saved until you press ERP Save.'))return;
  window.parent.postMessage(payload,location.origin);
  $('poTransferStatus').textContent='Sending draft to Main ERP. Check the ERP Multi-item PO form before saving.';
