@@ -323,4 +323,33 @@ document.getElementById('cfmLabelImportButton').addEventListener('click',()=>doc
 document.getElementById('cfmLabelImportFile').addEventListener('change',async ev=>{const file=ev.target.files[0];if(!file)return;try{const p=JSON.parse(await file.text());if(p.app!=='CFM Label Register'||!Array.isArray(p.rows))throw Error('Invalid backup file');const a=get(),ids=new Set(a.map(x=>[x.wo,x.qty,x.to,x.date,x.createdAt].join('|')));let n=0;for(const x of p.rows){if(!x||typeof x.wo!=='string'||!Number.isInteger(Number(x.qty))||Number(x.qty)<1)continue;const id=[x.wo,x.qty,x.to,x.date,x.createdAt].join('|');if(!ids.has(id)){a.push(x);ids.add(id);n++}}if(n&&confirm('Import '+n+' new label records?')){localStorage.setItem(key,JSON.stringify(a));draw()}else if(!n)alert('No new label records')}catch(e){alert('Import error: '+e.message)}ev.target.value=''});
 })();
 </script>
+
+<!-- CFM meter verification reminder: display-only, does not modify ERP inventory -->
+<style id="cfm-meter-pending-style">
+#cfmMeterPendingBtn{position:fixed;left:12px;top:calc(env(safe-area-inset-top,0px) + 10px);z-index:999998;background:#fff3d6;color:#754600;border:1px solid #e6b85e;border-radius:12px;padding:9px 12px;font:700 12px system-ui;box-shadow:0 3px 12px #0002;cursor:pointer}
+#cfmMeterPendingPanel{position:fixed;z-index:999999;inset:8% 5%;max-width:600px;margin:auto;overflow:auto;background:#fff;color:#182433;border:1px solid #d8e2ea;border-radius:16px;padding:18px;box-shadow:0 10px 50px #0006;font:14px system-ui}
+#cfmMeterPendingPanel[hidden]{display:none!important}
+#cfmMeterPendingPanel table{border-collapse:collapse;width:100%;font-size:13px}#cfmMeterPendingPanel td,#cfmMeterPendingPanel th{padding:9px;border-bottom:1px solid #e6edf2;text-align:left}#cfmMeterPendingPanel button{padding:8px 12px;border:1px solid #abc9e2;border-radius:8px;background:#eef7ff;cursor:pointer}
+</style>
+<button id="cfmMeterPendingBtn" type="button">⚠ Meter Verification Pending · 12 SRL</button>
+<section id="cfmMeterPendingPanel" hidden role="dialog" aria-label="Meter Verification Pending">
+<button id="cfmMeterPendingClose" type="button" style="float:right">✕ Close</button>
+<h2 style="margin-top:2px">⚠ Meter Verification Pending — 12 SRL</h2>
+<p>These OPEN serials are listed on physical register pages 03/04 but were not matched in the current Cloud Store records. <b>Physical meter must be checked.</b> This is a reminder only; no stock, cutting, or work-order data is changed.</p>
+<table><thead><tr><th>OPEN SRL</th><th>Photo Page</th><th>Action</th></tr></thead><tbody>
+<tr><td>CFM/11 (0011)</td><td>03</td><td>Check physical meter / serial format</td></tr>
+<tr><td>0035</td><td>03</td><td>Check physical meter</td></tr>
+<tr><td>0047</td><td>03</td><td>Check physical meter</td></tr>
+<tr><td>0059</td><td>03</td><td>Check physical meter</td></tr>
+<tr><td>CFM/108 (0108)</td><td>03</td><td>Check physical meter / serial format</td></tr>
+<tr><td>0130</td><td>03</td><td>Check physical meter</td></tr>
+<tr><td>CFM/131 (0131)</td><td>03</td><td>Check physical meter / serial format</td></tr>
+<tr><td>0248</td><td>03</td><td>Check physical meter</td></tr>
+<tr><td>0256</td><td>03</td><td>Check physical meter</td></tr>
+<tr><td>0072</td><td>04</td><td>Check physical meter</td></tr>
+<tr><td>0112</td><td>04</td><td>Check physical meter</td></tr>
+<tr><td>0551</td><td>04</td><td>Check physical meter / serial format</td></tr>
+</tbody></table><p style="font-size:12px;color:#596d7d">Verified against Cloud Store on 27 Oct 2026. Missing from this list does not prove deletion from the ERP. No automatic additions or deletions.</p>
+</section>
+<script>(function(){const b=document.getElementById('cfmMeterPendingBtn'),p=document.getElementById('cfmMeterPendingPanel');b.addEventListener('click',()=>{p.hidden=false});document.getElementById('cfmMeterPendingClose').addEventListener('click',()=>{p.hidden=true})})();</script>
 </body></html>
