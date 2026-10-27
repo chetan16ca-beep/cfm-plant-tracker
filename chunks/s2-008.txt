@@ -347,7 +347,19 @@ function cuttingUsedMtr(r){
 }
 function srlNewUsedMtr(srlNo){return state.cutting.filter(r=>normalize(r.srlNo)===normalize(srlNo)&&!r.wastage&&(r._autoPendingLinked===true||r._trackSrl===true)).reduce((a,r)=>a+cuttingUsedMtr(r),0)}
 function srlUsedMtr(srlNo){const st=state.store.find(x=>normalize(x.srlNo)===normalize(srlNo));if(st&&st.excelLiveBalanceMtr!==''&&st.excelLiveBalanceMtr!=null){return Math.max(0,num(st.openingMtr)-num(st.excelLiveBalanceMtr))+srlNewUsedMtr(srlNo)}return state.cutting.filter(r=>normalize(r.srlNo)===normalize(srlNo)&&!r.wastage).reduce((a,r)=>a+cuttingUsedMtr(r),0)}
-function srlBalance(r){if(r.excelLiveBalanceMtr!==''&&r.excelLiveBalanceMtr!=null)return Math.max(0,num(r.excelLiveBalanceMtr)-srlNewUsedMtr(r.srlNo));return Math.max(0,num(r.openingMtr)-srlUsedMtr(r.srlNo))}
+function srlBalance(r){
+  const id=String(r.srlNo||'').split('/').pop().replace(/^0+/,'');
+  const photos=(window.CFM_PHYSICAL_20261027?.rows||[]);
+  const matches=photos.filter(x=>String(x.srl).replace(/^0+/,'')===id);
+  // Use a verified, unique meter reading as the active opening for this SRL.
+  // Unknown or duplicate readings continue using the existing balance.
+  if(matches.length===1&&matches[0].meters!==null&&Number.isFinite(Number(matches[0].meters))){
+    const usedAfterCount=(state.cutting||[]).filter(x=>normalize(x.srlNo)===normalize(r.srlNo)&&!x.wastage&&String(x.date||x.cutDate||'')>'2026-10-27').reduce((sum,x)=>sum+cuttingUsedMtr(x),0);
+    return Math.max(0,Number(matches[0].meters)-usedAfterCount);
+  }
+  if(r.excelLiveBalanceMtr!==''&&r.excelLiveBalanceMtr!=null)return Math.max(0,num(r.excelLiveBalanceMtr)-srlNewUsedMtr(r.srlNo));
+  return Math.max(0,num(r.openingMtr)-srlUsedMtr(r.srlNo));
+}
 function storeStatus(r){if(r.openingMtr!=='' && srlBalance(r)<=0)return 'CLOSED';return r.excelTrackerStatus||r.status||'READY'}
 function applyPendingDelta(workNo,delta){
   if(!workNo || !Number.isFinite(Number(delta))) return;
