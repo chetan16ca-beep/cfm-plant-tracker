@@ -382,4 +382,26 @@ $('mrOpen').onclick=()=>{$('mrPanel').hidden=false;check()};$('mrClose').onclick
 $('mrPrintBtn').onclick=()=>{const a=meters(),total=Number($('mrTotal').value);if(!a.length||a.some(x=>!Number.isFinite(x)||x<=0)||Math.abs(a.reduce((x,y)=>x+y,0)-total)>.001){alert('Roll meter total must match bill meter');return}const quality=$('mrQuality').value.trim(),width=$('mrWidth').value.trim(),bill=$('mrBill').value.trim();if(!quality||!width||!bill){alert('Enter Bill Number, Quality and Width');return}const safe=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));$('mrPrint').innerHTML='<div class="mrlabels">'+a.map((m,i)=>'<div class="mrlabel"><b>EAGLE FILTRATION</b><div>MATERIAL BUNDLE</div><hr><div>SERIAL NUMBER (SAMPLE)</div><div class="mrserial">NOT ALLOCATED</div><hr><div>QUALITY</div><div class="mrmajor">'+safe(quality)+'</div><div>METER</div><div class="mrmajor">'+m+' MTR</div><hr><div>WIDTH: '+safe(width)+'″ | BILL: '+safe(bill)+' | ROLL: '+(i+1)+'</div></div>').join('')+'</div>';window.print()};
 })();
 </script>
+
+<!-- CFM Cutting Photo Upload: safe preview workflow, no cloud posting -->
+<style>
+#cfmCutPhotoOpen{position:fixed;right:12px;bottom:136px;z-index:2147483645;background:#1674c9;color:#fff;border:0;border-radius:12px;padding:11px 13px;font:700 13px system-ui;box-shadow:0 4px 16px #0003}
+#cfmCutPhotoPanel{position:fixed;inset:3%;z-index:2147483647;background:#fff;color:#14263a;border-radius:15px;box-shadow:0 12px 50px #0008;overflow:hidden;display:flex;flex-direction:column}
+#cfmCutPhotoPanel[hidden]{display:none!important}
+#cfmCutPhotoPanel header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 14px system-ui}
+#cfmCutPhotoPanel button{background:#e8f3fc;border:1px solid #bfd8ea;border-radius:8px;padding:8px 12px}
+#cfmCutPhotoPanel iframe{width:100%;flex:1;border:0}
+</style>
+<button id="cfmCutPhotoOpen" type="button">📷 Cutting Photo Upload</button>
+<section id="cfmCutPhotoPanel" hidden role="dialog" aria-label="Cutting Photo Upload">
+<header><span>Cutting Sheet — Photo Upload / Preview</span><button id="cfmCutPhotoClose" type="button">✕ Close</button></header>
+<iframe id="cfmCutPhotoFrame" title="Cutting register with photo preview" loading="lazy"></iframe>
+</section>
+<script>
+(function(){
+const open=document.getElementById('cfmCutPhotoOpen'),panel=document.getElementById('cfmCutPhotoPanel'),frame=document.getElementById('cfmCutPhotoFrame');
+open.addEventListener('click',function(){if(!frame.getAttribute('src'))frame.src='./cutting-print-test.html';panel.hidden=false});
+document.getElementById('cfmCutPhotoClose').addEventListener('click',function(){panel.hidden=true});
+})();
+</script>
 </body></html>
