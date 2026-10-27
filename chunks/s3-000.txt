@@ -1074,6 +1074,12 @@ function multiPoRowsData(){
     selectedSrl:[...row.querySelectorAll('.multi-srl option:checked')].map(o=>o.value)
   }));
 }
+window.cfmPOExistingOrders=function(party,poNo){
+ const normPO=x=>String(x||'').trim().replace(/\s+/g,'').toUpperCase();
+ const p=normPO(party),n=normPO(poNo);
+ if(!p||!n)return [];
+ return (state.pending||[]).filter(x=>normPO(x.party)===p&&normPO(x.poNo)===n).map(x=>({workNo:String(x.workNo||''),itemCode:String(x.itemCode||'')}));
+};
 window.openMultiPendingForm=function(){
   multiPoBaseNo=nextWorkStartNo();
   const parties=customerPartyOptions();
