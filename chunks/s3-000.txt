@@ -1127,6 +1127,12 @@ window.saveMultiPoItems=function(){
     }
     multiPoBaseNo=nextWorkStartNo();
     const poNo=String(document.getElementById('multiPoNo')?.value||'').trim(),orderDate=document.getElementById('multiOrderDate')?.value||todayISO(),deliveryDate=document.getElementById('multiDeliveryDate')?.value||'',priority=document.getElementById('multiPriority')?.value||'NORMAL';
+    const imported=window.cfmPOImportedDraft;
+    if(imported&&String(imported.party||'').trim().toUpperCase()===party.toUpperCase()&&String(imported.poNo||'').trim().toUpperCase()===poNo.toUpperCase()){
+      const existing=window.cfmPOExistingOrders(party,poNo);
+      if(existing.length)return fail('Duplicate PO blocked: '+existing.map(x=>x.workNo).slice(0,5).join(', '),document.getElementById('multiPoNo'));
+      if(rows.length!==imported.lineCount)return fail('Imported PO items changed. Re-import and verify all lines.',document.getElementById('multiPoItems'));
+    }
     const created=[];
     rows.forEach((x,i)=>{
       let p=null;try{p=findProductFromFields({description:x.description,eagleCode:x.eagleCode,itemCode:x.itemCode,productPick:x.description})}catch(e){}
@@ -1140,6 +1146,7 @@ window.saveMultiPoItems=function(){
     const workRange=created.length===1?created[0].workNo:(created[0].workNo+' – '+created[created.length-1].workNo);
     try{setNextUpdateNotification('🔔 New PO Added',party+' • '+created.length+' item • '+workRange)}catch(e){}
     try{save()}catch(e){console.error('PO save persistence error',e);return fail('SAVE ERROR: '+(e?.message||'storage error'),document.getElementById('saveFormBtn'))}
+    if(imported&&String(imported.poNo||'').trim().toUpperCase()===poNo.toUpperCase())window.cfmPOImportedDraft=null;
     toast(created.length+' PO item saved • '+workRange);
     return true;
   }catch(e){console.error('PO SAVE FATAL',e);toast('SAVE ERROR: '+(e?.message||String(e)));return false}
