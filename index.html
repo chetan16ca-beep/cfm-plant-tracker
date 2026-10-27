@@ -408,4 +408,58 @@ document.getElementById('cfmCutPhotoClose').addEventListener('click',function(){
 <!-- PO Work Order test access: no production writes -->
 <style>#cfmPOOpen{position:fixed;right:12px;bottom:192px;z-index:2147483645;background:#165a83;color:white;border:0;border-radius:12px;padding:11px 13px;font:700 13px system-ui}#cfmPOPanel{position:fixed;inset:3%;z-index:2147483647;background:white;color:#123;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 50px #0008}#cfmPOPanel[hidden]{display:none!important}#cfmPOPanel header{padding:12px;display:flex;justify-content:space-between;font:700 14px system-ui}#cfmPOPanel iframe{border:0;flex:1;width:100%}</style>
 <button id="cfmPOOpen" type="button">📄 PO → Work Order Test</button><section id="cfmPOPanel" hidden role="dialog" aria-label="PO Work Order Test"><header><span>PO Photo / PDF — Work Order Draft</span><button id="cfmPOClose" type="button">✕ Close</button></header><iframe id="cfmPOFrame" title="PO Work Order Test"></iframe></section><script>(function(){const p=document.getElementById('cfmPOPanel'),f=document.getElementById('cfmPOFrame');document.getElementById('cfmPOOpen').onclick=()=>{if(!f.src)f.src='./po-workorder-test.html';p.hidden=false};document.getElementById('cfmPOClose').onclick=()=>p.hidden=true})();</script>
+
+<!-- Verified PO draft -> existing Multi-item PO editor. No automatic saving. -->
+<script id="cfmPOVerifiedBridge">
+(function(){
+'use strict';
+function reply(target,ok,message){
+  try{target.postMessage({kind:'CFM_PO_DRAFT_TRANSFER_RESULT',ok,message},location.origin)}catch(e){console.warn(e)}
+}
+window.addEventListener('message',function(event){
+  const viewer=document.getElementById('cfmPOFrame');
+  if(!viewer||event.source!==viewer.contentWindow||event.origin!==location.origin)return;
+  const d=event.data;
+  if(!d||d.kind!=='CFM_PO_DRAFT_TRANSFER_V1')return;
+  const fail=message=>{reply(event.source,false,message);alert(message)};
+  const party=String(d.party||'').trim(),po=String(d.poNumber||'').trim(),date=String(d.poDate||'');
+  if(d.verified!==true||!party||party.length>160||!po||po.length>110||!/[0-9]/.test(po)||!/^\d{4}-\d{2}-\d{2}$/.test(date))return fail('Missing verified PO details. Return to PO Reader.');
+  if(!Array.isArray(d.lines)||d.lines.length<1||d.lines.length>40)return fail('PO must contain 1–40 verified product lines');
+  const rows=d.lines.map(x=>({description:String(x.description||'').trim(),quantity:Number(x.quantity),customerCode:String(x.customerCode||'').trim()}));
+  if(rows.some(x=>!x.description||x.description.length>600||!Number.isSafeInteger(x.quantity)||x.quantity<1||x.quantity>100000||x.customerCode.length>60))return fail('Invalid product description or quantity. Verify PO again.');
+  const issue=String(d.discrepancy||'').slice(0,350),reason=String(d.discrepancyReason||'').trim().slice(0,350);
+  if(issue&&!reason)return fail('Resolve PO quantity mismatch and enter verification reason first');
+  const app=document.getElementById('app'),w=app&&app.contentWindow;
+  if(!w||typeof w.openMultiPendingForm!=='function')return fail('Main ERP still loading. Wait and retry, or refresh the ERP.');
+  if(typeof w.cfmPOExistingOrders!=='function')return fail('ERP duplicate-PO checker is not loaded. Refresh the full ERP and retry.');
+  let duplicates=[];
+  try{duplicates=w.cfmPOExistingOrders(party,po)||[]}catch(e){return fail('Could not check existing PO. Refresh ERP first.')}
+  if(duplicates.length)return fail('This PO is already present in ERP: '+duplicates.map(x=>x.workNo).slice(0,8).join(', ')+'. No duplicate orders prepared.');
+  try{
+    w.openMultiPendingForm();
+    const doc=w.document,$=id=>doc.getElementById(id);
+    if(!$('multiParty')||!$('multiPoItems')||!$('multiPoNo'))throw Error('Multi-item PO editor could not open');
+    $('multiParty').value=party;$('multiPoNo').value=po;
+    if($('multiOrderDate'))$('multiOrderDate').value=date;
+    for(let i=1;i<rows.length;i++)w.addMultiPoItem();
+    const editors=[...doc.querySelectorAll('#multiPoItems .multi-po-item-row')];
+    if(editors.length!==rows.length)throw Error('ERP could not prepare all product rows');
+    const set=(root,selector,value)=>{const el=root.querySelector(selector);if(!el)throw Error('Field missing: '+selector);el.value=value};
+    rows.forEach((x,i)=>{
+      const root=editors[i];
+      set(root,'.multi-item-product',x.description);
+      set(root,'.multi-item-code',x.customerCode);
+      set(root,'.multi-qty',x.quantity);
+      if(issue&&reason)set(root,'.multi-description2','PO qty discrepancy verified: '+issue+' | '+reason);
+    });
+    const panel=$('multiPoItems'),notice=doc.createElement('div');
+    notice.style.cssText='background:#fff3d6;border:1px solid #eac97c;padding:12px;border-radius:9px;margin:8px 0;font-weight:700;color:#794d0b';
+    notice.textContent='Imported PO '+po+' • '+rows.length+' separate Work Orders. Verify product, quantity, cloth, size, measurement and Work No. before clicking Save PO Items. '+(issue?'Quantity discrepancy: '+issue+' • Resolution: '+reason:'');
+    panel.parentNode.insertBefore(notice,panel);
+    document.getElementById('cfmPOPanel').hidden=true;
+    reply(event.source,true,'Prepared '+rows.length+' items in ERP Multi-item PO form. Verify each and press Save PO Items to create work orders.');
+  }catch(e){fail('Could not fill ERP form: '+(e.message||e))}
+});
+})();
+</script>
 </body></html>
