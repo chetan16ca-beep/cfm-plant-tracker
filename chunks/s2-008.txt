@@ -353,7 +353,7 @@ function srlBalance(r){
   const matches=photos.filter(x=>String(x.srl).replace(/^0+/,'')===id);
   // Use a verified, unique meter reading as the active opening for this SRL.
   // Unknown or duplicate readings continue using the existing balance.
-  if(matches.length===1&&matches[0].meters!==null&&Number.isFinite(Number(matches[0].meters))){
+  if(matches.length===1&&matches[0].meters!==null&&Number.isFinite(Number(matches[0].meters))&&Math.abs(Number(matches[0].width)-num(r.width))<0.11){
     const usedAfterCount=(state.cutting||[]).filter(x=>normalize(x.srlNo)===normalize(r.srlNo)&&!x.wastage&&String(x.date||x.cutDate||'')>'2026-10-27').reduce((sum,x)=>sum+cuttingUsedMtr(x),0);
     return Math.max(0,Number(matches[0].meters)-usedAfterCount);
   }
