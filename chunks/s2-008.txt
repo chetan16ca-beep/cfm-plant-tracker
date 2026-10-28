@@ -421,6 +421,9 @@ function getPending(workNo){return state.pending.find(r=>normalize(r.workNo)===n
 function getStore(srlNo){return state.store.find(r=>normalize(r.srlNo)===normalize(srlNo))}
 function cuttingUsedMtr(r){
   if(!r || r.wastage || normalize(r.srlNo)==='W') return 0;
+  // Red-pen part quantities must never consume stock until an actual SRL and meter amount are verified.
+  if(r._redPenPendingStock===true)return 0;
+  if(r._redPenVerified===true && Number.isFinite(Number(r._redPenUsedMtr)) && Number(r._redPenUsedMtr)>=0)return Number(r._redPenUsedMtr);
   const q=num(r.cutQty), l=num(r.length), h=num(r.height), layer=Math.max(1,num(r.layer)||1);
   const s=getStore(r.srlNo);
   const width=num(r.plannedWidth)||num(s?.width);
