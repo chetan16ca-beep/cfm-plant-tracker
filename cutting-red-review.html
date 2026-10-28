@@ -189,6 +189,45 @@ $('tryOCR').onclick=async()=>{
  }catch(e){$('photoStatus').textContent='OCR failed: '+e.message}
  finally{btn.disabled=false}
 };
+
+$('postLive').onclick=()=>{
+ try{
+  if(window.parent===window)throw Error('Open Red Pen Cutting from Main ERP, not as a separate page.');
+  if(!photoName||!$('photo').files[0])throw Error('Original red-pen photo is required.');
+  if(!$('verified').checked)throw Error('Tick verification only after checking every field against the photo.');
+  const workNo=canonical($('workNo').value),date=$('cutDate').value,rows=getRows();
+  if(!/^CFM[- ]?\d+$/i.test(workNo)||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Choose valid Work No. and Date.');
+  if(liveOrders.length&&!liveOrders.some(x=>canonical(x.workNo)===workNo))throw Error('Work Order not found in current ERP; press Load Work Orders.');
+  const withMeters=rows.filter(r=>r.usedMtr!==''&&r.usedMtr>0).length;
+  const notice='POST '+rows.length+' VERIFIED RED-PEN PART CUTS to LIVE Cutting for '+workNo+'?\n'
+   +(withMeters?withMeters+' rows with confirmed meters will deduct Stock.\n':'NO Stock meters will be deducted.\n')
+   +'Pending bag Qty will NOT change. Continue?';
+  if(!confirm(notice))return;
+  const identity=JSON.stringify({workNo,date,rows,photoName});
+  if(!drafts.some(d=>d.identity===identity)){
+    drafts.push({kind:'CFM_RED_CUTTING_VERIFIED_V1',version:1,id:Date.now()+'-'+Math.random().toString(36).slice(2),workNo,date,rows,photoFileName:photoName,verifiedByUser:true,savedAt:new Date().toISOString(),cloudPosted:false,stockPosted:false,completedBagsPosted:false,identity});
+    try{persist();displayHistory()}catch(e){drafts.pop();throw Error('Local draft backup could not be saved: '+e.message)}
+  }
+  $('postLive').disabled=true;
+  $('liveStatus').textContent='Sending verified red-pen Cutting to Main ERP…';
+  window.parent.postMessage({kind:'CFM_RED_CUT_POST_VERIFIED_V1',payload:{workNo,date,rows,photoFileName:photoName,verifiedByUser:true}},location.origin);
+ }catch(e){$('liveStatus').textContent='NOT POSTED: '+e.message;}
+};
+window.addEventListener('message',e=>{
+ if(e.origin!==location.origin||e.source!==window.parent||e.data?.kind!=='CFM_RED_CUT_POST_RESULT_V1')return;
+ const result=e.data.result||{};
+ $('liveStatus').textContent=result.message||'No response received.';
+ $('postLive').disabled=!!result.ok||!!result.savedLocally;
+ if(result.ok){
+  $('entryStatus').textContent='Live Cutting updated for '+result.workNo+' ('+result.count+' lines). Pending bag quantity unchanged.';
+  try{
+    const workNo=canonical($('workNo').value),date=$('cutDate').value,rows=getRows();
+    const identity=JSON.stringify({workNo,date,rows,photoName}),draft=drafts.find(x=>x.identity===identity);
+    if(draft){draft.cloudPosted=true;draft.stockPosted=(result.pendingStock===0);draft.postedAt=new Date().toISOString();persist();displayHistory();}
+  }catch(e){console.warn('Draft status update failed',e)}
+ }
+ if(result.savedLocally)$('entryStatus').textContent='Saved on this device. Cloud sync needs attention. Do not post again.';
+});
 displayHistory();
 })();
 </script></body></html>
