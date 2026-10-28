@@ -113,6 +113,75 @@ window.openCuttingForm=function(i=null,preset=null){
   },{type:'cutting',i,workNo:r.workNo||'',presetWorkNo:p?.workNo||''})
 }
 
+
+/* CFM V173: deliberate red-pen photo posting, after human verification only.
+   Part-cut rows are not finished bag quantities. A missing/uncertain meter reading
+   records Cutting but NEVER deducts cloth or silently changes Pending Qty. */
+window.cfmPostRedPenVerified=async function(payload){
+  const reject=message=>({ok:false,message});
+  try{
+    if(!cloudReady||cloudDirty||cloudBusy)return reject('Cloud sync is not ready or local edits are unsynced. Export an Emergency Backup and resolve Cloud sync before posting.');
+    if(!payload || payload.verifiedByUser!==true)return reject('Confirm every RED PEN row against the photo first.');
+    const workNo=String(payload.workNo||'').trim().toUpperCase();
+    const date=String(payload.date||'').trim();
+    const photo=String(payload.photoFileName||'').trim().slice(0,180);
+    if(!/^CFM-\d+$/.test(workNo)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!photo)return reject('Valid Work No, date and original photo required.');
+    const order=getPending(workNo);
+    if(!order||isArchived(order))return reject('Work Order is not available/active in this ERP. Load Work Nos first.');
+    if(!Array.isArray(payload.rows)||payload.rows.length<1||payload.rows.length>60)return reject('Cutting requires 1–60 checked red-pen lines.');
+    const prepared=[],usedBySrl=new Map();
+    for(const raw of payload.rows){
+      const srlRaw=String(raw.srl||raw.srlNo||'').trim().slice(0,90);
+      const part=String(raw.part||raw.partName||'').trim().slice(0,100);
+      const length=Number(raw.length),height=Number(raw.width),qty=Number(raw.qty);
+      const enteredMeter=(raw.usedMtr===undefined||raw.usedMtr===null||String(raw.usedMtr).trim()==='')?null:Number(raw.usedMtr);
+      if(!srlRaw||!part||![length,height,qty].every(x=>Number.isFinite(x)&&x>0&&x<=10000)||!Number.isSafeInteger(qty))return reject('Each row needs verified SRL, Part, Length, Width and whole-number Quantity.');
+      if(enteredMeter!==null&&(!Number.isFinite(enteredMeter)||enteredMeter<0||enteredMeter>100000))return reject('Used MTR must be a valid non-negative amount.');
+      const resolved=resolveSRL(srlRaw);
+      if(resolved==='__AMBIGUOUS__')return reject('SRL '+srlRaw+' is ambiguous. Select the complete roll number.');
+      const tracked=enteredMeter!==null&&enteredMeter>0;
+      if(tracked){
+        const stock=getStore(resolved);
+        if(!stock)return reject('SRL '+srlRaw+' is not in Store. Leave Used MTR blank to post Cutting with stock verification pending.');
+        if(Math.min(length,height)>num(stock.width)+0.11)return reject('Part '+part+' cannot fit across SRL '+srlRaw+' width. Verify the dimensions.');
+        const total=(usedBySrl.get(resolved)||0)+enteredMeter;
+        usedBySrl.set(resolved,total);
+        if(total>srlBalance(stock)+0.0001)return reject('Not enough available cloth meters on '+resolved+'. Required '+fmt(total)+' MTR.');
+      }
+      prepared.push({srl:resolved,part,length,height,qty,usedMtr:tracked?enteredMeter:null});
+    }
+    const fingerprint=JSON.stringify({workNo,date,photo,rows:prepared});
+    if(state.cutting.some(r=>r._redPenFingerprint===fingerprint))return reject('This red-pen cutting sheet was already posted. Duplicate blocked.');
+    const meta=await cloudFetchMeta();
+    if(num(meta?.version)!==num(cloudVersion))return reject('Cloud changed on another device. Refresh Cloud Work Nos and check for duplicate before posting.');
+    try{await window.parent.cfmSaveBackup?.()}catch(e){console.warn('Pre-cutting backup unavailable',e)}
+    const createdAt=new Date().toISOString();
+    const unverified=prepared.filter(x=>x.usedMtr===null).length;
+    const rows=prepared.map((x,i)=>({
+      date,entryType:'RED PEN PHOTO VERIFIED',workNo,party:order.party||'',
+      description:order.description||'',cloth:order.cloth||'',plannedWidth:num(order.width),
+      srlNo:x.srl,cutQty:x.qty,length:x.length,height:x.height,layer:1,
+      sizeLine:x.part+' | '+x.length+' x '+x.height,
+      remark:'Verified red-pen cutting photo: '+photo+(x.usedMtr===null?' | STOCK METER PENDING VERIFICATION':' | Verified used MTR: '+x.usedMtr),
+      cuttingBy:'Red Pen Photo',wastage:false,
+      _autoPendingLinked:false,_trackSrl:x.usedMtr!==null,_redPenPendingStock:x.usedMtr===null,
+      _redPenVerified:true,_redPenUsedMtr:x.usedMtr,_redPenFingerprint:fingerprint,
+      _redPenPhotoName:photo,_redPenCreatedAt:createdAt,_redPenPart:x.part,_redPenRow:i+1
+    }));
+    state.cutting.push(...rows);
+    try{save();clearTimeout(cloudPushTimer)}catch(e){
+      state.cutting.splice(state.cutting.length-rows.length,rows.length);
+      return reject('Local save failed: '+(e.message||e));
+    }
+    const synced=await cloudPush(true);
+    if(!synced){
+      setCloudBadge('⚠️ Red Pen saved locally • Cloud sync required','amber');
+      return {ok:false,savedLocally:true,message:'Cutting saved on this device, but Cloud sync could not be confirmed. Do not post again; use Sync and check the same Work Order.'};
+    }
+    return {ok:true,cloud:true,workNo,count:rows.length,pendingStock:unverified,message:'Saved '+rows.length+' verified red-pen lines to LIVE Cutting. '+(unverified?unverified+' lines await stock-meter verification. ':'')+'Pending bag quantity was not changed because part cut qty is not completed bags.'};
+  }catch(e){return reject('Red Pen posting failed: '+String(e.message||e));}
+};
+
 window.deleteRecord=function(type,i){
   if(!confirm('Delete this record?'))return;
   if(type==='cutting'){const r=state.cutting[i];if(r?._autoPendingLinked)applyPendingDelta(r.workNo,-num(r.cutQty));}
