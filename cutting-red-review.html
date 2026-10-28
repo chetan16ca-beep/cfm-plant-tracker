@@ -39,17 +39,17 @@ tr:nth-child(even){background:#f8fbfe}#historyList{padding:0;margin:0;list-style
 <details><summary>View OCR text (not verified)</summary><textarea id="rawText" readonly placeholder="OCR text will appear here. Handwriting recognition may be inaccurate."></textarea></details>
 <p><small>Photo stays in your browser for this session and is not automatically uploaded to the ERP cloud or ChatGPT. Send the photo in this ChatGPT conversation for my verification.</small></p></section>
 <section class="card"><h2>3. Verified Cutting Rows — Length × Width × Quantity</h2>
-<p><small>Enter <b>parts cut</b>, not automatically completed bag quantity. Use only entries confirmed from RED PEN. Do not enter Used Meter here.</small></p>
-<div class="tableWrap"><table><thead><tr><th>SRL No.</th><th>Part Name</th><th>Length (inch)</th><th>Width (inch)</th><th>Cutting Qty</th><th></th></tr></thead><tbody id="redRows"></tbody></table></div>
+<p><small>Enter actual <b>parts cut</b>, NOT completed bag quantity. Used MTR is optional: enter it only if verified for the actual Store SRL. Without confirmed meters, Cutting will post but stock will NOT be deducted.</small></p>
+<div class="tableWrap"><table><thead><tr><th>SRL No.</th><th>Part Name</th><th>Length (inch)</th><th>Width (inch)</th><th>Cutting Qty</th><th>Used MTR (verified, optional)</th><th></th></tr></thead><tbody id="redRows"></tbody></table></div>
 <button id="addRow" class="secondary">+ Add Row</button><button id="clearRows" class="secondary">Clear Rows</button>
 <details style="margin:14px 0"><summary>Paste ChatGPT-confirmed cutting JSON to fill rows</summary>
 <p><small>After I read your photo in ChatGPT, paste my verified JSON here. It fills the fields for your final confirmation; it does not save automatically.</small></p>
 <textarea id="jsonPaste" placeholder='{"workNo":"CFM-680","date":"2026-10-28","rows":[{"srl":"EFPPL03/0300","part":"Body","length":30,"width":20,"qty":2}]}'></textarea>
 <button id="applyJson" class="secondary">Apply Confirmed JSON</button></details>
 <label class="check"><input type="checkbox" id="verified">I checked every entered row against the original RED PEN photo, including SRL, L × W and Qty.</label>
-<button id="saveReview">✓ Save Verified Cutting Draft (This Device)</button>
+<button id="saveReview">✓ Save Verified Cutting Draft (This Device)</button><button id="postLive" class="warningbtn" type="button">☁ Update Main ERP Cutting (Verified Red Pen)</button><p id="liveStatus" role="status"></p>
 <p id="entryStatus" role="status"></p>
-<p><small><b>Important:</b> Saving this Draft does not deduct stock, update Main ERP Cutting Register, or reduce Pending Qty. Actual SRL consumption and completed-bag quantities require separate verification.</small></p></section>
+<p><small><b>Important:</b> Draft Save stays on this device. Only <b>Update Main ERP Cutting</b> posts to live Cutting after your confirmation. Confirmed Used MTR is required for Stock deduction. Part cutting quantities are NOT finished bag quantities, so Pending Qty stays unchanged.</small></p></section>
 <section class="card"><h2>4. Verified Draft History</h2><button id="downloadAll" type="button" class="secondary">Download Cutting Review Backup JSON</button>
 <ul id="historyList"></ul><p><small>Data is saved on this device only. Back up the JSON before clearing browser storage; the original photo is not included in the backup.</small></p></section>
 </main><script>
@@ -83,10 +83,10 @@ $('loadOrders').onclick=()=>{
 if(window.parent!==window)window.parent.postMessage({kind:'CFM_RED_CUT_REQUEST_ORDERS'},location.origin);
 function row(values={}){
  const tr=document.createElement('tr');
- const fields=[['srl','text','serial'],['part','text','part'],['length','number',''],['width','number',''],['qty','number','']];
+ const fields=[['srl','text','serial'],['part','text','part'],['length','number',''],['width','number',''],['qty','number',''],['usedMtr','number','']];
  for(const [key,type,cls] of fields){
   const cell=document.createElement('td'),inp=document.createElement('input');inp.type=type;inp.dataset.field=key;inp.className=cls;inp.value=values[key]??'';
-  if(type==='number'){inp.step=key==='qty'?'1':'0.01';inp.min='0.01';inp.inputMode='decimal'}
+  if(type==='number'){inp.step=key==='qty'?'1':key==='usedMtr'?'0.001':'0.01';inp.min=key==='usedMtr'?'0':'0.01';inp.inputMode='decimal'}
   inp.setAttribute('aria-label',key);cell.append(inp);tr.append(cell);
  }
  const td=document.createElement('td'),del=document.createElement('button');del.className='secondary';del.textContent='×';del.type='button';del.title='Remove row';del.onclick=()=>{tr.remove();if(!$('redRows').children.length)row();};td.append(del);tr.append(td);$('redRows').append(tr);
@@ -103,6 +103,7 @@ function getRows(){
   if(!x.srl||!x.part||!x.length||!x.width||!x.qty)throw Error('Every filled row must have SRL, Part, Length, Width and Qty');
   for(const k of ['length','width','qty']){const n=Number(x[k]);if(!Number.isFinite(n)||n<=0||n>10000)throw Error('Invalid '+k+' in one of the rows');x[k]=n}
   if(!Number.isSafeInteger(x.qty))throw Error('Cutting Qty must be a whole number');
+  if(x.usedMtr!==''){x.usedMtr=Number(x.usedMtr);if(!Number.isFinite(x.usedMtr)||x.usedMtr<0)throw Error('Used MTR must be a valid non-negative number');}
   result.push(x);
  }
  if(!result.length)throw Error('Enter at least one confirmed red-pen cutting row');
@@ -115,7 +116,7 @@ function applyJSON(){
  const workNo=String(obj.workNo||'').trim().toUpperCase(),date=String(obj.date||'').trim();
  if(!/^CFM[- ]?\d+$/i.test(workNo)||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Provide valid workNo and date in JSON');
  $('workNo').value=workNo;$('cutDate').value=date;$('redRows').replaceChildren();
- for(const x of obj.rows){row({srl:x.srl??x.srlNo??'',part:x.part??x.partName??'',length:x.length??'',width:x.width??'',qty:x.qty??x.cuttingQty??''})}
+ for(const x of obj.rows){row({srl:x.srl??x.srlNo??'',part:x.part??x.partName??'',length:x.length??'',width:x.width??'',qty:x.qty??x.cuttingQty??'',usedMtr:x.usedMtr??''})}
  $('verified').checked=false;refreshWork();$('entryStatus').textContent='ChatGPT-confirmed JSON loaded for YOUR final verification. Nothing saved yet.';
  }catch(e){alert('Import failed: '+e.message)}
 }
