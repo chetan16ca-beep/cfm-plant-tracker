@@ -180,7 +180,6 @@
     <section id="view-cutting" class="view">
       <div class="section-head">
         <div><h2>Order & Cutting Entry</h2><p>Excel cutting history loaded • W = wastage</p></div><button class="btn" onclick="showView('measurements')">Measurement Master</button>
-        <button class="btn" type="button" onclick="window.parent.openCFMRedCutting()">📷 Red Pen Photo Verify</button>
         <button class="btn btn-primary" onclick="openCuttingForm()">+ Add Cutting</button>
       </div>
       <div class="filters"><input id="cutSearch" placeholder="Search work no, SRL, size, party..." oninput="renderCutting()" /></div>
