@@ -1,15 +1,147 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#154f8d"><title>Eagle Plant ERP • NEW</title><link rel="manifest" href="manifest.json?v=2"><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#154f8d"><title>Eagle Plant ERP • NEW</title><link rel="manifest" href="manifest.json?v=3"><style>
 :root{font-family:Inter,system-ui,Arial,sans-serif;color:#14283f;background:#eef3fa}*{box-sizing:border-box}body{margin:0;background:#eef3fa}button,input,select,textarea{font:inherit}button{cursor:pointer}.top{position:sticky;top:0;z-index:10;background:linear-gradient(115deg,#0d3969,#1975b8);color:white;padding:14px 16px;box-shadow:0 8px 25px #19466b30}.top h1{font-size:20px;margin:0}.top small{display:block;opacity:.9;font-size:12px;margin-top:4px}.container{width:min(1120px,100%);margin:auto;padding:13px}.nav{display:flex;gap:8px;overflow-x:auto;padding:10px 0 12px;position:sticky;top:68px;background:#eef3fa;z-index:7}.nav button{white-space:nowrap;border:1px solid #c5d9ef;border-radius:12px;background:white;padding:10px 13px;color:#164371;font-weight:700}.nav button.active{background:#1668ac;color:white}.pane{display:none}.pane.active{display:block}.panel{background:white;border:1px solid #d8e4f0;border-radius:16px;padding:15px;margin:10px 0;box-shadow:0 5px 20px #173c6010}.panel h2{font-size:17px;margin:0 0 12px;color:#124c83}.panel h3{font-size:15px;margin:0 0 10px}.hint{color:#617991;font-size:12px;line-height:1.55}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat{background:linear-gradient(135deg,#1768a9,#3193d4);color:#fff;border-radius:14px;padding:15px}.stat b{display:block;font-size:24px}.stat small{opacity:.94}.field{display:flex;flex-direction:column;gap:5px;margin:6px 0}.field label{font-size:12px;font-weight:750;color:#294f73}.field input,.field select,.field textarea,.search{width:100%;padding:11px;border:1px solid #b9cbdb;border-radius:9px;background:white;outline-color:#268bd2;min-width:0}.wide{grid-column:1/-1}.btn{padding:11px 14px;border:0;border-radius:10px;color:#fff;background:#1677be;font-weight:750}.btn.alt{color:#165584;background:#e7f1f9}.btn:disabled{opacity:.6}.list{display:grid;gap:9px;margin-top:10px}.item{background:#fcfdff;border:1px solid #dbe5ef;border-left:4px solid #2482c3;border-radius:11px;padding:11px}.item strong{color:#123f6e}.item .muted{color:#657a91;font-size:12px;margin-top:5px}.item .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}.actions select{border:1px solid #c9d8e5;padding:7px;border-radius:7px;max-width:210px}.tag{background:#ebf7ed;color:#216e3d;border-radius:6px;padding:3px 7px;display:inline-block;font-size:11px;font-weight:750}.status{font-size:12px;background:#e2f1fe;color:#114875;padding:8px 12px;border-radius:9px;margin:9px 0}.status.bad{background:#ffe9e9;color:#a12626}.status.ok{background:#e9f8ed;color:#216b34}.hidden{display:none!important}a{color:#146ca7}.stickybar{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.empty{color:#607c97;text-align:center;padding:17px}.badge{background:#ffdf8d;color:#755018;border-radius:9px;padding:3px 6px}.footer{font-size:11px;text-align:center;color:#678098;margin:22px 0}@media(min-width:760px){.stats{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:repeat(4,1fr)}.wide{grid-column:span 2}}@media(max-width:450px){.container{padding:10px}.top{padding:12px}.nav{top:62px}.stats .stat b{font-size:21px}}
-</style></head><body><header class="top"><h1>🏭 Eagle Plant ERP <span style="font-size:11px;background:#fff3;padding:3px 8px;border-radius:7px">NEW V2</span></h1><small>Fresh Work Orders from CFM-685 • Old ERP completely separate</small></header><main class="container">
+</style><link rel="stylesheet" href="ops-v3.css?v=3"></head><body><header class="top"><h1>🏭 Eagle Plant ERP <span style="font-size:11px;background:#fff3;padding:3px 8px;border-radius:7px">NEW V3</span></h1><small>Fresh Work Orders from CFM-685 • Old ERP completely separate</small></header><main class="container">
 <div id="message" class="status">☁️ Connecting to private NEW ERP…</div>
 <section id="locked" class="panel hidden"><h2>Private ERP Link Required</h2><p>This is a private company ERP. Open using the private link supplied in ChatGPT. No email or password is needed.</p></section>
 <div id="app" class="hidden">
 <div class="stickybar"><button type="button" id="refresh" class="btn alt">☁️ Refresh Cloud</button><span id="cloud" class="tag">Connecting…</span><span class="hint" id="version"></span></div>
-<nav class="nav" id="nav"><button data-pane="home" class="active">Dashboard</button><button data-pane="work">Work Orders</button><button data-pane="cutting">Cutting</button><button data-pane="stock">Physical Stock</button><button data-pane="products">Product Codes</button><button data-pane="backup">Backup</button></nav>
+<nav class="nav" id="nav"><button data-pane="home" class="active">Dashboard</button><button data-pane="work">Work Orders</button><button data-pane="cutting">Cutting</button><button data-pane="stock">Physical Stock</button><button data-pane="products">Product Codes</button><button data-pane="backup">Backup</button><button data-pane="production">Production</button><button data-pane="measure">Measurement</button><button data-pane="issues">Issue Register</button><button data-pane="daily">Daily Report</button><button data-pane="dispatch">Dispatch</button><button data-pane="labels">Tags / Labels</button><button data-pane="po">PO → Work Orders</button><button data-pane="manage">Edit / Adjust</button><button data-pane="print">A4 Prints</button></nav>
 <section id="home" class="pane active"><div class="stats"><div class="stat"><small>New Orders</small><b id="numOrders">0</b></div><div class="stat"><small>Next Work No.</small><b id="nextWork">685</b></div><div class="stat"><small>Physical SRL</small><b id="numRolls">0</b></div><div class="stat"><small>Cutting Entries</small><b id="numCuts">0</b></div></div><article class="panel"><h2>Recent New Work Orders</h2><div id="recent" class="list"></div></article><article class="panel"><h2>Separate ERP Promise</h2><p>Old Work Orders and their Stock are kept in the old CFM ERP only. This new ERP starts afresh at CFM-685, with its own cloud data.</p><a href="../index.html?v=180" target="_blank" rel="noopener">Open OLD ERP for historical records</a></article></section>
 <section id="work" class="pane"><article class="panel"><h2>+ New Work Order</h2><form id="orderForm" class="grid"><div class="field wide"><label>Party / Company *</label><input name="party" required autocomplete="organization"></div><div class="field"><label>PO Number</label><input name="po"></div><div class="field"><label>Product Code</label><input name="code" id="productCode" list="codeList" placeholder="EFP-Pxxxx"><datalist id="codeList"></datalist></div><div class="field wide"><label>Product / Description *</label><input name="product" id="productName" required list="productList"><datalist id="productList"></datalist></div><div class="field"><label>Order Qty *</label><input name="qty" type="number" min="1" step="any" required></div><div class="field"><label>Cloth Quality</label><input name="cloth" id="orderCloth"></div><div class="field"><label>Width (inch)</label><input name="width" id="orderWidth" type="number" min="1" step="any"></div><div class="field"><label>Priority</label><select name="priority"><option>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div><div class="wide"><button id="orderSave" class="btn">Save & Verify Cloud Work Order</button></div></form></article><article class="panel"><h2>New Work Orders Only</h2><input class="search" id="workSearch" placeholder="Search Work No, Party, PO, Product"><div id="orderList" class="list"></div></article></section>
 <section id="cutting" class="pane"><article class="panel"><h2>Cutting Entry • L × W × Qty</h2><p class="hint">Same calculation: Length × Width × Qty × Layer ÷ Roll Width ÷ 39.37 = Used Meter. The matching SRL stock decreases only on verified Cloud Save.</p><form id="cutForm" class="grid"><div class="field"><label>Work Order *</label><select name="work" id="workSelect" required></select></div><div class="field"><label>Physical SRL *</label><select name="srl" id="srlSelect" required></select></div><div class="field wide"><label>Cut Part / Description</label><input name="part" placeholder="DIA / COLL / BOTTOM / HT"></div><div class="field"><label>Length (inch) *</label><input name="length" type="number" min=".01" step="any" required></div><div class="field"><label>Width (inch) *</label><input name="width" type="number" min=".01" step="any" required></div><div class="field"><label>Cut Qty *</label><input name="qty" type="number" min="1" step="any" required></div><div class="field"><label>Layer</label><input name="layer" type="number" min="1" value="1" step="1"></div><div class="wide status" id="meterPreview">Select SRL and enter size to calculate meter.</div><div class="wide"><button id="cutSave" class="btn">Save Cutting + Deduct Meter</button></div></form></article><article class="panel"><h2>Latest Cutting Entries</h2><div id="cutList" class="list"></div></article></section>
 <section id="stock" class="pane"><article class="panel"><h2>Actual Physical Stock Only</h2><p class="hint">Only physical SRL counts belong here. No old ERP stock is automatically transferred. A full SRL begins with EFPPL03/; for example E340 means EFPPL03/0340.</p><form id="stockForm" class="grid"><div class="field"><label>SRL *</label><input name="srl" placeholder="E340 or EFPPL03/0340" required></div><div class="field"><label>Cloth Quality</label><input name="cloth"></div><div class="field"><label>Roll Width (inch) *</label><input name="width" type="number" min=".01" step="any" required></div><div class="field"><label>Physical Available MTR *</label><input name="meter" type="number" min="0" step=".001" required></div><div class="wide"><button id="stockSave" class="btn">Add Physical SRL to Cloud</button></div></form></article><article class="panel"><h2>Physical Stock Register</h2><input id="stockSearch" class="search" placeholder="Search SRL, cloth, width"><div id="stockList" class="list"></div></article></section>
 <section id="products" class="pane"><article class="panel"><h2>Original Product Code Master</h2><input class="search" id="productSearch" placeholder="Search code, product, micron, category"><div class="hint" id="productCount"></div><div id="productResults" class="list"></div></article></section>
 <section id="backup" class="pane"><article class="panel"><h2>Cloud Backup • New ERP Only</h2><p class="hint">Exports New Work Orders, Physical Stock, Cutting, and Product Codes as one JSON file. The old ERP is never included or modified.</p><button id="downloadBackup" class="btn">⬇ Download NEW ERP Backup</button></article></section>
-</div><div class="footer">Eagle Plant ERP NEW • separate cloud state • never replaces OLD CFM records</div></main><script src="app.js?v=2" defer></script></body></html>
+
+<div class="ops-kpis"><div><small>Active NEW Work Orders</small><b id="opsOrders">0</b></div><div><small>Not Dispatched</small><b id="opsPending">0</b></div><div><small>Ready to Dispatch</small><b id="opsReady">0</b></div><div><small>Physical Balance</small><b id="opsTotalStock">0 MTR</b></div></div>
+<p id="operationsMsg" class="status">Old CFM records stay in the old ERP. NEW operational entries save to the isolated NEW cloud.</p>
+<section id="production" class="pane">
+ <article class="panel"><h2>Department Production Entry</h2><p class="hint">Cutting → Stitching → Thread Cut → Gun Finish → Packing. Multiple entries allowed; department done cannot exceed order quantity. Cutting consumed meters remain recorded in the Cutting tab.</p>
+ <form id="stageForm" class="grid">
+ <div class="field"><label>Work Order *</label><select name="work" data-new-work required></select></div>
+ <div class="field"><label>Department *</label><select name="stage" required><option>CUTTING</option><option>STITCHING</option><option>THREAD CUT</option><option>GUN FINISH</option><option>PACKING</option></select></div>
+ <div class="field"><label>Done Qty *</label><input name="qty" type="number" min=".01" step="any" required></div>
+ <div class="field"><label>Worker</label><input name="worker" placeholder="Sumit / Sangita"></div>
+ <div class="field"><label>Size Cut (L × W) / Part</label><input name="size" placeholder="e.g. 26 × 80"></div>
+ <div class="field"><label>Date</label><input name="date" type="date"></div>
+ <div class="field wide"><label>Remarks</label><textarea name="remarks" rows="2"></textarea></div>
+ <div class="wide"><button type="submit" class="btn">Save Department Done to Cloud</button></div>
+ </form></article>
+ <article class="panel"><h2>Production Batch — Order / Done / Pending</h2><div class="field"><label>Choose Work Order, or All</label><select id="batchWork" data-new-work></select></div><div id="batchSummary" class="list ops-list"></div><button id="printBatch" class="btn alt" type="button">🖨 A4 Batch Report</button></article>
+ <article class="panel"><h2>Recent Production Entries</h2><div id="productionList" class="list ops-list"></div></article>
+</section>
+<section id="measure" class="pane">
+ <article class="panel"><h2>Measurement Sheet</h2><form id="measureForm" class="grid">
+ <div class="field wide"><label>Work Order *</label><select name="work" data-new-work required></select></div>
+ <div class="field"><label>Product / Bag Size</label><input name="size" placeholder="CF 48 TOP LT"></div>
+ <div class="field"><label>Length (inch)</label><input name="length"></div>
+ <div class="field"><label>Width (inch)</label><input name="width"></div>
+ <div class="field"><label>Top Mouth / Diameter</label><input name="mouth"></div>
+ <div class="field"><label>Stitching Allowance</label><input name="allowance"></div>
+ <div class="field"><label>Measured By</label><input name="worker"></div>
+ <div class="field wide"><label>Drawing / Measurement Notes</label><textarea name="description" rows="3"></textarea></div>
+ <div class="wide"><button type="submit" class="btn">Save Measurement</button></div>
+ </form></article><article class="panel"><h2>Saved Measurements</h2><div class="ops-list list" id="measurementList"></div><button id="printMeasurements" class="btn alt" type="button">🖨 Measurement A4</button></article>
+</section>
+<section id="issues" class="pane">
+ <article class="panel"><h2>Auto Issue Register</h2><p class="ops-note">Cutting entries automatically appear in the A4 Issue Register and deduct actual stock exactly once. Manual issue notes below are allocations only; they do NOT deduct meter a second time.</p>
+ <form id="issueForm" class="grid">
+ <div class="field"><label>Work Order *</label><select name="work" data-new-work required></select></div>
+ <div class="field"><label>Physical SRL *</label><select id="issueSrl" name="srl" required></select></div>
+ <div class="field"><label>Issued / Allocated Meter *</label><input name="meter" type="number" min=".001" step="any" required></div>
+ <div class="field"><label>Issued To</label><input name="issuedTo"></div>
+ <div class="field"><label>Date</label><input name="date" type="date"></div>
+ <div class="field wide"><label>Remarks</label><textarea name="remark" rows="2"></textarea></div>
+ <div class="wide"><button type="submit" class="btn">Save Allocation Note</button></div>
+ </form></article>
+ <article class="panel"><h2>Issue History</h2><div id="issueList" class="list ops-list"></div><button id="printIssues" class="btn alt" type="button">🖨 Auto Issue Register A4</button></article>
+</section>
+<section id="daily" class="pane">
+ <article class="panel"><h2>Daily Department Work Report</h2><p class="hint">Production entries automatically appear in the report. Add manual report remarks for daily plant work, including Store and Dispatch.</p>
+ <form id="dailyForm" class="grid">
+ <div class="field"><label>Date</label><input name="date" type="date"></div>
+ <div class="field"><label>Department *</label><select name="stage"><option>CUTTING</option><option>STITCHING</option><option>THREAD CUT</option><option>GUN FINISH</option><option>PACKING</option><option>DISPATCH</option><option>STORE</option><option>OTHER</option></select></div>
+ <div class="field"><label>Work Order (optional)</label><select name="work" data-new-work></select></div>
+ <div class="field"><label>Done Qty</label><input name="qty" type="number" min="0" step="any" value="0"></div>
+ <div class="field"><label>Worker</label><input name="worker"></div>
+ <div class="field wide"><label>Remarks / Pending</label><textarea name="remarks" rows="3"></textarea></div>
+ <div class="wide"><button type="submit" class="btn">Save Daily Report</button></div>
+ </form></article>
+ <article class="panel"><h2>Report Entries</h2><div class="field"><label>Filter Date (blank = all)</label><input id="reportDate" type="date"></div><div id="reportList" class="list ops-list"></div><div class="ops-action-row"><button id="printDaily" class="btn alt" type="button">🖨 Daily A4</button><button id="printDept" class="btn alt" type="button">🖨 Department Summary A4</button></div></article>
+</section>
+<section id="dispatch" class="pane">
+ <article class="panel"><h2>Ready to Dispatch / Delivery</h2><form id="dispatchForm" class="grid">
+ <div class="field"><label>Work Order *</label><select name="work" data-new-work required></select></div>
+ <div class="field"><label>Dispatch Qty *</label><input name="qty" type="number" min=".01" step="any" required></div>
+ <div class="field"><label>Challan No.</label><input name="challan"></div>
+ <div class="field"><label>Dispatch Date</label><input name="date" type="date"></div>
+ <div class="field"><label>Transporter / Vehicle</label><input name="transporter"></div>
+ <div class="field wide"><label>Remark</label><textarea name="remarks" rows="2"></textarea></div>
+ <div class="wide"><button type="submit" class="btn">Save Dispatch</button></div>
+ </form><p class="hint">A full dispatch updates Work Order to DISPATCHED. Partial dispatch remains READY TO DISPATCH.</p></article>
+ <article class="panel"><h2>Dispatch History</h2><div id="dispatchList" class="list ops-list"></div><button id="printDispatch" type="button" class="btn alt">🖨 Ready / Dispatch A4</button></article>
+</section>
+<section id="labels" class="pane">
+ <article class="panel"><h2>Work Order Tag • A4 Five per Sheet</h2><div class="grid">
+ <div class="field"><label>Work Order *</label><select id="tagWork" data-new-work></select></div>
+ <div class="field"><label>Total Tags</label><input id="tagCount" type="number" min="1" max="100" value="5"></div>
+ <div class="wide"><button id="printTags" type="button" class="btn">🖨 Print A4 Work Tags</button></div>
+ </div></article>
+ <article class="panel"><h2>Label Issued Register</h2><form id="labelForm" class="grid">
+ <div class="field"><label>Work Order *</label><select name="work" data-new-work required></select></div>
+ <div class="field"><label>Labels Issued Qty *</label><input name="qty" type="number" min="1" step="1" required></div>
+ <div class="field"><label>Issued To *</label><input name="issuedTo" required></div>
+ <div class="field"><label>Date</label><input name="date" type="date"></div>
+ <div class="field wide"><label>Remarks</label><textarea name="remarks" rows="2"></textarea></div>
+ <div class="wide"><button class="btn" type="submit">Save Label Issue</button></div>
+ </form><div id="labelsList" class="list ops-list"></div><button id="printLabelIssue" class="btn alt" type="button">🖨 Label Issue A4</button></article>
+</section>
+<section id="po" class="pane">
+ <article class="panel"><h2>Company PO Photo / PDF → Separate Work Orders</h2><p class="ops-note">Review the original PO before creating orders. File preview stays in your browser and is not uploaded to cloud. Product lines are entered manually here; automatic OCR is not enabled on this screen.</p>
+ <div class="field"><label>Open PO Photo or PDF</label><input id="poFile" type="file" accept="image/*,.pdf,application/pdf"></div><div id="poPreview"></div>
+ <form id="poForm">
+ <div class="grid">
+ <div class="field"><label>Company / Party *</label><input name="party" required></div>
+ <div class="field"><label>PO Number</label><input name="po"></div></div>
+ <h3>PO Product Lines (each becomes separate Work Order)</h3><div id="poLines"></div>
+ <button type="button" id="poAdd" class="btn alt">+ Add PO Line</button>
+ <p><label><input type="checkbox" name="verified" required> I verified product descriptions and quantities against original PO</label></p>
+ <button id="poSave" class="btn" type="submit">Save & Verify Separate NEW Work Orders</button>
+ </form></article>
+</section>
+<section id="manage" class="pane">
+ <article class="panel"><h2>Work Order Edit • Manual Only</h2><div class="field"><label>Choose Existing NEW Work Order</label><select id="editWork" data-new-work></select></div>
+ <div class="ops-action-row"><button id="editLoad" class="btn alt" type="button">Load Details</button><button id="archiveBtn" type="button" class="btn alt">Archive / Restore (never delete)</button></div><p id="editStatus" class="hint"></p>
+ <form id="editForm" class="grid">
+ <input name="work" type="hidden">
+ <div class="field"><label>Party *</label><input name="party" required></div>
+ <div class="field"><label>PO Number</label><input name="po"></div>
+ <div class="field wide"><label>Product / Description *</label><input name="product" required></div>
+ <div class="field"><label>Product Code</label><input name="code"></div>
+ <div class="field"><label>Cloth</label><input name="cloth"></div>
+ <div class="field"><label>Roll Width (inch)</label><input type="number" min="0" step="any" name="width"></div>
+ <div class="field"><label>Order Qty *</label><input type="number" min=".01" step="any" name="qty" required></div>
+ <div class="field"><label>Priority</label><select name="priority"><option>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
+ <div class="wide"><button class="btn" type="submit">Save Verified Work Order Edits</button></div>
+ </form></article>
+ <article class="panel"><h2>Physical Stock Meter Correction</h2><p class="ops-note">Manual correction only. This changes physical total meter, never deletes existing cutting history; reason is recorded in cloud audit log.</p>
+ <form id="adjustForm" class="grid"><div class="field"><label>SRL *</label><input name="srl" required placeholder="E340"></div><div class="field"><label>Corrected Total Physical MTR *</label><input name="meter" type="number" min="0" step=".001" required></div><div class="field wide"><label>Reason for Correction *</label><textarea name="reason" minlength="5" rows="2" required></textarea></div><div class="wide"><button class="btn" type="submit">Save Meter Correction + Audit</button></div></form></article>
+</section>
+<section id="print" class="pane">
+ <article class="panel"><h2>CFM Plant ERP • A4 Print Center</h2><p class="hint">All reports print directly from verified NEW cloud state. Old ERP records stay available separately.</p>
+ <div class="ops-action-row">
+ <button id="printPending" class="btn alt" type="button">Pending Orders</button>
+ <button id="printOrders" class="btn alt" type="button">All NEW Orders</button>
+ <button data-print="printBatch" class="btn alt" type="button">Batch Report</button>
+ <button id="printCutting" class="btn alt" type="button">Cutting Register</button>
+ <button id="printStock" class="btn alt" type="button">Open SRL Stock</button>
+ <button data-print="printIssues" class="btn alt" type="button">Auto Issue Register</button>
+ <button data-print="printDaily" class="btn alt" type="button">Daily Department</button>
+ <button data-print="printDept" class="btn alt" type="button">Department Summary</button>
+ <button data-print="printDispatch" class="btn alt" type="button">Dispatch Report</button>
+ <button data-print="printMeasurements" class="btn alt" type="button">Measurement Sheet</button>
+ <button data-print="printLabelIssue" class="btn alt" type="button">Label Issue Register</button>
+ </div><p class="hint">For 5-tags-per-sheet, open Tags / Labels above.</p></article>
+ <article class="panel"><h2>Old CFM ERP • Historical Work Orders</h2><a class="legacy-link" href="../index.html?v=180" target="_blank" rel="noopener">Open OLD ERP (all historical records)</a><p class="hint">The old app remains read/write at its own URL. It is not loaded, overwritten or imported automatically.</p></article>
+</section>
+</div><div class="footer">Eagle Plant ERP NEW • separate cloud state • never replaces OLD CFM records</div></main><script src="app.js?v=3" defer></script><script src="ops-v3.js?v=3" defer></script></body></html>

@@ -1,0 +1,15 @@
+/* Additional NEW ERP operational modules. Leaves legacy CFM UI untouched. */
+.ops-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.ops-kpis>div{background:white;border:1px solid #d1e2f1;border-radius:12px;padding:12px}
+.ops-kpis b{display:block;font-size:20px;color:#155c8d}.ops-kpis small{font-size:11px;color:#627c91}
+.ops-note{background:#fff8e7;border:1px solid #f0d698;color:#795315;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.5}
+.ops-list{max-height:650px;overflow:auto}.ops-action-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ops-action-row .btn{min-width:130px}
+.po-line{display:grid;grid-template-columns:minmax(0,1fr) 110px 40px;gap:6px;margin:5px 0;align-items:center}
+.po-line input{width:100%;min-width:0;border:1px solid #c6d5e4;border-radius:8px;padding:10px}
+.po-preview{height:270px;max-width:100%;object-fit:contain;border:1px solid #d0dfea;border-radius:10px;background:#fafcff}
+#operationsMsg{margin-bottom:12px}
+.legacy-link{display:inline-block;color:#1262a8;background:#e8f2fc;padding:10px 14px;border-radius:10px;font-weight:750;text-decoration:none}
+.legacy-link:focus{outline:2px solid #1473b6}
+@media(min-width:760px){.ops-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:550px){.po-line{grid-template-columns:minmax(0,1fr) 77px 34px}.ops-action-row .btn{min-width:0;flex:1}}
