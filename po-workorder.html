@@ -1,0 +1,158 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CFM PO → Create Work Orders</title><style>*{box-sizing:border-box}body{font:14px system-ui;margin:0;background:#f1f6fa;color:#18334b}main{max-width:760px;margin:auto;padding:16px}section{background:#fff;border:1px solid #d6e2ed;border-radius:12px;padding:16px;margin:12px 0}input,textarea{width:100%;padding:10px;border:1px solid #abc0d0;border-radius:8px;margin:5px 0 12px}label{font-weight:600}button{padding:10px 14px;background:#126eb4;color:#fff;border:0;border-radius:9px;font-weight:700;margin:5px 5px 5px 0}button:disabled{opacity:.5}iframe,img{max-width:100%;width:100%;max-height:320px;object-fit:contain;border:1px solid #ddd}small{color:#526879}.warn{background:#fff3d6;padding:12px;border-radius:8px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px}td input{margin:0}h2{margin-top:0}</style></head><body><main><h2>CFM — PO Photo / PDF → Create Work Orders</h2><p class="warn"><b>Live ERP Work Order Flow:</b> Upload PO, Auto Read, verify product codes and quantities, prepare a separate work order for each line, then continue to the Main ERP and press <b>Save PO Items</b>. Nothing is saved until that final confirmation. OCR can be inaccurate; always verify with original PO.</p><section><h3>1. Upload Company PO</h3><input id="poFile" type="file" accept="image/*,.pdf,application/pdf"><div id="preview"></div><button id="readPO" type="button">🔎 Auto Read PO</button><p id="readStatus" aria-live="polite"></p><details><summary>Recognized text (check errors)</summary><textarea id="recognized" rows="9"></textarea></details><small>Photo and PDF accepted. For privacy, processing happens in your browser using external OCR libraries. Do not use for confidential POs without approval.</small></section><section><h3>2. Verify PO Details</h3><label>Party Name<input id="party" placeholder="Company name"></label><label>PO Number<input id="po" placeholder="Purchase order no."></label><label>PO Date<input id="date" type="date"></label><label>Remarks<textarea id="remarks" rows="2"></textarea></label><h3>PO Product Lines</h3><table><thead><tr><th>Product / Specification</th><th>Qty</th><th></th></tr></thead><tbody id="lines"></tbody></table><button id="add">+ Product Line</button></section><section><h3>3. Optional PO Draft Backup</h3><button id="download">Download Verified Draft JSON</button><button id="print">Print Draft</button><p id="status"></p><small>Use Prepare Separate Work Orders to check one work order per PO product. Transfer to Main ERP prefills the existing Multi-item PO form; only its Save button creates actual orders.</small></section>
+<section id="woPreviewSection"><h3>4. Separate Work Orders — Review &amp; Final Save</h3>
+<p><small>Each PO product becomes a separate CFM Work Order. Main ERP generates the actual Work Numbers after final Save. PO upload does not deduct cloth stock.</small></p>
+<div id="poReviewWarning" role="alert" style="background:#fff3d6;padding:10px;border-radius:8px">Run Auto Read PO first.</div>
+<div id="poWORows" style="overflow-x:auto"></div>
+<label style="display:block;margin:12px 0"><input type="checkbox" id="poVerified" style="width:auto;margin:0 8px 0 0">I compared all descriptions and quantities with the original PO</label>
+<div id="poMismatchOverride" hidden>
+<label>PO quantity discrepancy resolution (required if quantities differ)<textarea id="poDiscrepancyReason" placeholder="e.g. Buyer confirmed 24 pieces despite printed group total 22" rows="2"></textarea></label>
+</div>
+<button id="poGenerate" type="button">Prepare Separate Work Orders</button>
+<button id="poTransfer" type="button" disabled>Continue to Main ERP → Save All Work Orders</button>
+<p id="poTransferStatus" aria-live="polite"></p>
+</section></main><script>(function(){const $=id=>document.getElementById(id);let objectUrl=null;function addLine(item='',qty=''){const tr=document.createElement('tr'),a=document.createElement('td'),b=document.createElement('td'),c=document.createElement('td'),i=document.createElement('input'),q=document.createElement('input'),del=document.createElement('button');i.placeholder='Item / Size / Micron';i.value=item;q.type='number';q.min='1';q.step='1';q.value=qty;del.textContent='×';del.onclick=()=>tr.remove();a.append(i);b.append(q);c.append(del);tr.append(a,b,c);$('lines').append(tr)}$('add').onclick=()=>addLine();addLine();$('poFile').onchange=e=>{const f=e.target.files[0];if(objectUrl)URL.revokeObjectURL(objectUrl);$('preview').replaceChildren();if(!f)return;for(const id of ['party','po','date','remarks','recognized'])$(id).value='';$('lines').replaceChildren();$('add').click();$('readStatus').textContent='';objectUrl=URL.createObjectURL(f);const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);const el=document.createElement(isPdf?'iframe':'img');el.src=objectUrl;el.title='Original PO preview';$('preview').append(el);$('status').textContent='PO loaded for manual verification. Press Auto Read PO to extract text.'};function draft(){const lines=[...$('lines').children].map(tr=>({description:tr.cells[0].querySelector('input').value.trim(),quantity:Number(tr.cells[1].querySelector('input').value)})).filter(x=>x.description&&Number.isInteger(x.quantity)&&x.quantity>0);const party=$('party').value.trim(),poNumber=$('po').value.trim();if(!party)throw Error('Party Name is missing');if(!poNumber||!/[0-9]/.test(poNumber))throw Error('PO Number is missing or invalid');if(!lines.length)throw Error('No confirmed product lines with valid quantities');return {type:'CFM-PO-Work-Order-DRAFT',version:1,verifiedAt:new Date().toISOString(),party,poNumber,poDate:$('date').value,remarks:$('remarks').value,lines,sourceFile:$('poFile').files[0]?.name||'',status:'DRAFT_ONLY_NOT_POSTED'}}$('download').onclick=()=>{try{const d=draft();if(!confirm('Export draft only? This will NOT create a work order in live ERP.'))return;const u=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='CFM-PO-Draft-'+d.poNumber.replace(/[^a-z0-9-]/gi,'_')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);$('status').textContent='Draft exported. No ERP changes.'}catch(e){alert(e.message)}};$('print').onclick=()=>{try{draft();window.print()}catch(e){alert(e.message)}}})();</script><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script>
+(function(){
+const $=id=>document.getElementById(id);
+function parse(t){
+ const raw=t.replace(/[‐‑–—]/g,'-').replace(/\u00a0/g,' ');
+ const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const pon=raw.match(/(?:P\.?\s*O\.?\s*(?:No|Number)|Purchase\s*Order\s*(?:No|Number))\s*[:.#-]*\s*(\d{2,}[\/\-]\d{2}(?:[\/\-]\d{2,4})?)/i);
+ $('po').value=pon?pon[1]:'';
+ const date=raw.match(/(?:P\.?\s*O\.?\s*Date|Date)\s*[:\-]?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/i);
+ if(date){const p=date[1].split(/[\/\-]/);$('date').value=p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0')}
+ const buyer=raw.match(/Buyer\s*Address\s*:?\s*\n\s*([^\n]+)/i);
+ const heading=raw.match(/COMMUNICATION\s*ADDRESS\s*:?\s*\n\s*([^\n]+)/i);
+ $('party').value=(buyer?.[1]||heading?.[1]||'').trim();
+ const found=[];let section='';
+ for(const line of lines){
+  if(/Centrifuge\s*Bag/i.test(line))section='Centrifuge Bag';
+  else if(/\bFBD\s*Bag\b/i.test(line))section='FBD Bag';
+  else if(/\bRCVD\s*Bag\b/i.test(line))section='RCVD Bag';
+  else if(/\bFilter\s*Bag\b/i.test(line))section='Filter Bag';
+  const code=line.match(/\b(I?CFG|I?FBD)[-\s]*(\d{3})\b/i);
+  if(code){
+   const qty=line.match(/\b(\d+)\s*(?:nos?|pcs?|pieces)\b/i);
+   const micron=line.match(/\b(\d+)\s*micron\b/i);
+   const size=line.match(/\b(\d{2})\s*["″]/);
+   const fingers=line.match(/\b(\d+)\s*fingers?\b/i);
+   found.push({description:[section,code[1].toUpperCase()+'-'+code[2],micron?micron[1]+' Micron':'',size?size[1]+'"':'',fingers?fingers[1]+' Finger':''].filter(Boolean).join(' | '),qty:qty?Number(qty[1]):null,group:section});
+  }else if(/RCVD\s*Bag\s*10\s*["″]\s*x\s*8\s*["″]/i.test(line))found.push({description:'RCVD Bag 10"x8" Lint Free Rope',qty:1,group:'RCVD Bag'});
+  else if(/^NF\s*102\b/i.test(line))found.push({description:'Filter Bag NF 102',qty:1,group:'Filter Bag'});
+ }
+ if(found.length){
+  $('lines').replaceChildren();
+  for(const x of found){$('add').click();const row=$('lines').lastElementChild;row.cells[0].querySelector('input').value=x.description;row.cells[1].querySelector('input').value=x.qty??'';}
+ }
+ window.cfmPOExpectedGroups={};
+ const headerPatterns=[
+ ['Centrifuge Bag',/Centrifuge\s*Bag[^\n]{0,110}?\b(\d{1,4})\s*Nos\b/i],
+ ['FBD Bag',/FBD\s*Bag[^\n]{0,110}?\b(\d{1,4})\s*Nos\b/i]
+ ];
+ for(const [group,re] of headerPatterns){const m=raw.match(re);if(m)window.cfmPOExpectedGroups[group]=Number(m[1]);}
+ const centrifuge=found.filter(x=>x.group==='Centrifuge Bag').reduce((n,x)=>n+(x.qty||0),0);
+ const fbd=found.filter(x=>x.group==='FBD Bag').reduce((n,x)=>n+(x.qty||0),0);
+ const issues=[];
+ if(!pon)issues.push('PO number not confidently detected');
+ if(!$('party').value)issues.push('Buyer name not detected');
+ if(window.cfmPOExpectedGroups['Centrifuge Bag']>0&&centrifuge!==window.cfmPOExpectedGroups['Centrifuge Bag'])issues.push('Centrifuge sub-line total '+centrifuge+' differs from printed group quantity '+window.cfmPOExpectedGroups['Centrifuge Bag']+' — verify original PO');
+ if(window.cfmPOExpectedGroups['FBD Bag']>0&&fbd!==window.cfmPOExpectedGroups['FBD Bag'])issues.push('FBD sub-line total '+fbd+' differs from printed group quantity '+window.cfmPOExpectedGroups['FBD Bag']+' — verify original PO');
+ if(found.some(x=>!x.qty))issues.push('Some quantities are missing');
+ $('readStatus').textContent='Found '+found.length+' product lines. '+(issues.length?'VERIFY BEFORE EXPORT: '+issues.join('; '):'Verify all values against original PO before export.');
+ $('readStatus').style.color=issues.length?'#a22616':'#234b34';
+}
+$('readPO').onclick=async()=>{
+ const file=$('poFile').files[0];if(!file){alert('Choose PO image or PDF first');return}
+ const b=$('readPO');b.disabled=true;$('readStatus').textContent='Reading document…';
+ try{
+ let text='';
+ if(file.type==='application/pdf'||/\.pdf$/i.test(file.name)){
+  if(!window.pdfjsLib)throw Error('PDF reader library not loaded. Check internet.');
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+  for(let n=1;n<=Math.min(pdf.numPages,5);n++){
+   const page=await pdf.getPage(n),content=await page.getTextContent();
+   let lastY=null;for(const x of content.items){const y=x.transform?.[5];if(lastY!==null&&Math.abs(y-lastY)>4)text+='\n';text+=x.str+' ';lastY=y}
+   text+='\n';
+   if(content.items.length<8){
+    const viewport=page.getViewport({scale:1.8}),canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;
+    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+    if(!window.Tesseract)throw Error('OCR library not loaded');
+    const result=await Tesseract.recognize(canvas,'eng');text+='\n'+result.data.text;
+   }
+  }
+ }else{
+  if(!window.Tesseract)throw Error('OCR library not loaded. Check internet.');
+  const result=await Tesseract.recognize(file,'eng');text=result.data.text;
+ }
+ $('recognized').value=text;
+ if(!text.trim())throw Error('No readable text detected. Try a clearer image or a text-based PDF.');
+ parse(text);
+ }catch(e){$('readStatus').textContent='Reading failed: '+e.message}
+ finally{b.disabled=false}
+};
+$('recognized').addEventListener('change',e=>{if(e.target.value.trim())parse(e.target.value)});
+})();
+</script><script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+let prepared=null;
+function norm(s){return String(s||'').trim().replace(/\s+/g,' ').toUpperCase()}
+function safe(v){return String(v??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]))}
+function allLines(){
+ return [...$('lines').querySelectorAll('tr')].map(tr=>({
+  description:tr.cells[0]?.querySelector('input')?.value.trim()||'',
+  quantity:Number(tr.cells[1]?.querySelector('input')?.value),
+ })).filter(x=>x.description||x.quantity);
+}
+function groupOf(desc){const s=norm(desc);if(/\bI?CFG[- ]?\d{3}\b/.test(s))return 'Centrifuge Bag';if(/\bI?FBD[- ]?\d{3}\b/.test(s))return 'FBD Bag';return 'Other'}
+function mismatches(lines){
+ const expected=window.cfmPOExpectedGroups||{};
+ return Object.entries(expected).filter(([group,num])=>Number.isFinite(num)&&num>0).map(([group,expectedQty])=>({
+  group,expectedQty,actualQty:lines.filter(x=>groupOf(x.description)===group).reduce((n,x)=>n+x.quantity,0)
+ })).filter(x=>x.actualQty!==x.expectedQty);
+}
+function reset(){prepared=null;$('poTransfer').disabled=true;$('poWORows').replaceChildren();$('poVerified').checked=false;$('poMismatchOverride').hidden=true;$('poDiscrepancyReason').value='';$('poTransferStatus').textContent='';}
+function prepare(){
+ reset();
+ const party=$('party').value.trim(),poNumber=$('po').value.trim(),poDate=$('date').value;
+ if(!party)throw Error('Buyer / Party Name is missing. Confirm it against PO.');
+ if(!poNumber||!/\d/.test(poNumber))throw Error('PO Number missing or invalid.');
+ if(!poDate)throw Error('PO Date missing.');
+ const lines=allLines();
+ if(!lines.length||lines.some(x=>!x.description||!Number.isSafeInteger(x.quantity)||x.quantity<1))throw Error('One or more product descriptions or quantities are incomplete.');
+ if(lines.length>40)throw Error('Maximum 40 product lines per upload.');
+ const duplicateNames=new Set();
+ for(const x of lines){const code=norm(x.description);if(duplicateNames.has(code))throw Error('Duplicate product description: '+x.description+'. Check PO.');duplicateNames.add(code)}
+ const issues=mismatches(lines);
+ const html='<table><thead><tr><th>Proposed WO</th><th>Product / Specification</th><th>Qty</th></tr></thead><tbody>'+lines.map((x,i)=>'<tr><td>Auto '+(i+1)+'</td><td style="min-width:200px;text-align:left">'+safe(x.description)+'</td><td>'+x.quantity+'</td></tr>').join('')+'</tbody></table>';
+ $('poWORows').innerHTML=html;
+ $('poReviewWarning').innerHTML=issues.length?'<b>Quantity discrepancy — approval required:</b> '+issues.map(x=>safe(x.group)+' Header '+x.expectedQty+' vs product lines '+x.actualQty).join('; '):'Found '+lines.length+' separate product orders. Compare them with the PO before transferring.';
+ $('poMismatchOverride').hidden=!issues.length;
+ prepared={party,poNumber,poDate,lines,issues};
+ $('poTransfer').disabled=false;
+ $('poTransferStatus').textContent='Preview ready: '+lines.length+' separate work orders. No order has been saved.';
+}
+$('poGenerate').addEventListener('click',()=>{try{prepare()}catch(e){$('poTransferStatus').textContent=e.message;alert(e.message)}});
+for(const id of ['party','po','date'])$(id).addEventListener('input',reset);
+$('lines').addEventListener('input',reset);
+$('lines').addEventListener('click',e=>{if(e.target.tagName==='BUTTON')reset()});
+$('add').addEventListener('click',reset);
+$('poFile').addEventListener('change',()=>{reset();window.cfmPOExpectedGroups={}});
+$('readPO').addEventListener('click',reset);
+$('poTransfer').addEventListener('click',()=>{
+ if(!prepared){alert('Generate Work Order Preview first');return}
+ if(!$('poVerified').checked){alert('Tick verification after checking original PO');return}
+ if(prepared.issues.length&&!$('poDiscrepancyReason').value.trim()){alert('PO group quantities do not match. Enter the verified resolution before transferring.');return}
+ const items=allLines();
+ if(JSON.stringify(items)!==JSON.stringify(prepared.lines)||$('party').value.trim()!==prepared.party||$('po').value.trim()!==prepared.poNumber||$('date').value!==prepared.poDate){reset();alert('PO details changed. Generate preview again.');return}
+ if(window.parent===window){$('poTransferStatus').textContent='Open this PO Reader through the main CFM ERP to save the Work Orders.';return}
+ const warning=prepared.issues.map(x=>x.group+': PO header '+x.expectedQty+' vs lines '+x.actualQty).join('; ');
+ const reason=$('poDiscrepancyReason').value.trim();
+ const payload={kind:'CFM_PO_DRAFT_TRANSFER_V1',party:prepared.party,poNumber:prepared.poNumber,poDate:prepared.poDate,verified:true,lines:items.map(x=>({...x,customerCode:(x.description.match(/\b(?:I?CFG|I?FBD)[- ]?\d{3}\b/i)||[])[0]||''})),discrepancy:warning,discrepancyReason:reason};
+ if(!confirm('Transfer '+items.length+' verified PO products to Main CFM ERP for final review? No orders will be saved until you press ERP Save.'))return;
+ window.parent.postMessage(payload,location.origin);
+ $('poTransferStatus').textContent='Sending draft to Main ERP. Check the ERP Multi-item PO form before saving.';
+});
+})();
+</script></body></html>
