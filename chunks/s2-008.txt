@@ -88,6 +88,28 @@ async function cloudFetch(){
   if(!r.ok)throw new Error('Cloud read '+r.status);
   const a=await r.json();return a[0]||null;
 }
+
+// Data-loss protection while recovering missing work orders and physical stock.
+// A remote snapshot or stale device must not silently delete work orders, SRLs, or cutting history.
+function cfmMissingCloudKeys(source,target,kind){
+  const key=kind==='pending'?'workNo':'srlNo';
+  const targets=new Set((target||[]).map(x=>String(x?.[key]||'').trim().toUpperCase()).filter(Boolean));
+  return (source||[]).filter(x=>x&&String(x[key]||'').trim()&&!targets.has(String(x[key]).trim().toUpperCase())).map(x=>String(x[key]));
+}
+function cfmWouldLoseRecords(existing,incoming){
+  if(!validState(existing)||!validState(incoming))return {error:'Invalid cloud or local data'};
+  const missingWorks=cfmMissingCloudKeys(existing.pending,incoming.pending,'pending');
+  const missingSrls=cfmMissingCloudKeys(existing.store,incoming.store,'store');
+  const cutLoss=(existing.cutting||[]).length-(incoming.cutting||[]).length;
+  const deptLoss=(existing.departmentWork||[]).length-(incoming.departmentWork||[]).length;
+  return {missingWorks,missingSrls,cutLoss,deptLoss,unsafe:missingWorks.length>0||missingSrls.length>0||cutLoss>0||deptLoss>0};
+}
+function cfmCloudLossMessage(impact){
+  return 'Protection: '+impact.missingWorks.length+' missing Work Orders, '+impact.missingSrls.length+
+    ' missing SRLs'+(impact.cutLoss>0?', '+impact.cutLoss+' fewer Cutting Records':'')+
+    (impact.deptLoss>0?', '+impact.deptLoss+' fewer Department Records':'')+
+    '. Backup and reconcile before syncing.';
+}
 async function cloudInit(){
   setCloudBadge('☁️ Connecting…','amber');
   try{
@@ -96,12 +118,24 @@ async function cloudInit(){
     cloudUpdatedAt=row?.updated_at||'';
     cloudReady=true;
     if(cloudDirty){
-      await cloudPush(true);
+      const ok=await cloudPush(true);
+      if(!ok)throw Error('Cloud upload blocked for data protection; local records preserved');
       cloudDirty=false;
     }else if(row&&validState(row.payload)){
-      state=clone(row.payload);const upgraded=ensureExcelMasterData();syncDerivedState();safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();if(upgraded){cloudDirty=true;await cloudPush(true);}
+      const risk=cfmWouldLoseRecords(state,row.payload);
+      if(risk.unsafe){
+        setCloudBadge('⚠ Cloud differs • backup first','red');
+        console.warn('CFM local data preserved. Cloud would remove records.',risk);
+        return;
+      }
+      state=clone(row.payload);
+      const upgraded=ensureExcelMasterData();syncDerivedState();
+      safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();
+      if(upgraded){cloudDirty=true;const ok=await cloudPush(true);if(!ok)throw Error('Cloud rebuild sync blocked');}
     }else{
-      ensureExcelMasterData();await cloudPush(true);
+      ensureExcelMasterData();
+      const ok=await cloudPush(true);
+      if(!ok)throw Error('Cloud initialization save blocked');
     }
     setCloudBadge('☁️ 3-4 Mobile LIVE','green');
   }catch(e){console.warn(e);setCloudBadge('☁️ Offline – local data','red');}
@@ -114,10 +148,19 @@ async function cloudPush(force=false){
   const snapshot=clone(state);
   setCloudBadge('☁️ Syncing…','amber');
   try{
-    const latest=await cloudFetchMeta().catch(()=>null);
-    const baseVersion=Math.max(1,num(latest?.version)||cloudVersion||1);
+    // Read full current state and reject a stale device attempting to remove live records.
+    const latest=await cloudFetch();
+    if(!latest||!validState(latest.payload))throw Error('Cloud read failed. No upload performed.');
+    const risk=cfmWouldLoseRecords(latest.payload,snapshot);
+    if(risk.unsafe){
+      setCloudBadge('⚠ Sync blocked • data protection','red');
+      throw Error(cfmCloudLossMessage(risk));
+    }
+    const baseVersion=num(latest.version);
+    if(!Number.isSafeInteger(baseVersion)||baseVersion<1)throw Error('Cloud version invalid');
     const nextVersion=baseVersion+1;
-    const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main';
+    // Compare-and-swap: reject concurrent writes instead of overwriting the newer version.
+    const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+encodeURIComponent(baseVersion);
     const r=await fetch(u,{
       method:'PATCH',
       headers:{...cloudHeaders(),'Prefer':'return=representation'},
@@ -166,7 +209,9 @@ window.manualCloudSync=async function(){
     if(v>cloudVersion){
       const row=await cloudFetch();
       if(row&&validState(row.payload)){
-        state=clone(row.payload);syncDerivedState();
+        const risk=cfmWouldLoseRecords(state,row.payload);
+        if(risk.unsafe)throw Error(cfmCloudLossMessage(risk));
+        state=clone(row.payload);ensureExcelMasterData();syncDerivedState();
         cloudVersion=num(row.version)||cloudVersion;cloudUpdatedAt=row.updated_at||cloudUpdatedAt;
         safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();
       }
@@ -183,11 +228,8 @@ async function cloudPoll(){
   try{
     const meta=await cloudFetchMeta();if(!meta)return;const v=num(meta.version)||0;
     if(v>cloudVersion){const row=await cloudFetch();if(row&&validState(row.payload)){
-      const local654=(state.pending||[]).find(x=>normalize(x.workNo)==='CFM-654');
-      const cloudHas654=(row.payload.pending||[]).some(x=>normalize(x.workNo)==='CFM-654');
-      if(local654&&!cloudHas654){
-        cloudDirty=true;setCloudBadge('☁️ Protecting CFM-654 • syncing','amber');queueCloudPush();return;
-      }
+      const risk=cfmWouldLoseRecords(state,row.payload);
+      if(risk.unsafe){setCloudBadge('⚠ New cloud snapshot differs • backup first','red');console.warn(cfmCloudLossMessage(risk));return;}
       const prevRaw=JSON.stringify(state);state=clone(row.payload);ensureExcelMasterData();syncDerivedState();cloudVersion=v;cloudUpdatedAt=row.updated_at||'';const nextRaw=JSON.stringify(state);safeStorage.setItem(STORAGE_KEY,nextRaw);renderAll();setCloudBadge('☁️ Updated from other mobile','green');const notice=genericUpdateNotification(prevRaw,nextRaw);showLocalNotification('☁️ Other Device • '+notice.title.replace(/^🔔\s*/,''),notice.body||notificationSummary());
     }}
     else if(cloudReady)setCloudBadge('☁️ 3-4 Mobile LIVE','green');
