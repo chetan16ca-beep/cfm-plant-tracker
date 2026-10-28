@@ -69,3 +69,11 @@ Theme source: enterprise-theme-v6.css and enterprise-theme-v6.js. Verify visuall
 **Parity limitations still present:** exact OLD 78-sheet Excel mirror/import, automatic handwriting-to-cutting and PO-to-work-order OCR, full old-style stage/wastage and product master edge cases, siren notification workflows, offline sync, all historical attachments and exact print templates are not yet fully replicated. Do not mark NEW ERP as identical to OLD ERP until these workflows are built and real-device acceptance-tested.
 
 **Critical:** A read-only historical lookup and NEW recovered state are different datasets. New Work Order values must be verified before production; snapshot restore intentionally replaces NEW state and must not be used casually.
+
+### V7 Live Sync & URGENT notifications
+
+- When the NEW app is visible and the user is not working inside an input, it checks its own NEW Cloud at a guarded 90-second interval; active Cloud saves are skipped.
+- Selecting Work Order or SRL is preserved when lists re-render after a refresh.
+- The user can opt in by pressing **Enable URGENT Alerts** on Dashboard. Only newly observed orders with priority URGENT can play a brief audio signal; no sound is played on first load, no siren for normal/high priority, and no automatic sound permission bypass.
+- Browser notifications only when the browser permission was explicitly granted. No old database events trigger the alert.
+- Background/closed-browser notifications and server push are NOT implemented; this is visible-app polling.
