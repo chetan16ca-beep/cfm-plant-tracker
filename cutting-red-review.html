@@ -38,7 +38,7 @@ tr:nth-child(even){background:#f8fbfe}#historyList{padding:0;margin:0;list-style
 <div class="picGrid"><div><h3>Original Sheet</h3><img id="original" alt="Original photo" hidden><p>Keep black printed Work No. visible to identify the order.</p></div>
 <div><h3>Enhanced Photo Preview</h3><canvas id="redOnly" width="1" height="1"></canvas><p>Text contrast is enhanced regardless of pen color. Always compare each number with original photo.</p></div></div>
 <p id="photoStatus"></p>
-<button id="tryOCR" class="secondary" type="button" disabled>🔎 Read Photo &amp; Work Orders</button><div class="grid" style="margin-top:10px"><div><label for="photoSection">Work Order section in photo</label><select id="photoSection"><option value="auto">Full page / Auto</option><option value="1">Section 1 (top)</option><option value="2">Section 2</option><option value="3">Section 3</option><option value="4">Section 4 (bottom)</option></select></div><div><label for="scanSection">Read selected section</label><button id="scanSection" type="button" class="secondary" disabled>📄 Read this Work Order section</button></div></div><p class="photo-hint">Any ink color is accepted. For a paper containing 4 work orders, select its section and scan that section separately for better results. Unclear handwriting stays for review.</p>
+<button id="tryOCR" class="secondary" type="button" disabled>🔎 Read Photo &amp; Work Orders</button><div class="grid" style="margin-top:10px"><div><label for="photoSection">Work Order section in photo</label><select id="photoSection"><option value="auto">Full page / Auto</option><option value="1">Section 1 (top)</option><option value="2">Section 2</option><option value="3">Section 3</option><option value="4">Section 4 (bottom)</option></select></div><div><label for="scanSection">Read selected section</label><button id="scanSection" type="button" class="secondary" disabled>📄 Read this Work Order section</button></div></div><div id="sectionMessage" class="photo-hint"></div><canvas id="sectionPreview" width="1" height="1" hidden style="max-width:100%;max-height:350px;object-fit:contain;border-radius:8px;border:1px solid #c9dbe7"></canvas><p class="photo-hint">Any ink color is accepted. For a paper containing 4 work orders, select its section and scan that section separately for better results. Unclear handwriting stays for review.</p>
 <details><summary>View scanned text (not verified)</summary><textarea id="rawText" readonly placeholder="OCR text will appear here. Handwriting recognition may be inaccurate."></textarea></details>
 <p><small>Photo stays in your browser for this session and is not automatically uploaded to the ERP cloud or ChatGPT. Send the photo in this ChatGPT conversation for my verification.</small></p></section>
 <section class="card"><h2>3. Cutting Entries — Check Before Saving</h2>
@@ -95,7 +95,7 @@ $('photoWorkSelect').onchange=()=>{
   $('photoWorkSelect').value=old;return;
  }
  if(old&&old!==chosen&&hasTyped)resetRows();
- $('workNo').value=chosen;refreshWork();$('entryStatus').textContent='Work Order '+chosen+' selected; verify the red-pen rows for THIS order only.';
+ $('workNo').value=chosen;refreshWork();const idx=detectedWorks.indexOf(chosen);if(idx>=0&&idx<4)$('photoSection').value=String(idx+1);$('entryStatus').textContent='Work Order '+chosen+' selected; check cutting entries only for this order.';
 };
 function extractPhotoWorkNos(text){
  const matches=[...String(text||'').toUpperCase().matchAll(/\bC\s*F\s*M\s*[-:–—\s]*([0-9][0-9 \t]{1,6}[0-9])\b/g)];
