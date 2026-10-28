@@ -249,6 +249,7 @@ $('photo').onchange=e=>{
  $('tryOCR').disabled=true;$('scanSection').disabled=true;
  $('photoStatus').textContent='';$('sectionMessage').textContent='';
  $('sectionPreview').hidden=true;photoName='';detectedWorks=[];sectionWorkMap={};photoWorkOptions();
+ if($('redRows'))resetRows();
  if(objectURL)URL.revokeObjectURL(objectURL);
  originalScanCanvas=null;enhancedScanCanvas=null;
  if(!file){updateActionReadiness();return;}
@@ -355,7 +356,7 @@ async function performOCR(sectionOnly=false){
  if(photoScanBusy)return;
  const btn=sectionOnly?$('scanSection'):$('tryOCR');
  photoScanBusy=true;btn.disabled=true;
- $('photoStatus').textContent=sectionOnly?'Scanning this selected Work Order section…':'Reading full photo and printed Work Orders…';
+ $('photoStatus').textContent=sectionOnly?'Reading selected Work Order section…':'Finding printed Work Order numbers on the full photo…';
  let worker=null;
  try{
   if(!window.Tesseract){
@@ -367,48 +368,102 @@ async function performOCR(sectionOnly=false){
   worker=await Tesseract.createWorker('eng',1);
   if(sectionOnly){
    const selected=workNum($('workNo').value);
-   if(!selected){$('photoStatus').textContent='First select the printed Work No. above (for example CFM-668).';return;}
+   if(!selected){$('photoStatus').textContent='Select a Work No. first; then choose its section.';return;}
    let part=$('photoSection').value;
    if(part==='auto'){
-    const index=detectedWorks.indexOf(selected);
-    if(index>=0&&index<4){part=String(index+1);$('photoSection').value=part;}
+     const match=Object.entries(sectionWorkMap).find(([i,wo])=>wo===selected);
+     if(match){part=match[0];$('photoSection').value=part;}
+     else{
+       $('photoStatus').textContent='⚠ Work Order '+selected+' is not mapped to a page section. Choose Section 1–4 and check its heading first.';
+       return;
+     }
    }
    const crop=makeSection(part);
    await worker.setParameters({tessedit_pageseg_mode:'6'});
    const result=await worker.recognize(crop);
    if(session!==photoSequence)return;
-   const ocr=String(result.data.text||'');
-   $('rawText').value='SCANNED SECTION '+part+' for '+selected+':\n'+ocr;
-   const rows=plausibleRows(ocr);
+   const recognized=String(result.data.text||''),numbers=extractPhotoWorkNos(recognized);
+   $('rawText').value='SECTION '+part+' for selected '+selected+':\n'+recognized;
+   if(numbers.length===1){
+     sectionWorkMap[String(part)]=numbers[0];
+     applyDetectedWorks([...detectedWorks,...numbers]);
+     if(numbers[0]!==selected){
+       $('verified').checked=false;
+       $('photoStatus').textContent='⚠ Work Order MISMATCH: Section '+part+' heading reads '+numbers[0]+', but you selected '+selected+'. Choose the correct work order. Nothing copied or saved.';
+       makeSection(part);
+       return;
+     }
+   }else if(numbers.length>1){
+     $('verified').checked=false;
+     $('photoStatus').textContent='Section includes multiple Work Numbers. Check the section crop; no Cutting rows copied.';
+     return;
+   }else{
+     $('sectionMessage').textContent='Section '+part+': printed Work No. not read confidently. Verify the heading in the original photo before using cutting suggestions.';
+   }
+   const originalRows=plausibleRows(recognized);
+   await worker.setParameters({tessedit_pageseg_mode:'11'});
+   const enhanced=await worker.recognize(crop);
+   if(session!==photoSequence)return;
+   $('rawText').value+='\nENHANCED SECTION TEXT:\n'+String(enhanced.data.text||'');
+   const enhancedRows=plausibleRows(String(enhanced.data.text||''));
+   const rows=originalRows.length>=enhancedRows.length?originalRows:enhancedRows;
    if(rows.length){
-    // OCR may mix columns; populate only for user review, never post without confirmation.
-    $('redRows').replaceChildren();rows.forEach(r=>row(r));$('verified').checked=false;
-    $('photoStatus').textContent=rows.length+' possible cutting entries found. Check SRL, Part, Length, Width, Qty from original. Nothing has been saved.';
-   }else $('photoStatus').textContent='Section scanned. This photo handwriting is not reliable enough for automatic row extraction. Correct/enter rows manually. Nothing has been saved.';
+     $('redRows').replaceChildren();rows.forEach(r=>row(r));$('verified').checked=false;
+     $('photoStatus').textContent=rows.length+' possible Cutting lines copied for review. Check ALL values in original photo. Nothing posted.';
+   }else{
+     $('photoStatus').textContent='Section scan completed but handwriting was not confidently parsed. Use the enlarged section preview to enter/verify rows manually. Nothing posted.';
+   }
   }else{
    await worker.setParameters({tessedit_pageseg_mode:'11'});
    const result=await worker.recognize(originalScanCanvas);
    if(session!==photoSequence)return;
-   const text=String(result.data.text||'');
-   applyDetectedWorks(extractPhotoWorkNos(text));
-   $('rawText').value='PHOTO TEXT (original; all colors):\n'+text;
-   // Scan full enhanced photo only if a single printed Work Order was found;
-   // never assign one page's mixed entries to a random Work Order.
-   if(detectedWorks.length===1){
-    await worker.setParameters({tessedit_pageseg_mode:'6'});
-    const enhanced=await worker.recognize(enhancedScanCanvas);
-    if(session!==photoSequence)return;
-    const rows=plausibleRows(String(enhanced.data.text||''));$('rawText').value+='\nENHANCED PHOTO TEXT:\n'+String(enhanced.data.text||'');
-    if(rows.length){
-     $('redRows').replaceChildren();rows.forEach(r=>row(r));$('verified').checked=false;
-     $('photoStatus').textContent=rows.length+' candidate entries filled. Check against photo before saving.';
-    }else $('photoStatus').textContent='Work No. detected, but handwritten rows need manual correction or section scan.';
-   }else $('photoStatus').textContent=detectedWorks.length>1
-     ?'Detected '+detectedWorks.join(', ')+'. Choose a Work No. above, select its Section 1–4, and press Read this Work Order section.'
-     :'Photo scanned. Choose Work No. manually or retry with a closer photo. Enter only verified Cutting entries.';
+   const fullText=String(result.data.text||'');
+   const fullNumbers=extractPhotoWorkNos(fullText);
+   $('rawText').value='FULL PHOTO TEXT:\n'+fullText;
+   // A four-order print needs a separate heading read in each panel.
+   // Never mistake "the only detected number" for "the first section".
+   sectionWorkMap={};const sectionText=[];
+   for(let i=1;i<=4;i++){
+     if(session!==photoSequence)return;
+     $('photoStatus').textContent='Identifying Work Order headings: section '+i+' of 4…';
+     const part=makeSection(String(i),false);
+     const header=document.createElement('canvas');
+     header.width=part.width;header.height=Math.min(part.height,Math.max(40,Math.floor(part.height*.50)));
+     header.getContext('2d').drawImage(part,0,0,header.width,header.height,0,0,header.width,header.height);
+     await worker.setParameters({tessedit_pageseg_mode:'6'});
+     const h=await worker.recognize(header);
+     if(session!==photoSequence)return;
+     const value=String(h.data.text||'');
+     sectionText.push('SECTION '+i+':\n'+value);
+     const found=extractPhotoWorkNos(value);
+     if(found.length===1)sectionWorkMap[String(i)]=found[0];
+   }
+   const located=Object.values(sectionWorkMap);
+   applyDetectedWorks([...new Set([...located,...fullNumbers])]);
+   $('rawText').value+='\n\nSECTION HEADINGS:\n'+sectionText.join('\n\n');
+   const selected=workNum($('workNo').value);
+   const match=Object.entries(sectionWorkMap).find(([,no])=>no===selected);
+   if(match){
+     $('photoSection').value=match[0];
+     makeSection(match[0]);
+   }else{
+     $('photoSection').value='auto';$('sectionPreview').hidden=true;
+     $('sectionMessage').textContent='Work Order location not confirmed. Select Section 1–4 and verify its heading before reading Cutting.';
+   }
+   const foundRows=Object.entries(sectionWorkMap).map(([i,no])=>'Section '+i+': '+no);
+   $('photoStatus').textContent='Scan finished. '+(foundRows.length?foundRows.join(' • '):'No section headings fully recognized.')+
+      ' Select a Work Order and read its section to fill Cutting suggestions.';
   }
- }catch(e){if(session===photoSequence)$('photoStatus').textContent='Automatic reading unavailable: '+String(e.message||e)+'. Manual Cutting entry remains available.';}
- finally{if(worker)try{await worker.terminate()}catch(_){}photoScanBusy=false;if(session===photoSequence){$('tryOCR').disabled=!originalScanCanvas;$('scanSection').disabled=!originalScanCanvas;updateActionReadiness()}}
+ }catch(e){
+   if(session===photoSequence)$('photoStatus').textContent='Automatic reading unavailable: '+String(e.message||e)+'. Your manual Cutting entry remains safe.';
+ }finally{
+   if(worker)try{await worker.terminate()}catch(_){}
+   photoScanBusy=false;
+   if(session===photoSequence){
+     $('tryOCR').disabled=!originalScanCanvas;$('scanSection').disabled=!originalScanCanvas;
+     updateActionReadiness();
+   }
+ }
 }
 $('tryOCR').onclick=()=>performOCR(false);
 $('scanSection').onclick=()=>performOCR(true);
