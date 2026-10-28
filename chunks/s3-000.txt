@@ -616,6 +616,51 @@ function cutCard(r,compact=false){
 function renderCutting(){const q=($('cutSearch').value||'').toLowerCase();let rows=state.cutting.filter(r=>JSON.stringify(r).toLowerCase().includes(q)).slice().reverse();const groups=new Map();rows.forEach(r=>{const k=normalize(r.workNo||'MANUAL WORK');if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r)});$('cuttingList').innerHTML=[...groups.values()].map(g=>{const h=g[0],total=g.reduce((a,r)=>a+num(r.cutQty),0),mtr=g.reduce((a,r)=>a+cuttingUsedMtr(r),0);return '<div class="data-card"><div class="card-top"><div><div class="work">'+esc(h.workNo||'MANUAL WORK')+'</div><div class="party">'+esc(h.party||'')+'</div></div><span class="chip green">'+g.length+' ENTRY • QTY '+fmt(total)+'</span></div><div class="chips"><span class="chip">Used '+fmt(mtr)+' MTR</span></div><div style="margin-top:10px;display:grid;gap:8px">'+g.map(r=>'<div style="border-top:1px solid #e5e7eb;padding-top:8px">'+cutCard(r,true)+'</div>').join('')+'</div></div>'}).join('')||'<div class="empty">No matching cutting entries</div>'}
 
 
+
+// V178: Cloud truth viewer. Reads Cloud directly; never replaces local state or uploads.
+window.cfmShowLiveCuttingCloud=async function(workNo){
+ const container=$('cutCloudLiveResults'),info=$('cutCloudInfo');
+ if(!container)return;
+ const query=String(workNo||$('cutSearch')?.value||'').trim().toUpperCase();
+ container.innerHTML='<div class="notice">☁️ Reading verified Cutting directly from Cloud…</div>';
+ try{
+   const remote=await cloudFetch();
+   if(!remote||!validState(remote.payload)||!Array.isArray(remote.payload.cutting))throw Error('Cloud did not return Cutting records');
+   const all=remote.payload.cutting;
+   const targetDate=todayISO();
+   const filtered=query?all.filter(r=>
+      normalize(r.workNo||'').includes(normalize(query)) ||
+      normalize(r.party||'').includes(normalize(query)) ||
+      normalize(r.srlNo||'').includes(normalize(query))
+    ):all.filter(r=>String(r.date||'')===targetDate);
+   const records=filtered.slice().reverse().slice(0,60);
+   const summary= '<div class="notice" style="background:#ebf9f0;border:1px solid #9bd6ae;margin:10px 0"><b>☁️ LIVE CLOUD VERIFIED</b> • '+ all.length+
+     ' total Cutting entries • Cloud version '+esc(remote.version)+
+     ' • '+filtered.length+(query?' match for '+esc(query):' entries on '+esc(targetDate))+
+     '. Read only — your phone data and Stock are untouched.</div>';
+   if(!records.length){
+     container.innerHTML=summary+'<div class="notice">No matching Cutting found in the Cloud. Search the Work No. above and press View Live Cloud Cutting.</div>';
+     return;
+   }
+   const rows=records.map(r=>{
+     const dims=r.sizeLine||((r.length||'')+' × '+(r.height||''));
+     const note=r._redPenPendingStock===true||r._redPenPendingStock==='true'?' • Stock meter verification pending':'';
+     return '<div class="data-card" style="margin:8px 0;border-left:4px solid #19a273">'+
+       '<div class="card-top"><div><b class="work">'+esc(r.workNo||'—')+'</b><div class="party">'+esc(r.party||'')+'</div></div>'+
+       '<span class="chip green">CUT '+fmt(num(r.cutQty))+'</span></div>'+
+       '<div style="padding-top:7px"><b>'+esc(dims)+'</b> • SRL '+esc(r.srlNo||'—')+'</div>'+
+       '<div class="muted" style="margin-top:5px">'+esc(r.date||'')+' • '+esc(r.entryType||'CUTTING')+esc(note)+'</div>'+
+       '</div>';
+   }).join('');
+   container.innerHTML=summary+rows+(filtered.length>records.length?'<div class="notice">Showing latest '+records.length+' entries. Search a specific Work No. for older records.</div>':'');
+   if(info)info.querySelector('b').textContent='☁️ Live Cloud Cutting ready';
+   container.scrollIntoView({behavior:'smooth',block:'nearest'});
+ }catch(e){
+   container.innerHTML='<div class="notice" style="background:#fff0ed;border:1px solid #f3b4a9">⚠️ Cloud Cutting could not be read: '+esc(e.message||String(e))+'. Existing local Cutting entries have NOT been changed.</div>';
+ }
+};
+
+
 function masterLimit(rows,max=100){return rows.slice(0,max)}
 window.renderMeasurements=function(){const q=($('measurementSearch')?.value||'').trim().toLowerCase();let rows=(state.measurements||[]).filter(r=>!q||JSON.stringify(r).toLowerCase().includes(q));const ready=rows.filter(r=>normalize(r.status)==='READY').length,need=rows.filter(r=>normalize(r.status).includes('REQUIRED')).length;if($('measurementKpis'))$('measurementKpis').innerHTML=kpi('Measurement Records',rows.length)+kpi('READY',ready)+kpi('Measurement Required',need);const show=masterLimit(rows,120);$('measurementList').innerHTML=show.map(r=>`<div class="data-card"><div class="card-top"><div><div class="work">${esc(r.workNo||r.eagleCode||'Measurement')}</div><div class="party">${esc(r.party||'')}</div></div><span class="chip ${normalize(r.status)==='READY'?'green':'amber'}">${esc(r.status||'')}</span></div><div class="desc">${esc(r.description||'')}</div><div class="chips"><span class="chip">Eagle ${esc(r.eagleCode||'-')}</span><span class="chip">${esc(r.category||'-')}</span><span class="chip">${esc(r.standardCloth||'-')}</span>${r.stdWidth!==''?`<span class="chip">W ${fmt(r.stdWidth)}</span>`:''}</div><div class="notice" style="margin-top:8px"><b>Final Measurement:</b> ${esc(r.finalMeasurement||r.previousMeasurement||'MEASUREMENT REQUIRED')}</div></div>`).join('')+(rows.length>show.length?`<div class="notice">Showing ${show.length} of ${rows.length}. Search use karo.</div>`:'')}
 window.renderSrlTracker=function(){const q=($('srlTrackerSearch')?.value||'').trim().toLowerCase();let rows=(state.srlTracker||[]).map(r=>{const id=String(r.srlNo||'').split('/').pop().replace(/^0+/,'');const matches=(window.CFM_PHYSICAL_20261027?.rows||[]).filter(v=>String(v.srl).replace(/^0+/,'')===id);const x=matches[0];return x?{...r,physicalCountMtr:x.meters,physicalCountDate:'2026-10-27',physicalCountCloth:x.cloth,physicalCountWidth:x.width,physicalCountReady:matches.length===1&&x.meters!==null&&Number.isFinite(Number(x.meters))&&Math.abs(Number(x.width)-num(r.width))<0.11,oldSheetMeter:x.meters===null?(state.store.find(s=>normalize(s.srlNo)===normalize(r.srlNo))?srlBalance(state.store.find(s=>normalize(s.srlNo)===normalize(r.srlNo))):(r.liveBalanceMtr===''||r.liveBalanceMtr==null?null:Number(r.liveBalanceMtr))):null}:r}).filter(r=>r.physicalCountDate==='2026-10-27').filter(r=>!q||JSON.stringify(r).toLowerCase().includes(q));const open=rows.filter(r=>normalize(r.status)==='OPEN').length,closed=rows.filter(r=>normalize(r.status)==='CLOSED').length,bal=rows.reduce((a,r)=>a+num(r.liveBalanceMtr),0);if($('srlTrackerKpis'))$('srlTrackerKpis').innerHTML=kpi('SRL Records',rows.length)+kpi('OPEN SRL',open)+kpi('CLOSED SRL',closed)+kpi('Live Balance',`${fmt(bal)} MTR`);$('srlTrackerList').innerHTML=rows.map(r=>`<div class="data-card"><div class="card-top"><div><div class="work">${esc(r.srlNo||'')}</div><div class="party">${esc(r.quality||'')} • W ${fmt(r.width)}</div></div><span class="chip ${normalize(r.status)==='OPEN'?'green':'red'}">${esc(r.status||'')}</span></div><div class="chips">${r.physicalCountDate?`<span class="chip ${r.physicalCountReady?'green':'amber'}">${r.physicalCountMtr==null?(r.oldSheetMeter==null?'OPEN • Old sheet meter unavailable':`OPEN • Old Sheet Balance ${fmt(r.oldSheetMeter)} MTR`):`Physical Count ${fmt(r.physicalCountMtr)} MTR`} • 27/10/2026 ${r.physicalCountReady?'• Active':(r.physicalCountMtr==null&&r.oldSheetMeter!=null?'• Old sheet':'• Verify before issue')}</span>`:''}<span class="chip">Opening ${fmt(r.openingMtr)} MTR</span><span class="chip">Issue ${fmt(r.issueMtr)} MTR</span><span class="chip">Excel Live ${fmt(r.liveBalanceMtr)} MTR</span><span class="chip">App Live ${fmt(srlBalance(state.store.find(s=>normalize(s.srlNo)===normalize(r.srlNo))||{srlNo:r.srlNo,openingMtr:r.openingMtr,excelLiveBalanceMtr:r.liveBalanceMtr}))} MTR</span>${r.rack?`<span class="chip">Rack ${esc(r.rack)}</span>`:''}${r.lastWork?`<span class="chip">Last Work ${esc(r.lastWork)}</span>`:''}</div>${r.note?`<div class="muted" style="margin-top:7px">${esc(r.note)}</div>`:''}</div>`).join('')||'<div class="empty">No matching SRL</div>'}
