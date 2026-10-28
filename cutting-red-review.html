@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CFM Red Pen Cutting Photo Verification</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CFM Cutting Photo Entry Verification</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#eff5fa;color:#18334a;font:14px system-ui,Arial,sans-serif}main{max-width:1050px;margin:auto;padding:13px}
 h1{font-size:20px;margin:3px 0 8px}h2{font-size:16px;margin:8px 0 12px}h3{font-size:14px}
@@ -24,35 +24,35 @@ tr:nth-child(even){background:#f8fbfe}#historyList{padding:0;margin:0;list-style
 .red{color:#b01228}#workDetails{background:#f0f6fb;padding:10px;border-radius:8px;font-size:12px}
 @media print{.noprint{display:none!important}body{background:white}.card{border:0}}
 </style></head><body><main>
-<div class="card"><h1>📷 CFM Cutting — Red Pen Photo Verify</h1>
-<p class="warning"><b>Review Mode:</b> Only <strong class="red">RED PEN</strong> handwriting counts. Black/blue marks must be ignored. A photo is <b>not</b> automatically posted to live Cutting, Pending or Stock. Length × Width × Qty is not assumed to equal actual cloth meters.</p>
+<div class="card"><h1>📷 CFM Cutting — Photo to Entry</h1>
+<p class="warning"><b>Photo Entry:</b> Handwritten cutting entries in <b>any pen color</b> (red, blue, black) can be scanned. Review Work No., SRL, Part, Length, Width and Qty before saving. Photo scanning alone never updates Cutting, Pending or Stock.</p>
 <p><a href="./cutting-print-test.html" target="_blank" rel="noopener">🖨 Open A4 Daily Cutting Sheet (4 Work Orders / page, 5 rows each)</a></p></div>
 <section class="card"><h2>1. Select Work Order</h2>
 <button id="loadOrders" type="button">↻ Load Work Orders from Main ERP</button><p id="syncStatus">Open this page inside the Main CFM ERP for live read-only Work Order lookup.</p>
 <div class="grid"><div><label for="workNo">Work No. *</label><input id="workNo" list="workOptions" placeholder="CFM-680" autocomplete="off"><datalist id="workOptions"></datalist></div>
 <div><label for="cutDate">Cutting Date *</label><input id="cutDate" type="date"></div></div>
 <p id="workDetails">Select a work number to check Party, Product and Order Qty.</p></section>
-<section class="card"><h2>2. Upload Red-Pen Cutting Photo</h2>
+<section class="card"><h2>2. Upload Cutting Sheet Photo</h2>
 <label for="photo">Camera / Gallery (JPG, PNG or WEBP)</label><input type="file" id="photo" accept="image/*">
 <div id="choosePhotoWork"><label for="photoWorkSelect">Work Order printed on this photo — choose one *</label><select id="photoWorkSelect"><option value="">Select Work No. (or use Work No. above)</option></select><p class="photo-hint">One photo may contain several Work Orders. Select one Work Order at a time; switch only after saving/reviewing its cutting rows.</p><p id="workDetect">After scanning, matching printed Work Nos. will appear here.</p></div>
 <div class="picGrid"><div><h3>Original Sheet</h3><img id="original" alt="Original photo" hidden><p>Keep black printed Work No. visible to identify the order.</p></div>
-<div><h3>Enhanced Red-Pen Ink (for reading)</h3><canvas id="redOnly" width="1" height="1"></canvas><p>Red ink is darkened for readability. Always compare every field to the original.</p></div></div>
+<div><h3>Enhanced Photo Preview</h3><canvas id="redOnly" width="1" height="1"></canvas><p>Text contrast is enhanced regardless of pen color. Always compare each number with original photo.</p></div></div>
 <p id="photoStatus"></p>
-<button id="tryOCR" class="secondary" type="button" disabled>🔎 Scan Work Nos + Red Pen (OCR)</button><p class="photo-hint">Printed Work Nos. can be suggested automatically. Faint handwritten numbers may still need manual correction; nothing will save without verification.</p>
-<details><summary>View OCR text (not verified)</summary><textarea id="rawText" readonly placeholder="OCR text will appear here. Handwriting recognition may be inaccurate."></textarea></details>
+<button id="tryOCR" class="secondary" type="button" disabled>🔎 Read Photo &amp; Work Orders</button><div class="grid" style="margin-top:10px"><div><label for="photoSection">Work Order section in photo</label><select id="photoSection"><option value="auto">Full page / Auto</option><option value="1">Section 1 (top)</option><option value="2">Section 2</option><option value="3">Section 3</option><option value="4">Section 4 (bottom)</option></select></div><div><label for="scanSection">Read selected section</label><button id="scanSection" type="button" class="secondary" disabled>📄 Read this Work Order section</button></div></div><p class="photo-hint">Any ink color is accepted. For a paper containing 4 work orders, select its section and scan that section separately for better results. Unclear handwriting stays for review.</p>
+<details><summary>View scanned text (not verified)</summary><textarea id="rawText" readonly placeholder="OCR text will appear here. Handwriting recognition may be inaccurate."></textarea></details>
 <p><small>Photo stays in your browser for this session and is not automatically uploaded to the ERP cloud or ChatGPT. Send the photo in this ChatGPT conversation for my verification.</small></p></section>
-<section class="card"><h2>3. Verified Cutting Rows — Length × Width × Quantity</h2>
-<p><small>Enter actual <b>parts cut</b>, NOT completed bag quantity. Used MTR is optional: enter it only if verified for the actual Store SRL. Without confirmed meters, Cutting will post but stock will NOT be deducted.</small></p>
+<section class="card"><h2>3. Cutting Entries — Check Before Saving</h2>
+<p><small>Enter <b>actual cut pieces</b>, not completed bags. If OCR cannot read handwritten numbers, you can correct or enter them here. Used MTR is optional and must be independently verified for the Store SRL before stock deduction.</small></p>
 <div class="tableWrap"><table><thead><tr><th>SRL No.</th><th>Part Name</th><th>Length (inch)</th><th>Width (inch)</th><th>Cutting Qty</th><th>Used MTR (verified, optional)</th><th></th></tr></thead><tbody id="redRows"></tbody></table></div>
 <button id="addRow" class="secondary">+ Add Row</button><button id="clearRows" class="secondary">Clear Rows</button>
 <details style="margin:14px 0"><summary>Paste ChatGPT-confirmed cutting JSON to fill rows</summary>
-<p><small>After I read your photo in ChatGPT, paste my verified JSON here. It fills the fields for your final confirmation; it does not save automatically.</small></p>
+<p><small>Paste verified cutting JSON to fill the entries. Final checking and Save are still required.</small></p>
 <textarea id="jsonPaste" placeholder='{"workNo":"CFM-680","date":"2026-10-28","rows":[{"srl":"EFPPL03/0300","part":"Body","length":30,"width":20,"qty":2}]}'></textarea>
 <button id="applyJson" class="secondary">Apply Confirmed JSON</button></details>
-<label class="check"><input type="checkbox" id="verified">I checked every entered row against the original RED PEN photo, including SRL, L × W and Qty.</label>
-<button id="saveReview">✓ Save Verified Cutting Draft (This Device)</button><button id="postLive" class="warningbtn" type="button">☁ Update Main ERP Cutting (Verified Red Pen)</button><p id="liveStatus" role="status"></p>
+<label class="check"><input type="checkbox" id="verified">I checked every entry against the original cutting sheet photo, including Work No., SRL, L × W and Qty.</label>
+<button id="saveReview">✓ Save Checked Cutting Draft (This Device)</button><button id="postLive" class="warningbtn" type="button">☁ Update Main ERP Cutting (Checked Entries)</button><p id="liveStatus" role="status"></p>
 <p id="entryStatus" role="status"></p>
-<p><small><b>Important:</b> Draft Save stays on this device. Only <b>Update Main ERP Cutting</b> posts to live Cutting after your confirmation. Confirmed Used MTR is required for Stock deduction. Part cutting quantities are NOT finished bag quantities, so Pending Qty stays unchanged.</small></p></section>
+<p><small><b>Important:</b> Draft Save stays on this device. Only <b>Update Main ERP Cutting</b> posts checked entries to live Cutting after your confirmation. Confirmed Used MTR is required for Stock deduction. Part cutting quantities are NOT finished bag quantities, so Pending Qty stays unchanged.</small></p></section>
 <section class="card"><h2>4. Verified Draft History</h2><button id="downloadAll" type="button" class="secondary">Download Cutting Review Backup JSON</button>
 <ul id="historyList"></ul><p><small>Data is saved on this device only. Back up the JSON before clearing browser storage; the original photo is not included in the backup.</small></p></section>
 </main><script>
@@ -151,7 +151,7 @@ function getRows(){
   if(x.usedMtr!==''){x.usedMtr=Number(x.usedMtr);if(!Number.isFinite(x.usedMtr)||x.usedMtr<0)throw Error('Used MTR must be a valid non-negative number');}
   result.push(x);
  }
- if(!result.length)throw Error('Enter at least one confirmed red-pen cutting row');
+ if(!result.length)throw Error('Enter at least one checked cutting row');
  return result;
 }
 function applyJSON(){
@@ -303,13 +303,13 @@ $('tryOCR').onclick=async()=>{
 $('postLive').onclick=()=>{
  try{
   if(window.parent===window)throw Error('Open Red Pen Cutting from Main ERP, not as a separate page.');
-  if(!photoName||!$('photo').files[0])throw Error('Original red-pen photo is required.');
-  if(!$('verified').checked)throw Error('Tick verification only after checking every field against the photo.');
+  if(!photoName||!$('photo').files[0])throw Error('Original cutting sheet photo is required.');
+  if(!$('verified').checked)throw Error('Check every field against the original photo before confirming.');
   const workNo=canonical($('workNo').value),date=$('cutDate').value,rows=getRows();
   if(!/^CFM[- ]?\d+$/i.test(workNo)||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Choose valid Work No. and Date.');
   if(liveOrders.length&&!liveOrders.some(x=>canonical(x.workNo)===workNo))throw Error('Work Order not found in current ERP; press Load Work Orders.');
   const withMeters=rows.filter(r=>r.usedMtr!==''&&r.usedMtr>0).length;
-  const notice='POST '+rows.length+' VERIFIED RED-PEN PART CUTS to LIVE Cutting for '+workNo+'?\n'
+  const notice='POST '+rows.length+' VERIFIED PHOTO PART CUTS to LIVE Cutting for '+workNo+'?\n'
    +(withMeters?withMeters+' rows with confirmed meters will deduct Stock.\n':'NO Stock meters will be deducted.\n')
    +'Pending bag Qty will NOT change. Continue?';
   if(!confirm(notice))return;
@@ -319,7 +319,7 @@ $('postLive').onclick=()=>{
     try{persist();displayHistory()}catch(e){drafts.pop();throw Error('Local draft backup could not be saved: '+e.message)}
   }
   $('postLive').disabled=true;
-  $('liveStatus').textContent='Sending verified red-pen Cutting to Main ERP…';
+  $('liveStatus').textContent='Sending checked Cutting entries to Main ERP…';
   window.parent.postMessage({kind:'CFM_RED_CUT_POST_VERIFIED_V1',payload:{workNo,date,rows,photoFileName:photoName,verifiedByUser:true}},location.origin);
  }catch(e){$('liveStatus').textContent='NOT POSTED: '+e.message;}
 };
