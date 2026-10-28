@@ -121,14 +121,14 @@ window.cfmPostRedPenVerified=async function(payload){
   const reject=message=>({ok:false,message});
   try{
     if(!cloudReady||cloudDirty||cloudBusy)return reject('Cloud sync is not ready or local edits are unsynced. Export an Emergency Backup and resolve Cloud sync before posting.');
-    if(!payload || payload.verifiedByUser!==true)return reject('Confirm every RED PEN row against the photo first.');
+    if(!payload || payload.verifiedByUser!==true)return reject('Confirm every handwritten cutting row against the photo first.');
     const workNo=String(payload.workNo||'').trim().toUpperCase();
     const date=String(payload.date||'').trim();
     const photo=String(payload.photoFileName||'').trim().slice(0,180);
     if(!/^CFM-\d+$/.test(workNo)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!photo)return reject('Valid Work No, date and original photo required.');
     const order=getPending(workNo);
     if(!order||isArchived(order))return reject('Work Order is not available/active in this ERP. Load Work Nos first.');
-    if(!Array.isArray(payload.rows)||payload.rows.length<1||payload.rows.length>60)return reject('Cutting requires 1–60 checked red-pen lines.');
+    if(!Array.isArray(payload.rows)||payload.rows.length<1||payload.rows.length>60)return reject('Cutting requires 1–60 checked cutting lines.');
     const prepared=[],usedBySrl=new Map();
     for(const raw of payload.rows){
       const srlRaw=String(raw.srl||raw.srlNo||'').trim().slice(0,90);
@@ -151,7 +151,7 @@ window.cfmPostRedPenVerified=async function(payload){
       prepared.push({srl:resolved,part,length,height,qty,usedMtr:tracked?enteredMeter:null});
     }
     const fingerprint=JSON.stringify({workNo,date,photo,rows:prepared});
-    if(state.cutting.some(r=>r._redPenFingerprint===fingerprint))return reject('This red-pen cutting sheet was already posted. Duplicate blocked.');
+    if(state.cutting.some(r=>r._redPenFingerprint===fingerprint))return reject('This cutting sheet was already posted. Duplicate blocked.');
     const meta=await cloudFetchMeta();
     if(num(meta?.version)!==num(cloudVersion))return reject('Cloud changed on another device. Refresh Cloud Work Nos and check for duplicate before posting.');
     try{await window.parent.cfmSaveBackup?.()}catch(e){console.warn('Pre-cutting backup unavailable',e)}
@@ -162,8 +162,8 @@ window.cfmPostRedPenVerified=async function(payload){
       description:order.description||'',cloth:order.cloth||'',plannedWidth:num(order.width),
       srlNo:x.srl,cutQty:x.qty,length:x.length,height:x.height,layer:1,
       sizeLine:x.part+' | '+x.length+' x '+x.height,
-      remark:'Verified red-pen cutting photo: '+photo+(x.usedMtr===null?' | STOCK METER PENDING VERIFICATION':' | Verified used MTR: '+x.usedMtr),
-      cuttingBy:'Red Pen Photo',wastage:false,
+      remark:'Verified cutting sheet photo: '+photo+(x.usedMtr===null?' | STOCK METER PENDING VERIFICATION':' | Verified used MTR: '+x.usedMtr),
+      cuttingBy:'Photo Entry',wastage:false,
       _autoPendingLinked:false,_trackSrl:x.usedMtr!==null,_redPenPendingStock:x.usedMtr===null,
       _redPenVerified:true,_redPenUsedMtr:x.usedMtr,_redPenFingerprint:fingerprint,
       _redPenPhotoName:photo,_redPenCreatedAt:createdAt,_redPenPart:x.part,_redPenRow:i+1
@@ -178,8 +178,8 @@ window.cfmPostRedPenVerified=async function(payload){
       setCloudBadge('⚠️ Red Pen saved locally • Cloud sync required','amber');
       return {ok:false,savedLocally:true,message:'Cutting saved on this device, but Cloud sync could not be confirmed. Do not post again; use Sync and check the same Work Order.'};
     }
-    return {ok:true,cloud:true,workNo,count:rows.length,pendingStock:unverified,message:'Saved '+rows.length+' verified red-pen lines to LIVE Cutting. '+(unverified?unverified+' lines await stock-meter verification. ':'')+'Pending bag quantity was not changed because part cut qty is not completed bags.'};
-  }catch(e){return reject('Red Pen posting failed: '+String(e.message||e));}
+    return {ok:true,cloud:true,workNo,count:rows.length,pendingStock:unverified,message:'Saved '+rows.length+' verified cutting lines to LIVE Cutting. '+(unverified?unverified+' lines await stock-meter verification. ':'')+'Pending bag quantity was not changed because part cut qty is not completed bags.'};
+  }catch(e){return reject('Photo Cutting update failed: '+String(e.message||e));}
 };
 
 window.deleteRecord=function(type,i){
