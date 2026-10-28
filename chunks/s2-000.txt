@@ -43,6 +43,25 @@
         </div>
       </div>
 
+      <style id="cfm-v182-dashboard-actions-css">
+      #view-dashboard .cfm-main-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:15px 0 16px}
+      #view-dashboard .cfm-main-action{display:flex;align-items:center;gap:12px;min-height:98px;padding:16px 15px;text-decoration:none;color:#15334a;background:#fff;border:1px solid #cbdce8;border-radius:16px;box-shadow:0 5px 16px #1d4c7210;text-align:left;font:inherit;cursor:pointer}
+      #view-dashboard .cfm-main-action:focus-visible{outline:3px solid #2679b6;outline-offset:2px}
+      #view-dashboard .cfm-main-action .cfm-ma-icon{font-size:32px;line-height:1;flex:none}
+      #view-dashboard .cfm-main-action .cfm-ma-copy{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+      #view-dashboard .cfm-main-action strong{font-size:17px;font-weight:800}
+      #view-dashboard .cfm-main-action small{font-size:12px;color:#527084}
+      #view-dashboard .cfm-main-action .cfm-ma-arrow{font-size:22px;color:#4183b0;flex:none}
+      #view-dashboard .cfm-main-action.live{border-left:5px solid #16774c}
+      #view-dashboard .cfm-main-action.physical{border-left:5px solid #1671ac}
+      #view-dashboard .cfm-main-action.cutting{border-left:5px solid #8b5cb8}
+      @media(max-width:760px){#view-dashboard .cfm-main-actions{grid-template-columns:1fr;gap:9px;margin:12px 0}#view-dashboard .cfm-main-action{min-height:76px;padding:11px 14px}#view-dashboard .cfm-main-action .cfm-ma-icon{font-size:28px}}
+      </style>
+      <nav class="cfm-main-actions" aria-label="Plant dashboard main actions">
+        <a class="cfm-main-action live" href="./cloud-workorders.html?v=182" target="_top"><span class="cfm-ma-icon" aria-hidden="true">📋</span><span class="cfm-ma-copy"><strong>Live Work Orders</strong><small>Cloud work order list</small></span><span class="cfm-ma-arrow" aria-hidden="true">›</span></a>
+        <button class="cfm-main-action physical" type="button" onclick="showView('srltracker')"><span class="cfm-ma-icon" aria-hidden="true">📦</span><span class="cfm-ma-copy"><strong>Physical Stock</strong><small>Physical SRL stock tracker</small></span><span class="cfm-ma-arrow" aria-hidden="true">›</span></button>
+        <a class="cfm-main-action cutting" href="./cutting-print-live.html?v=182" target="_top"><span class="cfm-ma-icon" aria-hidden="true">✂️</span><span class="cfm-ma-copy"><strong>Cutting Register</strong><small>Daily A4 cutting register</small></span><span class="cfm-ma-arrow" aria-hidden="true">›</span></a>
+      </nav>
       <div class="kpis" id="kpis"></div>
 
       <div class="exec-group"><div class="dashboard-section-title"><h3>⚙️ Operations</h3><span>Daily production control</span></div><div class="module-command-grid primary-modules">
