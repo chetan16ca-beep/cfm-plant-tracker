@@ -428,7 +428,7 @@ $('mrPrintBtn').onclick=()=>{const a=meters(),total=Number($('mrTotal').value);i
  const p=document.getElementById('cfmPOPanel'),f=document.getElementById('cfmPOFrame');
  window.openCFMPOWorkOrders=function(){
    p.hidden=false;
-   if(!f.getAttribute('src'))f.src='./po-workorder.html?v=1';
+   if(!f.getAttribute('src'))f.src='./po-workorder.html?v=2';
  };
  document.getElementById('cfmPOOpen').addEventListener('click',window.openCFMPOWorkOrders);
  if(new URLSearchParams(location.search).get('openPO')==='1')setTimeout(window.openCFMPOWorkOrders,100);
