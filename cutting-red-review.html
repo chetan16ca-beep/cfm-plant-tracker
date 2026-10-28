@@ -113,7 +113,7 @@ function receiveOrders(list){
  liveOrders=list.filter(x=>x&&/^CFM[- ]?\d+$/i.test(String(x.workNo||''))).slice(0,1500).map(x=>({workNo:String(x.workNo).trim(),party:String(x.party||'').slice(0,160),description:String(x.description||'').slice(0,300),cloth:String(x.cloth||'').slice(0,80),width:String(x.width||''),orderQty:Number(x.orderQty)||0,pendingQty:Number(x.pendingQty)||0}));
  const opts=$('workOptions');opts.replaceChildren();
  for(const o of liveOrders){const el=document.createElement('option');el.value=o.workNo;el.label=o.party+' | '+o.description.slice(0,60);opts.append(el)}
- $('syncStatus').textContent=liveOrders.length+' ERP Work Orders loaded (read-only). No Work Orders were changed.';photoWorkOptions();refreshWork();
+ $('syncStatus').textContent=liveOrders.length+' ERP Work Orders loaded (read-only). No Work Orders were changed.';photoWorkOptions();refreshWork();updateActionReadiness();
 }
 window.addEventListener('message',function(e){
  if(e.origin!==location.origin||e.source!==window.parent||!e.data)return;
@@ -134,12 +134,36 @@ function row(values={}){
   if(type==='number'){inp.step=key==='qty'?'1':key==='usedMtr'?'0.001':'0.01';inp.min=key==='usedMtr'?'0':'0.01';inp.inputMode='decimal'}
   inp.setAttribute('aria-label',key);cell.dataset.label=({srl:'SRL No.',part:'Part',length:'Length (inch)',width:'Width (inch)',qty:'Cut Qty',usedMtr:'Used Meter'})[key]||key;cell.append(inp);tr.append(cell);
  }
- const td=document.createElement('td'),del=document.createElement('button');td.dataset.label='Remove line';del.className='secondary';del.textContent='×';del.type='button';del.title='Remove row';del.onclick=()=>{tr.remove();if(!$('redRows').children.length)row();};td.append(del);tr.append(td);$('redRows').append(tr);
+ const td=document.createElement('td'),del=document.createElement('button');td.dataset.label='Remove line';del.className='secondary';del.textContent='×';del.type='button';del.title='Remove row';del.onclick=()=>{tr.remove();if(!$('redRows').children.length)row();};td.append(del);tr.append(td);$('redRows').append(tr);updateActionReadiness();
 }
-function resetRows(){ $('redRows').replaceChildren();for(let i=0;i<5;i++)row();$('verified').checked=false}
+function resetRows(){ $('redRows').replaceChildren();row();$('verified').checked=false;updateActionReadiness()}
 resetRows();
 $('addRow').onclick=()=>{if($('redRows').children.length>=60)return alert('Maximum 60 rows per sheet');row()};
 $('clearRows').onclick=()=>{if(confirm('Clear unsaved cutting rows?'))resetRows()};
+function updateActionReadiness(){
+ const wo=workNum($('workNo').value);
+ const validWork=wo&&liveOrders.some(x=>workNum(x.workNo)===wo);
+ const validRows=[...$('redRows').children].some(tr=>{
+  const obj={};for(const input of tr.querySelectorAll('input'))obj[input.dataset.field]=String(input.value||'').trim();
+  return obj.srl&&obj.part&&Number(obj.length)>0&&Number(obj.width)>0&&Number.isSafeInteger(Number(obj.qty))&&Number(obj.qty)>0;
+ });
+ const ready=!!(validWork&&photoName&&$('photo').files.length&&$('cutDate').value&&validRows&&$('verified').checked);
+ $('saveReview').disabled=!ready;
+ $('postLive').disabled=!ready;
+ const status=$('entryStatus');
+ if(status && !status.textContent.startsWith('Live Cutting') && !status.textContent.startsWith('Saved locally')){
+  status.textContent=ready?'All required fields checked — ready to Save.':
+  !photoName?'Upload a cutting photo to begin.':
+  !validWork?'Choose a Work No. from the photo selector above.':
+  !validRows?'Scan or enter at least one full SRL / Part / Length / Width / Qty row.':
+  !$('verified').checked?'Check each entry against the photo, then tick the verification box.':'';
+ }
+}
+$('redRows').addEventListener('input',updateActionReadiness);
+$('verified').addEventListener('change',updateActionReadiness);
+$('workNo').addEventListener('input',updateActionReadiness);
+$('cutDate').addEventListener('change',updateActionReadiness);
+$('photoWorkSelect').addEventListener('change',updateActionReadiness);
 function getRows(){
  const result=[];
  for(const tr of $('redRows').children){
@@ -389,6 +413,6 @@ window.addEventListener('message',e=>{
  }
  if(result.savedLocally)$('entryStatus').textContent='Saved on this device. Cloud sync needs attention. Do not post again.';
 });
-displayHistory();
+displayHistory();updateActionReadiness();
 })();
 </script></body></html>
