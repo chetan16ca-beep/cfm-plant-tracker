@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="hi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CFM ERP · Safe Recovery Audit</title>
+<style>
+body{font-family:system-ui,Arial,sans-serif;max-width:920px;margin:auto;padding:18px;background:#f4f8fc;color:#14283e}
+h1{font-size:23px;margin-bottom:6px}p{line-height:1.5}small{color:#526778}
+.notice{background:#fff5da;border:1px solid #ead6a8;padding:13px;border-radius:10px;margin:12px 0}
+.card{background:#fff;border:1px solid #d9e3ee;border-radius:12px;margin:10px 0;padding:15px}
+button{background:#115da8;color:#fff;border:0;border-radius:8px;padding:11px 13px;margin:5px 4px 5px 0;font-weight:bold;cursor:pointer}
+button:disabled{opacity:.55}b{color:#152e48}
+.value{font-size:18px;font-weight:800}#status{font-weight:bold}
+</style></head>
+<body><h1>CFM ERP · सुरक्षित Backup Recovery</h1>
+<p><b>Read-only जांच:</b> यह पेज आपके इसी Browser/Device में रखे पुराने ERP Snapshots खोजता है। यह Work Orders, Stock या Cloud Database को <b>बिल्कुल नहीं बदलता</b>।</p>
+<div class="notice"><b>महत्वपूर्ण:</b> जिस मोबाइल/PC पर आखिरी बार CFM-702 दिखा था, <b>उसी Browser में</b> यह पेज खोलें। Chrome का Clear Storage/Data, ERP Restore, Sync या Uninstall न करें। पुराने Devices अलग-अलग चेक करें।</div>
+<button id="scan">इस Device के सभी Backup खोजें</button>
+<p id="status">Scan शुरू करने के लिए ऊपर दबाएँ।</p><div id="results"></div>
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+let candidates=[];
+function valid(o){return o&&typeof o==='object'&&Array.isArray(o.pending)&&Array.isArray(o.store)&&Array.isArray(o.cutting)}
+function maxWork(a){return (a||[]).reduce((m,x)=>{const v=String(x.workNo||'').match(/(?:CFM[- ]?)?(\d+)$/i);return v?Math.max(m,Number(v[1])):m},0)}
+function consider(raw,where,when){
+ try{
+  const obj=typeof raw==='string'?JSON.parse(raw):raw;
+  if(valid(obj)){candidates.push({obj,where,when:when||'',max:maxWork(obj.pending),orders:obj.pending.length,store:obj.store.length,cutting:obj.cutting.length});return}
+  if(Array.isArray(obj)){obj.forEach((x,i)=>{if(x&&x.raw)consider(x.raw,where+' entry '+i,x.at||x.time||x.id);});}
+  if(obj&&typeof obj==='object'&&typeof obj.raw==='string'){consider(obj.raw,where,when||obj.at||obj.time||obj.id)}
+ }catch(e){}
+}
+function idbRows(name,store){
+ return new Promise((done)=>{
+  let request,complete=false;
+  const finish=x=>{if(!complete){complete=true;done(x)}};
+  try{
+    request=indexedDB.open(name);
+    request.onerror=()=>finish([]);
+    request.onblocked=()=>finish([]);
+    request.onupgradeneeded=()=>{try{request.transaction.abort()}catch(e){};finish([])};
+    request.onsuccess=()=>{
+      const db=request.result;if(!db.objectStoreNames.contains(store)){db.close();finish([]);return}
+      try{const tx=db.transaction(store,'readonly'),get=tx.objectStore(store).getAll();get.onsuccess=()=>{const arr=get.result||[];db.close();finish(arr)};get.onerror=()=>{db.close();finish([])}}catch(e){db.close();finish([])}
+    };
+  }catch(e){finish([])}
+ })
+}
+function download(index){
+ const c=candidates[index];if(!c)return;
+ const blob=new Blob([JSON.stringify(c.obj,null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
+ a.download='CFM-RECOVERY-READONLY-WO'+c.max+'-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+ document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)
+}
+function date(v){if(!v)return 'Time not saved';let n=typeof v==='number'?v:Number(v);let d=new Date(isFinite(n)&&n>1e12?n:v);return isNaN(d.getTime())?String(v):d.toLocaleString()}
+function render(){
+ const box=$('results');box.replaceChildren();candidates.sort((a,b)=>b.max-a.max||b.orders-a.orders);
+ $('status').textContent=candidates.length+' backup candidate(s) मिले। '+(candidates.some(x=>x.max>=702)?'CFM-702 या आगे का Snapshot मिला! पहले Download करके ChatGPT में भेजें।':'इस Browser में अभी CFM-702 का Snapshot नहीं मिला। दूसरे इस्तेमाल किए गए मोबाइल/PC पर यही पेज जाँचें।');
+ candidates.forEach((c,i)=>{const card=document.createElement('div');card.className='card';
+ const h=document.createElement('div');h.className='value';h.textContent='Last Work No: CFM-'+c.max+' · Pending Records: '+c.orders;card.appendChild(h);
+ const details=document.createElement('p');details.textContent='Stock/SRL Rows: '+c.store+' · Cutting Rows: '+c.cutting+' · Source: '+c.where+' · '+date(c.when);card.appendChild(details);
+ const btn=document.createElement('button');btn.textContent='Download backup JSON (Safe Copy)';btn.onclick=()=>download(i);card.appendChild(btn);box.appendChild(card);
+ });
+}
+async function scan(){
+ candidates=[];$('status').textContent='इस Device के Local Backups पढ़ रहे हैं…';$('results').replaceChildren();
+ try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);let s;try{s=localStorage.getItem(k)}catch(e){continue}if(s&&(k.includes('cfm')||k.includes('backup')||k.includes('history')))consider(s,'Local Storage: '+k)}}catch(e){}
+ try{const list=typeof indexedDB.databases==='function'?await indexedDB.databases():[];
+ const wanted=[['cfm-auto-backups-v2','history'],['cfm-safety-backups','snapshots']];
+ for(const [name,store] of wanted){if(list.length&&!list.some(x=>x.name===name))continue;const a=await idbRows(name,store);for(let i=0;i<a.length;i++)consider(a[i],name+' / '+store,a[i].time||a[i].id||'')}
+ }catch(e){}
+ const unique=new Map();for(const c of candidates){const key=c.where+'|'+c.when+'|'+c.max+'|'+c.orders;if(!unique.has(key))unique.set(key,c)}candidates=[...unique.values()];render();
+}
+$('scan').onclick=scan;
+})();
+</script></body></html>
