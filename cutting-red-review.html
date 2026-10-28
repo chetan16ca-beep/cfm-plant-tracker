@@ -114,7 +114,7 @@ function applyDetectedWorks(numbers){
   :'Work No was not read reliably. Choose Work No manually from this dropdown.';
  if(valid.length===1&&!workNum($('workNo').value)){
    $('photoWorkSelect').value=valid[0];$('photoWorkSelect').dispatchEvent(new Event('change'));
-   $('sectionMessage').textContent='Only one Work No. was detected in the whole photo. Its section is UNKNOWN until separately verified.';
+   if(!Object.values(sectionWorkMap).includes(valid[0]))$('sectionMessage').textContent='Only one printed Work No. recognized; choose and verify its section.';
  }
 }
 function receiveOrders(list){
@@ -155,7 +155,10 @@ function updateActionReadiness(){
   const obj={};for(const input of tr.querySelectorAll('input'))obj[input.dataset.field]=String(input.value||'').trim();
   return obj.srl&&obj.part&&Number(obj.length)>0&&Number(obj.width)>0&&Number.isSafeInteger(Number(obj.qty))&&Number(obj.qty)>0;
  });
- const ready=!!(validWork&&photoName&&$('photo').files.length&&$('cutDate').value&&validRows&&$('verified').checked);
+ const section=$('photoSection').value;
+ const printedInSection=sectionWorkMap[section]||'';
+ const wrongMapping=!!(section!=='auto'&&printedInSection&&printedInSection!==wo);
+ const ready=!!(validWork&&photoName&&$('photo').files.length&&$('cutDate').value&&validRows&&$('verified').checked&&!wrongMapping);
  $('saveReview').disabled=!ready;
  $('postLive').disabled=!ready;
  const status=$('entryStatus');
@@ -163,6 +166,7 @@ function updateActionReadiness(){
   status.textContent=ready?'All required fields checked — ready to Save.':
   !photoName?'Upload a cutting photo to begin.':
   !validWork?'Choose a Work No. from the photo selector above.':
+  wrongMapping?'Wrong Work Order for selected photo section. Correct it before saving.':
   !validRows?'Scan or enter at least one full SRL / Part / Length / Width / Qty row.':
   !$('verified').checked?'Check each entry against the photo, then tick the verification box.':'';
  }
