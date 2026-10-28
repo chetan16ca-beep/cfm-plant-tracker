@@ -95,15 +95,25 @@ async function cloudInit(){
     cloudVersion=num(row?.version)||1;
     cloudUpdatedAt=row?.updated_at||'';
     cloudReady=true;
-    if(cloudDirty){
-      await cloudPush(true);
+    if(row&&validState(row.payload)){
+      // Never discard a device's local work orders when the shared cloud snapshot is older.
+      const serverWorks=new Set((row.payload.pending||[]).map(x=>String(x.workNo||'').trim().toUpperCase()).filter(Boolean));
+      const missing=(state.pending||[]).map(x=>String(x.workNo||'').trim().toUpperCase()).filter(x=>x&&!serverWorks.has(x));
+      if(missing.length){
+        cloudReady=false;cloudDirty=false;
+        setCloudBadge('⚠️ Local orders missing in cloud • recovery required','red');
+        try{await window.parent.cfmSaveBackup?.()}catch(_){}
+        alert('CFM SAFETY: '+missing.length+' local Work Orders are not in Cloud. Local data has been preserved; automatic Sync is BLOCKED. Open Safe Recovery Audit and download the backup. Example: '+missing.slice(0,5).join(', '));
+        return;
+      }
+      try{await window.parent.cfmSaveBackup?.()}catch(_){}
       cloudDirty=false;
-    }else if(row&&validState(row.payload)){
-      state=clone(row.payload);const upgraded=ensureExcelMasterData();syncDerivedState();safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();if(upgraded){cloudDirty=true;await cloudPush(true);}
+      state=clone(row.payload);ensureExcelMasterData();syncDerivedState();
+      safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();
     }else{
-      ensureExcelMasterData();await cloudPush(true);
+      cloudReady=false;setCloudBadge('☁️ Cloud unavailable • local protected','red');return;
     }
-    setCloudBadge('☁️ 3-4 Mobile LIVE','green');
+    setCloudBadge('☁️ Cloud ready • protected sync','green');
   }catch(e){console.warn(e);setCloudBadge('☁️ Offline – local data','red');}
 }
 async function cloudPush(force=false){
@@ -114,18 +124,19 @@ async function cloudPush(force=false){
   const snapshot=clone(state);
   setCloudBadge('☁️ Syncing…','amber');
   try{
-    const latest=await cloudFetchMeta().catch(()=>null);
-    const baseVersion=Math.max(1,num(latest?.version)||cloudVersion||1);
+    // Compare-and-swap: never increment from a newer version fetched by an older device.
+    const baseVersion=num(cloudVersion);
+    if(!baseVersion)throw new Error('Unknown cloud version; refusing unsafe save');
     const nextVersion=baseVersion+1;
-    const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main';
+    const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+baseVersion;
     const r=await fetch(u,{
       method:'PATCH',
-      headers:{...cloudHeaders(),'Prefer':'return=representation'},
+      headers:{...cloudHeaders(),'Prefer':'return=representation','x-cfm-base-version':String(baseVersion)},
       body:JSON.stringify({payload:(()=>{const d=clone(snapshot);delete d.measurements;delete d.srlTracker;delete d.issueRegister;delete d.srlOpenClose;delete d.productMaster;return d})(),version:nextVersion,updated_at:new Date().toISOString()})
     });
-    if(!r.ok)throw new Error('Cloud save '+r.status);
+    if(!r.ok)throw new Error('Cloud save '+r.status+' • stale device or safety protection');
     const a=await r.json();
-    if(!a.length)throw new Error('Cloud save returned no row');
+    if(!a.length)throw new Error('Cloud version conflict: another device updated the database. Your local draft is safe; export backup and resolve Sync conflict.');
     cloudVersion=num(a[0].version)||nextVersion;
     cloudUpdatedAt=a[0].updated_at||new Date().toISOString();
     if(localMutationSeq===seqAtStart){
@@ -159,7 +170,7 @@ window.manualCloudSync=async function(){
   if(cloudBusy){setCloudBadge('☁️ Sync already running…','amber');return}
   setCloudBadge('☁️ Syncing…','amber');
   try{
-    if(!cloudReady){await cloudInit();toast('3-4 Mobile sync complete');return}
+    if(!cloudReady){await cloudInit();if(!cloudReady)throw new Error('Local/Cloud recovery conflict');toast('3-4 Mobile sync complete');return}
     if(cloudDirty){const ok=await cloudPush(true);if(!ok)throw new Error('Cloud push failed');toast('3-4 Mobile sync complete');return}
     const meta=await cloudFetchMeta();
     const v=num(meta?.version)||0;
@@ -188,6 +199,10 @@ async function cloudPoll(){
       if(local654&&!cloudHas654){
         cloudDirty=true;setCloudBadge('☁️ Protecting CFM-654 • syncing','amber');queueCloudPush();return;
       }
+      const serverWorks=new Set((row.payload.pending||[]).map(x=>normalize(x.workNo)).filter(Boolean));
+      const missingLocal=(state.pending||[]).map(x=>normalize(x.workNo)).filter(x=>x&&!serverWorks.has(x));
+      if(missingLocal.length){setCloudBadge('⚠️ Sync blocked • preserve local orders','red');try{await window.parent.cfmSaveBackup?.()}catch(_){}return}
+      try{await window.parent.cfmSaveBackup?.()}catch(_){}
       const prevRaw=JSON.stringify(state);state=clone(row.payload);ensureExcelMasterData();syncDerivedState();cloudVersion=v;cloudUpdatedAt=row.updated_at||'';const nextRaw=JSON.stringify(state);safeStorage.setItem(STORAGE_KEY,nextRaw);renderAll();setCloudBadge('☁️ Updated from other mobile','green');const notice=genericUpdateNotification(prevRaw,nextRaw);showLocalNotification('☁️ Other Device • '+notice.title.replace(/^🔔\s*/,''),notice.body||notificationSummary());
     }}
     else if(cloudReady)setCloudBadge('☁️ 3-4 Mobile LIVE','green');
