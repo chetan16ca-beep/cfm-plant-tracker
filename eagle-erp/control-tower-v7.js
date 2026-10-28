@@ -110,8 +110,9 @@ async function readFiles(){
 $("v7FilesRefresh").addEventListener("click",readFiles);
 $("v7FilesList").addEventListener("click",async e=>{
  const btn=e.target.closest("[data-cloud-file]");if(!btn)return;
- try{btn.disabled=true;const j=await getCloud("file="+encodeURIComponent(btn.dataset.cloudFile));window.open(j.url,"_blank","noopener,noreferrer")}
- catch(e){alert("Cannot open file: "+e.message)}finally{btn.disabled=false}
+ const opened=window.open("about:blank","_blank");if(opened)opened.opener=null;
+ try{btn.disabled=true;const j=await getCloud("file="+encodeURIComponent(btn.dataset.cloudFile));if(opened)opened.location.replace(j.url);else window.location.assign(j.url)}
+ catch(e){if(opened)opened.close();alert("Cannot open file: "+e.message)}finally{btn.disabled=false}
 });
 $("v7FileForm").addEventListener("submit",async e=>{
  e.preventDefault();const form=e.currentTarget,button=form.querySelector('[type="submit"]'),file=form.elements.file.files[0];
