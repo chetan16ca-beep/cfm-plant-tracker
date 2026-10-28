@@ -56,7 +56,7 @@ async function submit(form,action){const btn=form.querySelector('button[type="su
  try{await window.eagleV3.save(action,data,btn,form);render()}catch(e){msg(e.message,true)}
 }
 function wireForm(id,action){const f=$(id);f?.addEventListener("submit",async e=>{e.preventDefault();await submit(f,action)})}
-function bindPrint(id,fn){$(id)?.addEventListener("click",()=>{try{fn(safeState())}catch(e){alert(e.message)}})}
+function bindPrint(id,fn){document.querySelectorAll('[id="'+id+'"],[data-print="'+id+'"]').forEach(el=>el.addEventListener("click",()=>{try{fn(safeState())}catch(e){alert(e.message)}}))}
 function allRows(st){return st.orders.filter(o=>!o.archived).sort((a,b)=>num(a.no)-num(b.no))}
 function printableOrder(st){return allRows(st).map(o=>["CFM-"+o.no,o.party,o.po||"",o.product,o.qty,o.priority,o.status])}
 for(const form of [["stageForm","addStageEntry"],["measureForm","addMeasurement"],["issueForm","addMaterialIssue"],["dailyForm","addDailyReport"],["dispatchForm","addDispatch"],["labelForm","addLabelIssue"],["adjustForm","adjustStock"]])wireForm(...form);
@@ -86,8 +86,8 @@ $("poForm")?.addEventListener("submit",async e=>{
  if(!f.elements.verified.checked)return msg("Verify all PO lines with original document first",true);
  if(!confirm("Create "+items.length+" NEW Work Orders from verified PO?"))return;
  const btn=$("poSave");
- await window.eagleV3.save("bulkAddOrders",{party:f.elements.party.value,po:f.elements.po.value,items,verified:true},btn);
- if(btn&&!btn.disabled){$("poLines").innerHTML="";addPOLine();f.reset()}
+ const saved=await window.eagleV3.save("bulkAddOrders",{party:f.elements.party.value,po:f.elements.po.value,items,verified:true},btn);
+ if(saved){$("poLines").innerHTML="";addPOLine();f.reset()}
  render();
 });
 $("poFile")?.addEventListener("change",e=>{
