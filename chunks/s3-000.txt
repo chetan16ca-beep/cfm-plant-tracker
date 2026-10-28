@@ -1074,6 +1074,13 @@ function multiPoRowsData(){
     selectedSrl:[...row.querySelectorAll('.multi-srl option:checked')].map(o=>o.value)
   }));
 }
+// Read-only list for red-pen cutting photo review. No stock or order mutation.
+window.cfmRedCutPhotoOrders=function(){
+ return (state.pending||[]).filter(r=>r&&String(r.workNo||'').trim()&&!isArchived(r)).map(r=>({
+  workNo:String(r.workNo||''),party:String(r.party||''),description:String(r.description||r.itemCode||''),
+  cloth:String(r.cloth||''),width:r.width||'',orderQty:num(r.orderQty),pendingQty:Math.max(0,num(pendingQty(r)))
+ }));
+};
 window.cfmPOExistingOrders=function(party,poNo){
  const normPO=x=>String(x||'').trim().replace(/\s+/g,'').toUpperCase();
  const p=normPO(party),n=normPO(poNo);

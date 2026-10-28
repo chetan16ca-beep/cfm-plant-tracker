@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CFM Red Pen Cutting Photo Verification</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eff5fa;color:#18334a;font:14px system-ui,Arial,sans-serif}main{max-width:1050px;margin:auto;padding:13px}
+h1{font-size:20px;margin:3px 0 8px}h2{font-size:16px;margin:8px 0 12px}h3{font-size:14px}
+.card{background:#fff;border:1px solid #cfdfeb;border-radius:13px;padding:15px;margin-bottom:12px}
+.warning{background:#fff4d6;border:1px solid #efcd72;padding:12px;border-radius:9px;line-height:1.55}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+label{display:block;font-weight:650;margin-bottom:6px}label.check{display:flex;align-items:flex-start;gap:8px;font-weight:550;margin:12px 0}
+input,textarea{width:100%;border:1px solid #aabfd0;border-radius:8px;padding:9px;font:inherit;background:#fff;color:#1d3142}
+input[type=checkbox]{width:auto;margin:3px 0}input[type=file]{max-width:100%}
+button{border:0;border-radius:8px;background:#1372b7;color:#fff;font:700 13px system-ui;padding:10px 12px;cursor:pointer;margin:5px 5px 5px 0}
+button.secondary{background:#e7f0f8;color:#154f79}button.warningbtn{background:#9c5312}
+button:disabled{opacity:.5;cursor:not-allowed}small{color:#526d81;line-height:1.4}a{color:#0d5e98}
+.picGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-top:12px}
+.picGrid img,.picGrid canvas{max-width:100%;width:100%;max-height:420px;object-fit:contain;background:white;border:1px solid #d5e1e9;border-radius:7px}
+.picGrid p{font-size:12px;color:#536a78;margin:6px 0}
+#photoStatus,#syncStatus,#entryStatus{font-size:13px;line-height:1.5}
+.tableWrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:690px}th,td{border:1px solid #d7e3ec;padding:6px;text-align:left}th{background:#e9f2f9;font-size:12px}td input{min-width:80px;padding:8px}td input.serial{min-width:140px}td input.part{min-width:130px}
+tr:nth-child(even){background:#f8fbfe}#historyList{padding:0;margin:0;list-style:none}#historyList li{margin:8px 0;padding:10px;border:1px solid #d1e1ed;border-radius:8px}
+#rawText,#jsonPaste{width:100%;min-height:95px;font:12px monospace}
+.red{color:#b01228}#workDetails{background:#f0f6fb;padding:10px;border-radius:8px;font-size:12px}
+@media print{.noprint{display:none!important}body{background:white}.card{border:0}}
+</style></head><body><main>
+<div class="card"><h1>📷 CFM Cutting — Red Pen Photo Verify</h1>
+<p class="warning"><b>Review Mode:</b> Only <strong class="red">RED PEN</strong> handwriting counts. Black/blue marks must be ignored. A photo is <b>not</b> automatically posted to live Cutting, Pending or Stock. Length × Width × Qty is not assumed to equal actual cloth meters.</p>
+<p><a href="./cutting-print-test.html" target="_blank" rel="noopener">🖨 Open A4 Daily Cutting Sheet (4 Work Orders / page, 5 rows each)</a></p></div>
+<section class="card"><h2>1. Select Work Order</h2>
+<button id="loadOrders" type="button">↻ Load Work Orders from Main ERP</button><p id="syncStatus">Open this page inside the Main CFM ERP for live read-only Work Order lookup.</p>
+<div class="grid"><div><label for="workNo">Work No. *</label><input id="workNo" list="workOptions" placeholder="CFM-680" autocomplete="off"><datalist id="workOptions"></datalist></div>
+<div><label for="cutDate">Cutting Date *</label><input id="cutDate" type="date"></div></div>
+<p id="workDetails">Select a work number to check Party, Product and Order Qty.</p></section>
+<section class="card"><h2>2. Upload Red-Pen Cutting Photo</h2>
+<label for="photo">Camera / Gallery (JPG, PNG or WEBP)</label><input type="file" id="photo" accept="image/*">
+<div class="picGrid"><div><h3>Original Sheet</h3><img id="original" alt="Original photo" hidden><p>Keep black printed Work No. visible to identify the order.</p></div>
+<div><h3>Red Ink Visual Filter</h3><canvas id="redOnly" width="1" height="1"></canvas><p>Visual aid only. Faint red strokes can be missed; use original photo to verify.</p></div></div>
+<p id="photoStatus"></p>
+<button id="tryOCR" class="secondary" type="button" disabled>🔎 Try Red Pen OCR (beta)</button>
+<details><summary>View OCR text (not verified)</summary><textarea id="rawText" readonly placeholder="OCR text will appear here. Handwriting recognition may be inaccurate."></textarea></details>
+<p><small>Photo stays in your browser for this session and is not automatically uploaded to the ERP cloud or ChatGPT. Send the photo in this ChatGPT conversation for my verification.</small></p></section>
+<section class="card"><h2>3. Verified Cutting Rows — Length × Width × Quantity</h2>
+<p><small>Enter <b>parts cut</b>, not automatically completed bag quantity. Use only entries confirmed from RED PEN. Do not enter Used Meter here.</small></p>
+<div class="tableWrap"><table><thead><tr><th>SRL No.</th><th>Part Name</th><th>Length (inch)</th><th>Width (inch)</th><th>Cutting Qty</th><th></th></tr></thead><tbody id="redRows"></tbody></table></div>
+<button id="addRow" class="secondary">+ Add Row</button><button id="clearRows" class="secondary">Clear Rows</button>
+<details style="margin:14px 0"><summary>Paste ChatGPT-confirmed cutting JSON to fill rows</summary>
+<p><small>After I read your photo in ChatGPT, paste my verified JSON here. It fills the fields for your final confirmation; it does not save automatically.</small></p>
+<textarea id="jsonPaste" placeholder='{"workNo":"CFM-680","date":"2026-10-28","rows":[{"srl":"EFPPL03/0300","part":"Body","length":30,"width":20,"qty":2}]}'></textarea>
+<button id="applyJson" class="secondary">Apply Confirmed JSON</button></details>
+<label class="check"><input type="checkbox" id="verified">I checked every entered row against the original RED PEN photo, including SRL, L × W and Qty.</label>
+<button id="saveReview">✓ Save Verified Cutting Draft (This Device)</button>
+<p id="entryStatus" role="status"></p>
+<p><small><b>Important:</b> Saving this Draft does not deduct stock, update Main ERP Cutting Register, or reduce Pending Qty. Actual SRL consumption and completed-bag quantities require separate verification.</small></p></section>
+<section class="card"><h2>4. Verified Draft History</h2><button id="downloadAll" type="button" class="secondary">Download Cutting Review Backup JSON</button>
+<ul id="historyList"></ul><p><small>Data is saved on this device only. Back up the JSON before clearing browser storage; the original photo is not included in the backup.</small></p></section>
+</main><script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id),storageKey='cfm-red-cut-photo-reviews-v1';
+const safe=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let liveOrders=[],photoName='',photoURL='',drafts=[];
+try{const loaded=JSON.parse(localStorage.getItem(storageKey)||'[]');if(Array.isArray(loaded))drafts=loaded}catch(e){}
+function today(){const d=new Date(),offset=d.getTimezoneOffset()*60000;return new Date(d.getTime()-offset).toISOString().slice(0,10)}
+$('cutDate').value=today();
+function canonical(s){return String(s||'').trim().toUpperCase().replace(/\s+/g,'')}
+function refreshWork(){const id=canonical($('workNo').value),o=liveOrders.find(x=>canonical(x.workNo)===id);$('workDetails').textContent=o?('Party: '+o.party+' | Product: '+o.description+' | Cloth: '+o.cloth+' | Width: '+o.width+' | Order Qty: '+o.orderQty+' | Current Pending: '+o.pendingQty):'Enter a Work No. Verify it in Main ERP before saving.'}
+$('workNo').addEventListener('input',refreshWork);
+function receiveOrders(list){
+ liveOrders=list.filter(x=>x&&/^CFM[- ]?\d+$/i.test(String(x.workNo||''))).slice(0,1500).map(x=>({workNo:String(x.workNo).trim(),party:String(x.party||'').slice(0,160),description:String(x.description||'').slice(0,300),cloth:String(x.cloth||'').slice(0,80),width:String(x.width||''),orderQty:Number(x.orderQty)||0,pendingQty:Number(x.pendingQty)||0}));
+ const opts=$('workOptions');opts.replaceChildren();
+ for(const o of liveOrders){const el=document.createElement('option');el.value=o.workNo;el.label=o.party+' | '+o.description.slice(0,60);opts.append(el)}
+ $('syncStatus').textContent=liveOrders.length+' ERP Work Orders loaded (read-only). No Work Orders were changed.';refreshWork();
+}
+window.addEventListener('message',function(e){
+ if(e.origin!==location.origin||e.source!==window.parent||!e.data)return;
+ if(e.data.kind==='CFM_RED_CUT_ORDERS_V1')receiveOrders(Array.isArray(e.data.orders)?e.data.orders:[]);
+ if(e.data.kind==='CFM_RED_CUT_ORDERS_ERROR')$('syncStatus').textContent=String(e.data.message||'ERP not ready');
+});
+$('loadOrders').onclick=()=>{
+ if(window.parent===window){$('syncStatus').textContent='Standalone mode: open this page through Main ERP to load Work Orders.';return}
+ window.parent.postMessage({kind:'CFM_RED_CUT_REQUEST_ORDERS'},location.origin);
+ $('syncStatus').textContent='Requesting ERP Work Orders…';
+};
+if(window.parent!==window)window.parent.postMessage({kind:'CFM_RED_CUT_REQUEST_ORDERS'},location.origin);
+function row(values={}){
+ const tr=document.createElement('tr');
+ const fields=[['srl','text','serial'],['part','text','part'],['length','number',''],['width','number',''],['qty','number','']];
+ for(const [key,type,cls] of fields){
+  const cell=document.createElement('td'),inp=document.createElement('input');inp.type=type;inp.dataset.field=key;inp.className=cls;inp.value=values[key]??'';
+  if(type==='number'){inp.step=key==='qty'?'1':'0.01';inp.min='0.01';inp.inputMode='decimal'}
+  inp.setAttribute('aria-label',key);cell.append(inp);tr.append(cell);
+ }
+ const td=document.createElement('td'),del=document.createElement('button');del.className='secondary';del.textContent='×';del.type='button';del.title='Remove row';del.onclick=()=>{tr.remove();if(!$('redRows').children.length)row();};td.append(del);tr.append(td);$('redRows').append(tr);
+}
+function resetRows(){ $('redRows').replaceChildren();for(let i=0;i<5;i++)row();$('verified').checked=false}
+resetRows();
+$('addRow').onclick=()=>{if($('redRows').children.length>=60)return alert('Maximum 60 rows per sheet');row()};
+$('clearRows').onclick=()=>{if(confirm('Clear unsaved cutting rows?'))resetRows()};
+function getRows(){
+ const result=[];
+ for(const tr of $('redRows').children){
+  const x={};for(const inp of tr.querySelectorAll('input'))x[inp.dataset.field]=inp.value.trim();
+  if(Object.values(x).every(v=>v===''))continue;
+  if(!x.srl||!x.part||!x.length||!x.width||!x.qty)throw Error('Every filled row must have SRL, Part, Length, Width and Qty');
+  for(const k of ['length','width','qty']){const n=Number(x[k]);if(!Number.isFinite(n)||n<=0||n>10000)throw Error('Invalid '+k+' in one of the rows');x[k]=n}
+  if(!Number.isSafeInteger(x.qty))throw Error('Cutting Qty must be a whole number');
+  result.push(x);
+ }
+ if(!result.length)throw Error('Enter at least one confirmed red-pen cutting row');
+ return result;
+}
+function applyJSON(){
+ try{
+ const obj=JSON.parse($('jsonPaste').value);
+ if(!obj||!Array.isArray(obj.rows)||!obj.rows.length||obj.rows.length>60)throw Error('Expected JSON with 1–60 rows');
+ const workNo=String(obj.workNo||'').trim().toUpperCase(),date=String(obj.date||'').trim();
+ if(!/^CFM[- ]?\d+$/i.test(workNo)||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Provide valid workNo and date in JSON');
+ $('workNo').value=workNo;$('cutDate').value=date;$('redRows').replaceChildren();
+ for(const x of obj.rows){row({srl:x.srl??x.srlNo??'',part:x.part??x.partName??'',length:x.length??'',width:x.width??'',qty:x.qty??x.cuttingQty??''})}
+ $('verified').checked=false;refreshWork();$('entryStatus').textContent='ChatGPT-confirmed JSON loaded for YOUR final verification. Nothing saved yet.';
+ }catch(e){alert('Import failed: '+e.message)}
+}
+$('applyJson').onclick=applyJSON;
+function persist(){localStorage.setItem(storageKey,JSON.stringify(drafts))}
+function displayHistory(){
+ $('historyList').replaceChildren();
+ if(!drafts.length){const li=document.createElement('li');li.textContent='No verified red-pen cutting drafts saved on this device.';$('historyList').append(li);return}
+ drafts.slice().reverse().forEach(d=>{
+  const li=document.createElement('li'),strong=document.createElement('strong');strong.textContent=d.workNo+' • '+d.date+' • '+d.rows.length+' cutting lines';
+  const p=document.createElement('p');p.textContent='Source photo: '+(d.photoFileName||'-')+' | Saved: '+d.savedAt+' | NOT posted to ERP';
+  const button=document.createElement('button');button.textContent='Export this draft';button.className='secondary';button.onclick=()=>download('CFM-Red-Cutting-'+d.workNo+'-'+d.date+'.json',JSON.stringify(d,null,2));
+  const del=document.createElement('button');del.textContent='Delete Local Draft';del.className='secondary';del.onclick=()=>{if(!confirm('Delete this local verified draft? This does not affect ERP data.'))return;drafts=drafts.filter(x=>x.id!==d.id);try{persist();displayHistory()}catch(e){alert('Local save failed: '+e.message)}};
+  li.append(strong,p,button,del);$('historyList').append(li);
+ })
+}
+function download(name,content){const url=URL.createObjectURL(new Blob([content],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+$('saveReview').onclick=()=>{
+ try{
+  const workNo=canonical($('workNo').value),date=$('cutDate').value;
+  if(!/^CFM[- ]?\d+$/i.test(workNo))throw Error('Choose a valid Work No.');
+  if(liveOrders.length&&!liveOrders.some(x=>canonical(x.workNo)===workNo))throw Error('Work No. not found in loaded ERP Orders. Refresh ERP list or choose the correct number.');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Select Cutting Date');
+  if(!$('photo').files[0])throw Error('Upload the original red pen photo first');
+  if(!$('verified').checked)throw Error('Confirm you compared all fields with the red handwriting');
+  const rows=getRows(),identity=JSON.stringify({workNo,date,rows,photoName});
+  if(drafts.some(d=>d.identity===identity))throw Error('This exact cutting draft is already saved. Duplicate blocked.');
+  const d={kind:'CFM_RED_CUTTING_VERIFIED_V1',version:1,id:Date.now()+'-'+Math.random().toString(36).slice(2),workNo,date,rows,photoFileName:photoName,verifiedByUser:true,savedAt:new Date().toISOString(),cloudPosted:false,stockPosted:false,completedBagsPosted:false,identity};
+  if(!confirm('Save '+rows.length+' RED PEN cutting rows for '+workNo+' on '+date+' as LOCAL REVIEW DRAFT only? No ERP stock or Pending Qty will change.'))return;
+  drafts.push(d);try{persist()}catch(e){drafts.pop();throw Error('Local storage full/unavailable: '+e.message)}
+  displayHistory();$('entryStatus').textContent='Saved locally: '+rows.length+' verified rows for '+workNo+'. Main ERP Stock / Pending remain unchanged.';$('verified').checked=false;
+ }catch(e){$('entryStatus').textContent='Not saved: '+e.message;alert(e.message)}
+};
+$('downloadAll').onclick=()=>download('CFM-Red-Cutting-Reviews-'+today()+'.json',JSON.stringify({app:'CFM-Red-Cutting-Review',version:1,drafts},null,2));
+let objectURL='';
+$('photo').onchange=e=>{
+ const file=e.target.files[0];$('verified').checked=false;$('rawText').value='';$('tryOCR').disabled=true;$('photoStatus').textContent='';photoName='';
+ if(objectURL)URL.revokeObjectURL(objectURL);
+ if(!file)return;
+ if(!file.type.startsWith('image/')){$('photoStatus').textContent='Choose an image photo.';return}
+ photoName=file.name;objectURL=URL.createObjectURL(file);$('original').src=objectURL;$('original').hidden=false;
+ const image=new Image();image.onload=()=>{
+  try{
+   const scale=Math.min(1,1900/Math.max(image.naturalWidth,image.naturalHeight));
+   const canvas=$('redOnly');canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(image,0,0,canvas.width,canvas.height);
+   const data=ctx.getImageData(0,0,canvas.width,canvas.height),p=data.data;
+   for(let i=0;i<p.length;i+=4){
+    const r=p[i],g=p[i+1],b=p[i+2],red=(r>65&&r>g*1.19&&r>b*1.12&&(r-Math.max(g,b)>22));
+    if(red){p[i]=Math.min(255,r*1.08);p[i+1]=Math.round(g*.48);p[i+2]=Math.round(b*.50)}
+    else{p[i]=255;p[i+1]=255;p[i+2]=255}
+   }
+   ctx.putImageData(data,0,0);$('tryOCR').disabled=false;
+   $('photoStatus').textContent='Red filter ready. Compare with original: faded red ink may not show. Upload does not save image to cloud.';
+  }catch(err){$('photoStatus').textContent='Filter error: '+err.message}
+ };image.onerror=()=>{$('photoStatus').textContent='Image could not be opened.'};image.src=objectURL;
+};
+$('tryOCR').onclick=async()=>{
+ const btn=$('tryOCR');btn.disabled=true;$('photoStatus').textContent='Loading OCR and reading red-filter photo…';
+ try{
+  if(!window.Tesseract){
+   await new Promise((resolve,reject)=>{
+    const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    script.onload=resolve;script.onerror=()=>reject(new Error('OCR library not available; check internet.'));document.head.append(script);
+   });
+  }
+  const result=await Tesseract.recognize($('redOnly'),'eng');
+  $('rawText').value=result.data.text||'';
+  $('photoStatus').textContent='OCR suggestion ready. Handwriting can be wrong; DO NOT automatically save OCR text. Confirm against original / ChatGPT.';
+ }catch(e){$('photoStatus').textContent='OCR failed: '+e.message}
+ finally{btn.disabled=false}
+};
+displayHistory();
+})();
+</script></body></html>

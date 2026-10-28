@@ -392,15 +392,36 @@ $('mrPrintBtn').onclick=()=>{const a=meters(),total=Number($('mrTotal').value);i
 #cfmCutPhotoPanel button{background:#e8f3fc;border:1px solid #bfd8ea;border-radius:8px;padding:8px 12px}
 #cfmCutPhotoPanel iframe{width:100%;flex:1;border:0}
 </style>
-<button id="cfmCutPhotoOpen" type="button">📷 Cutting Photo Upload</button>
-<section id="cfmCutPhotoPanel" hidden role="dialog" aria-label="Cutting Photo Upload">
-<header><span>Cutting Sheet — Photo Upload / Preview</span><button id="cfmCutPhotoClose" type="button">✕ Close</button></header>
-<iframe id="cfmCutPhotoFrame" title="Cutting register with photo preview" loading="lazy"></iframe>
+<button id="cfmCutPhotoOpen" type="button">📷 Cutting Red Pen Verify</button>
+<section id="cfmCutPhotoPanel" hidden role="dialog" aria-label="Red Pen Cutting Photo Verification">
+<header><span>Cutting — Red Pen Photo &amp; Row Verification</span><button id="cfmCutPhotoClose" type="button">✕ Close</button></header>
+<iframe id="cfmCutPhotoFrame" title="Red pen cutting photo review" loading="lazy"></iframe>
 </section>
 <script>
 (function(){
+'use strict';
 const open=document.getElementById('cfmCutPhotoOpen'),panel=document.getElementById('cfmCutPhotoPanel'),frame=document.getElementById('cfmCutPhotoFrame');
-open.addEventListener('click',function(){if(!frame.getAttribute('src'))frame.src='./cutting-print-test.html';panel.hidden=false});
+function sendOrders(){
+ try{
+  const app=document.getElementById('app'),w=app&&app.contentWindow;
+  if(!w||typeof w.cfmRedCutPhotoOrders!=='function')throw Error('Main ERP is still loading. Wait and press Load Work Orders again.');
+  const rows=w.cfmRedCutPhotoOrders();
+  frame.contentWindow.postMessage({kind:'CFM_RED_CUT_ORDERS_V1',orders:rows},location.origin);
+ }catch(e){
+  if(frame.contentWindow)frame.contentWindow.postMessage({kind:'CFM_RED_CUT_ORDERS_ERROR',message:String(e.message||e)},location.origin);
+ }
+}
+window.openCFMRedCutting=function(){
+ panel.hidden=false;
+ if(!frame.getAttribute('src'))frame.src='./cutting-red-review.html?v=1';
+ else sendOrders();
+};
+open.addEventListener('click',window.openCFMRedCutting);
+frame.addEventListener('load',sendOrders);
+window.addEventListener('message',function(e){
+ if(e.origin!==location.origin||e.source!==frame.contentWindow)return;
+ if(e.data&&e.data.kind==='CFM_RED_CUT_REQUEST_ORDERS')sendOrders();
+});
 document.getElementById('cfmCutPhotoClose').addEventListener('click',function(){panel.hidden=true});
 })();
 </script>
