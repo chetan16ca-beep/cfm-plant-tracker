@@ -1,11 +1,11 @@
 {
-  "name": "Eagle Plant ERP NEW V6",
-  "short_name": "Eagle ERP New",
-  "start_url": "./index.html?v=6",
+  "name": "Eagle Plant ERP — Control Tower V7",
+  "short_name": "CFM Control Tower",
+  "start_url": "./index.html?v=7",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f3f6fb",
-  "theme_color": "#ffffff",
+  "background_color": "#f5f7f7",
+  "theme_color": "#152e43",
   "icons": [
     {
       "src": "../icons/icon-192.svg",

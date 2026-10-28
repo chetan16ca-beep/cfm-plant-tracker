@@ -55,3 +55,25 @@ The NEW ERP now uses a navy/cobalt **professional light theme**, compact brand h
 The extra global KPI strip is visually hidden (its data calculation is unchanged). The Home dashboard shows New Orders, Next Work No, Physical SRL; Cutting KPI card is hidden to honor the request to remove that dashboard card (Cutting module remains accessible). Existing operational panels, data bindings, Work Order and SRL saving, reports, private-link access and backend are not altered by the theme.
 
 Theme source: enterprise-theme-v6.css and enterprise-theme-v6.js. Verify visually on actual PC/mobile using the existing private access URL; static syntax/layout checks are not the same as full user acceptance testing.
+
+## V7 — Unique CFM Control Tower & restored legacy functions
+
+- Unique midnight blue + deep green/teal navigation, plant-control command hero, refined light forms, dashboard and responsive mobile drawer. Does not alter underlying UI behavior or old ERP.
+- Historical Work Orders from OLD Cloud: read-only party/product/cloth/cutting measurement search and template into NEW Work Order. This is NOT the full 78-sheet Excel archive.
+- Wastage (`W`) register: separately marked W entries, material-meter deduction with duplicate checks on server, no finished bag quantity increment.
+- NEW private Photo/PDF Storage: uploaded PO, Cutting register scan, Measurement files stored in separate Supabase Storage bucket, accessed via private edge function and short-lived signed URLs. No auto-OCR claimed.
+- Person Work Update and reversible Archive: authenticated cloud actions retain historical entry changes in personWorkAudit.
+- Cloud Automatic Recovery: DB trigger snapshots the previous NEW payload on every update. Recovery Center lists recent versions. Explicit snapshot restore double-confirmed and server validated; the before-update trigger also backs up current state when restoring.
+- Existing NEW Cloud work orders/physical stock remain intact, OLD ERP code and database untouched. All backed by private server-side token checking; no keys in public GitHub source.
+
+**Parity limitations still present:** exact OLD 78-sheet Excel mirror/import, automatic handwriting-to-cutting and PO-to-work-order OCR, full old-style stage/wastage and product master edge cases, siren notification workflows, offline sync, all historical attachments and exact print templates are not yet fully replicated. Do not mark NEW ERP as identical to OLD ERP until these workflows are built and real-device acceptance-tested.
+
+**Critical:** A read-only historical lookup and NEW recovered state are different datasets. New Work Order values must be verified before production; snapshot restore intentionally replaces NEW state and must not be used casually.
+
+### V7 Live Sync & URGENT notifications
+
+- When the NEW app is visible and the user is not working inside an input, it checks its own NEW Cloud at a guarded 90-second interval; active Cloud saves are skipped.
+- Selecting Work Order or SRL is preserved when lists re-render after a refresh.
+- The user can opt in by pressing **Enable URGENT Alerts** on Dashboard. Only newly observed orders with priority URGENT can play a brief audio signal; no sound is played on first load, no siren for normal/high priority, and no automatic sound permission bypass.
+- Browser notifications only when the browser permission was explicitly granted. No old database events trigger the alert.
+- Background/closed-browser notifications and server push are NOT implemented; this is visible-app polling.
