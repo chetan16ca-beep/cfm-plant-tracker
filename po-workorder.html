@@ -155,4 +155,9 @@ $('poTransfer').addEventListener('click',()=>{
  $('poTransferStatus').textContent='Sending draft to Main ERP. Check the ERP Multi-item PO form before saving.';
 });
 })();
-</script></body></html>
+</script>
+<script>
+// The production PO editor must run inside the main ERP for real Work Order saving.
+if(window.parent===window){location.replace('./index.html?openPO=1');}
+</script>
+</body></html>
