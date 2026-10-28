@@ -100,7 +100,15 @@ $('photoWorkSelect').onchange=()=>{
  $('sectionMessage').textContent=match?'Matched '+chosen+' with section '+match[0]+'. Please verify the photo.':
  '⚠ Work Order location has NOT been verified. Choose section 1–4 and check its heading before reading rows.';
  if(match)try{makeSection(match[0]);}catch(_){}
- $('entryStatus').textContent='Work Order '+chosen+' selected. Verify that the section heading matches BEFORE saving cutting entries.';
+ $('entryStatus').textContent='Work Order '+chosen+' selected. Verify section heading and all Cutting fields before saving.';
+ // After selecting a different recognized Work Order, scan its own section
+ // without requiring another manual click. Never overwrite already typed lines.
+ if(match&&originalScanCanvas&&!photoScanBusy){
+  setTimeout(()=>{
+   const empty=[...$('redRows').querySelectorAll('input')].every(x=>!String(x.value||'').trim());
+   if(empty&&!photoScanBusy&&workNum($('workNo').value)===chosen)performOCR(true);
+  },200);
+ }
 };
 function extractPhotoWorkNos(text){
  const matches=[...String(text||'').toUpperCase().matchAll(/\bC\s*F\s*M\s*[-:–—\s]*([0-9][0-9 \t]{1,6}[0-9])\b/g)];
