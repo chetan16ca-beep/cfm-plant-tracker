@@ -47,3 +47,11 @@ Compared against OLD CFM Plant ERP source: Daily Planning (planned Work Order se
 **Data safety:** NEW ERP uses separate Supabase payload, optimistic version checks, read-after-write verification, and no hard deletion. OLD ERP database is read only for previous Work Order references.
 
 **Verification:** JS syntax and DOM IDs checked, merge only eagle-erp files, old/new stock state counts verified. Real browser workflow requires private-link testing; no live order or stock mutation is performed merely as a test.
+
+## V6 — Enterprise UI Theme (design-only)
+
+The NEW ERP now uses a navy/cobalt **professional light theme**, compact brand header, responsive left-side grouped navigation, descriptive inline navigation icons, mobile menu drawer with Escape/backdrop close, consistent KPI cards, clear form focus states and refined A4-oriented UI styling. No external font or icon dependency is needed. The old ERP remains unchanged.
+
+The extra global KPI strip is visually hidden (its data calculation is unchanged). The Home dashboard shows New Orders, Next Work No, Physical SRL; Cutting KPI card is hidden to honor the request to remove that dashboard card (Cutting module remains accessible). Existing operational panels, data bindings, Work Order and SRL saving, reports, private-link access and backend are not altered by the theme.
+
+Theme source: enterprise-theme-v6.css and enterprise-theme-v6.js. Verify visually on actual PC/mobile using the existing private access URL; static syntax/layout checks are not the same as full user acceptance testing.
