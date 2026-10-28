@@ -1,11 +1,11 @@
 {
-  "name": "Eagle Plant ERP NEW V4",
+  "name": "Eagle Plant ERP NEW V6",
   "short_name": "Eagle ERP New",
-  "start_url": "./index.html?v=5",
+  "start_url": "./index.html?v=6",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#eef3fa",
-  "theme_color": "#154f8d",
+  "background_color": "#f3f6fb",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "../icons/icon-192.svg",
