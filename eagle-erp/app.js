@@ -24,7 +24,7 @@ async function loadLegacy(){
  if(!Array.isArray(result.legacy.parties)||!Array.isArray(result.legacy.orders))throw Error("Invalid OLD ERP party or size data");
  return result.legacy;
 }
-window.eagleV3={getState:()=>structuredClone(data),save,refresh,activate,loadLegacy};
+window.eagleV3={getState:()=>structuredClone(data),save,refresh,activate,loadLegacy,isBusy:()=>busy};
 document.dispatchEvent(new Event("eagle:ready"));
 async function call(method="GET",body=null){
  const r=await fetch(api,{method,headers:{"Content-Type":"application/json","x-eagle-access":token},body:body?JSON.stringify(body):undefined,cache:"no-store"});
@@ -67,10 +67,10 @@ function render(){
  $("recent").innerHTML=orders.slice(0,5).map(orderCard).join("")||'<div class="empty">No NEW Work Orders. First is CFM-685.</div>';
  const oq=plain($("workSearch").value).toLowerCase();
  $("orderList").innerHTML=orders.filter(x=>JSON.stringify(x).toLowerCase().includes(oq)).map(r=>'<div class="item"><strong>CFM-'+esc(r.no)+'</strong> — '+esc(r.party)+' <span class="tag">'+esc(r.priority)+'</span><div>'+esc(r.product)+'</div><div class="muted">PO '+esc(r.po||"-")+' • '+esc(r.code||"-")+' • Qty '+esc(r.qty)+' • '+esc(r.cloth||"-")+' • '+esc(r.width||"-")+'″</div><div class="actions"><select data-stage-for="'+esc(r.no)+'">'+["PENDING","CUTTING","STITCHING","THREAD CUT","GUN FINISH","PACKING","READY TO DISPATCH","DISPATCHED"].map(s=>'<option '+(r.status===s?"selected":"")+'>'+s+'</option>').join("")+'</select><button class="btn alt" type="button" data-save-stage="'+esc(r.no)+'">Save Stage</button></div></div>').join("")||'<div class="empty">No matching Work Orders</div>';
- $("workSelect").innerHTML=optionList(orders.map(r=>({value:r.no,label:"CFM-"+r.no+" • "+r.party})));
+ const workBefore=$("workSelect").value;$("workSelect").innerHTML=optionList(orders.map(r=>({value:r.no,label:"CFM-"+r.no+" • "+r.party})));if([...$("workSelect").options].some(o=>o.value===workBefore))$("workSelect").value=workBefore;
  const sq=plain($("stockSearch").value).toLowerCase();
  $("stockList").innerHTML=data.stock.filter(s=>JSON.stringify(s).toLowerCase().includes(sq)).sort((a,b)=>String(a.srl).localeCompare(String(b.srl))).map(s=>'<div class="item"><strong>'+esc(s.srl)+'</strong> • '+esc(s.cloth||"-")+'<div class="muted">Width '+esc(s.width)+'″ • '+(s.meter===null?'Meter not recorded':('Physical '+fmt(s.meter)+' MTR • Used '+fmt(s.used)+' MTR'))+'</div><div><span class="tag">'+(s.meter===null?'Meter verification pending':('Balance '+fmt(balance(s))+' MTR'))+'</span></div><div class="muted">'+esc(s.source||"Physical Stock")+'</div></div>').join("")||'<div class="empty">No matching Physical Stock</div>';
- $("srlSelect").innerHTML=optionList(data.stock.filter(s=>balance(s)>0).map(s=>({value:s.srl,label:s.srl+" • "+s.cloth+" • "+fmt(balance(s))+" MTR"})));
+ const srlBefore=$("srlSelect").value;$("srlSelect").innerHTML=optionList(data.stock.filter(s=>balance(s)>0).map(s=>({value:s.srl,label:s.srl+" • "+s.cloth+" • "+fmt(balance(s))+" MTR"})));if([...$("srlSelect").options].some(o=>o.value===srlBefore))$("srlSelect").value=srlBefore;
  $("cutList").innerHTML=data.cutting.slice().reverse().slice(0,60).map(r=>'<div class="item"><strong>CFM-'+esc(r.work)+'</strong> • '+esc(r.srl)+'<div>'+esc(r.part||"CUTTING")+' • '+esc(r.length)+' × '+esc(r.width)+' × '+esc(r.qty)+' • Layer '+esc(r.layer)+'</div><div class="muted">Used '+fmt(r.meters)+' MTR • '+esc(r.createdAt||"")+'</div></div>').join("")||'<div class="empty">No Cutting Entries</div>';
  preview();
  document.dispatchEvent(new Event("eagle:state"));
