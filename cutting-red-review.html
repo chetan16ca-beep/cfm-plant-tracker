@@ -543,18 +543,36 @@ async function performOCR(sectionOnly=false){
    const located=Object.values(sectionWorkMap);
    applyDetectedWorks([...new Set([...located,...fullNumbers])]);
    $('rawText').value+='\n\nSECTION HEADINGS:\n'+sectionText.join('\n\n');
-   const selected=workNum($('workNo').value);
-   const match=Object.entries(sectionWorkMap).find(([,no])=>no===selected);
+   const locatedSections=Object.entries(sectionWorkMap).sort((a,b)=>Number(a[0])-Number(b[0]));
+   let selected=workNum($('workNo').value);
+   if(!selected){
+    const first=locatedSections.find(([,no])=>liveOrders.some(o=>workNum(o.workNo)===no));
+    if(first){
+      $('photoWorkSelect').value=first[1];
+      $('photoWorkSelect').dispatchEvent(new Event('change'));
+      selected=workNum($('workNo').value);
+    }
+   }
+   const match=locatedSections.find(([,no])=>no===selected);
    if(match){
-     $('photoSection').value=match[0];
-     makeSection(match[0]);
+     $('photoSection').value=match[0];makeSection(match[0]);
    }else{
      $('photoSection').value='auto';$('sectionPreview').hidden=true;
      $('sectionMessage').textContent='Work Order location not confirmed. Select Section 1–4 and verify its heading before reading Cutting.';
    }
-   const foundRows=Object.entries(sectionWorkMap).map(([i,no])=>'Section '+i+': '+no);
-   $('photoStatus').textContent='Scan finished. '+(foundRows.length?foundRows.join(' • '):'No section headings fully recognized.')+
-      ' Select a Work Order and read its section to fill Cutting suggestions.';
+   const foundRows=locatedSections.map(([i,no])=>'Section '+i+': '+no);
+   $('photoStatus').textContent='Scan finished. '+(foundRows.length?foundRows.join(' • '):'No section headings recognized.')+
+      '. '+(match?'Reading '+selected+' Cutting rows…':'Choose a Work Order and its section to fill Cutting.');
+   // Scan selected matched panel automatically after scanning the whole page.
+   // No automatic save or stock mutation; populated fields still require checking.
+   if(match){
+      const panel=readableSection(makeSection(match[0],false));
+      await worker.setParameters({tessedit_pageseg_mode:'11'});
+      const candidate=await worker.recognize(panel,{}, {text:true,tsv:true,blocks:true});
+      if(session!==photoSequence)return;
+      $('rawText').value+='\n\nCUTTING COLUMN OCR FOR '+selected+':\n'+String(candidate.data.text||'');
+      showCuttingSuggestions(chooseCuttingSuggestions([],candidate.data,panel),selected+' / Section '+match[0]);
+   }
   }
  }catch(e){
    if(session===photoSequence)$('photoStatus').textContent='Automatic reading unavailable: '+String(e.message||e)+'. Your manual Cutting entry remains safe.';
