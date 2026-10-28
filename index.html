@@ -101,7 +101,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP new UI version · 28 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V183</div>
+<div id="cfmUpdateVersion" title="CFM ERP new UI version · 28 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V184</div>
 <script src="./backup-safe.js?v=3"></script>
 <button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
@@ -115,7 +115,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261028-v183',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261028-v184',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -180,10 +180,10 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261028-v183';
+ const urls=groups.flat(), ver='20261028-v184';
  // Service Worker v168 manages ONLY CFM UI caches. Preserve all other caches and business data.
  const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-v183-'+u;
+   const cacheKey='cfm-chunk-v184-'+u;
    try{
      const saved=null; // Always fetch current chunk; old PWA chunk cache caused stale mobile versions.
    }catch(_){}
@@ -292,12 +292,28 @@ html,body{background:#f4faff!important;color:#13233b!important}
 #view-dashboard #cfmV148Ops{padding:8px 12px!important;margin:10px 0!important}
 #view-dashboard #cfmV148Ops .v148-alerts{margin:0!important}
 </style></head>`);
+ // V184: keep utility actions accessible in Settings without obstructing the dashboard.
+ const cfmSettingsHeader='<div class="section-head"><div><h2><span class="ico">⚙️</span><span>Settings</span></h2><p>Free local-first setup</p></div></div>';
+ if(!src.includes(cfmSettingsHeader))throw Error('Settings section missing: v184 UI not applied');
+ src=src.replace(cfmSettingsHeader,cfmSettingsHeader+`<div class="panel" id="cfmV184Tools">
+   <h3>Advanced ERP Utilities</h3>
+   <p>Quick buttons are hidden from the screen. Use these tools here whenever needed.</p>
+   <div class="card-actions" style="display:flex;flex-wrap:wrap;gap:9px">
+     <button class="btn" type="button" onclick="window.cfmRefreshWorkNos ? window.cfmRefreshWorkNos() : alert('Work numbers are not ready. Refresh and retry.')">☁️ Load Work Nos</button>
+     <button class="btn" type="button" onclick="try{window.parent.cfmDownloadBackup()}catch(e){alert('Export unavailable: '+e.message)}">⬇ Save PC Data</button>
+     <button class="btn" type="button" onclick="window.parent.document.getElementById('cfmLabelToggle').click()">🏷 Label Issued</button>
+   </div>
+ </div>`);
  const app=document.getElementById('app');
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
 </script>
+<!-- V184: remove only front-facing floating buttons; retain their actions in ERP Settings. -->
+<style id="cfm-v184-clean-floating">
+#cfmDashboardHome,#cfmWorkRefresh,#cfmEmergencyExport,#cfmLabelToggle{display:none!important}
+</style>
 <style id="cfm-label-safe-css">
 #cfmLabelToggle{position:fixed;left:12px;bottom:85px;z-index:1000001;border:0;border-radius:12px;background:#126db7;color:#fff;padding:12px;font:700 13px Arial;box-shadow:0 5px 20px #0003;cursor:pointer}
 #cfmLabelDialog[hidden]{display:none!important}
