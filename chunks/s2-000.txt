@@ -55,9 +55,16 @@
       #view-dashboard .cfm-main-action.live{border-left:5px solid #16774c}
       #view-dashboard .cfm-main-action.physical{border-left:5px solid #1671ac}
       #view-dashboard .cfm-main-action.cutting{border-left:5px solid #8b5cb8}
+      #view-dashboard .cfm-main-action.po-work-order{border-left:5px solid #136d8c}
+      #view-dashboard .cfm-main-action.material-received{border-left:5px solid #b67d26}
+      #view-dashboard .cfm-main-action.label-issued{border-left:5px solid #2f8b75}
       @media(max-width:760px){#view-dashboard .cfm-main-actions{grid-template-columns:1fr;gap:9px;margin:12px 0}#view-dashboard .cfm-main-action{min-height:76px;padding:11px 14px}#view-dashboard .cfm-main-action .cfm-ma-icon{font-size:28px}}
       </style>
       <nav class="cfm-main-actions" aria-label="Plant dashboard main actions">
+
+        <button class="cfm-main-action po-work-order" data-dashboard-action="create-po-work-order" type="button" onclick="window.parent.openCFMPOWorkOrders()"><span class="cfm-ma-icon" aria-hidden="true">📄</span><span class="cfm-ma-copy"><strong>PO → Create Work Order</strong><small>Photo / PDF se verified Work Orders banaye</small></span><span class="cfm-ma-arrow" aria-hidden="true">›</span></button>
+        <button class="cfm-main-action material-received" data-dashboard-action="material-received" type="button" onclick="window.parent.document.getElementById('mrOpen').click()"><span class="cfm-ma-icon" aria-hidden="true">📦</span><span class="cfm-ma-copy"><strong>Material Received / Labels</strong><small>Bill & roll meters • A4 label print (worksheet)</small></span><span class="cfm-ma-arrow" aria-hidden="true">›</span></button>
+        <button class="cfm-main-action label-issued" data-dashboard-action="label-issued" type="button" onclick="window.parent.document.getElementById('cfmLabelToggle').click()"><span class="cfm-ma-icon" aria-hidden="true">🏷️</span><span class="cfm-ma-copy"><strong>Label Issued Register</strong><small>Work No. wise label issue entry</small></span><span class="cfm-ma-arrow" aria-hidden="true">›</span></button>
         <a class="cfm-main-action live" href="./cloud-workorders.html?v=182" target="_top"><span class="cfm-ma-icon" aria-hidden="true">📋</span><span class="cfm-ma-copy"><strong>Live Work Orders</strong><small>Cloud work order list</small></span><span class="cfm-ma-arrow" aria-hidden="true">›</span></a>
         <button class="cfm-main-action physical" type="button" onclick="showView('srltracker')"><span class="cfm-ma-icon" aria-hidden="true">📦</span><span class="cfm-ma-copy"><strong>Physical Stock</strong><small>Physical SRL stock tracker</small></span><span class="cfm-ma-arrow" aria-hidden="true">›</span></button>
         <a class="cfm-main-action cutting" href="./cutting-print-live.html?v=182" target="_top"><span class="cfm-ma-icon" aria-hidden="true">✂️</span><span class="cfm-ma-copy"><strong>Cutting Register</strong><small>Daily A4 cutting register</small></span><span class="cfm-ma-arrow" aria-hidden="true">›</span></a>
