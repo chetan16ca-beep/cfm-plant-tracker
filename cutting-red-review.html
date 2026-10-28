@@ -64,14 +64,56 @@ let liveOrders=[],photoName='',photoURL='',drafts=[];
 try{const loaded=JSON.parse(localStorage.getItem(storageKey)||'[]');if(Array.isArray(loaded))drafts=loaded}catch(e){}
 function today(){const d=new Date(),offset=d.getTimezoneOffset()*60000;return new Date(d.getTime()-offset).toISOString().slice(0,10)}
 $('cutDate').value=today();
+let detectedWorks=[];
 function canonical(s){return String(s||'').trim().toUpperCase().replace(/\s+/g,'')}
-function refreshWork(){const id=canonical($('workNo').value),o=liveOrders.find(x=>canonical(x.workNo)===id);$('workDetails').textContent=o?('Party: '+o.party+' | Product: '+o.description+' | Cloth: '+o.cloth+' | Width: '+o.width+' | Order Qty: '+o.orderQty+' | Current Pending: '+o.pendingQty):'Enter a Work No. Verify it in Main ERP before saving.'}
+function workNum(s){const m=canonical(s).match(/^CFM[-:]?(\d{2,5})$/);return m?'CFM-'+Number(m[1]):''}
+function refreshWork(){
+ const id=workNum($('workNo').value),o=liveOrders.find(x=>workNum(x.workNo)===id);
+ $('workDetails').textContent=o?('✓ '+o.workNo+' | '+o.party+' | '+o.description+' | Cloth '+o.cloth+' | Width '+o.width+' | Order '+o.orderQty+' | Pending '+o.pendingQty):'⚠ Work No. not selected / not found in ERP. Select it from the photo dropdown.';
+ if($('photoWorkSelect').value!==id)$('photoWorkSelect').value=id;
+}
+function photoWorkOptions(){
+ const sel=$('photoWorkSelect'),current=workNum($('workNo').value);sel.replaceChildren();
+ const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choose Work Order — required';sel.append(placeholder);
+ const found=detectedWorks.filter(Boolean);
+ const put=(label,arr)=>{
+  if(!arr.length)return;const group=document.createElement('optgroup');group.label=label;
+  for(const no of arr){const o=liveOrders.find(x=>workNum(x.workNo)===no);const option=document.createElement('option');option.value=no;option.textContent=no+(o?' • '+o.party:' • not in ERP (verify)');group.append(option)}
+  sel.append(group);
+ };
+ put('Detected on uploaded photo (please verify)',found);
+ put('Other ERP Work Orders',liveOrders.map(x=>workNum(x.workNo)).filter(Boolean).filter(x=>!found.includes(x)).sort((a,b)=>Number(b.slice(4))-Number(a.slice(4))));
+ sel.value=current;
+}
 $('workNo').addEventListener('input',refreshWork);
+$('photoWorkSelect').onchange=()=>{
+ const chosen=$('photoWorkSelect').value;
+ if(!chosen){$('workNo').value='';refreshWork();return}
+ const old=workNum($('workNo').value);
+ const hasTyped=[...$('redRows').querySelectorAll('input')].some(x=>String(x.value||'').trim());
+ if(old&&old!==chosen&&hasTyped&&!confirm('Switch Work Order? Unsaved Cutting rows will be cleared so they cannot be posted to the wrong Work Order.')){
+  $('photoWorkSelect').value=old;return;
+ }
+ if(old&&old!==chosen&&hasTyped)resetRows();
+ $('workNo').value=chosen;refreshWork();$('entryStatus').textContent='Work Order '+chosen+' selected; verify the red-pen rows for THIS order only.';
+};
+function extractPhotoWorkNos(text){
+ const matches=[...String(text||'').toUpperCase().matchAll(/\bC\s*F\s*M\s*[-:–—\s]*([0-9][0-9 \t]{1,6}[0-9])\b/g)];
+ return [...new Set(matches.map(m=>workNum('CFM-'+m[1].replace(/\D/g,''))).filter(Boolean))].slice(0,40);
+}
+function applyDetectedWorks(numbers){
+ detectedWorks=[...new Set(numbers)].filter(Boolean);photoWorkOptions();
+ const valid=detectedWorks.filter(n=>liveOrders.some(o=>workNum(o.workNo)===n));
+ $('workDetect').textContent=detectedWorks.length
+  ?'Printed Work Nos detected: '+detectedWorks.join(', ')+(valid.length!==detectedWorks.length?' • Some not found in this ERP — verify against paper.':'')
+  :'Work No was not read reliably. Choose Work No manually from this dropdown.';
+ if(valid.length===1&&!workNum($('workNo').value)){$('photoWorkSelect').value=valid[0];$('photoWorkSelect').dispatchEvent(new Event('change'));}
+}
 function receiveOrders(list){
  liveOrders=list.filter(x=>x&&/^CFM[- ]?\d+$/i.test(String(x.workNo||''))).slice(0,1500).map(x=>({workNo:String(x.workNo).trim(),party:String(x.party||'').slice(0,160),description:String(x.description||'').slice(0,300),cloth:String(x.cloth||'').slice(0,80),width:String(x.width||''),orderQty:Number(x.orderQty)||0,pendingQty:Number(x.pendingQty)||0}));
  const opts=$('workOptions');opts.replaceChildren();
  for(const o of liveOrders){const el=document.createElement('option');el.value=o.workNo;el.label=o.party+' | '+o.description.slice(0,60);opts.append(el)}
- $('syncStatus').textContent=liveOrders.length+' ERP Work Orders loaded (read-only). No Work Orders were changed.';refreshWork();
+ $('syncStatus').textContent=liveOrders.length+' ERP Work Orders loaded (read-only). No Work Orders were changed.';photoWorkOptions();refreshWork();
 }
 window.addEventListener('message',function(e){
  if(e.origin!==location.origin||e.source!==window.parent||!e.data)return;
