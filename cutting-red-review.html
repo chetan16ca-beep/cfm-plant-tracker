@@ -297,15 +297,15 @@ function pageBounds(src){
  const ctx=src.getContext('2d',{willReadFrequently:true});
  const w=src.width,h=src.height,px=ctx.getImageData(0,0,w,h).data;
  const step=Math.max(3,Math.floor(h/360)),rows=[];
- const xs=[.37,.45,.53,.61].map(v=>Math.min(w-1,Math.max(0,Math.floor(v*w))));
+ const xs=[.2,.3,.4,.5,.6,.7,.8].map(v=>Math.min(w-1,Math.max(0,Math.floor(v*w))));
  for(let y=0;y<h;y+=step){
    let white=0;
    for(const x of xs){
      const k=(y*w+x)*4,r=px[k],g=px[k+1],b=px[k+2];
      // Avoid identifying the desk, yellow packaging, and black border as paper.
-     if(Math.min(r,g,b)>156 && Math.max(r,g,b)-Math.min(r,g,b)<45)white++;
+     if(Math.min(r,g,b)>178 && Math.max(r,g,b)-Math.min(r,g,b)<45)white++;
    }
-   rows.push({y,good:white>=3});
+   rows.push({y,good:white>=4});
  }
  const smooth=rows.map((v,i)=>rows.slice(Math.max(0,i-3),Math.min(rows.length,i+4)).filter(x=>x.good).length>=4);
  let first=-1,best={start:0,end:h,length:0};
