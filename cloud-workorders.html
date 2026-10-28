@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#15557d">
+<title>CFM Plant ERP | Live Cloud Work Orders</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f8fc;color:#18344a;font:15px system-ui,Arial,sans-serif}header{background:#153952;color:white;padding:16px 14px}header h1{margin:0;font-size:20px}header p{margin:6px 0 0;color:#d8e9f5;font-size:13px}main{max-width:1050px;margin:0 auto;padding:12px}section{background:#fff;border:1px solid #d9e7f0;border-radius:13px;padding:13px;margin:11px 0} .status{font-size:14px;font-weight:700}.ok{color:#136743}.bad{color:#a32623}.wait{color:#916411}.statbar{display:flex;gap:12px;flex-wrap:wrap}.stat{flex:1;min-width:115px;border:1px solid #dfebf3;border-radius:10px;padding:12px;background:#fbfdff}.num{display:block;font-size:26px;font-weight:800}button,.link{background:#155c8e;color:white;border:0;border-radius:8px;padding:11px 14px;font:700 14px system-ui;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;margin:4px 5px 4px 0}button.secondary,.link.secondary{background:#e8f1f8;color:#183e59}button:disabled{opacity:.55}input{width:100%;border:1px solid #c4d8e8;border-radius:8px;padding:13px;font:16px system-ui}.hint{color:#556d7c;font-size:13px;line-height:1.5} .wo{border:1px solid #d9e7f0;border-radius:10px;padding:12px;margin:9px 0;background:#fff} .woTop{display:flex;justify-content:space-between;gap:8px;font-weight:800}.woNo{color:#125c91}.chip{background:#eaf4fb;color:#275670;padding:4px 7px;border-radius:7px;font-size:12px}.desc{margin:8px 0;font-size:15px}.more{color:#496274;font-size:13px;line-height:1.6}#list{min-height:50px}#errorDetails{white-space:pre-wrap;overflow-wrap:anywhere}footer{text-align:center;color:#687f91;font-size:12px;padding:20px}small{font-size:12px}
+</style></head><body><header><h1>CFM Plant Tracker • Live Cloud Work Orders</h1><p>V172 — Direct Cloud List, independent of the old ERP cache</p></header>
+<main>
+<section><div id="status" class="status wait" role="status">Connecting to Cloud…</div><div class="hint">Read-only live screen. Does not delete, sync, overwrite, or modify your PC/mobile records.</div><div id="errorDetails" class="bad"></div></section>
+<section class="statbar"><div class="stat"><small>Work Order Records</small><span class="num" id="orderCount">—</span></div><div class="stat"><small>Last Work Order</small><span class="num" id="lastNo">—</span></div><div class="stat"><small>Cloud Version</small><span class="num" id="cloudVersion">—</span></div></section>
+<section><button id="refresh" type="button">☁️ Refresh from Cloud</button><button id="export" class="secondary" type="button" disabled>⬇ Download Work Orders</button><a class="link secondary" href="./?v=172">← Main ERP</a><p class="hint" id="updatedAt"></p></section>
+<section><input id="search" placeholder="Search CFM-684, party, PO, cloth, product..." aria-label="Search live work orders"><p class="hint" id="resultsCount">Cloud records will appear here.</p><div id="list"></div></section>
+</main><footer>CFM Plant ERP • Read-only Cloud Verification • No local or cloud changes</footer>
+<script>
+(function(){
+'use strict';
+const CLOUD_URL="https://soluxixriexliipfnznc.supabase.co";
+const ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvbHV4aXhyaWV4bGlpcGZuem5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NTM3OTgsImV4cCI6MjEwNjEyOTc5OH0.Jnk36EO3AYNBXufFuMr2zotXEIDYIOM2NVwPkuhTDa0";
+const ACCESS="EAGLE-CFM-28";
+const el=id=>document.getElementById(id);
+let all=[];
+const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const digits=s=>Number(String(s||'').match(/(\d+)$/)?.[1]||0);
+function render(){
+ const q=el('search').value.trim().toLowerCase();
+ const rows=all.filter(r=>!q||[r.workNo,r.party,r.poNo,r.description,r.cloth,r.srlNo,r.itemCode].some(v=>String(v||'').toLowerCase().includes(q))).sort((a,b)=>digits(b.workNo)-digits(a.workNo));
+ el('resultsCount').textContent='Showing '+rows.length+' of '+all.length+' actual Cloud Work Order records.';
+ const box=el('list');box.replaceChildren();
+ for(const r of rows){
+   const item=document.createElement('article');item.className='wo';
+   const head=document.createElement('div');head.className='woTop';
+   const name=document.createElement('span');name.className='woNo';name.textContent=r.workNo||'(No Work No)';
+   const st=document.createElement('span');st.className='chip';st.textContent=r.status||'PENDING';head.append(name,st);
+   const desc=document.createElement('div');desc.className='desc';desc.textContent=(r.party||'Unknown Party')+' — '+(r.description||'');
+   const det=document.createElement('div');det.className='more';
+   det.textContent='PO: '+(r.poNo||'—')+' • Cloth: '+(r.cloth||'—')+' • Width: '+(r.width??'—')+' • Qty: '+(r.orderQty??0)+' • Cut: '+(r.cutQty??0)+(r.srlNo?' • SRL: '+r.srlNo:'');
+   item.append(head,desc,det);box.appendChild(item);
+ }
+}
+async function refresh(){
+ el('refresh').disabled=true;el('errorDetails').textContent='';el('status').className='status wait';el('status').textContent='Connecting directly to current Cloud…';
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),18000);
+ try{
+   const endpoint=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&select=version%2Cupdated_at%2Cpending%3Apayload-%3Epending';
+   let response=await fetch(endpoint,{cache:'no-store',signal:controller.signal,headers:{apikey:ANON,Authorization:'Bearer '+ANON,'x-cfm-key':ACCESS,Accept:'application/json'}});
+   if(!response.ok)throw Error('Cloud HTTP '+response.status+' '+(await response.text()).slice(0,350));
+   const data=await response.json();const row=data?.[0];
+   if(!row||!Array.isArray(row.pending))throw Error('Cloud response did not contain a work order array');
+   all=row.pending;
+   el('orderCount').textContent=String(all.length);
+   el('lastNo').textContent='CFM-'+Math.max(0,...all.map(x=>digits(x.workNo)));
+   el('cloudVersion').textContent=String(row.version??'—');
+   el('updatedAt').textContent='Cloud last updated: '+(row.updated_at?new Date(row.updated_at).toLocaleString('en-IN'):'unknown')+' • Loaded '+new Date().toLocaleTimeString('en-IN');
+   el('status').textContent='Connected to live Cloud — '+all.length+' Work Orders verified';
+   el('status').className='status ok';el('export').disabled=false;render();
+ }catch(e){
+   el('status').textContent='Could not read live Cloud on this device.';
+   el('status').className='status bad';el('errorDetails').textContent=String(e?.message||e)+' — Take a screenshot of this message; it identifies the connection problem.';
+ }finally{clearTimeout(timer);el('refresh').disabled=false}
+}
+el('refresh').onclick=refresh;el('search').oninput=render;
+el('export').onclick=()=>{if(!all.length)return;const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),pending:all},null,2)],{type:'application/json'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='CFM-CLOUD-LIVE-WORKORDERS-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)};
+refresh();
+})();
+</script></body></html>
