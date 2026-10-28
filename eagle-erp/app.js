@@ -17,6 +17,8 @@ function activate(p){document.querySelectorAll(".pane").forEach(e=>e.classList.t
 document.querySelectorAll("[data-pane]").forEach(e=>e.addEventListener("click",()=>activate(e.dataset.pane)));
 if(!token){message("Private link required. No email/password needed. Use the private link given in ChatGPT.",true);$("locked").classList.remove("hidden");return;}
 $("app").classList.remove("hidden");
+window.eagleV3={getState:()=>structuredClone(data),save,refresh,activate};
+document.dispatchEvent(new Event("eagle:ready"));
 async function call(method="GET",body=null){
  const r=await fetch(api,{method,headers:{"Content-Type":"application/json","x-eagle-access":token},body:body?JSON.stringify(body):undefined,cache:"no-store"});
  const d=await r.json().catch(()=>({error:"Invalid Cloud response"}));
@@ -46,7 +48,8 @@ async function save(action,entry,btn,form){
   data=checked.payload;version=num(checked.version);render();
   if(form)form.reset();
   message("✅ Saved and verified in NEW Cloud"+(result.created?.no?" • CFM-"+result.created.no:"")+" • V"+version);
- }catch(e){message("⚠️ "+e.message+" — check Cloud before retrying",true)}
+  return true;
+ }catch(e){message("⚠️ "+e.message+" — check Cloud before retrying",true); return false;}
  finally{busy=false;if(btn)btn.disabled=false}
 }
 function orderCard(r){return '<div class="item"><strong>CFM-'+esc(r.no)+'</strong> — '+esc(r.party)+' <span class="tag">'+esc(r.status)+'</span><div>'+esc(r.product)+'</div><div class="muted">PO '+esc(r.po||"-")+' • '+esc(r.code||"-")+' • Qty '+esc(r.qty)+' • '+esc(r.cloth||"-")+' • '+esc(r.width||"-")+'″</div></div>'}
@@ -63,6 +66,7 @@ function render(){
  $("srlSelect").innerHTML=optionList(data.stock.filter(s=>balance(s)>0).map(s=>({value:s.srl,label:s.srl+" • "+s.cloth+" • "+fmt(balance(s))+" MTR"})));
  $("cutList").innerHTML=data.cutting.slice().reverse().slice(0,60).map(r=>'<div class="item"><strong>CFM-'+esc(r.work)+'</strong> • '+esc(r.srl)+'<div>'+esc(r.part||"CUTTING")+' • '+esc(r.length)+' × '+esc(r.width)+' × '+esc(r.qty)+' • Layer '+esc(r.layer)+'</div><div class="muted">Used '+fmt(r.meters)+' MTR • '+esc(r.createdAt||"")+'</div></div>').join("")||'<div class="empty">No Cutting Entries</div>';
  preview();
+ document.dispatchEvent(new Event("eagle:state"));
 }
 function preview(){
  const d=Object.fromEntries(new FormData($("cutForm")));
