@@ -35,7 +35,7 @@ tr:nth-child(even){background:#f8fbfe}#historyList{padding:0;margin:0;list-style
 <div class="picGrid"><div><h3>Original Sheet</h3><img id="original" alt="Original photo" hidden><p>Keep black printed Work No. visible to identify the order.</p></div>
 <div><h3>Red Ink Visual Filter</h3><canvas id="redOnly" width="1" height="1"></canvas><p>Visual aid only. Faint red strokes can be missed; use original photo to verify.</p></div></div>
 <p id="photoStatus"></p>
-<button id="tryOCR" class="secondary" type="button" disabled>🔎 Try Red Pen OCR (beta)</button>
+<button id="tryOCR" class="secondary" type="button" disabled>🔎 Read Red Pen Photo (OCR suggestions)</button>
 <details><summary>View OCR text (not verified)</summary><textarea id="rawText" readonly placeholder="OCR text will appear here. Handwriting recognition may be inaccurate."></textarea></details>
 <p><small>Photo stays in your browser for this session and is not automatically uploaded to the ERP cloud or ChatGPT. Send the photo in this ChatGPT conversation for my verification.</small></p></section>
 <section class="card"><h2>3. Verified Cutting Rows — Length × Width × Quantity</h2>
@@ -185,7 +185,20 @@ $('tryOCR').onclick=async()=>{
   }
   const result=await Tesseract.recognize($('redOnly'),'eng');
   $('rawText').value=result.data.text||'';
-  $('photoStatus').textContent='OCR suggestion ready. Handwriting can be wrong; DO NOT automatically save OCR text. Confirm against original / ChatGPT.';
+  // Only well-formed red-pen rows can prefill a SUGGESTION; photo review remains mandatory.
+  const proposed=[];
+  for(const line of String(result.data.text||'').split(/\r?\n/)){
+   const m=line.replace(/[|,;]+/g,' ').trim().match(/^(E\s*\/?\s*\d{2,5}|EFPPL\d+\/\d+)\s+(DIA|COLL|COLLAR|BOTTOM|HT|BODY|TOP)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+)$/i);
+   if(!m)continue;
+   proposed.push({srl:m[1].replace(/\s+/g,' ').trim(),part:m[2].toUpperCase(),length:m[3],width:m[4],qty:m[5]});
+  }
+  if(proposed.length){
+   $('redRows').replaceChildren();for(const line of proposed.slice(0,60))row(line);
+   $('verified').checked=false;
+   $('photoStatus').textContent=proposed.length+' OCR suggested cutting lines filled for MANUAL CHECK. Verify Work No, SRL, all dimensions and Qty against original photo. No ERP update yet.';
+  }else{
+   $('photoStatus').textContent='OCR text ready, but no reliable cutting row detected. Enter the RED PEN rows manually or paste ChatGPT-confirmed JSON. Nothing posted.';
+  }
  }catch(e){$('photoStatus').textContent='OCR failed: '+e.message}
  finally{btn.disabled=false}
 };
