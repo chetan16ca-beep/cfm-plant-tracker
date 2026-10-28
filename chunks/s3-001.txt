@@ -178,7 +178,7 @@ window.cfmPostRedPenVerified=async function(payload){
       setCloudBadge('⚠️ Red Pen saved locally • Cloud sync required','amber');
       return {ok:false,savedLocally:true,message:'Cutting saved on this device, but Cloud sync could not be confirmed. Do not post again; use Sync and check the same Work Order.'};
     }
-    return {ok:true,cloud:true,workNo,count:rows.length,pendingStock:unverified,message:'Saved '+rows.length+' verified cutting lines to LIVE Cutting. '+(unverified?unverified+' lines await stock-meter verification. ':'')+'Pending bag quantity was not changed because part cut qty is not completed bags.'};
+    return {ok:true,cloud:true,workNo,count:rows.length,pendingStock:unverified,message:'Saved '+rows.length+' verified cutting lines to LIVE Cutting and photo details are now available in Pending → Batch Report for '+workNo+'. '+(unverified?unverified+' lines await stock-meter verification. ':'')+'Finished bag quantities and department Done were not changed by cut pieces.'};
   }catch(e){return reject('Photo Cutting update failed: '+String(e.message||e));}
 };
 
