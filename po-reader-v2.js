@@ -187,9 +187,11 @@ $('preview').before(summary);
 const parseBtn=document.createElement('button');parseBtn.type='button';parseBtn.textContent='↻ Parse Edited Text';parseBtn.style.background='#486f85';
 $('recognized').after(parseBtn);
 parseBtn.onclick=()=>{const val=$('recognized').value.trim();if(!val)return status('Paste recognized PO text before parsing.',true);applyText(val)};
-$('recognized').addEventListener('change',()=>{
+$('recognized').addEventListener('change',e=>{
+ // Run the improved parser first; prevent the old narrow parser from undoing corrected text.
+ e.stopImmediatePropagation();
  const val=$('recognized').value.trim();if(val)applyText(val);
-});
+},true);
 btn.onclick=async()=>{
  const file=$('poFile').files[0];
  if(!file)return status('Choose a PO photo or PDF first.',true);
