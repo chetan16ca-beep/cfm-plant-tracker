@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#183e61"><title>CFM | Live Cutting Register Print</title>
+<link rel="stylesheet" href="./cutting-print-live.css?v=1"></head><body>
+<header class="toolbar"><h1>CFM Daily Cutting Register • Live</h1><p>Selected Work Orders • 4 per A4 • 5 red-pen cutting lines each</p>
+<div class="controls"><label>Plant Date <input type="date" id="day"></label>
+<button id="reload" type="button">↻ Refresh Orders</button><button id="all" type="button">Select All Open</button><button id="none" type="button">Clear Selection</button>
+<button id="print" type="button">🖨 Print Selected A4</button><a href="./">← Main ERP</a></div></header>
+<main><div id="status" role="status">Reading live Work Orders from cloud…</div>
+<section class="choices"><div class="controlrow"><input id="search" type="search" placeholder="Find Work No, party, PO or product"><label><input id="onlyOpen" type="checkbox" checked> Only pending</label></div>
+<p id="count"></p><div id="orders"></div></section>
+<section class="preview"><h2>Print Preview</h2><p class="hint">Red pen only. Paper entry does not change cloud cutting, stock or pending quantity.</p><div id="pages"></div></section>
+</main><script src="./cutting-print-live.js?v=1"></script></body></html>
