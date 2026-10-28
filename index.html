@@ -441,6 +441,7 @@ document.getElementById('cfmCutPhotoClose').addEventListener('click',function(){
    if(!f.getAttribute('src'))f.src='./po-workorder.html?v=1';
  };
  document.getElementById('cfmPOOpen').addEventListener('click',window.openCFMPOWorkOrders);
+ if(new URLSearchParams(location.search).get('openPO')==='1')setTimeout(window.openCFMPOWorkOrders,100);
  document.getElementById('cfmPOClose').addEventListener('click',()=>{p.hidden=true});
 })();
 </script>
