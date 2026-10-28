@@ -101,8 +101,9 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP new UI version · 28 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V169</div>
-<script src="./backup-safe.js?v=2"></script>
+<div id="cfmUpdateVersion" title="CFM ERP new UI version · 28 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V170</div>
+<script src="./backup-safe.js?v=3"></script>
+<button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmDashboardHome" type="button" style="position:fixed;top:106px;right:12px;z-index:2147483646;background:#1674c9;color:#fff;border:0;border-radius:10px;padding:10px 14px;font:700 14px system-ui;box-shadow:0 3px 10px #0003" onclick="try{document.getElementById('app').contentWindow.showView('dashboard')}catch(e){alert('Dashboard unavailable: '+e.message)}">🏠 Dashboard</button>
 <button id="notifyBtn" type="button">🔔 Enable Notifications</button>
 <script>
@@ -113,7 +114,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261028-v169',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261028-v170',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -171,17 +172,17 @@ window.addEventListener('message',e=>{
 registerSW().then(async reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});if(Notification.permission==='granted'){try{await sendCFMNotification('CFM Plant Tracker','V167 notifications connected ✅',{tag:'cfm-v117-ready'})}catch(_){}}});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw168-reload'))return;
-  sessionStorage.setItem('cfm-sw168-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw170-reload'))return;
+  sessionStorage.setItem('cfm-sw170-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261028-v169';
+ const urls=groups.flat(), ver='20261028-v170';
  // Service Worker v168 manages ONLY CFM UI caches. Preserve all other caches and business data.
  const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-v169-'+u;
+   const cacheKey='cfm-chunk-v170-'+u;
    try{
      const saved=null; // Always fetch current chunk; old PWA chunk cache caused stale mobile versions.
    }catch(_){}
