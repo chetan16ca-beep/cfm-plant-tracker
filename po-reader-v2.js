@@ -45,7 +45,7 @@ function pullDate(raw){
 function getPo(raw){
  const rows=raw.split(/\r?\n/);
  for(const s of rows.slice(0,100)){
-  const m=s.match(/(?:\bP\.?\s*O\.?\s*(?:NO\.?|NUMBER|#|NUM)\b|\bPURCHASE\s*ORDER\s*(?:NO\.?|NUMBER|#)\b|\bORDER\s*(?:NO\.?|NUMBER)\b)\s*[:#.\-]*\s*([A-Z0-9][A-Z0-9/_-]{2,35})/i);
+  const m=s.match(/\b(?:P\.?\s*O\.?|PURCHASE\s*ORDER|ORDER)\s*(?:NO\.?|NUMBER|NUM\.?|#)\s*[:#.\-]*\s*([A-Z0-9][A-Z0-9/_-]{2,35})/i);
   if(m&&/\d/.test(m[1])&&!/^(?:DATE|NUMBER|PURCHASE|ORDER)$/i.test(m[1]))return m[1];
  }
  return '';
@@ -164,7 +164,7 @@ async function pdfRead(file){
   const text=[...rows.entries()].sort((a,b)=>b[0]-a[0]).map(([,line])=>line.sort((a,b)=>a.x-b.x).map(k=>k.text).join(' ')).join('\n');
   all+='\n=== PO PAGE '+i+' ===\n'+text+'\n';
   const chars=text.replace(/[^a-z0-9]/gi,'').length;
-  if(chars<100){
+  if(chars<100||(chars<1000&&poExtract(text).found.length===0)){
    status('Scanned PDF page '+i+': running OCR…');
    const view=page.getViewport({scale:1.65});
    const scale=Math.min(1,Math.sqrt(3100000/(view.width*view.height)));
