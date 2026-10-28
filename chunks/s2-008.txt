@@ -479,11 +479,10 @@ document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',(
 
 function kpi(label,value,sub='',target=''){const iconMap={"Pending Work Orders":"📋","Total Pending Qty":"🧮","Today's Cut Qty":"✂️","Open Store Balance":"📦","Action Required":"⚡","Bill Pending":"🧾","Challan Pending":"🚚","Docs Done":"✅","Total Work":"📊"}; const ico=iconMap[label]||"📌";const click=target?` onclick="showView('${target}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){showView('${target}')}"`:'';return `<div class="kpi ${target?'clickable':''}"${click}><div class="num">${esc(value)}</div><div class="label">${esc(label)}${sub?`<br>${esc(sub)}`:''}</div><div class="kpi-icon">${ico}</div></div>`}
 function renderDashboard(){
-  const open=state.pending.filter(orderOpen);
-  const total=open.reduce((a,r)=>a+pendingQty(r),0);
+  // V181 Dashboard UI only: hide Pending Work Orders, Total Pending Qty and Open Store Balance cards.
+  // Underlying pending orders, cutting entries and SRL stock remain untouched.
   const todayCut=state.cutting.filter(r=>r.date===todayISO()).reduce((a,r)=>a+num(r.cutQty),0);
-  const storeBal=state.store.reduce((a,r)=>a+srlBalance(r),0);
-  $('kpis').innerHTML=kpi('Pending Work Orders',open.length,'','pending')+kpi('Total Pending Qty',fmt(total),'','pending')+kpi("Today's Cut Qty",fmt(todayCut),'','cutting')+kpi('Open Store Balance',`${fmt(storeBal)} MTR`,'Auto after cutting','store');
+  $('kpis').innerHTML=kpi("Today's Cut Qty",fmt(todayCut),'','cutting');
 
   const legacyData=loadExcelMirrorData?.();
   if($('dashLegacyAudit')&&legacyData){
