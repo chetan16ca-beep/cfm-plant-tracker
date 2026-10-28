@@ -67,7 +67,7 @@ $("reportDate")?.addEventListener("change",render);
 $("editWork")?.addEventListener("change",render);
 $("editLoad")?.addEventListener("click",()=>{
  const st=safeState(),o=st.orders.find(x=>num(x.no)===num($("editWork").value));if(!o)return alert("Select work order");
- const f=$("editForm");for(const key of ["party","po","product","code","cloth","width","qty","priority"])f.elements[key].value=o[key]??"";f.elements.work.value=o.no;
+ const f=$("editForm");for(const key of ["party","po","product","code","cloth","width","qty","priority","deliveryDate","remarks"])f.elements[key].value=o[key]??"";f.elements.work.value=o.no;
 });
 $("editForm")?.addEventListener("submit",e=>{e.preventDefault();if(!confirm("Save verified changes to this NEW Work Order?"))return;submit(e.target,"editOrder")});
 $("archiveBtn")?.addEventListener("click",()=>{
