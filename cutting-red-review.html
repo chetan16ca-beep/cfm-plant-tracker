@@ -433,6 +433,30 @@ $('photoSection').addEventListener('change',()=>{
  }else try{makeSection($('photoSection').value)}catch(e){$('sectionMessage').textContent=String(e.message||e)}
 });
 
+function chooseCuttingSuggestions(originalRows,ocrData,zoom){
+ const complete=plausibleRows(String(ocrData?.text||''));
+ const spatial=spatialCuttingRows(ocrData,zoom);
+ const score=rs=>rs.reduce((n,r)=>n+[r.srl,r.part,r.length,r.width,r.qty].filter(Boolean).length,0);
+ const picks=[originalRows||[],complete,spatial].sort((a,b)=>score(b)-score(a));
+ return picks[0]||[];
+}
+function showCuttingSuggestions(rows,source){
+ if(!rows.length){
+  $('verified').checked=false;
+  $('photoStatus').textContent=source+': printed Work No. recognized but handwritten table remains unclear. Enlarge/crop photo or enter SRL, Part, Length, Width and Qty manually. No entry posted.';
+  updateActionReadiness();
+  return;
+ }
+ const alreadyEdited=[...$('redRows').querySelectorAll('input')].some(i=>String(i.value||'').trim());
+ if(alreadyEdited){
+  $('photoStatus').textContent=source+': '+rows.length+' OCR suggestions available, but your existing edits were kept. Clear Rows first to re-scan.';
+  return;
+ }
+ $('redRows').replaceChildren();rows.forEach(r=>row(r));$('verified').checked=false;
+ const incomplete=rows.filter(r=>[r.srl,r.part,r.length,r.width,r.qty].filter(Boolean).length<5).length;
+ $('photoStatus').textContent=source+': '+rows.length+' possible Cutting rows populated.'+(incomplete?' '+incomplete+' incomplete — fill missing fields.':'')+' Compare every value to original photo; nothing posted.';
+ updateActionReadiness();
+}
 async function performOCR(sectionOnly=false){
  const session=photoSequence;
  if(!originalScanCanvas||!photoName){$('photoStatus').textContent='Choose cutting photo first.';return;}
@@ -485,17 +509,12 @@ async function performOCR(sectionOnly=false){
    }
    const originalRows=plausibleRows(recognized);
    await worker.setParameters({tessedit_pageseg_mode:'11'});
-   const enhanced=await worker.recognize(crop);
+   const zoom=readableSection(crop);
+   const enhanced=await worker.recognize(zoom,{}, {text:true,tsv:true,blocks:true});
    if(session!==photoSequence)return;
-   $('rawText').value+='\nENHANCED SECTION TEXT:\n'+String(enhanced.data.text||'');
-   const enhancedRows=plausibleRows(String(enhanced.data.text||''));
-   const rows=originalRows.length>=enhancedRows.length?originalRows:enhancedRows;
-   if(rows.length){
-     $('redRows').replaceChildren();rows.forEach(r=>row(r));$('verified').checked=false;
-     $('photoStatus').textContent=rows.length+' possible Cutting lines copied for review. Check ALL values in original photo. Nothing posted.';
-   }else{
-     $('photoStatus').textContent='Section scan completed but handwriting was not confidently parsed. Use the enlarged section preview to enter/verify rows manually. Nothing posted.';
-   }
+   $('rawText').value+='\nENLARGED SECTION TEXT:\n'+String(enhanced.data.text||'');
+   const rows=chooseCuttingSuggestions(originalRows,enhanced.data,zoom);
+   showCuttingSuggestions(rows,'Work Order '+selected+' / Section '+part);
   }else{
    await worker.setParameters({tessedit_pageseg_mode:'11'});
    const result=await worker.recognize(originalScanCanvas);
