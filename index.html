@@ -426,11 +426,26 @@ document.getElementById('cfmCutPhotoClose').addEventListener('click',function(){
 })();
 </script>
 
-<!-- PO Work Order test access: no production writes -->
+<!-- Verified PO-to-Work-Order creation. Final save is performed by the existing ERP form. -->
 <style>#cfmPOOpen{position:fixed;right:12px;bottom:192px;z-index:2147483645;background:#165a83;color:white;border:0;border-radius:12px;padding:11px 13px;font:700 13px system-ui}#cfmPOPanel{position:fixed;inset:3%;z-index:2147483647;background:white;color:#123;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 50px #0008}#cfmPOPanel[hidden]{display:none!important}#cfmPOPanel header{padding:12px;display:flex;justify-content:space-between;font:700 14px system-ui}#cfmPOPanel iframe{border:0;flex:1;width:100%}</style>
-<button id="cfmPOOpen" type="button">📄 PO → Work Order Test</button><section id="cfmPOPanel" hidden role="dialog" aria-label="PO Work Order Test"><header><span>PO Photo / PDF — Work Order Draft</span><button id="cfmPOClose" type="button">✕ Close</button></header><iframe id="cfmPOFrame" title="PO Work Order Test"></iframe></section><script>(function(){const p=document.getElementById('cfmPOPanel'),f=document.getElementById('cfmPOFrame');document.getElementById('cfmPOOpen').onclick=()=>{if(!f.src)f.src='./po-workorder-test.html';p.hidden=false};document.getElementById('cfmPOClose').onclick=()=>p.hidden=true})();</script>
+<button id="cfmPOOpen" type="button">📄 PO → Create Work Orders</button>
+<section id="cfmPOPanel" hidden role="dialog" aria-label="Create Work Orders from Company PO">
+<header><span>Company PO Photo / PDF → Create Work Orders</span><button id="cfmPOClose" type="button">✕ Close</button></header>
+<iframe id="cfmPOFrame" title="PO Photo/PDF to Create Work Orders"></iframe>
+</section>
+<script>
+(function(){
+ const p=document.getElementById('cfmPOPanel'),f=document.getElementById('cfmPOFrame');
+ window.openCFMPOWorkOrders=function(){
+   p.hidden=false;
+   if(!f.getAttribute('src'))f.src='./po-workorder.html?v=1';
+ };
+ document.getElementById('cfmPOOpen').addEventListener('click',window.openCFMPOWorkOrders);
+ document.getElementById('cfmPOClose').addEventListener('click',()=>{p.hidden=true});
+})();
+</script>
 
-<!-- Verified PO draft -> existing Multi-item PO editor. No automatic saving. -->
+<!-- Verified PO -> existing Multi-item PO editor. Only ERP Save PO Items writes work orders. -->
 <script id="cfmPOVerifiedBridge">
 (function(){
 'use strict';
