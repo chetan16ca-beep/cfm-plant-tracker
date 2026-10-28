@@ -152,7 +152,7 @@ window.cfmRefreshWorkNos=async function(){
       setCloudBadge('⚠️ Work Orders visible • stock sync needs review','amber');
       console.warn('CFM V171 local/cloud differences; writes paused',problems);
       $('pendingStatus').value='ALL';$('pendingSearch').value='';showView('pending');renderPending();
-      alert('Cloud Work Orders shown: '+(row.payload.pending||[]).length+' (last CFM-'+Math.max(0,...row.payload.pending.map(x=>Number(String(x.workNo||'').match(/(\\d+)$/)?.[1]||0)))+'). Added '+added+' missing records on this device. Existing local Stock/Cutting kept. Cloud writing is PAUSED due to data differences. No records deleted.');
+      alert('Cloud Work Orders shown: '+(row.payload.pending||[]).length+' (last CFM-'+Math.max(0,...row.payload.pending.map(x=>Number(String(x.workNo||'').match(/(\d+)$/)?.[1]||0)))+'). Added '+added+' missing records on this device. Existing local Stock/Cutting kept. Cloud writing is PAUSED due to data differences. No records deleted.');
       return;
     }
     await window.parent.cfmSaveBackup?.();
@@ -162,7 +162,7 @@ window.cfmRefreshWorkNos=async function(){
     cloudUpdatedAt=row.updated_at||'';
     cloudDirty=false;cloudReady=true;
     renderAll();$('pendingStatus').value='ALL';$('pendingSearch').value='';showView('pending');renderPending();
-    const max=Math.max(0,...state.pending.map(x=>Number(String(x.workNo||'').match(/(\\d+)$/)?.[1]||0)));
+    const max=Math.max(0,...state.pending.map(x=>Number(String(x.workNo||'').match(/(\d+)$/)?.[1]||0)));
     setCloudBadge('☁️ '+state.pending.length+' Work Orders • CFM-'+max,'green');
     toast('Cloud loaded: '+state.pending.length+' Work Orders • Last CFM-'+max);
   }catch(e){setCloudBadge('☁️ Work Order refresh failed • local safe','red');alert('Could not read Cloud: '+(e.message||e)+'. Your local data has NOT been deleted.')}
