@@ -184,6 +184,8 @@
         <button class="btn btn-primary" onclick="openCuttingForm()">+ Add Cutting</button>
       </div>
       <div class="filters"><input id="cutSearch" placeholder="Search work no, SRL, size, party..." oninput="renderCutting()" /></div>
+      <div class="notice" id="cutCloudInfo" style="margin:10px 0;background:#eaf5ff;border:1px solid #a4d4f4"><b>☁️ Live Cloud Cutting</b> • Photo entries from other devices may not yet appear in the local list.<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px"><button class="btn btn-primary" type="button" onclick="cfmShowLiveCuttingCloud()">☁️ View Live Cloud Cutting</button><button class="btn" type="button" onclick="cfmShowLiveCuttingCloud('CFM-667')">Show CFM-667</button></div></div>
+      <div id="cutCloudLiveResults" aria-live="polite"></div>
       <div id="cuttingList"></div>
     </section>
 
