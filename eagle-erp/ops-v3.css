@@ -13,3 +13,13 @@
 .legacy-link:focus{outline:2px solid #1473b6}
 @media(min-width:760px){.ops-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:550px){.po-line{grid-template-columns:minmax(0,1fr) 77px 34px}.ops-action-row .btn{min-width:0;flex:1}}
+
+.legacy-reference-box{border:1px solid #b7d6ea;background:linear-gradient(125deg,#f7fbff,#eaf5ff);border-radius:14px;padding:13px;margin:5px 0 10px}
+.legacy-reference-box h3{margin:0 0 10px;font-size:15px;color:#184d75}
+.legacy-measure-preview{font-size:13px;background:#fff;border:1px solid #d8e9f5;padding:12px;border-radius:10px;line-height:1.65;max-height:360px;overflow:auto}
+.legacy-measure-preview p{margin:6px 0}
+.legacy-measure-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px;margin:10px 0}
+.legacy-measure-grid>div{padding:7px;background:#eef7ff;border-radius:7px;border:1px solid #d6ebfa}
+.legacy-measure-grid small{display:block;color:#596c80;font-size:11px}
+.legacy-copy-check{display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:600;margin:10px 0}
+.legacy-copy-check input{width:18px;height:18px;margin:1px 0;flex-shrink:0}

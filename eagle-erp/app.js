@@ -17,7 +17,14 @@ function activate(p){document.querySelectorAll(".pane").forEach(e=>e.classList.t
 document.querySelectorAll("[data-pane]").forEach(e=>e.addEventListener("click",()=>activate(e.dataset.pane)));
 if(!token){message("Private link required. No email/password needed. Use the private link given in ChatGPT.",true);$("locked").classList.remove("hidden");return;}
 $("app").classList.remove("hidden");
-window.eagleV3={getState:()=>structuredClone(data),save,refresh,activate};
+async function loadLegacy(){
+ const resp=await fetch(api+"?legacy=1",{headers:{"Content-Type":"application/json","x-eagle-access":token},cache:"no-store"});
+ const result=await resp.json().catch(()=>({error:"Invalid reference response"}));
+ if(!resp.ok||!result.ok||!result.legacy)throw Error(result.error||"Old ERP references unavailable");
+ if(!Array.isArray(result.legacy.parties)||!Array.isArray(result.legacy.orders))throw Error("Invalid OLD ERP party or size data");
+ return result.legacy;
+}
+window.eagleV3={getState:()=>structuredClone(data),save,refresh,activate,loadLegacy};
 document.dispatchEvent(new Event("eagle:ready"));
 async function call(method="GET",body=null){
  const r=await fetch(api,{method,headers:{"Content-Type":"application/json","x-eagle-access":token},body:body?JSON.stringify(body):undefined,cache:"no-store"});
@@ -52,7 +59,7 @@ async function save(action,entry,btn,form){
  }catch(e){message("⚠️ "+e.message+" — check Cloud before retrying",true); return false;}
  finally{busy=false;if(btn)btn.disabled=false}
 }
-function orderCard(r){return '<div class="item"><strong>CFM-'+esc(r.no)+'</strong> — '+esc(r.party)+' <span class="tag">'+esc(r.status)+'</span><div>'+esc(r.product)+'</div><div class="muted">PO '+esc(r.po||"-")+' • '+esc(r.code||"-")+' • Qty '+esc(r.qty)+' • '+esc(r.cloth||"-")+' • '+esc(r.width||"-")+'″</div></div>'}
+function orderCard(r){return '<div class="item"><strong>CFM-'+esc(r.no)+'</strong> — '+esc(r.party)+' <span class="tag">'+esc(r.status)+'</span><div>'+esc(r.product)+'</div><div class="muted">PO '+esc(r.po||"-")+' • '+esc(r.code||"-")+' • Qty '+esc(r.qty)+' • '+esc(r.cloth||"-")+' • '+esc(r.width||"-")+'″</div>'+(r.referenceOldWorkNo?'<div class="muted">Reference OLD: '+esc(r.referenceOldWorkNo)+' • '+(r.referenceMeasurements?.length||0)+' historical sizes</div>':'')+'</div>'}
 function render(){
  const orders=data.orders.slice().sort((a,b)=>num(b.no)-num(a.no));
  $("numOrders").textContent=orders.length;$("nextWork").textContent=nextNo();

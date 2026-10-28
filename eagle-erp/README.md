@@ -23,3 +23,13 @@ Production Stage Entries (cutting/stitching/thread cut/gun finish/packing), Meas
 ## Verification / limitations
 
 Cloud state carries pre-existing physical stock. JavaScript files compile syntactically and new backend operations were deployed additively. Full end-to-end browser/user acceptance testing requires opening the private link on a real device. Do not call it production-tested before that test.
+
+## V4 — Old ERP Party & Historical Cutting Measurements
+
+- New Work Order → Party: searchable autocomplete combines old CFM custom Parties, existing old Work Order party names, and new ERP party names.
+- After choosing a party, the OLD Work Order dropdown shows prior work orders for that party. The operator selects the correct prior product/size; there is no silent assumption.
+- Selecting an old Work Order pre-fills product description, product code, cloth quality, and roll width; old PO and order quantity are NEVER copied.
+- Historical Cutting Register Length × Height measurements are presented as L × W in inches. When the copy-reference box is checked, server validates the old party/work match and saves dimensions on the new Work Order's Measurement Sheet as UNVERIFIED_REFERENCE.
+- Measurements absent in the historical cutting register are NOT guessed. Always verify dimensions against the present job requirements before production.
+- The old ERP state is fetched only via the private-access NEW ERP Edge Function and is strictly READ-ONLY. Old pending, cutting, and physical stock are never overwritten.
+- Missing old reference connectivity does not block manual creation of new Work Orders.
