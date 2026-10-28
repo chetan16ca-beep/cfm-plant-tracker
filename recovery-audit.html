@@ -14,6 +14,7 @@ button:disabled{opacity:.55}b{color:#152e48}
 <p><b>Read-only जांच:</b> यह पेज आपके इसी Browser/Device में रखे पुराने ERP Snapshots खोजता है। यह Work Orders, Stock या Cloud Database को <b>बिल्कुल नहीं बदलता</b>।</p>
 <div class="notice"><b>महत्वपूर्ण:</b> जिस मोबाइल/PC पर CFM-684 या उससे आगे का Work Order दिख रहा था, <b>उसी Browser में</b> यह पेज खोलें। Chrome का Clear Storage/Data, ERP Restore, Sync या Uninstall न करें। पुराने Devices अलग-अलग चेक करें।</div>
 <p><b>CFM-684 या आगे का Backup स्वीकार है।</b> Download के बाद Work Orders, SRL-wise Stock और Cutting Records का मिलान ज़रूरी है; केवल आख़िरी Work Number से पूरा डेटा सही होना साबित नहीं होता।</p>
+<button id="best" style="background:#17663a">सबसे पूरा Backup डाउनलोड करें (एक क्लिक)</button>
 <button id="scan">इस Device के सभी Backup खोजें</button>
 <p id="status">Scan शुरू करने के लिए ऊपर दबाएँ।</p><div id="results"></div>
 <script>
@@ -73,6 +74,7 @@ async function scan(){
  }catch(e){}
  const unique=new Map();for(const c of candidates){const key=c.where+'|'+c.when+'|'+c.max+'|'+c.orders;if(!unique.has(key))unique.set(key,c)}candidates=[...unique.values()];render();
 }
+$('best').onclick=async()=>{await scan();if(!candidates.length){alert('इस Device में कोई Backup नहीं मिला। पुराने ERP वाले Chrome/PC से खोलें।');return;}const best=candidates.findIndex(x=>x.max>=684);if(best>=0){download(best);}else{alert('इस Device में अभी CFM-684 या आगे का पूरा Snapshot नहीं मिला। नीचे मिले Backups देख सकते हैं; पुराने Computer/Chrome से कोशिश करें।');}};
 $('scan').onclick=scan;
 })();
 </script></body></html>
