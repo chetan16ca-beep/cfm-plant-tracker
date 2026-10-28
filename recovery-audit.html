@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="hi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CFM ERP · Safe Recovery Audit</title>
+<title>CFM ERP · Safe Recovery Audit (CFM-684+)</title>
 <style>
 body{font-family:system-ui,Arial,sans-serif;max-width:920px;margin:auto;padding:18px;background:#f4f8fc;color:#14283e}
 h1{font-size:23px;margin-bottom:6px}p{line-height:1.5}small{color:#526778}
@@ -12,7 +12,8 @@ button:disabled{opacity:.55}b{color:#152e48}
 </style></head>
 <body><h1>CFM ERP · सुरक्षित Backup Recovery</h1>
 <p><b>Read-only जांच:</b> यह पेज आपके इसी Browser/Device में रखे पुराने ERP Snapshots खोजता है। यह Work Orders, Stock या Cloud Database को <b>बिल्कुल नहीं बदलता</b>।</p>
-<div class="notice"><b>महत्वपूर्ण:</b> जिस मोबाइल/PC पर आखिरी बार CFM-702 दिखा था, <b>उसी Browser में</b> यह पेज खोलें। Chrome का Clear Storage/Data, ERP Restore, Sync या Uninstall न करें। पुराने Devices अलग-अलग चेक करें।</div>
+<div class="notice"><b>महत्वपूर्ण:</b> जिस मोबाइल/PC पर CFM-684 या उससे आगे का Work Order दिख रहा था, <b>उसी Browser में</b> यह पेज खोलें। Chrome का Clear Storage/Data, ERP Restore, Sync या Uninstall न करें। पुराने Devices अलग-अलग चेक करें।</div>
+<p><b>CFM-684 या आगे का Backup स्वीकार है।</b> Download के बाद Work Orders, SRL-wise Stock और Cutting Records का मिलान ज़रूरी है; केवल आख़िरी Work Number से पूरा डेटा सही होना साबित नहीं होता।</p>
 <button id="scan">इस Device के सभी Backup खोजें</button>
 <p id="status">Scan शुरू करने के लिए ऊपर दबाएँ।</p><div id="results"></div>
 <script>
@@ -56,7 +57,7 @@ function download(index){
 function date(v){if(!v)return 'Time not saved';let n=typeof v==='number'?v:Number(v);let d=new Date(isFinite(n)&&n>1e12?n:v);return isNaN(d.getTime())?String(v):d.toLocaleString()}
 function render(){
  const box=$('results');box.replaceChildren();candidates.sort((a,b)=>b.max-a.max||b.orders-a.orders);
- $('status').textContent=candidates.length+' backup candidate(s) मिले। '+(candidates.some(x=>x.max>=702)?'CFM-702 या आगे का Snapshot मिला! पहले Download करके ChatGPT में भेजें।':'इस Browser में अभी CFM-702 का Snapshot नहीं मिला। दूसरे इस्तेमाल किए गए मोबाइल/PC पर यही पेज जाँचें।');
+ $('status').textContent=candidates.length+' backup candidate(s) मिले। '+(candidates.some(x=>x.max>=684)?'CFM-684 या आगे का Snapshot मिला! पहले Download करके ChatGPT में भेजें; Stock और Orders का मिलान करके ही Restore करें।':'इस Browser में अभी CFM-684 का Snapshot नहीं मिला। दूसरे इस्तेमाल किए गए मोबाइल/PC पर यही पेज जाँचें।');
  candidates.forEach((c,i)=>{const card=document.createElement('div');card.className='card';
  const h=document.createElement('div');h.className='value';h.textContent='Last Work No: CFM-'+c.max+' · Pending Records: '+c.orders;card.appendChild(h);
  const details=document.createElement('p');details.textContent='Stock/SRL Rows: '+c.store+' · Cutting Rows: '+c.cutting+' · Source: '+c.where+' · '+date(c.when);card.appendChild(details);
