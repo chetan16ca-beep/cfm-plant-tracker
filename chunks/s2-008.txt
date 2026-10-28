@@ -123,6 +123,50 @@ async function cfmAllowCloudReplacement(remote,source){
   }
   return false;
 }
+// V171: a device may have extra physical stock/cutting that must not be overwritten.
+// In that case, import ONLY missing server work-order numbers for display, pause writes.
+function cfmShowRestoredWorkNumbersWithoutOverwrite(remote){
+  if(!validState(remote))return 0;
+  const localSet=new Set((state.pending||[]).map(x=>normalize(x.workNo)).filter(Boolean));
+  const additions=(remote.pending||[]).filter(x=>normalize(x.workNo)&&!localSet.has(normalize(x.workNo)));
+  if(!additions.length)return 0;
+  try{window.parent.cfmSaveBackup?.()}catch(_){}
+  state.pending=[...(state.pending||[]),...clone(additions)];
+  syncDerivedState();
+  try{safeStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.warn('Could not cache recovered work orders',e)}
+  renderAll();
+  setCloudBadge('☁️ '+additions.length+' Work Orders recovered • other local data protected','amber');
+  return additions.length;
+}
+window.cfmRefreshWorkNos=async function(){
+  try{
+    setCloudBadge('☁️ Reading latest Work Orders…','amber');
+    const row=await cloudFetch();
+    if(!row||!validState(row.payload))throw Error('Cloud returned no valid work orders');
+    const problems=cfmCloudReplacementRisk(row.payload);
+    if(problems.length){
+      await window.parent.cfmSaveBackup?.();
+      const added=cfmShowRestoredWorkNumbersWithoutOverwrite(row.payload);
+      cloudReady=false; // Never upload a mixed local/cloud snapshot in conflict.
+      cloudDirty=false;
+      setCloudBadge('⚠️ Work Orders visible • stock sync needs review','amber');
+      console.warn('CFM V171 local/cloud differences; writes paused',problems);
+      $('pendingStatus').value='ALL';$('pendingSearch').value='';showView('pending');renderPending();
+      alert('Cloud Work Orders shown: '+(row.payload.pending||[]).length+' (last CFM-'+Math.max(0,...row.payload.pending.map(x=>Number(String(x.workNo||'').match(/(\d+)$/)?.[1]||0)))+'). Added '+added+' missing records on this device. Existing local Stock/Cutting kept. Cloud writing is PAUSED due to data differences. No records deleted.');
+      return;
+    }
+    await window.parent.cfmSaveBackup?.();
+    state=clone(row.payload);ensureExcelMasterData();syncDerivedState();
+    safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    cloudVersion=num(row.version)||cloudVersion;
+    cloudUpdatedAt=row.updated_at||'';
+    cloudDirty=false;cloudReady=true;
+    renderAll();$('pendingStatus').value='ALL';$('pendingSearch').value='';showView('pending');renderPending();
+    const max=Math.max(0,...state.pending.map(x=>Number(String(x.workNo||'').match(/(\d+)$/)?.[1]||0)));
+    setCloudBadge('☁️ '+state.pending.length+' Work Orders • CFM-'+max,'green');
+    toast('Cloud loaded: '+state.pending.length+' Work Orders • Last CFM-'+max);
+  }catch(e){setCloudBadge('☁️ Work Order refresh failed • local safe','red');alert('Could not read Cloud: '+(e.message||e)+'. Your local data has NOT been deleted.')}
+};
 async function cloudInit(){
   setCloudBadge('☁️ Connecting…','amber');
   try{
@@ -132,7 +176,7 @@ async function cloudInit(){
     cloudReady=true;
     if(row&&validState(row.payload)){
       if(!await cfmAllowCloudReplacement(row.payload,'Startup Cloud Sync')){
-        cloudReady=false;return;
+        cloudReady=false;cfmShowRestoredWorkNumbersWithoutOverwrite(row.payload);return;
       }
       try{await window.parent.cfmSaveBackup?.()}catch(_){}
       cloudDirty=false;
@@ -205,7 +249,7 @@ window.manualCloudSync=async function(){
     if(v>cloudVersion){
       const row=await cloudFetch();
       if(row&&validState(row.payload)){
-        if(!await cfmAllowCloudReplacement(row.payload,'Manual Sync'))throw new Error('Local records differ from Cloud; old data not applied');
+        if(!await cfmAllowCloudReplacement(row.payload,'Manual Sync')){cfmShowRestoredWorkNumbersWithoutOverwrite(row.payload);throw new Error('Local records differ from Cloud; missing work orders displayed safely');}
         try{await window.parent.cfmSaveBackup?.()}catch(_){}
         state=clone(row.payload);syncDerivedState();
         cloudVersion=num(row.version)||cloudVersion;cloudUpdatedAt=row.updated_at||cloudUpdatedAt;
@@ -224,7 +268,7 @@ async function cloudPoll(){
   try{
     const meta=await cloudFetchMeta();if(!meta)return;const v=num(meta.version)||0;
     if(v>cloudVersion){const row=await cloudFetch();if(row&&validState(row.payload)){
-      if(!await cfmAllowCloudReplacement(row.payload,'Automatic Cloud Refresh'))return;
+      if(!await cfmAllowCloudReplacement(row.payload,'Automatic Cloud Refresh')){cfmShowRestoredWorkNumbersWithoutOverwrite(row.payload);return;}
       try{await window.parent.cfmSaveBackup?.()}catch(_){}
       const prevRaw=JSON.stringify(state);state=clone(row.payload);ensureExcelMasterData();syncDerivedState();cloudVersion=v;cloudUpdatedAt=row.updated_at||'';const nextRaw=JSON.stringify(state);safeStorage.setItem(STORAGE_KEY,nextRaw);renderAll();setCloudBadge('☁️ Updated from other mobile','green');const notice=genericUpdateNotification(prevRaw,nextRaw);showLocalNotification('☁️ Other Device • '+notice.title.replace(/^🔔\s*/,''),notice.body||notificationSummary());
     }}
