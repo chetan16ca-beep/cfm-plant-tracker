@@ -196,110 +196,161 @@ $('saveReview').onclick=()=>{
  }catch(e){$('entryStatus').textContent='Not saved: '+e.message;alert(e.message)}
 };
 $('downloadAll').onclick=()=>download('CFM-Red-Cutting-Reviews-'+today()+'.json',JSON.stringify({app:'CFM-Red-Cutting-Review',version:1,drafts},null,2));
-let objectURL='',originalScanCanvas=null,photoSequence=0;
+let objectURL='',originalScanCanvas=null,enhancedScanCanvas=null,photoSequence=0,photoScanBusy=false;
+function enhancePhoto(original,output){
+ const ctx=output.getContext('2d',{willReadFrequently:true});
+ ctx.drawImage(original,0,0,output.width,output.height);
+ const pixels=ctx.getImageData(0,0,output.width,output.height),p=pixels.data;
+ // All ink colors accepted. Preserve dark blue, black, red and pencil handwriting;
+ // do not apply color segmentation that makes faint letters disappear.
+ for(let i=0;i<p.length;i+=4){
+  const r=p[i],g=p[i+1],b=p[i+2];
+  const gray=.299*r+.587*g+.114*b;
+  const value=Math.max(0,Math.min(255,(gray-130)*1.32+148));
+  p[i]=value;p[i+1]=value;p[i+2]=value;
+ }
+ ctx.putImageData(pixels,0,0);
+}
 $('photo').onchange=e=>{
  const file=e.target.files[0],session=++photoSequence;
- $('verified').checked=false;$('rawText').value='';$('tryOCR').disabled=true;
- $('photoStatus').textContent='';photoName='';detectedWorks=[];photoWorkOptions();
+ $('verified').checked=false;$('rawText').value='';
+ $('tryOCR').disabled=true;$('scanSection').disabled=true;
+ $('photoStatus').textContent='';$('sectionMessage').textContent='';
+ $('sectionPreview').hidden=true;photoName='';detectedWorks=[];photoWorkOptions();
  if(objectURL)URL.revokeObjectURL(objectURL);
- if(!file)return;
- if(!file.type.startsWith('image/')){$('photoStatus').textContent='Please choose a photo image.';return}
+ originalScanCanvas=null;enhancedScanCanvas=null;
+ if(!file){updateActionReadiness();return;}
+ if(!file.type.startsWith('image/')){$('photoStatus').textContent='Select a JPG, PNG or WEBP photo.';updateActionReadiness();return}
  photoName=file.name;objectURL=URL.createObjectURL(file);$('original').src=objectURL;$('original').hidden=false;
  const img=new Image();
  img.onload=()=>{
   if(session!==photoSequence)return;
   try{
-   // Keep original in an independent OCR canvas for printed Work No. recognition.
    const maxEdge=2250,scale=Math.min(1,maxEdge/Math.max(img.naturalWidth,img.naturalHeight));
-   const canvas=document.createElement('canvas');
-   canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
-   canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
-   const sourceCtx=canvas.getContext('2d',{willReadFrequently:true});
-   sourceCtx.drawImage(img,0,0,canvas.width,canvas.height);
-   originalScanCanvas=canvas;
-   const red=$('redOnly');red.width=canvas.width;red.height=canvas.height;
-   const ctx=red.getContext('2d',{willReadFrequently:true});
-   ctx.drawImage(img,0,0,red.width,red.height);
-   const pixels=ctx.getImageData(0,0,red.width,red.height),p=pixels.data;
-   let ink=0;
-   for(let i=0;i<p.length;i+=4){
-     const r=p[i],g=p[i+1],b=p[i+2];
-     // Red/rose pen: preserve faint writing, reject yellow cast and neutral printed black.
-     const rg=r-g, rb=r-b, yellow=Math.max(0,g-b);
-     const score=Math.min(rg,rb)-Math.max(0,yellow-10)*.7;
-     const redInk=r>48&&rg>7&&rb>9&&score>6;
-     if(redInk){
-       const shade=Math.max(12,Math.round(235-Math.max(0,score-6)*20));
-       p[i]=shade;p[i+1]=shade;p[i+2]=shade;
-       ink++;
-     }else{p[i]=255;p[i+1]=255;p[i+2]=255}
-   }
-   if(ink<Math.max(30,red.width*red.height*.00008)){
-     // Avoid the all-white red-filter failure: display the original instead.
-     ctx.drawImage(img,0,0,red.width,red.height);
-     $('photoStatus').textContent='Red ink is very faint: showing original photo rather than a blank filter. Try a closer photo in bright light.';
-   }else{
-     ctx.putImageData(pixels,0,0);
-     $('photoStatus').textContent='Enhanced faint red ink • '+ink+' color pixels detected. Reading printed Work No. and handwriting locally…';
-   }
-   $('tryOCR').disabled=false;
-   // Start scanning automatically so choosing a photo is sufficient.
-   setTimeout(()=>{if(session===photoSequence&&navigator.onLine&&!$('tryOCR').disabled)$('tryOCR').click()},200);
-  }catch(err){$('photoStatus').textContent='Could not process photo: '+err.message}
+   const paper=document.createElement('canvas');paper.width=Math.max(1,Math.round(img.naturalWidth*scale));paper.height=Math.max(1,Math.round(img.naturalHeight*scale));
+   paper.getContext('2d').drawImage(img,0,0,paper.width,paper.height);
+   originalScanCanvas=paper;
+   const preview=$('redOnly');preview.width=paper.width;preview.height=paper.height;
+   enhancePhoto(paper,preview);enhancedScanCanvas=preview;
+   $('photoStatus').textContent='Photo ready. Red, blue and black handwriting all accepted. Choose Work Order, then scan.';
+   $('tryOCR').disabled=false;$('scanSection').disabled=false;
+   updateActionReadiness();
+   // Scan full page once to suggest Work Order numbers.
+   setTimeout(()=>{if(session===photoSequence&&!photoScanBusy&&navigator.onLine&&!$('tryOCR').disabled)$('tryOCR').click()},250);
+  }catch(err){$('photoStatus').textContent='Photo preview unavailable: '+String(err.message||err)}
  };
- img.onerror=()=>{$('photoStatus').textContent='Image could not be opened; choose a JPG or PNG.'};
+ img.onerror=()=>{$('photoStatus').textContent='Could not open photo. Choose JPG, PNG or WEBP.';updateActionReadiness()};
  img.src=objectURL;
 };
 function plausibleRows(s){
  const proposed=[];
  for(const line of String(s||'').split(/\r?\n/)){
   const normalized=line.replace(/[|,;]+/g,' ').replace(/\s+/g,' ').trim();
-  const m=normalized.match(/^(E\s*\/?\s*\d{2,5}|EFPPL\d+\/\d+)\s+(DIA|COLL|COLLAR|BOTTOM|HT|BODY|TOP)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+)$/i);
+  const m=normalized.match(/(?:^|\s)(E\s*\/?\s*\d{2,5}|EFPPL\d+\/\d+)\s+(DIA|COLL|COLLAR|BOTTOM|HT|BODY|TOP|RING|SIDE|BELT)\s+(\d+(?:\.\d+)?)\s+[x×]?\s*(\d+(?:\.\d+)?)\s+(\d+)(?:\s|$)/i);
   if(!m)continue;
-  const [len,width,qty]=[+m[3],+m[4],+m[5]];
-  if(!(len>0&&width>0&&qty>0&&len<1000&&width<1000&&qty<1000))continue;
-  proposed.push({srl:m[1].replace(/\s+/g,' ').trim(),part:m[2].toUpperCase(),length:len,width,qty});
+  const length=Number(m[3]),width=Number(m[4]),qty=Number(m[5]);
+  if(![length,width,qty].every(v=>Number.isFinite(v)&&v>0&&v<1000)||!Number.isInteger(qty))continue;
+  const srl=m[1].replace(/\s+/g,' ').trim();
+  const key=srl+'|'+m[2]+'|'+length+'|'+width+'|'+qty;
+  if(!proposed.some(r=>r.key===key))proposed.push({key,srl,part:m[2].toUpperCase(),length,width,qty});
  }
- return proposed.slice(0,60);
+ return proposed.slice(0,60).map(({key,...row})=>row);
 }
-$('tryOCR').onclick=async()=>{
- const btn=$('tryOCR'),session=photoSequence;
- if(!originalScanCanvas||!photoName){$('photoStatus').textContent='Upload a photo first.';return;}
- btn.disabled=true;$('photoStatus').textContent='Reading printed Work Numbers first; red handwritten numbers are checked separately…';
+function pageBounds(src){
+ const ctx=src.getContext('2d',{willReadFrequently:true}),w=src.width,h=src.height,step=Math.max(3,Math.floor(h/350));
+ const data=ctx.getImageData(0,0,w,h).data;
+ const good=[];
+ for(let y=0;y<h;y+=step){
+  let n=0;for(const x of [.32,.44,.56,.68]){const k=(y*w+Math.floor(w*x))*4;const l=(data[k]+data[k+1]+data[k+2])/3;if(l>154)n++;}
+  if(n>=3)good.push(y);
+ }
+ if(good.length<25)return{top:Math.floor(h*.08),bottom:Math.floor(h*.94)};
+ const top=good[Math.floor(good.length*.015)],bottom=good[Math.floor(good.length*.985)];
+ return bottom-top>h*.4?{top,bottom}:{top:Math.floor(h*.08),bottom:Math.floor(h*.94)};
+}
+function makeSection(sectionNo){
+ const src=enhancedScanCanvas||originalScanCanvas;
+ if(!src)throw Error('Upload a Cutting photo.');
+ const w=src.width,h=src.height;
+ if(sectionNo==='auto')return src;
+ const i=Number(sectionNo);
+ if(!Number.isInteger(i)||i<1||i>4)throw Error('Choose a work-order section (1–4).');
+ const {top,bottom}=pageBounds(originalScanCanvas);
+ const unit=(bottom-top)/4;
+ // Overlap slightly to retain row heading/last handwriting at section boundaries.
+ const cropTop=Math.max(0,Math.floor(top+(i-1)*unit-unit*.055));
+ const cropBottom=Math.min(h,Math.ceil(top+i*unit+unit*.065));
+ const out=document.createElement('canvas');
+ out.width=w;out.height=Math.max(1,cropBottom-cropTop);
+ out.getContext('2d').drawImage(src,0,cropTop,w,out.height,0,0,w,out.height);
+ const preview=$('sectionPreview');preview.width=out.width;preview.height=out.height;preview.getContext('2d').drawImage(out,0,0);preview.hidden=false;
+ $('sectionMessage').textContent='Section '+i+' shown above. Confirm it contains selected '+(workNum($('workNo').value)||'Work Order')+' before accepting any OCR rows.';
+ return out;
+}
+async function performOCR(sectionOnly=false){
+ const session=photoSequence;
+ if(!originalScanCanvas||!photoName){$('photoStatus').textContent='Choose cutting photo first.';return;}
+ if(photoScanBusy)return;
+ const btn=sectionOnly?$('scanSection'):$('tryOCR');
+ photoScanBusy=true;btn.disabled=true;
+ $('photoStatus').textContent=sectionOnly?'Scanning this selected Work Order section…':'Reading full photo and printed Work Orders…';
  let worker=null;
  try{
   if(!window.Tesseract){
    await new Promise((resolve,reject)=>{
     const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-    script.onload=resolve;script.onerror=()=>reject(new Error('OCR package cannot load; internet required.'));document.head.append(script);
+    script.onload=resolve;script.onerror=()=>reject(new Error('OCR requires an internet connection.'));document.head.append(script);
    });
   }
   worker=await Tesseract.createWorker('eng',1);
-  await worker.setParameters({tessedit_pageseg_mode:'11'});
-  const printed=await worker.recognize(originalScanCanvas);
-  if(session!==photoSequence)return;
-  const printedText=printed.data.text||'';
-  applyDetectedWorks(extractPhotoWorkNos(printedText));
-  $('photoStatus').textContent='Printed Work No. scan finished. Reading enhanced red handwritten rows…';
-  await worker.setParameters({tessedit_pageseg_mode:'6'});
-  const handwriting=await worker.recognize($('redOnly'));
-  if(session!==photoSequence)return;
-  const redText=handwriting.data.text||'';
-  $('rawText').value='PRINTED WORK ORDERS:\n'+printedText+'\n\nRED PEN SUGGESTIONS:\n'+redText;
-  const proposed=plausibleRows(redText);
-  if(proposed.length&&detectedWorks.length===1){
-   // Only populate automatically when photo contains one unique Work Order.
-   $('redRows').replaceChildren();for(const line of proposed)row(line);
-   $('verified').checked=false;
-   $('photoStatus').textContent=proposed.length+' handwritten row suggestions filled for '+detectedWorks[0]+'. Check every field against the original. Nothing was posted.';
-  }else if(detectedWorks.length>1){
-   $('photoStatus').textContent='Multiple Work Orders detected: '+detectedWorks.join(', ')+'. Select ONE from the dropdown. Automatic row assignment is stopped to prevent mixing orders. For OCR handwriting, take a close-up of its red cutting section or enter rows manually.';
+  if(sectionOnly){
+   const selected=workNum($('workNo').value);
+   if(!selected){$('photoStatus').textContent='First select the printed Work No. above (for example CFM-668).';return;}
+   let part=$('photoSection').value;
+   if(part==='auto'){
+    const index=detectedWorks.indexOf(selected);
+    if(index>=0&&index<4){part=String(index+1);$('photoSection').value=part;}
+   }
+   const crop=makeSection(part);
+   await worker.setParameters({tessedit_pageseg_mode:'6'});
+   const result=await worker.recognize(crop);
+   if(session!==photoSequence)return;
+   const ocr=String(result.data.text||'');
+   $('rawText').value='SCANNED SECTION '+part+' for '+selected+':\n'+ocr;
+   const rows=plausibleRows(ocr);
+   if(rows.length){
+    // OCR may mix columns; populate only for user review, never post without confirmation.
+    $('redRows').replaceChildren();rows.forEach(r=>row(r));$('verified').checked=false;
+    $('photoStatus').textContent=rows.length+' possible cutting entries found. Check SRL, Part, Length, Width, Qty from original. Nothing has been saved.';
+   }else $('photoStatus').textContent='Section scanned. This photo handwriting is not reliable enough for automatic row extraction. Correct/enter rows manually. Nothing has been saved.';
   }else{
-   $('photoStatus').textContent='Scan complete. '+(detectedWorks.length?'Work No. suggested; ':'')+'Handwritten cutting rows were not read confidently. Select Work No. and enter verified red-pen rows manually. No data has been posted.';
+   await worker.setParameters({tessedit_pageseg_mode:'11'});
+   const result=await worker.recognize(originalScanCanvas);
+   if(session!==photoSequence)return;
+   const text=String(result.data.text||'');
+   applyDetectedWorks(extractPhotoWorkNos(text));
+   $('rawText').value='PHOTO TEXT (original; all colors):\n'+text;
+   // Scan full enhanced photo only if a single printed Work Order was found;
+   // never assign one page's mixed entries to a random Work Order.
+   if(detectedWorks.length===1){
+    await worker.setParameters({tessedit_pageseg_mode:'6'});
+    const enhanced=await worker.recognize(enhancedScanCanvas);
+    if(session!==photoSequence)return;
+    const rows=plausibleRows(String(enhanced.data.text||''));$('rawText').value+='\nENHANCED PHOTO TEXT:\n'+String(enhanced.data.text||'');
+    if(rows.length){
+     $('redRows').replaceChildren();rows.forEach(r=>row(r));$('verified').checked=false;
+     $('photoStatus').textContent=rows.length+' candidate entries filled. Check against photo before saving.';
+    }else $('photoStatus').textContent='Work No. detected, but handwritten rows need manual correction or section scan.';
+   }else $('photoStatus').textContent=detectedWorks.length>1
+     ?'Detected '+detectedWorks.join(', ')+'. Choose a Work No. above, select its Section 1–4, and press Read this Work Order section.'
+     :'Photo scanned. Choose Work No. manually or retry with a closer photo. Enter only verified Cutting entries.';
   }
- }catch(e){if(session===photoSequence)$('photoStatus').textContent='OCR unavailable: '+String(e.message||e)+'. Select Work No. and fill rows manually; no ERP data changed.'}
- finally{if(worker)try{await worker.terminate()}catch(_){}if(session===photoSequence)btn.disabled=false;}
-};
+ }catch(e){if(session===photoSequence)$('photoStatus').textContent='Automatic reading unavailable: '+String(e.message||e)+'. Manual Cutting entry remains available.';}
+ finally{if(worker)try{await worker.terminate()}catch(_){}photoScanBusy=false;if(session===photoSequence){$('tryOCR').disabled=!originalScanCanvas;$('scanSection').disabled=!originalScanCanvas;updateActionReadiness()}}
+}
+$('tryOCR').onclick=()=>performOCR(false);
+$('scanSection').onclick=()=>performOCR(true);
+
 $('postLive').onclick=()=>{
  try{
   if(window.parent===window)throw Error('Open Red Pen Cutting from Main ERP, not as a separate page.');
