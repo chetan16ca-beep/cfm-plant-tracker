@@ -33,3 +33,17 @@ Cloud state carries pre-existing physical stock. JavaScript files compile syntac
 - Measurements absent in the historical cutting register are NOT guessed. Always verify dimensions against the present job requirements before production.
 - The old ERP state is fetched only via the private-access NEW ERP Edge Function and is strictly READ-ONLY. Old pending, cutting, and physical stock are never overwritten.
 - Missing old reference connectivity does not block manual creation of new Work Orders.
+
+## V5 — Compatibility audit and new modules
+
+Compared against OLD CFM Plant ERP source: Daily Planning (planned Work Order selection with Cloud save), Physical SRL/Width Report, Open-Close-by-balance, Cloth Stock Summary, Monthly Analysis, Person-wise Given/Done/Pending, Bill/Challan Status Tracker, Search across NEW registers, and CSV export added as separate NEW cloud functions. Added Delivery Date/Remarks to NEW Work Order create/edit.
+
+**Remaining parity gaps:** OLD ERP's 78-sheet original Excel mirror/Excel import, full attachment storage, person-wise edit/delete and photo register processing, print layout exact duplication, Wastage W entries, stock serial movement events with opening/closing dates, all historical records in the NEW database, full backup restore, old stage sirens, and full offline functionality are NOT ported. OLD ERP remains accessible separately. Do not assume every OLD feature is now available in NEW ERP.
+
+**Accounting:** Bill/Challan tracker saves statuses and metadata, not legally valid GST invoices.
+
+**Planning caution:** Pending Cut = New Order Qty - saved CUTTING department finished qty. Cutting piece entries may represent multiple pieces per bag and must not be treated as completed bags.
+
+**Data safety:** NEW ERP uses separate Supabase payload, optimistic version checks, read-after-write verification, and no hard deletion. OLD ERP database is read only for previous Work Order references.
+
+**Verification:** JS syntax and DOM IDs checked, merge only eagle-erp files, old/new stock state counts verified. Real browser workflow requires private-link testing; no live order or stock mutation is performed merely as a test.
