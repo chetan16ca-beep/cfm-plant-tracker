@@ -7,7 +7,7 @@ h1{font-size:20px;margin:3px 0 8px}h2{font-size:16px;margin:8px 0 12px}h3{font-s
 .warning{background:#fff4d6;border:1px solid #efcd72;padding:12px;border-radius:9px;line-height:1.55}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 label{display:block;font-weight:650;margin-bottom:6px}label.check{display:flex;align-items:flex-start;gap:8px;font-weight:550;margin:12px 0}
-input,textarea{width:100%;border:1px solid #aabfd0;border-radius:8px;padding:9px;font:inherit;background:#fff;color:#1d3142}
+input,textarea,select{width:100%;border:1px solid #aabfd0;border-radius:8px;padding:9px;font:inherit;background:#fff;color:#1d3142}
 input[type=checkbox]{width:auto;margin:3px 0}input[type=file]{max-width:100%}
 button{border:0;border-radius:8px;background:#1372b7;color:#fff;font:700 13px system-ui;padding:10px 12px;cursor:pointer;margin:5px 5px 5px 0}
 button.secondary{background:#e7f0f8;color:#154f79}button.warningbtn{background:#9c5312}
@@ -19,6 +19,8 @@ button:disabled{opacity:.5;cursor:not-allowed}small{color:#526d81;line-height:1.
 .tableWrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:690px}th,td{border:1px solid #d7e3ec;padding:6px;text-align:left}th{background:#e9f2f9;font-size:12px}td input{min-width:80px;padding:8px}td input.serial{min-width:140px}td input.part{min-width:130px}
 tr:nth-child(even){background:#f8fbfe}#historyList{padding:0;margin:0;list-style:none}#historyList li{margin:8px 0;padding:10px;border:1px solid #d1e1ed;border-radius:8px}
 #rawText,#jsonPaste{width:100%;min-height:95px;font:12px monospace}
+#photoWorkSelect{font-weight:750;background:#f0f8ff;border:2px solid #2a81bd;font-size:16px}#workDetect{margin:8px 0;font-size:13px;color:#1c4966}#choosePhotoWork{padding:12px;background:#edf6fc;border:1px solid #c1d9ed;border-radius:9px;margin:10px 0}.photo-hint{font-size:13px;color:#4b6070;line-height:1.45}
+@media(max-width:700px){.tableWrap{overflow:visible} .tableWrap table,.tableWrap tbody{display:block;width:100%;min-width:0} .tableWrap thead{display:none} .tableWrap tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 8px;margin:12px 0;padding:10px;border:1px solid #bdd6e8;border-radius:12px;background:#f9fcff} .tableWrap td{display:flex;flex-direction:column;min-width:0;border:0;padding:3px} .tableWrap td::before{content:attr(data-label);font-size:11px;font-weight:750;color:#44677d;margin-bottom:3px} .tableWrap td input{min-width:0;width:100%;padding:10px;font-size:16px} .tableWrap td:first-child{grid-column:span 2} .tableWrap td:last-child{justify-content:flex-end} .tableWrap td:last-child button{background:#e7f0f8;color:#a31a1a} .picGrid{grid-template-columns:minmax(0,1fr)} .picGrid img,.picGrid canvas{max-height:520px}}
 .red{color:#b01228}#workDetails{background:#f0f6fb;padding:10px;border-radius:8px;font-size:12px}
 @media print{.noprint{display:none!important}body{background:white}.card{border:0}}
 </style></head><body><main>
@@ -32,10 +34,11 @@ tr:nth-child(even){background:#f8fbfe}#historyList{padding:0;margin:0;list-style
 <p id="workDetails">Select a work number to check Party, Product and Order Qty.</p></section>
 <section class="card"><h2>2. Upload Red-Pen Cutting Photo</h2>
 <label for="photo">Camera / Gallery (JPG, PNG or WEBP)</label><input type="file" id="photo" accept="image/*">
+<div id="choosePhotoWork"><label for="photoWorkSelect">Work Order printed on this photo — choose one *</label><select id="photoWorkSelect"><option value="">Select Work No. (or use Work No. above)</option></select><p class="photo-hint">One photo may contain several Work Orders. Select one Work Order at a time; switch only after saving/reviewing its cutting rows.</p><p id="workDetect">After scanning, matching printed Work Nos. will appear here.</p></div>
 <div class="picGrid"><div><h3>Original Sheet</h3><img id="original" alt="Original photo" hidden><p>Keep black printed Work No. visible to identify the order.</p></div>
-<div><h3>Red Ink Visual Filter</h3><canvas id="redOnly" width="1" height="1"></canvas><p>Visual aid only. Faint red strokes can be missed; use original photo to verify.</p></div></div>
+<div><h3>Enhanced Red-Pen Ink (for reading)</h3><canvas id="redOnly" width="1" height="1"></canvas><p>Red ink is darkened for readability. Always compare every field to the original.</p></div></div>
 <p id="photoStatus"></p>
-<button id="tryOCR" class="secondary" type="button" disabled>🔎 Read Red Pen Photo (OCR suggestions)</button>
+<button id="tryOCR" class="secondary" type="button" disabled>🔎 Scan Work Nos + Red Pen (OCR)</button><p class="photo-hint">Printed Work Nos. can be suggested automatically. Faint handwritten numbers may still need manual correction; nothing will save without verification.</p>
 <details><summary>View OCR text (not verified)</summary><textarea id="rawText" readonly placeholder="OCR text will appear here. Handwriting recognition may be inaccurate."></textarea></details>
 <p><small>Photo stays in your browser for this session and is not automatically uploaded to the ERP cloud or ChatGPT. Send the photo in this ChatGPT conversation for my verification.</small></p></section>
 <section class="card"><h2>3. Verified Cutting Rows — Length × Width × Quantity</h2>
@@ -87,9 +90,9 @@ function row(values={}){
  for(const [key,type,cls] of fields){
   const cell=document.createElement('td'),inp=document.createElement('input');inp.type=type;inp.dataset.field=key;inp.className=cls;inp.value=values[key]??'';
   if(type==='number'){inp.step=key==='qty'?'1':key==='usedMtr'?'0.001':'0.01';inp.min=key==='usedMtr'?'0':'0.01';inp.inputMode='decimal'}
-  inp.setAttribute('aria-label',key);cell.append(inp);tr.append(cell);
+  inp.setAttribute('aria-label',key);cell.dataset.label=({srl:'SRL No.',part:'Part',length:'Length (inch)',width:'Width (inch)',qty:'Cut Qty',usedMtr:'Used Meter'})[key]||key;cell.append(inp);tr.append(cell);
  }
- const td=document.createElement('td'),del=document.createElement('button');del.className='secondary';del.textContent='×';del.type='button';del.title='Remove row';del.onclick=()=>{tr.remove();if(!$('redRows').children.length)row();};td.append(del);tr.append(td);$('redRows').append(tr);
+ const td=document.createElement('td'),del=document.createElement('button');td.dataset.label='Remove line';del.className='secondary';del.textContent='×';del.type='button';del.title='Remove row';del.onclick=()=>{tr.remove();if(!$('redRows').children.length)row();};td.append(del);tr.append(td);$('redRows').append(tr);
 }
 function resetRows(){ $('redRows').replaceChildren();for(let i=0;i<5;i++)row();$('verified').checked=false}
 resetRows();
