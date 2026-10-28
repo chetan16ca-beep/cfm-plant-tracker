@@ -1,44 +1,54 @@
-const CACHE='cfm-plant-17oct-clean-20261020';
+// CFM PWA: network-first for live ERP UI; offline fallback only.
+// No IndexedDB, localStorage, Supabase order/stock changes.
+const CACHE='cfm-plant-ui-20261028-v168';
 const BASE=self.registration.scope;
-const SHELL=[BASE+'manifest.json',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
+const SHELL=[BASE+'index.html',BASE+'manifest.json',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
 
-self.addEventListener('install',e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).catch(()=>{}));
+self.addEventListener('install',event=>{
+  event.waitUntil(caches.open(CACHE).then(async cache=>{
+    for(const url of SHELL){try{await cache.add(new Request(url,{cache:'no-store'}))}catch(e){}}
+  }));
   self.skipWaiting();
 });
 
-self.addEventListener('activate',e=>{
-  e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
-  self.clients.claim();
+self.addEventListener('activate',event=>{
+  event.waitUntil((async()=>{
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(key=>key.startsWith('cfm-plant-')&&key!==CACHE).map(key=>caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
-  if(e.request.mode==='navigate'){
-    e.respondWith(fetch(e.request,{cache:'no-store'}).catch(()=>caches.match(BASE+'index.html')));
-    return;
+async function freshOrCached(request){
+  const cache=await caches.open(CACHE);
+  try{
+    const response=await fetch(request,{cache:'no-store'});
+    if(response.ok && response.type!=='opaque'){
+      try{await cache.put(request,response.clone())}catch(e){}
+    }
+    return response;
+  }catch(error){
+    const cached=await cache.match(request,{ignoreSearch:true});
+    if(cached)return cached;
+    if(request.mode==='navigate'){
+      const shell=await cache.match(BASE+'index.html',{ignoreSearch:true});
+      if(shell)return shell;
+    }
+    return Response.error();
   }
-  const url=new URL(e.request.url);
-  const isChunk=url.origin===location.origin&&url.pathname.includes('/chunks/');
-  if(isChunk){
-    e.respondWith((async()=>{
-      const cache=await caches.open(CACHE);
-      try{
-        const fresh=await fetch(e.request,{cache:'no-store'});
-        if(fresh&&fresh.ok)cache.put(e.request,fresh.clone()).catch(()=>{});
-        return fresh;
-      }catch(_){
-        return (await cache.match(e.request))||Response.error();
-      }
-    })());
-    return;
+}
+
+self.addEventListener('fetch',event=>{
+  const req=event.request;
+  if(req.method!=='GET')return;
+  const url=new URL(req.url);
+  if(url.origin===location.origin){
+    const isAppAsset=url.pathname.startsWith(new URL(BASE).pathname);
+    if(isAppAsset){
+      // Online users always get fresh HTML, scripts, chunks and all other app assets.
+      event.respondWith(freshOrCached(req));
+    }
   }
-  e.respondWith(
-    caches.match(e.request).then(hit=>hit||fetch(e.request).then(r=>{
-      if(r&&r.status===200){const cp=r.clone();caches.open(CACHE).then(c=>c.put(e.request,cp)).catch(()=>{});}
-      return r;
-    }))
-  );
 });
 
 function notificationOptions(payload={}){
@@ -53,27 +63,27 @@ function notificationOptions(payload={}){
     actions:[{action:'open',title:'Open ERP'}]
   };
 }
-
-self.addEventListener('message',e=>{
-  const d=e.data||{};
+self.addEventListener('message',event=>{
+  const d=event.data||{};
+  if(d.type==='SKIP_WAITING')self.skipWaiting();
   if(d.type==='SHOW_NOTIFICATION'){
-    e.waitUntil(self.registration.showNotification(d.title||'CFM Plant Tracker',notificationOptions(d)));
+    event.waitUntil(self.registration.showNotification(d.title||'CFM Plant Tracker',notificationOptions(d)));
   }
 });
-
-self.addEventListener('push',e=>{
+self.addEventListener('push',event=>{
   let payload={};
-  try{payload=e.data?e.data.json():{}}catch(_){payload={body:e.data?e.data.text():'New update'}}
-  const title=payload.title||'CFM Plant Tracker';
-  e.waitUntil(self.registration.showNotification(title,notificationOptions(payload)));
+  try{payload=event.data?event.data.json():{}}catch(e){payload={body:event.data?event.data.text():'New update'}}
+  event.waitUntil(self.registration.showNotification(payload.title||'CFM Plant Tracker',notificationOptions(payload)));
 });
-
-self.addEventListener('notificationclick',e=>{
-  e.notification.close();
-  const target=(e.notification.data&&e.notification.data.url)||BASE;
-  e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{
-    for(const c of list){
-      if('focus' in c){c.navigate(target).catch(()=>{});return c.focus()}
+self.addEventListener('notificationclick',event=>{
+  event.notification.close();
+  const target=(event.notification.data&&event.notification.data.url)||BASE;
+  event.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{
+    for(const client of list){
+      if('focus' in client){
+        client.navigate(target).catch(()=>{});
+        return client.focus();
+      }
     }
     return clients.openWindow?clients.openWindow(target):undefined;
   }));
