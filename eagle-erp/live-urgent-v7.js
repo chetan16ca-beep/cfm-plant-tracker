@@ -30,7 +30,7 @@ function observe(){
  if(baseline!==null&&enabled){
   const fresh=[...current].filter(n=>!baseline.has(n));
   if(fresh.length){sound();button.textContent="🚨 NEW URGENT: CFM-"+fresh.join(", CFM-");button.style.borderColor="#f2c3a1";
-   if("Notification" in window&&Notification.permission==="granted")new Notification("CFM • URGENT Work Order",{body:fresh.map(n=>"CFM-"+n).join(", ")});
+   if("Notification" in window&&Notification.permission==="granted"){try{new Notification("CFM • URGENT Work Order",{body:fresh.map(n=>"CFM-"+n).join(", ")})}catch(_){/* Android may not support Notification constructor */}}
   }
  }
  baseline=current;
