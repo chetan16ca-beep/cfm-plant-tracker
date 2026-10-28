@@ -193,7 +193,7 @@ $('applyJson').onclick=applyJSON;
 function persist(){localStorage.setItem(storageKey,JSON.stringify(drafts))}
 function displayHistory(){
  $('historyList').replaceChildren();
- if(!drafts.length){const li=document.createElement('li');li.textContent='No verified red-pen cutting drafts saved on this device.';$('historyList').append(li);return}
+ if(!drafts.length){const li=document.createElement('li');li.textContent='No verified cutting photo drafts saved on this device.';$('historyList').append(li);return}
  drafts.slice().reverse().forEach(d=>{
   const li=document.createElement('li'),strong=document.createElement('strong');strong.textContent=d.workNo+' • '+d.date+' • '+d.rows.length+' cutting lines';
   const p=document.createElement('p');p.textContent='Source photo: '+(d.photoFileName||'-')+' | Saved: '+d.savedAt+' | NOT posted to ERP';
@@ -209,12 +209,12 @@ $('saveReview').onclick=()=>{
   if(!/^CFM[- ]?\d+$/i.test(workNo))throw Error('Choose a valid Work No.');
   if(liveOrders.length&&!liveOrders.some(x=>canonical(x.workNo)===workNo))throw Error('Work No. not found in loaded ERP Orders. Refresh ERP list or choose the correct number.');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Select Cutting Date');
-  if(!$('photo').files[0])throw Error('Upload the original red pen photo first');
-  if(!$('verified').checked)throw Error('Confirm you compared all fields with the red handwriting');
+  if(!$('photo').files[0])throw Error('Upload the original cutting photo first');
+  if(!$('verified').checked)throw Error('Confirm you compared all fields with the handwritten cutting entries');
   const rows=getRows(),identity=JSON.stringify({workNo,date,rows,photoName});
   if(drafts.some(d=>d.identity===identity))throw Error('This exact cutting draft is already saved. Duplicate blocked.');
   const d={kind:'CFM_RED_CUTTING_VERIFIED_V1',version:1,id:Date.now()+'-'+Math.random().toString(36).slice(2),workNo,date,rows,photoFileName:photoName,verifiedByUser:true,savedAt:new Date().toISOString(),cloudPosted:false,stockPosted:false,completedBagsPosted:false,identity};
-  if(!confirm('Save '+rows.length+' RED PEN cutting rows for '+workNo+' on '+date+' as LOCAL REVIEW DRAFT only? No ERP stock or Pending Qty will change.'))return;
+  if(!confirm('Save '+rows.length+' cutting rows for '+workNo+' on '+date+' as LOCAL REVIEW DRAFT only? No ERP stock or Pending Qty will change.'))return;
   drafts.push(d);try{persist()}catch(e){drafts.pop();throw Error('Local storage full/unavailable: '+e.message)}
   displayHistory();$('entryStatus').textContent='Saved locally: '+rows.length+' verified rows for '+workNo+'. Main ERP Stock / Pending remain unchanged.';$('verified').checked=false;
  }catch(e){$('entryStatus').textContent='Not saved: '+e.message;alert(e.message)}
@@ -377,7 +377,7 @@ $('scanSection').onclick=()=>performOCR(true);
 
 $('postLive').onclick=()=>{
  try{
-  if(window.parent===window)throw Error('Open Red Pen Cutting from Main ERP, not as a separate page.');
+  if(window.parent===window)throw Error('Open Cutting Photo Entry from Main ERP, not as a separate page.');
   if(!photoName||!$('photo').files[0])throw Error('Original cutting sheet photo is required.');
   if(!$('verified').checked)throw Error('Check every field against the original photo before confirming.');
   const workNo=canonical($('workNo').value),date=$('cutDate').value,rows=getRows();
