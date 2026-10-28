@@ -282,16 +282,93 @@ $('photo').onchange=e=>{
 function plausibleRows(s){
  const proposed=[];
  for(const line of String(s||'').split(/\r?\n/)){
-  const normalized=line.replace(/[|,;]+/g,' ').replace(/\s+/g,' ').trim();
+  const normalized=line.replace(/[|,;:]+/g,' ').replace(/\s+/g,' ').trim();
   const m=normalized.match(/(?:^|\s)(E\s*\/?\s*\d{2,5}|EFPPL\d+\/\d+)\s+(DIA|COLL|COLLAR|BOTTOM|HT|BODY|TOP|RING|SIDE|BELT)\s+(\d+(?:\.\d+)?)\s+[x×]?\s*(\d+(?:\.\d+)?)\s+(\d+)(?:\s|$)/i);
   if(!m)continue;
   const length=Number(m[3]),width=Number(m[4]),qty=Number(m[5]);
   if(![length,width,qty].every(v=>Number.isFinite(v)&&v>0&&v<1000)||!Number.isInteger(qty))continue;
-  const srl=m[1].replace(/\s+/g,' ').trim();
-  const key=srl+'|'+m[2]+'|'+length+'|'+width+'|'+qty;
-  if(!proposed.some(r=>r.key===key))proposed.push({key,srl,part:m[2].toUpperCase(),length,width,qty});
+  proposed.push({srl:m[1].replace(/\s+/g,' ').trim(),part:m[2].toUpperCase(),length,width,qty});
  }
- return proposed.slice(0,60).map(({key,...row})=>row);
+ return proposed.slice(0,60);
+}
+// The factory form is a COLUMN table. Tesseract may read SRL, Part and the three
+// numbers on different text lines. Use OCR word coordinates rather than requiring
+// everything on one line; incomplete candidates stay editable and CANNOT be saved.
+function ocrWords(data){
+ const words=[],tsv=String(data?.tsv||'');
+ if(tsv.startsWith('level\t')){
+  const lines=tsv.split(/\r?\n/),heads=lines.shift().split('\t');
+  const index={};heads.forEach((s,i)=>index[s]=i);
+  for(const line of lines){
+   const cells=line.split('\t'),txt=String(cells[index.text]||'').trim();
+   const level=Number(cells[index.level]),confidence=Number(cells[index.conf]);
+   if(level!==5||!txt||!Number.isFinite(confidence)||confidence<5)continue;
+   const left=Number(cells[index.left]),top=Number(cells[index.top]);
+   const width=Number(cells[index.width]),height=Number(cells[index.height]);
+   if([left,top,width,height].every(Number.isFinite))words.push({text:txt,left,top,width,height,confidence});
+  }
+ }
+ if(!words.length){
+  const visit=o=>{
+   if(!o||typeof o!=='object')return;
+   if(o.text&&o.bbox&&Number.isFinite(Number(o.bbox.x0))&&Number.isFinite(Number(o.bbox.y0))){
+    const box=o.bbox;
+    if(!Array.isArray(o.words)&&!Array.isArray(o.lines)&&!Array.isArray(o.paragraphs)&&!Array.isArray(o.blocks))
+     words.push({text:String(o.text),left:box.x0,top:box.y0,width:box.x1-box.x0,height:box.y1-box.y0,confidence:Number(o.confidence)||0});
+   }
+   for(const key of ['blocks','paragraphs','lines','words','symbols'])if(Array.isArray(o[key]))o[key].forEach(visit);
+  };
+  visit(data);
+ }
+ return words;
+}
+function numberFromOCR(s,integer=false){
+ const v=String(s||'').trim().replace(/[,;|]/g,'').replace(/(?<=\d)[oO](?=\d|$)/g,'0');
+ if(!/^\d{1,3}(?:\.\d{1,2})?$/.test(v))return '';
+ const n=Number(v);
+ return n>0&&n<1000&&(!integer||Number.isInteger(n))?n:'';
+}
+function spatialCuttingRows(data,source){
+ const w=source.width,h=source.height,words=ocrWords(data),candidates=[];
+ if(!words.length)return [];
+ const useful=words.filter(x=>x.top>h*.34&&x.top<h*.95&&x.left>=w*.06&&x.left<w*.98);
+ useful.sort((a,b)=>a.top-b.top||a.left-b.left);
+ const groups=[];
+ for(const word of useful){
+  const middle=word.top+word.height*.5;
+  let group=groups.find(g=>Math.abs(g.y-middle)<Math.max(12,h*.028));
+  if(!group){group={y:middle,words:[]};groups.push(group)}
+  group.words.push(word);
+  group.y=(group.y*(group.words.length-1)+middle)/group.words.length;
+ }
+ for(const g of groups){
+  const cols=[[],[],[],[],[]];
+  for(const word of g.words){
+   const x=(word.left+word.width*.5)/w;
+   const col=x<.29?0:x<.47?1:x<.63?2:x<.80?3:4;
+   cols[col].push(word);
+  }
+  const values=cols.map(arr=>arr.sort((a,b)=>a.left-b.left).map(x=>x.text).join(' ').trim());
+  let srl=(values[0].match(/\b(E\s*\/?\s*\d{2,5}|EFPPL\s*\d+\/\d+)\b/i)||[])[1]||'';
+  let part=(values[1].toUpperCase().match(/\b(DIA|COLL|COLLAR|BOTTOM|HT|BODY|TOP|RING|SIDE|BELT)\b/)||[])[1]||'';
+  const length=numberFromOCR(values[2]),width=numberFromOCR(values[3]),qty=numberFromOCR(values[4],true);
+  const valid=[srl,part,length,width,qty].filter(Boolean).length;
+  // Reject isolated printed headers, table lines and spurious paper texture.
+  if(valid>=2&&(srl||part))candidates.push({srl,part,length,width,qty});
+ }
+ const seen=new Set();
+ return candidates.filter(r=>{
+  const key=[r.srl,r.part,r.length,r.width,r.qty].join('|');
+  if(seen.has(key))return false;seen.add(key);return true;
+ }).slice(0,10);
+}
+function readableSection(crop,scale=2){
+ const factor=crop.width<1600?Math.min(2.2,2100/crop.width):1;
+ if(factor<=1.05)return crop;
+ const out=document.createElement('canvas');out.width=Math.max(1,Math.round(crop.width*factor));out.height=Math.max(1,Math.round(crop.height*factor));
+ const ctx=out.getContext('2d');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+ ctx.drawImage(crop,0,0,out.width,out.height);
+ return out;
 }
 function pageBounds(src){
  const ctx=src.getContext('2d',{willReadFrequently:true});
