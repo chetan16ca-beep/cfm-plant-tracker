@@ -64,7 +64,7 @@ let liveOrders=[],photoName='',photoURL='',drafts=[];
 try{const loaded=JSON.parse(localStorage.getItem(storageKey)||'[]');if(Array.isArray(loaded))drafts=loaded}catch(e){}
 function today(){const d=new Date(),offset=d.getTimezoneOffset()*60000;return new Date(d.getTime()-offset).toISOString().slice(0,10)}
 $('cutDate').value=today();
-let detectedWorks=[];
+let detectedWorks=[],sectionWorkMap={};
 function canonical(s){return String(s||'').trim().toUpperCase().replace(/\s+/g,'')}
 function workNum(s){const m=canonical(s).match(/^CFM[-:]?(\d{2,5})$/);return m?'CFM-'+Number(m[1]):''}
 function refreshWork(){
@@ -95,7 +95,12 @@ $('photoWorkSelect').onchange=()=>{
   $('photoWorkSelect').value=old;return;
  }
  if(old&&old!==chosen&&hasTyped)resetRows();
- $('workNo').value=chosen;refreshWork();const idx=detectedWorks.indexOf(chosen);if(idx>=0&&idx<4)$('photoSection').value=String(idx+1);$('entryStatus').textContent='Work Order '+chosen+' selected; check cutting entries only for this order.';
+ $('workNo').value=chosen;refreshWork();const match=Object.entries(sectionWorkMap).find(([part,no])=>no===chosen);
+ $('photoSection').value=match?match[0]:'auto';
+ $('sectionMessage').textContent=match?'Matched '+chosen+' with section '+match[0]+'. Please verify the photo.':
+ '⚠ Work Order location has NOT been verified. Choose section 1–4 and check its heading before reading rows.';
+ if(match)try{makeSection(match[0]);}catch(_){}
+ $('entryStatus').textContent='Work Order '+chosen+' selected. Verify that the section heading matches BEFORE saving cutting entries.';
 };
 function extractPhotoWorkNos(text){
  const matches=[...String(text||'').toUpperCase().matchAll(/\bC\s*F\s*M\s*[-:–—\s]*([0-9][0-9 \t]{1,6}[0-9])\b/g)];
@@ -107,7 +112,10 @@ function applyDetectedWorks(numbers){
  $('workDetect').textContent=detectedWorks.length
   ?'Printed Work Nos detected: '+detectedWorks.join(', ')+(valid.length!==detectedWorks.length?' • Some not found in this ERP — verify against paper.':'')
   :'Work No was not read reliably. Choose Work No manually from this dropdown.';
- if(valid.length===1&&!workNum($('workNo').value)){$('photoWorkSelect').value=valid[0];$('photoWorkSelect').dispatchEvent(new Event('change'));}
+ if(valid.length===1&&!workNum($('workNo').value)){
+   $('photoWorkSelect').value=valid[0];$('photoWorkSelect').dispatchEvent(new Event('change'));
+   $('sectionMessage').textContent='Only one Work No. was detected in the whole photo. Its section is UNKNOWN until separately verified.';
+ }
 }
 function receiveOrders(list){
  liveOrders=list.filter(x=>x&&/^CFM[- ]?\d+$/i.test(String(x.workNo||''))).slice(0,1500).map(x=>({workNo:String(x.workNo).trim(),party:String(x.party||'').slice(0,160),description:String(x.description||'').slice(0,300),cloth:String(x.cloth||'').slice(0,80),width:String(x.width||''),orderQty:Number(x.orderQty)||0,pendingQty:Number(x.pendingQty)||0}));
@@ -240,7 +248,7 @@ $('photo').onchange=e=>{
  $('verified').checked=false;$('rawText').value='';
  $('tryOCR').disabled=true;$('scanSection').disabled=true;
  $('photoStatus').textContent='';$('sectionMessage').textContent='';
- $('sectionPreview').hidden=true;photoName='';detectedWorks=[];photoWorkOptions();
+ $('sectionPreview').hidden=true;photoName='';detectedWorks=[];sectionWorkMap={};photoWorkOptions();
  if(objectURL)URL.revokeObjectURL(objectURL);
  originalScanCanvas=null;enhancedScanCanvas=null;
  if(!file){updateActionReadiness();return;}
@@ -281,36 +289,66 @@ function plausibleRows(s){
  return proposed.slice(0,60).map(({key,...row})=>row);
 }
 function pageBounds(src){
- const ctx=src.getContext('2d',{willReadFrequently:true}),w=src.width,h=src.height,step=Math.max(3,Math.floor(h/350));
- const data=ctx.getImageData(0,0,w,h).data;
- const good=[];
+ const ctx=src.getContext('2d',{willReadFrequently:true});
+ const w=src.width,h=src.height,px=ctx.getImageData(0,0,w,h).data;
+ const step=Math.max(3,Math.floor(h/360)),rows=[];
+ const xs=[.37,.45,.53,.61].map(v=>Math.min(w-1,Math.max(0,Math.floor(v*w))));
  for(let y=0;y<h;y+=step){
-  let n=0;for(const x of [.32,.44,.56,.68]){const k=(y*w+Math.floor(w*x))*4;const l=(data[k]+data[k+1]+data[k+2])/3;if(l>154)n++;}
-  if(n>=3)good.push(y);
+   let white=0;
+   for(const x of xs){
+     const k=(y*w+x)*4,r=px[k],g=px[k+1],b=px[k+2];
+     // Avoid identifying the desk, yellow packaging, and black border as paper.
+     if(Math.min(r,g,b)>156 && Math.max(r,g,b)-Math.min(r,g,b)<45)white++;
+   }
+   rows.push({y,good:white>=3});
  }
- if(good.length<25)return{top:Math.floor(h*.08),bottom:Math.floor(h*.94)};
- const top=good[Math.floor(good.length*.015)],bottom=good[Math.floor(good.length*.985)];
- return bottom-top>h*.4?{top,bottom}:{top:Math.floor(h*.08),bottom:Math.floor(h*.94)};
+ const smooth=rows.map((v,i)=>rows.slice(Math.max(0,i-3),Math.min(rows.length,i+4)).filter(x=>x.good).length>=4);
+ let first=-1,best={start:0,end:h,length:0};
+ for(let i=0;i<=smooth.length;i++){
+   if(i<smooth.length&&smooth[i]){
+     if(first<0)first=i;
+   }else if(first>=0){
+     const begin=rows[first].y,finish=rows[Math.min(i,rows.length-1)].y;
+     if(finish-begin>best.length)best={start:begin,end:finish,length:finish-begin};
+     first=-1;
+   }
+ }
+ if(best.length<h*.44)return {top:Math.round(h*.15),bottom:Math.round(h*.91),detected:false};
+ return {top:Math.max(0,best.start),bottom:Math.min(h,best.end),detected:true};
 }
-function makeSection(sectionNo){
+function makeSection(sectionNo,preview=true){
  const src=enhancedScanCanvas||originalScanCanvas;
  if(!src)throw Error('Upload a Cutting photo.');
- const w=src.width,h=src.height;
- if(sectionNo==='auto')return src;
+ if(sectionNo==='auto')throw Error('Choose Section 1, 2, 3 or 4 first. Full-page Work No. mapping is not reliable.');
  const i=Number(sectionNo);
- if(!Number.isInteger(i)||i<1||i>4)throw Error('Choose a work-order section (1–4).');
- const {top,bottom}=pageBounds(originalScanCanvas);
- const unit=(bottom-top)/4;
- // Overlap slightly to retain row heading/last handwriting at section boundaries.
- const cropTop=Math.max(0,Math.floor(top+(i-1)*unit-unit*.055));
- const cropBottom=Math.min(h,Math.ceil(top+i*unit+unit*.065));
- const out=document.createElement('canvas');
- out.width=w;out.height=Math.max(1,cropBottom-cropTop);
- out.getContext('2d').drawImage(src,0,cropTop,w,out.height,0,0,w,out.height);
- const preview=$('sectionPreview');preview.width=out.width;preview.height=out.height;preview.getContext('2d').drawImage(out,0,0);preview.hidden=false;
- $('sectionMessage').textContent='Section '+i+' shown above. Confirm it contains selected '+(workNum($('workNo').value)||'Work Order')+' before accepting any OCR rows.';
- return out;
+ if(!Number.isInteger(i)||i<1||i>4)throw Error('Choose section 1–4.');
+ const {top,bottom,detected}=pageBounds(originalScanCanvas);
+ const height=bottom-top,contentTop=top+height*.072,contentBottom=top+height*.955;
+ const unit=(contentBottom-contentTop)/4;
+ // Crop each of the four work-order blocks, not the photo background/header.
+ const y0=Math.max(0,Math.floor(contentTop+(i-1)*unit-unit*.035));
+ const y1=Math.min(src.height,Math.ceil(contentTop+i*unit+unit*.035));
+ const x0=Math.max(0,Math.floor(src.width*.025)),x1=Math.min(src.width,Math.ceil(src.width*.965));
+ const crop=document.createElement('canvas');crop.width=x1-x0;crop.height=Math.max(1,y1-y0);
+ crop.getContext('2d').drawImage(src,x0,y0,crop.width,crop.height,0,0,crop.width,crop.height);
+ if(preview){
+  const target=$('sectionPreview');target.width=crop.width;target.height=crop.height;
+  target.getContext('2d').drawImage(crop,0,0);target.hidden=false;
+  const selected=workNum($('workNo').value),verified=sectionWorkMap[String(i)];
+  $('sectionMessage').textContent='Section '+i+' preview • '+(verified?'OCR heading: '+verified:'heading not yet recognized')+
+   (selected?' • Selected: '+selected:'')+(verified&&selected&&verified!==selected?' ⚠ MISMATCH: DO NOT SAVE.':'')+
+   (!detected?' • Photo boundary uncertain; inspect heading before scanning.':'');
+ }
+ return crop;
 }
+$('photoSection').addEventListener('change',()=>{
+ if(!originalScanCanvas)return;
+ if($('photoSection').value==='auto'){
+  $('sectionPreview').hidden=true;
+  $('sectionMessage').textContent='Please select Section 1–4 to avoid mixing different Work Orders.';
+ }else try{makeSection($('photoSection').value)}catch(e){$('sectionMessage').textContent=String(e.message||e)}
+});
+
 async function performOCR(sectionOnly=false){
  const session=photoSequence;
  if(!originalScanCanvas||!photoName){$('photoStatus').textContent='Choose cutting photo first.';return;}
