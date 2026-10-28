@@ -1,7 +1,7 @@
 {
-  "name": "Eagle Plant ERP NEW V3",
+  "name": "Eagle Plant ERP NEW V4",
   "short_name": "Eagle ERP New",
-  "start_url": "./index.html?v=3",
+  "start_url": "./index.html?v=4",
   "scope": "./",
   "display": "standalone",
   "background_color": "#eef3fa",
