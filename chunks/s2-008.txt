@@ -88,6 +88,41 @@ async function cloudFetch(){
   if(!r.ok)throw new Error('Cloud read '+r.status);
   const a=await r.json();return a[0]||null;
 }
+// V170: block every cloud-to-device replacement that would discard local production records.
+let cfmLastCloudConflict='';
+function cfmCloudReplacementRisk(remote){
+  if(!validState(remote))return ['invalid cloud snapshot'];
+  const problems=[];
+  const missing=(part,key)=> {
+    const local=(state[part]||[]).map(x=>normalize(x?.[key])).filter(Boolean);
+    const server=new Set((remote[part]||[]).map(x=>normalize(x?.[key])).filter(Boolean));
+    return [...new Set(local.filter(x=>!server.has(x)))];
+  };
+  const orders=missing('pending','workNo');
+  if(orders.length)problems.push(orders.length+' local Work Orders absent from Cloud ('+orders.slice(0,3).join(', ')+')');
+  const rolls=missing('store','srlNo');
+  if(rolls.length)problems.push(rolls.length+' local Stock SRLs absent from Cloud');
+  for(const part of ['cutting','srlMovement','departmentWork']){
+    const local=Array.isArray(state[part])?state[part].length:0;
+    const remoteCount=Array.isArray(remote[part])?remote[part].length:0;
+    if(local>remoteCount)problems.push(part+' rows: local '+local+', cloud '+remoteCount);
+  }
+  if(cloudDirty)problems.push('unsynced local edits waiting to save');
+  return problems;
+}
+async function cfmAllowCloudReplacement(remote,source){
+  const problems=cfmCloudReplacementRisk(remote);
+  if(!problems.length)return true;
+  try{await window.parent.cfmSaveBackup?.()}catch(_){}
+  const message='CFM DATA PROTECTED: '+problems.join('; ')+'. '+source+' cannot replace PC/mobile records. Export this device backup before recovery.';
+  setCloudBadge('⚠️ Local data protected • sync paused','red');
+  if(message!==cfmLastCloudConflict){
+    cfmLastCloudConflict=message;
+    console.warn(message);
+    alert(message);
+  }
+  return false;
+}
 async function cloudInit(){
   setCloudBadge('☁️ Connecting…','amber');
   try{
@@ -96,15 +131,8 @@ async function cloudInit(){
     cloudUpdatedAt=row?.updated_at||'';
     cloudReady=true;
     if(row&&validState(row.payload)){
-      // Never discard a device's local work orders when the shared cloud snapshot is older.
-      const serverWorks=new Set((row.payload.pending||[]).map(x=>String(x.workNo||'').trim().toUpperCase()).filter(Boolean));
-      const missing=(state.pending||[]).map(x=>String(x.workNo||'').trim().toUpperCase()).filter(x=>x&&!serverWorks.has(x));
-      if(missing.length){
-        cloudReady=false;cloudDirty=false;
-        setCloudBadge('⚠️ Local orders missing in cloud • recovery required','red');
-        try{await window.parent.cfmSaveBackup?.()}catch(_){}
-        alert('CFM SAFETY: '+missing.length+' local Work Orders are not in Cloud. Local data has been preserved; automatic Sync is BLOCKED. Open Safe Recovery Audit and download the backup. Example: '+missing.slice(0,5).join(', '));
-        return;
+      if(!await cfmAllowCloudReplacement(row.payload,'Startup Cloud Sync')){
+        cloudReady=false;return;
       }
       try{await window.parent.cfmSaveBackup?.()}catch(_){}
       cloudDirty=false;
@@ -177,6 +205,8 @@ window.manualCloudSync=async function(){
     if(v>cloudVersion){
       const row=await cloudFetch();
       if(row&&validState(row.payload)){
+        if(!await cfmAllowCloudReplacement(row.payload,'Manual Sync'))throw new Error('Local records differ from Cloud; old data not applied');
+        try{await window.parent.cfmSaveBackup?.()}catch(_){}
         state=clone(row.payload);syncDerivedState();
         cloudVersion=num(row.version)||cloudVersion;cloudUpdatedAt=row.updated_at||cloudUpdatedAt;
         safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();
@@ -194,14 +224,7 @@ async function cloudPoll(){
   try{
     const meta=await cloudFetchMeta();if(!meta)return;const v=num(meta.version)||0;
     if(v>cloudVersion){const row=await cloudFetch();if(row&&validState(row.payload)){
-      const local654=(state.pending||[]).find(x=>normalize(x.workNo)==='CFM-654');
-      const cloudHas654=(row.payload.pending||[]).some(x=>normalize(x.workNo)==='CFM-654');
-      if(local654&&!cloudHas654){
-        cloudDirty=true;setCloudBadge('☁️ Protecting CFM-654 • syncing','amber');queueCloudPush();return;
-      }
-      const serverWorks=new Set((row.payload.pending||[]).map(x=>normalize(x.workNo)).filter(Boolean));
-      const missingLocal=(state.pending||[]).map(x=>normalize(x.workNo)).filter(x=>x&&!serverWorks.has(x));
-      if(missingLocal.length){setCloudBadge('⚠️ Sync blocked • preserve local orders','red');try{await window.parent.cfmSaveBackup?.()}catch(_){}return}
+      if(!await cfmAllowCloudReplacement(row.payload,'Automatic Cloud Refresh'))return;
       try{await window.parent.cfmSaveBackup?.()}catch(_){}
       const prevRaw=JSON.stringify(state);state=clone(row.payload);ensureExcelMasterData();syncDerivedState();cloudVersion=v;cloudUpdatedAt=row.updated_at||'';const nextRaw=JSON.stringify(state);safeStorage.setItem(STORAGE_KEY,nextRaw);renderAll();setCloudBadge('☁️ Updated from other mobile','green');const notice=genericUpdateNotification(prevRaw,nextRaw);showLocalNotification('☁️ Other Device • '+notice.title.replace(/^🔔\s*/,''),notice.body||notificationSummary());
     }}
