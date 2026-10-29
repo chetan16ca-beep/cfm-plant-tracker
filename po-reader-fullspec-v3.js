@@ -155,13 +155,22 @@ function enlarge(tr){
  });
  input.after(area);
  const cap=document.createElement('div');cap.textContent='Full Product / Technical Specification';cap.className='po-spec-caption';area.before(cap);
+ const codeCaption=document.createElement('div');codeCaption.className='po-spec-caption';codeCaption.textContent='PO Item Code (optional; correct OCR if needed)';
+ const codeEdit=document.createElement('input');codeEdit.className='po-code-edit';codeEdit.value=input.dataset.poItemCode||'';
+ codeEdit.maxLength=60;codeEdit.placeholder='e.g. GA1270';
+ codeEdit.addEventListener('input',()=>{
+  input.dataset.poItemCode=codeEdit.value.trim();
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+ });
+ area.after(codeCaption,codeEdit);
 }
 function enhance(){for(const row of table.querySelectorAll('tr'))enlarge(row)}
 new MutationObserver(enhance).observe(table,{childList:true});enhance();
 const style=document.createElement('style');style.id='po-fullspec-v3';style.textContent=
  '#lines .legacy-description{display:none!important}'+
  '#lines .po-big-spec{display:block;min-height:112px;max-height:340px;resize:vertical;white-space:pre-wrap;font:14px/1.5 system-ui!important;border:1px solid #b4c8d6;border-radius:10px;padding:11px;width:100%;margin:0;background:#fff;color:#173047}'+
- '#lines .po-spec-caption{font-size:11px;color:#566c79;font-weight:700;margin-bottom:7px}'+
+ '#lines .po-spec-caption{font-size:11px;color:#566c79;font-weight:700;margin:9px 0 6px}'+
+ '#lines .po-code-edit{width:100%;max-width:300px;padding:9px;border:1px solid #b4c8d6;border-radius:8px;font-size:13px;margin:0 0 9px}'+
  '#lines td:first-child{min-width:250px}#lines td:nth-child(2){min-width:90px}#lines td{vertical-align:top}'+
  '@media(max-width:680px){main{padding:9px}section{padding:11px}#lines,#lines tbody{display:block;width:100%}#lines thead{display:none}#lines tr{display:grid;grid-template-columns:minmax(0,1fr) 84px 45px;gap:9px;margin:0 0 12px;padding:11px;border:1px solid #d6e2ed;border-radius:12px;background:#fbfdff}#lines tr td{display:block;border:0;padding:0;width:auto;min-width:0!important}#lines tr td:first-child{grid-column:1/-1}#lines tr td:nth-child(2):before{content:"Qty";font-size:11px;display:block;font-weight:700;margin-bottom:7px}#lines tr td:nth-child(2) input{min-height:42px;text-align:center}#lines tr td:nth-child(3){grid-column:3}#lines tr td:nth-child(3) button{padding:9px 11px;min-height:42px}}';
 document.head.appendChild(style);
