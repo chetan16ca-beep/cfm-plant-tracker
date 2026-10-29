@@ -428,7 +428,7 @@ $('mrPrintBtn').onclick=()=>{const a=meters(),total=Number($('mrTotal').value);i
  const p=document.getElementById('cfmPOPanel'),f=document.getElementById('cfmPOFrame');
  window.openCFMPOWorkOrders=function(){
    p.hidden=false;
-   if(!f.getAttribute('src'))f.src='./po-workorder.html?v=4';
+   if(!f.getAttribute('src'))f.src='./po-workorder.html?v=5';
  };
  document.getElementById('cfmPOOpen').addEventListener('click',window.openCFMPOWorkOrders);
  if(new URLSearchParams(location.search).get('openPO')==='1')setTimeout(window.openCFMPOWorkOrders,100);
@@ -474,6 +474,7 @@ window.addEventListener('message',function(event){
     const set=(root,selector,value)=>{const el=root.querySelector(selector);if(!el)throw Error('Field missing: '+selector);el.value=value};
     rows.forEach((x,i)=>{
       const root=editors[i];
+      root.dataset.poSource='verified'; // Prevent Product Master replacing original buyer description.
       set(root,'.multi-item-product',x.description);
       set(root,'.multi-item-code',x.customerCode);
       set(root,'.multi-qty',x.quantity);
@@ -482,7 +483,7 @@ window.addEventListener('message',function(event){
     w.cfmPOImportedDraft={party,poNo:po,lineCount:rows.length};
     const panel=$('multiPoItems'),notice=doc.createElement('div');
     notice.style.cssText='background:#fff3d6;border:1px solid #eac97c;padding:12px;border-radius:9px;margin:8px 0;font-weight:700;color:#794d0b';
-    notice.textContent='Imported PO '+po+' • '+rows.length+' separate Work Orders. Verify product, quantity, cloth, size, measurement and Work No. before clicking Save PO Items. '+(issue?'Quantity discrepancy: '+issue+' • Resolution: '+reason:'');
+    notice.textContent='Imported PO '+po+' • '+rows.length+' separate Work Orders. Original PO Description is preserved in Description 1; Item Code stays separate. Verify product, quantity, cloth, size, measurement and Work No. before clicking Save PO Items. '+(issue?'Quantity discrepancy: '+issue+' • Resolution: '+reason:'');
     panel.parentNode.insertBefore(notice,panel);
     document.getElementById('cfmPOPanel').hidden=true;
     reply(event.source,true,'Prepared '+rows.length+' items in ERP Multi-item PO form. Verify each and press Save PO Items to create work orders.');
