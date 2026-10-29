@@ -65,9 +65,9 @@ function getParty(raw){
     const v=clean(m[1]).replace(/\s+(?:Supplier|Delivery\s+Address)$/i,'');
     if(v.length>=6&&/[A-Za-z]/.test(v))possible.push(v);
    }
+   // Name belongs to the company row; stop before later 'State Name' fields.
+   if(possible.length)return possible[possible.length-1].slice(0,135);
   }
-  // On the same visual row the supplier appears first; delivery-party last.
-  if(possible.length)return possible[possible.length-1].slice(0,135);
  }
  // Official company letterhead, but ONLY if there is an explicit vendor block.
  // Otherwise don't mistake the supplier for the buyer.
