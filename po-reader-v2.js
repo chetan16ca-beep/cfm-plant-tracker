@@ -110,7 +110,9 @@ function applyText(text){
   result.found.forEach(x=>{
    $('add').click();
    const row=$('lines').lastElementChild;
-   row.cells[0].querySelector('input').value=x.description;
+   const desc=row.cells[0].querySelector('input');
+   desc.value=x.description;
+   desc.dataset.poItemCode=x.itemCode||'';
    row.cells[1].querySelector('input').value=x.qty??'';
   });
  }
