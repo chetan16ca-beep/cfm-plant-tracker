@@ -110,11 +110,11 @@ function allLines(){
   };
  }).filter(x=>x.description||x.quantity);
 }
-function groupOf(desc){const s=norm(desc);if(/\bI?CFG[- ]?\d{3}\b/.test(s))return 'Centrifuge Bag';if(/\bI?FBD[- ]?\d{3}\b/.test(s))return 'FBD Bag';return 'Other'}
+function groupOf(desc,code){const s=norm([code,desc].filter(Boolean).join(' '));if(/\bI?CFG[- ]?\d{3}\b/.test(s))return 'Centrifuge Bag';if(/\bI?FBD[- ]?\d{3}\b/.test(s))return 'FBD Bag';return 'Other'}
 function mismatches(lines){
  const expected=window.cfmPOExpectedGroups||{};
  return Object.entries(expected).filter(([group,num])=>Number.isFinite(num)&&num>0).map(([group,expectedQty])=>({
-  group,expectedQty,actualQty:lines.filter(x=>groupOf(x.description)===group).reduce((n,x)=>n+x.quantity,0)
+  group,expectedQty,actualQty:lines.filter(x=>groupOf(x.description,x.itemCode)===group).reduce((n,x)=>n+x.quantity,0)
  })).filter(x=>x.actualQty!==x.expectedQty);
 }
 function reset(){prepared=null;$('poTransfer').disabled=true;$('poWORows').replaceChildren();$('poVerified').checked=false;$('poMismatchOverride').hidden=true;$('poDiscrepancyReason').value='';$('poTransferStatus').textContent='';}
@@ -128,7 +128,7 @@ function prepare(){
  if(!lines.length||lines.some(x=>!x.description||!Number.isSafeInteger(x.quantity)||x.quantity<1))throw Error('One or more product descriptions or quantities are incomplete.');
  if(lines.length>40)throw Error('Maximum 40 product lines per upload.');
  const duplicateNames=new Set();
- for(const x of lines){const code=norm(x.description);if(duplicateNames.has(code))throw Error('Duplicate product description: '+x.description+'. Check PO.');duplicateNames.add(code)}
+ for(const x of lines){const code=norm([x.itemCode,x.description].filter(Boolean).join(' | '));if(duplicateNames.has(code))throw Error('Duplicate product description: '+x.description+'. Check PO.');duplicateNames.add(code)}
  const issues=mismatches(lines);
  const html='<table><thead><tr><th>Proposed WO</th><th>Product / Specification</th><th>Qty</th></tr></thead><tbody>'+lines.map((x,i)=>'<tr><td>Auto '+(i+1)+'</td><td style="min-width:200px;text-align:left"><strong>Description:</strong> '+safe(x.description)+(x.itemCode?'<div style="font-size:12px;margin-top:4px;color:#526879">PO Item Code: '+safe(x.itemCode)+'</div>':'')+'</td><td>'+x.quantity+'</td></tr>').join('')+'</tbody></table>';
  $('poWORows').innerHTML=html;
