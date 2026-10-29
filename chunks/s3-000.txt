@@ -1156,10 +1156,70 @@ window.openMultiPendingForm=function(){
   $('saveFormBtn').textContent='Save PO Items';
   document.querySelectorAll('#multiPoItems .multi-po-item-row').forEach(bindMultiPoRow);
 };
+
+/* Old CFM ERP PO Save Receipt: success is local-storage verified, cloud success is event-confirmed. */
+function cfmPOInlineStatus(msg){
+ const dialog=document.getElementById('editDialog');if(!dialog)return;
+ let bar=dialog.querySelector('#cfmPoSaveInlineStatus');
+ if(!bar){
+  bar=document.createElement('div');bar.id='cfmPoSaveInlineStatus';bar.setAttribute('role','alert');
+  const actions=dialog.querySelector('.dialog-actions');if(actions)actions.before(bar);else dialog.append(bar);
+ }
+ bar.style.cssText='display:block;position:relative;padding:12px;margin:12px 0;border:2px solid #e6a29a;border-radius:10px;background:#fff3f0;color:#8b2922;font:700 13px/1.5 system-ui';
+ bar.textContent='⚠️ PO NOT SAVED — '+String(msg||'Please check Work Order details.');
+}
+function cfmPOShowSavedReceipt(party,poNo,created){
+ const workNos=created.map(x=>String(x.workNo||''));
+ const previous=document.getElementById('cfmPoSaveReceipt');
+ if(previous){try{previous.close()}catch(_){}previous.remove()}
+ const dialog=document.createElement('dialog');dialog.id='cfmPoSaveReceipt';
+ dialog.setAttribute('aria-label','PO Saved Confirmation');
+ dialog.style.cssText='position:fixed;box-sizing:border-box;width:min(92vw,510px);max-width:510px;max-height:85vh;overflow:auto;margin:auto;border:1px solid #b6e2ca;border-radius:19px;padding:21px;background:white;color:#17384e;box-shadow:0 18px 65px #0005;font:14px/1.5 system-ui';
+ dialog.innerHTML='<div style="display:flex;align-items:center;gap:12px;margin-bottom:13px"><span aria-hidden="true" style="display:grid;place-items:center;width:43px;height:43px;border-radius:50%;background:#def6e7;color:#137447;font-size:25px">✓</span><div><b style="font-size:19px">PO Saved Successfully</b><div style="font-size:11px;color:#62788a">Verified in this device’s saved Work Orders</div></div></div>'+
+ '<div id="cfmPoSaveReceiptDetails" style="padding:13px 15px;border:1px solid #d9e6ee;border-radius:11px;background:#f7fafc;white-space:pre-wrap;line-height:1.65;word-break:break-word"></div>'+
+ '<div id="cfmPoSaveCloudState" role="status" aria-live="polite" style="margin:14px 0;padding:11px;border:1px solid #edcc8b;border-radius:10px;background:#fff7e6;color:#855919;font-weight:700">⏳ Saved on this device • Cloud sync pending</div>'+
+ '<div style="font-size:11px;color:#62788a;margin-bottom:15px">Cloud confirmation is shown separately. If Cloud sync fails, your local order stays on this device. Do not create duplicate orders.</div>'+
+ '<div style="display:flex;flex-wrap:wrap;gap:8px"><button data-po-action="view" type="button" style="flex:1 1 130px;border:0;border-radius:10px;background:#116b95;color:white;padding:12px;font:700 13px system-ui;cursor:pointer">View Pending Orders</button><button data-po-action="sync" type="button" style="border:1px solid #bdd4e1;border-radius:10px;background:#f1f8fa;color:#20536c;padding:12px;font:700 13px system-ui;cursor:pointer">↻ Sync Now</button><button data-po-action="close" type="button" style="border:1px solid #bcc9d3;border-radius:10px;background:white;color:#344e61;padding:12px;font:700 13px system-ui;cursor:pointer">OK / Close</button></div>';
+ dialog.querySelector('#cfmPoSaveReceiptDetails').textContent='Party: '+party+'\nPO Number: '+(poNo||'Not provided')+'\nWork Orders: '+workNos.join(', ')+'\nTotal Items: '+created.length+'\nTotal Order Qty: '+created.reduce((n,x)=>n+Number(x.orderQty||0),0);
+ const badge=dialog.querySelector('#cfmPoSaveCloudState');
+ function status(text,color){
+  badge.textContent=text;
+  const themes={ok:['#e5f7e9','#a4dcba','#176f3e'],error:['#fff0ed','#eeaea7','#a12b25'],pending:['#fff7e6','#edcc8b','#855919']};
+  const c=themes[color]||themes.pending;badge.style.background=c[0];badge.style.borderColor=c[1];badge.style.color=c[2];
+ }
+ const onCloud=(event)=>{
+  const d=event.detail||{},set=new Set((d.workNos||[]).map(String));
+  if(!workNos.length||!workNos.every(x=>set.has(x)))return;
+  if(d.ok===true)status('✅ CLOUD SYNC COMPLETE • All '+workNos.length+' PO Work Orders backed up in Cloud','ok');
+  else if(d.ok===false)status('⚠️ CLOUD SYNC FAILED • Work Orders are saved on this device only. Use Sync Now after resolving the connection.','error');
+ };
+ document.addEventListener('cfm:po-cloud-result',onCloud);
+ const close=()=>{document.removeEventListener('cfm:po-cloud-result',onCloud);try{if(dialog.open)dialog.close()}catch(_){}dialog.remove()};
+ dialog.addEventListener('cancel',e=>{e.preventDefault();close()});
+ dialog.addEventListener('click',e=>{
+  const button=e.target.closest('button[data-po-action]');if(!button)return;
+  const action=button.dataset.poAction;
+  if(action==='close'){close();return}
+  if(action==='view'){close();showView('pending');return}
+  if(action==='sync'){
+   status('⏳ Checking Cloud sync for these Work Orders…','pending');
+   if(typeof window.manualCloudSync==='function')window.manualCloudSync();
+   else status('⚠️ Sync unavailable • check Cloud connection.','error');
+  }
+ });
+ document.body.append(dialog);
+ setTimeout(()=>{
+  try{dialog.showModal()}catch(e){
+   // Fallback: visible fixed confirmation even if modal dialogs are unavailable.
+   dialog.style.display='block';dialog.style.zIndex='2147483600';
+  }
+ },80);
+}
+
 window.saveMultiPoItems=function(){
   try{
     const party=String(document.getElementById('multiParty')?.value||'').trim();
-    const fail=(msg,el)=>{toast(msg);if(el){el.style.border='2px solid #dc2626';try{el.scrollIntoView({behavior:'smooth',block:'center'})}catch(e){};setTimeout(()=>el.focus(),50)}return false};
+    const fail=(msg,el)=>{cfmPOInlineStatus(msg);toast(msg);if(el){el.style.border='2px solid #dc2626';try{el.scrollIntoView({behavior:'smooth',block:'center'})}catch(e){};setTimeout(()=>el.focus(),50)}return false};
     if(!party)return fail('Party required • upar Party enter karo',document.getElementById('multiParty'));
     const raw=[...document.querySelectorAll('#multiPoItems .multi-po-item-row')];
     if(!raw.length)return fail('Item row nahi mila • form reopen karo',document.getElementById('multiPoItems'));
@@ -1200,8 +1260,17 @@ window.saveMultiPoItems=function(){
     const workRange=created.length===1?created[0].workNo:(created[0].workNo+' – '+created[created.length-1].workNo);
     try{setNextUpdateNotification('🔔 New PO Added',party+' • '+created.length+' item • '+workRange)}catch(e){}
     try{save()}catch(e){console.error('PO save persistence error',e);return fail('SAVE ERROR: '+(e?.message||'storage error'),document.getElementById('saveFormBtn'))}
+    // save() queues Cloud asynchronously; verify the local-storage copy before saying "Saved".
+    let stored=null;
+    try{stored=JSON.parse(safeStorage.getItem(STORAGE_KEY)||'null')}catch(e){console.warn('PO saved record readback failed',e)}
+    const confirmed=Array.isArray(stored?.pending)&&created.every(order=>
+      stored.pending.some(x=>String(x.workNo||'')===String(order.workNo||'')&&
+        String(x.party||'')===String(order.party||'')&&String(x.poNo||'')===String(order.poNo||'')&&
+        String(x.description||'')===String(order.description||'')&&Number(x.orderQty)===Number(order.orderQty)));
+    if(!confirmed)return fail('Work Orders could not be verified in local saved records. Keep the app open and check Sync before retrying.',document.getElementById('saveFormBtn'));
     if(imported&&String(imported.poNo||'').trim().toUpperCase()===poNo.toUpperCase())window.cfmPOImportedDraft=null;
-    toast(created.length+' PO item saved • '+workRange);
+    toast(created.length+' PO items locally saved • '+workRange);
+    cfmPOShowSavedReceipt(party,poNo,created);
     return true;
   }catch(e){console.error('PO SAVE FATAL',e);toast('SAVE ERROR: '+(e?.message||String(e)));return false}
 };
