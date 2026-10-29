@@ -83,7 +83,7 @@ function extractColumnarRows(lines){
  // Rate, UOM. Descriptions can appear on separate lines ABOVE or BELOW
  // each item's numeric table row (e.g., PDFs generated from ERP grids).
  const data=[];
- const rowRe=/^(\d{1,3})\s+(\d{5,16})\s+(\d{5,10})\s+(\d{1,6})(?:\.0+)?\s+([\d,.]+)\s+(EA|EACH|NOS?\.?|PCS?\.?|PIECES?|SET[S]?|ROLL[S]?|PACK[S]?|MTR[S]?|KG[S]?|UNITS?)\b/i;
+ const rowRe=/^(\d{1,3})\s+(\d{5,16})\s+(\d{5,10})\s+(\d{1,6})(?:\.0+)?\s+([\d,.]+)\s+(EA|EACH|NOS?\.?|PCS?\.?|PIECES?|SET[S]?|ROLL[S]?|PACK[S]?|MTR[S]?|KG[S]?|UNITS?)\b(?:\s+(\d{1,2}[-/.]\d{1,2}[-/.]\d{4}))?/i;
  const isTitle=s=>/^(?:SR|S\.?\s*NO\.?|ITEM\s*CODE|PRODUCT\s*DESCRIPTION|DESCRIPTION\/|HSN|SAC|TOTAL|GRAND|TAXABLE|GROSS|AMOUNT|GST|SUBTOTAL|RATE|UNIT\s*PRICE|BRAND|DELIVERY|PAYMENT|TERMS|CONDITIONS|NARRATION|REMARKS|PAGE|CODE\b|DATE\b)\b/i.test(s);
  const isDesc=s=>s.length>=7&&s.length<=180&&/[A-Za-z]{3}/.test(s)&&!isTitle(s)&&!/^(\d{1,3})\s+\d{5,16}\b/.test(s)
    && !/^\d{1,4}[.,]?\d*\s*(?:EA|NOS?|PCS?|KG|MTR)\b/i.test(s)
@@ -91,7 +91,7 @@ function extractColumnarRows(lines){
  const words=s=>new Set(s.toUpperCase().match(/[A-Z]{3,}/g)||[]);
  for(let i=0;i<lines.length;i++){
   const row=lines[i].match(rowRe);if(!row)continue;
-  const [,_serial,itemCode,_hsn,qty]=row;
+  const [,_serial,itemCode,_hsn,qty,_rate,_uom,dueDate]=row;
   const before=[];
   for(let j=i-1;j>=Math.max(0,i-4);j--){
    if(isTitle(lines[j])||rowRe.test(lines[j]))break;
@@ -111,7 +111,9 @@ function extractColumnarRows(lines){
   }
   description=description.replace(/\s+/g,' ').replace(/^\d{1,3}[.)]\s*/,'').trim().slice(0,600);
   if(!description||!isDesc(description))continue;
-  data.push({description,itemCode,qty:Number(qty),group:''});
+  const dm=String(dueDate||'').match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  const deliveryDate=dm?(dm[3]+'-'+dm[2].padStart(2,'0')+'-'+dm[1].padStart(2,'0')):'';
+  data.push({description,itemCode,qty:Number(qty),group:'',deliveryDate});
  }
  return data;
 }
@@ -119,7 +121,10 @@ function extractColumnarRows(lines){
 function extract(raw){
  const lines=String(raw||'').replace(/[‐‑–—]/g,'-').split(/\r?\n/).map(clean).filter(Boolean);
  const columnar=extractColumnarRows(lines);
- if(columnar.length)return {party:getParty(raw),po:getPO(raw),date:getDate(raw),found:columnar,expected:{},lines:lines.length,needsReview:false,extraction:'columnar-table'};
+ if(columnar.length){
+  const dates=[...new Set(columnar.map(x=>x.deliveryDate).filter(Boolean))];
+  return {party:getParty(raw),po:getPO(raw),date:getDate(raw),deliveryDate:dates.length===1?dates[0]:'',found:columnar,expected:{},lines:lines.length,needsReview:dates.length>1,extraction:'columnar-table'};
+ }
  const found=[],expected={};let open=null,group='',inItemTable=false,inTerms=false;
  function flush(){
   if(!open)return;
