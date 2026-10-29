@@ -3,17 +3,17 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const clean=v=>String(v??'').replace(/[‐‑–—]/g,'-').replace(/\u00a0/g,' ').trim().replace(/[ \t]+/g,' ');
-const product=/\b(?:CF|FBD|ANFD|RVPD|RCVD|CENTRIFUGE|FILTER|HEPA|CARTRIDGE|SPARKLER|CLOTH|HOUSING|PTFE|POLYESTER|POLYPROPYLENE)\b/i;
+const product=/\b(?:CF|FBD|ANFD|RVPD|RCVD|CENTRIFUGE|FILTER|HEPA|CARTRIDGE|SPARKLER|CLOTH|HOUSING|PTFE|PVDF|POLYESTER|POLYPROPYLENE|GASKET|ELEMENT|SLEEVE|PIPE|HOSE|VALVE|SCREEN|MESH|PAPER|PAD|SEAL|BAG|LINER)\b/i;
 const codeRx=/\b(?:GA|CA|CFG|ICFG|FBD|IFBD|NF|EFP[- ]?P)[ -]?\d{2,6}[A-Z]?\b/i;
 const spec=/\b(?:MICRON|MESH|ANTISTATIC|LAYER|GSM|FINGER|SINGLE|DOUBLE|WIDTH|LENGTH|DIAMETER|DIA|SIZE|MATERIAL|L\/T|LIFTING|TOP|BOTTOM|STITCH|SEAM|FABRIC|THREAD)\b|\d{2}\s*(?:["″]|MM|INCH)/i;
-const unit=/\b(\d{1,6})(?:\.0+)?\s*(?:NOS?\.?|PCS?\.?|PIECES?|EA|EACH|UNIT[S]?|BAGS?|SET[S]?)\b/ig;
+const unit=/\b(\d{1,6})(?:\.0+)?\s*(?:NOS?\.?|PCS?\.?|PIECES?|EA|EACH|UNIT[S]?|BAGS?|SETS?|ROLLS?|PACKS?|BOXES|METERS?|MTRS?|KGS?|LTRS?|LITERS?)\b/ig;
 const stop=/^(?:TOTAL|SUB\s*TOTAL|GRAND|TAX|GST|GSTIN|HSN|PAN|BUYER|BILL\s*TO|SHIP\s*TO|SELLER|SUPPLIER|VENDOR|ADDRESS|DATE|P\.?\s*O\.?|PURCHASE\s*ORDER|INVOICE|ORDER\s*NO|PAYMENT|DELIVERY|TERMS|NET\s*AMOUNT|FREIGHT|DISCOUNT|RATES?|AMOUNTS?|SIGNATURE|PAGE|PHONE|CONTACT|BANK|EMAIL|REMARKS?|UNIT\s*PRICE)\b/i;
 const qty=s=>{const a=[...String(s).matchAll(unit)];if(a.length)return +a[a.length-1][1];const x=String(s).match(/\b(?:QTY|QUANTITY)\s*[:=\-]?\s*(\d{1,6})\b/i);return x?+x[1]:null};
 function getDate(raw){
  const rows=raw.split(/\r?\n/);
  for(let i=0;i<Math.min(rows.length,110);i++){
   if(/\b(?:DELIVERY|INVOICE|DISPATCH|DUE|EXPIRY|PAYMENT|SHIP(?:MENT)?)\s*DATE\b/i.test(rows[i])&&!/\b(?:PO|ORDER)\s*DATE\b/i.test(rows[i]))continue;
-  const m=rows[i].match(/\b(?:PO|P\.O\.|PURCHASE\s*ORDER|ORDER)?\s*DATE\b\s*[:=-]?\s*(.*)/i);
+  const m=rows[i].match(/\b(?:PO|P\.O\.|PURCHASE\s*ORDER|ORDER)?\s*(?:DATE|DT\.?|DATED)\b\s*[:=-]?\s*(.*)/i);
   if(!m)continue;
   for(const item of [m[1],rows[i+1]||'']){
    let p=item.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/);
@@ -63,7 +63,7 @@ function getParty(raw){
 }
 function extract(raw){
  const lines=String(raw||'').replace(/[‐‑–—]/g,'-').split(/\r?\n/).map(clean).filter(Boolean);
- const found=[],expected={};let open=null,group='',inItemTable=false;
+ const found=[],expected={};let open=null,group='',inItemTable=false,inTerms=false;
  function flush(){
   if(!open)return;
   let description=open.parts.join(' ').replace(/^\s*\d{1,3}\s*[.)-]\s*/,'').replace(/\s+/g,' ').trim();
@@ -85,14 +85,28 @@ function extract(raw){
   const itemCode=codeMatch?codeMatch[1].trim():'';
   if(codeMatch)description=codeMatch[2].trim();
   if(description.length>=5&&(open.isNumbered||product.test(description)||itemCode||codeRx.test(description))){
-   if(!found.some(x=>x.description===description&&x.qty===open.quantity&&x.itemCode===itemCode))
-     found.push({description,itemCode,qty:open.quantity,group:open.group});
+   found.push({description,itemCode,qty:open.quantity,group:open.group}); // Repeat item lines in one buyer PO can be legitimate separate Work Orders.
   }
   open=null;
  }
  for(let i=0;i<lines.length;i++){
   const line=lines[i];
   if(/^={2,}\s*(?:PO\s*)?PAGE\b/i.test(line))continue;
+  // Stop reading goods when the buyer's legal Terms & Conditions begin.
+  // Otherwise numbered legal clauses such as "Goods ... quantity" can be
+  // accidentally interpreted as product lines and create false Work Orders.
+  if(/^(?:(?:GENERAL|STANDARD|PURCHASE)\s+)?TERMS?\s*(?:(?:&|AND|\/)\s*CONDITIONS?)\s*:?$/i.test(line)){
+   flush();inItemTable=false;inTerms=true;continue;
+  }
+  if(inTerms){
+   // Some buyers place terms before the item grid. Resume only on an
+   // explicit grid header; never turn numbered legal clauses into products.
+   const explicitHeader=/^(?:SR\.?|SL\.?|S\.?\s*NO\.?|ITEM|PRODUCT|DESCRIPTION|MATERIAL)\b/i.test(line)
+     &&/\b(?:DESCRIPTION|PARTICULARS|PRODUCT|ITEM\s*NAME|MATERIAL|SPECIFICATION)\b/i.test(line)
+     &&/\b(?:QTY|QUANTITY|UOM|UNITS?)\b/i.test(line);
+   if(explicitHeader){inTerms=false;inItemTable=true;continue}
+   continue;
+  }
   const groupHead=line.match(/^(CENTRIFUGE|CF|FBD)\s*(?:FINGER)?\s*BAGS?\s*[:\-]?\s*(\d{1,5})\s*(?:NOS?|PCS?|PIECES?)\s*$/i);
   if(groupHead){flush();group=/FBD/i.test(groupHead[1])?'FBD Bag':'Centrifuge Bag';expected[group]=Number(groupHead[2]);continue}
   if(stop.test(line)){
@@ -100,14 +114,18 @@ function extract(raw){
    if(/^(?:TERMS|CONDITIONS|PAYMENT|DELIVERY|SIGNATURE|BANK|REMARKS?|NOTES?|INVOICE)\b/i.test(line))inItemTable=false;
    continue;
   }
-  if(/\b(?:DESCRIPTION|PARTICULARS|ITEM\s*NAME|MATERIAL)\b/i.test(line)&&/\b(?:QTY|QUANTITY|UOM|UNIT)\b/i.test(line)){
+  if(!/^\d{1,3}\s*[.)-]/.test(line)&&line.length<180&&/\b(?:DESCRIPTION|PARTICULARS|ITEM\s*(?:NAME|DETAILS)|PRODUCT|MATERIAL|SPECIFICATION|ARTICLE|GOODS)\b/i.test(line)&&/\b(?:QTY|QUANTITY|UOM|UNIT|NOS|PCS)\b/i.test(line)){
    flush();inItemTable=true;continue;
   }
   if(/^(?:SR\.?\s*NO|SL\.?\s*NO|ITEM\s*NO)\b/i.test(line)&&/\b(?:DESC|QTY|RATE)\b/i.test(line)){flush();continue}
   const n=line.match(/^(\d{1,3})\s*(?:[.)\-]\s*|\s+)(.+)$/);
   const body=(n?n[2]:line).replace(/^\s*[|│]\s*/,'').trim();
-  const isProd=product.test(body)||codeRx.test(body)||Boolean(n&&body.length>=8&&/[A-Za-z]{4}/.test(body)&&(qty(line)!==null||inItemTable));
-  const newLine=Boolean((n&&isProd)||(isProd&&(!open||codeRx.test(body)||qty(line)!==null)));
+  const hasText=/[A-Za-z]{3}/.test(body)&&body.length>=6;
+  const isProd=product.test(body)||codeRx.test(body)||Boolean(n&&hasText&&(qty(line)!==null||inItemTable))
+     ||Boolean(inItemTable&&!n&&hasText&&qty(line)!==null);
+  // Never assume a missing piece count from unit price, tax, discount or HSN.
+  const newLine=Boolean((n&&isProd)||(isProd&&(!open||codeRx.test(body)||qty(line)!==null))
+     ||(inItemTable&&!open&&hasText&&!/^(?:ITEM|DESCRIPTION|PARTICULARS|QTY|QUANTITY|UNIT|RATE|PRICE|AMOUNT)\b/i.test(body)));
   if(n&&isProd)inItemTable=true;
   if(newLine){
    flush();open={parts:[body],quantity:qty(line),group,isNumbered:Boolean(n)};
@@ -125,7 +143,7 @@ function extract(raw){
   if(found.length>=40)break;
  }
  flush();
- return {party:getParty(raw),po:getPO(raw),date:getDate(raw),found,expected,lines:lines.length};
+ return {party:getParty(raw),po:getPO(raw),date:getDate(raw),found,expected,lines:lines.length,needsReview:found.some(x=>x.qty===null)};
 }
 window.cfmPOExtractV3=extract;
 const summary=document.createElement('div');
@@ -188,4 +206,5 @@ function sourceLink(){
  else originalLink.style.display='none';
 }
 new MutationObserver(sourceLink).observe(original,{childList:true});sourceLink();
+window.cfmPOParserReady=true;
 })();
