@@ -79,8 +79,14 @@ function extract(raw){
     }
    }
   description=description.replace(/^\s*[|│]\s*/,'').replace(/[\s,;|:-]+$/,'').slice(0,600);
-  if(description.length>=5&&(open.isNumbered||product.test(description)||codeRx.test(description))){
-   if(!found.some(x=>x.description===description&&x.qty===open.quantity))found.push({description,qty:open.quantity,group:open.group});
+  // Separate the buyer's own item code from the PO's exact description.
+  // Do not replace descriptions with a product master or infer unavailable specs.
+  const codeMatch=description.match(/^((?:GA|CA|I?CFG|I?FBD|NF|EFP[- ]?P)[ -]?\d{2,6}[A-Z]?)\s*[-|:]?\s+(.{5,})$/i);
+  const itemCode=codeMatch?codeMatch[1].trim():'';
+  if(codeMatch)description=codeMatch[2].trim();
+  if(description.length>=5&&(open.isNumbered||product.test(description)||itemCode||codeRx.test(description))){
+   if(!found.some(x=>x.description===description&&x.qty===open.quantity&&x.itemCode===itemCode))
+     found.push({description,itemCode,qty:open.quantity,group:open.group});
   }
   open=null;
  }
