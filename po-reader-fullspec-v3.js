@@ -19,7 +19,7 @@ function getDate(raw){
    if(p){const d=p[1]+'-'+p[2].padStart(2,'0')+'-'+p[3].padStart(2,'0');if(!isNaN(Date.parse(d)))return d}
    p=item.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](20\d{2})\b/);
    if(p){const d=p[3]+'-'+p[2].padStart(2,'0')+'-'+p[1].padStart(2,'0');if(!isNaN(Date.parse(d)))return d}
-   p=item.match(/\b(\d{1,2})\s+([A-Za-z]{3,9})\s+(20\d{2})\b/);
+   p=item.match(/\b(\d{1,2})[\s\-/]+([A-Za-z]{3,9})[\s\-/]+(20\d{2})\b/);
    if(p){const dt=new Date(p[2]+' '+p[1]+', '+p[3]);if(!isNaN(dt.valueOf()))return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0')}
   }
  }
@@ -28,18 +28,20 @@ function getDate(raw){
 function getPO(raw){
  const lines=raw.split(/\r?\n/);
  for(let i=0;i<Math.min(lines.length,110);i++){
-  const m=clean(lines[i]).match(/\b(?:P\.?\s*O\.?|PURCHASE\s*ORDER|ORDER)\s*(?:NO\.?|NUMBER|NUM\.?|#)\s*[:#.\-]*\s*([A-Z0-9][A-Z0-9/_-]{1,34})/i);
-  if(m&&/\d/.test(m[1]))return m[1];
+  const m=clean(lines[i]).match(/\b(?:P\.?\s*O\.?|PURCHASE\s*ORDER|ORDER)\s*(?:NO\.?|NUMBER|NUM\.?|#)\s*[:#.\-]*\s*([A-Z0-9][A-Z0-9_-]{1,34})(?:\s*\/\s*([A-Z0-9][A-Z0-9_-]{0,28}))?/i);
+  if(m&&/\d/.test(m[1]))return m[2]?m[1]+' / '+m[2]:m[1];
  }
  return '';
 }
 function getParty(raw){
  const rows=raw.split(/\r?\n/).slice(0,105).map(clean);
  for(let i=0;i<rows.length;i++){
-  const t=rows[i],m=t.match(/^(?:BUYER(?:\s*NAME|\s*ADDRESS)?|BILL(?:ED)?\s*TO|PURCHASER|CUSTOMER(?:\s*NAME)?|ORDERED\s*BY|CONSIGNEE)\s*[:\-]?\s*(.*)$/i);
+  const t=rows[i],m=t.match(/^(?:BUYER(?:\s*NAME|\s*ADDRESS)?|BILL(?:ED)?(?:\s*\/\s*INVOICE)?\s*TO|INVOICE\s*TO|PURCHASER|CUSTOMER(?:\s*NAME)?|ORDERED\s*BY|CONSIGNEE)\s*[:\-]?\s*(.*)$/i);
   if(!m)continue;
-  if(m[1].length>3&&/[A-Za-z]/.test(m[1]))return m[1].slice(0,135);
-  for(let j=i+1;j<Math.min(i+4,rows.length);j++)if(rows[j].length>3&&/[A-Za-z]/.test(rows[j])&&!stop.test(rows[j]))return rows[j].slice(0,135);
+  const own=m[1].replace(/\b(?:DELIVER\s*\/\s*SHIP|SHIP)\s*TO\s*:?.*$/i,'').trim();
+  if(own.length>3&&/[A-Za-z]/.test(own)&&!/^ADDRESS\b/i.test(own))return own.slice(0,135);
+  for(let j=i+1;j<Math.min(i+5,rows.length);j++)
+    if(rows[j].length>3&&/[A-Za-z]/.test(rows[j])&&!stop.test(rows[j])&&!/^(?:DELIVER\s*\/\s*SHIP|SHIP)\s*TO\b/i.test(rows[j]))return rows[j].slice(0,135);
  }
  return '';
 }
@@ -49,7 +51,17 @@ function extract(raw){
  function flush(){
   if(!open)return;
   let description=open.parts.join(' ').replace(/^\s*\d{1,3}\s*[.)-]\s*/,'').replace(/\s+/g,' ').trim();
-  if(open.quantity!==null)description=description.replace(new RegExp('\\b'+open.quantity+'(?:\\.0+)?\\s*(?:NOS?\\.?|PCS?\\.?|PIECES?|EA|EACH|UNITS?|BAGS?|SETS?)\\b','i'),'').trim();
+  if(open.quantity!==null){
+    const qmatches=[...description.matchAll(unit)];
+    // PO grid: "... PORE SIZE 5 µ 18.00 NOS 3550.00 15.00 54315.00".
+    // Drop the Qty/UOM AND price/discount/amount columns, not the technical spec.
+    if(qmatches.length){
+      const q=qmatches.find(x=>Number(x[1])===open.quantity)||qmatches[qmatches.length-1];
+      const before=description.slice(0,q.index).trim();
+      const after=description.slice(q.index+q[0].length).trim();
+      description=(after===''||/^(?:[₹\s,]*\d[\d,.]*\s*){1,6}$/.test(after))?before:(before+' '+after).trim();
+    }
+   }
   description=description.replace(/[\s,;|:-]+$/,'').slice(0,600);
   if(description.length>=5&&(open.isNumbered||product.test(description)||codeRx.test(description))){
    if(!found.some(x=>x.description===description&&x.qty===open.quantity))found.push({description,qty:open.quantity,group:open.group});
