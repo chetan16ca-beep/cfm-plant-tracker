@@ -53,6 +53,22 @@ function getParty(raw){
    if(rows[j].length>3&&/[A-Za-z]/.test(rows[j])&&!stop.test(rows[j])&&!/^(?:DELIVER\s*\/\s*SHIP|SHIP)\s*TO\b/i.test(rows[j]))return rows[j].slice(0,135);
   }
  }
+ // For dual-column supplier/delivery POs, use the buyer named in the
+ // DELIVERY ADDRESS column, never the supplier listed alongside it.
+ const deliveryIndex=rows.findIndex(x=>/\b(?:DELIVERY\s+ADDRESS|SHIP\s+TO|DELIVER\s+TO)\b/i.test(x));
+ if(deliveryIndex>=0){
+  const possible=[];
+  for(let j=deliveryIndex+1;j<Math.min(deliveryIndex+9,rows.length);j++){
+   if(/^(?:SR|S\.?\s*NO|ITEM\s*CODE|PRODUCT\s*DESCRIPTION)\b/i.test(rows[j]))break;
+   const matches=[...rows[j].matchAll(/\bName\s*:\s*(.*?)(?=\s+\b(?:Name|Address|Code|GSTIN|City|E-?Mail|Tel(?:ephone)?|State)\s*:|$)/gi)];
+   for(const m of matches){
+    const v=clean(m[1]).replace(/\s+(?:Supplier|Delivery\s+Address)$/i,'');
+    if(v.length>=6&&/[A-Za-z]/.test(v))possible.push(v);
+   }
+   // Name belongs to the company row; stop before later 'State Name' fields.
+   if(possible.length)return possible[possible.length-1].slice(0,135);
+  }
+ }
  // Official company letterhead, but ONLY if there is an explicit vendor block.
  // Otherwise don't mistake the supplier for the buyer.
  const header=rows.slice(0,6);
@@ -61,8 +77,54 @@ function getParty(raw){
  const vendor=rows.some(x=>/^(?:VENDOR|SUPPLIER)\s*(?:CODE|NAME|ADDRESS|DETAILS)?\s*:/i.test(x));
  return name&&vendor?name.slice(0,135):'';
 }
+
+function extractColumnarRows(lines){
+ // Generic numeric PO tables: Serial, Buyer Item Code, HSN/SAC, Qty,
+ // Rate, UOM. Descriptions can appear on separate lines ABOVE or BELOW
+ // each item's numeric table row (e.g., PDFs generated from ERP grids).
+ const data=[];
+ const rowRe=/^(\d{1,3})\s+(\d{5,16})\s+(\d{5,10})\s+(\d{1,6})(?:\.0+)?\s+([\d,.]+)\s+(EA|EACH|NOS?\.?|PCS?\.?|PIECES?|SET[S]?|ROLL[S]?|PACK[S]?|MTR[S]?|KG[S]?|UNITS?)\b(?:\s+(\d{1,2}[-/.]\d{1,2}[-/.]\d{4}))?/i;
+ const isTitle=s=>/^(?:SR|S\.?\s*NO\.?|ITEM\s*CODE|PRODUCT\s*DESCRIPTION|DESCRIPTION\/|HSN|SAC|TOTAL|GRAND|TAXABLE|GROSS|AMOUNT|GST|SUBTOTAL|RATE|UNIT\s*PRICE|BRAND|DELIVERY|PAYMENT|TERMS|CONDITIONS|NARRATION|REMARKS|PAGE|CODE\b|DATE\b)\b/i.test(s);
+ const isDesc=s=>s.length>=7&&s.length<=180&&/[A-Za-z]{3}/.test(s)&&!isTitle(s)&&!/^(\d{1,3})\s+\d{5,16}\b/.test(s)
+   && !/^\d{1,4}[.,]?\d*\s*(?:EA|NOS?|PCS?|KG|MTR)\b/i.test(s)
+   && !/^(?:Name|GSTIN|PAN|CIN|State|City|Address|Tel|E-?Mail|Supplier)\s*:/i.test(s);
+ const words=s=>new Set(s.toUpperCase().match(/[A-Z]{3,}/g)||[]);
+ for(let i=0;i<lines.length;i++){
+  const row=lines[i].match(rowRe);if(!row)continue;
+  const [,_serial,itemCode,_hsn,qty,_rate,_uom,dueDate]=row;
+  const before=[];
+  for(let j=i-1;j>=Math.max(0,i-4);j--){
+   if(isTitle(lines[j])||rowRe.test(lines[j]))break;
+   if(isDesc(lines[j]))before.unshift(lines[j]);else if(before.length)break;
+  }
+  let after='';
+  for(let j=i+1;j<Math.min(lines.length,i+4);j++){
+   if(rowRe.test(lines[j])||isTitle(lines[j]))break;
+   if(isDesc(lines[j])){after=lines[j];break}
+  }
+  const previous=before.join(' ').replace(/\s+/g,' ').trim();
+  let description=previous;
+  if(after){
+   const a=words(after),b=words(previous);
+   const matched=[...b].filter(x=>a.has(x)).length;
+   if(!previous||matched>=Math.max(1,Math.ceil(b.size*0.5)))description=after;
+  }
+  description=description.replace(/\s+/g,' ').replace(/^\d{1,3}[.)]\s*/,'').trim().slice(0,600);
+  if(!description||!isDesc(description))continue;
+  const dm=String(dueDate||'').match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  const deliveryDate=dm?(dm[3]+'-'+dm[2].padStart(2,'0')+'-'+dm[1].padStart(2,'0')):'';
+  data.push({description,itemCode,qty:Number(qty),group:'',deliveryDate});
+ }
+ return data;
+}
+
 function extract(raw){
  const lines=String(raw||'').replace(/[‐‑–—]/g,'-').split(/\r?\n/).map(clean).filter(Boolean);
+ const columnar=extractColumnarRows(lines);
+ if(columnar.length){
+  const dates=[...new Set(columnar.map(x=>x.deliveryDate).filter(Boolean))];
+  return {party:getParty(raw),po:getPO(raw),date:getDate(raw),deliveryDate:dates.length===1?dates[0]:'',found:columnar,expected:{},lines:lines.length,needsReview:dates.length>1,extraction:'columnar-table'};
+ }
  const found=[],expected={};let open=null,group='',inItemTable=false,inTerms=false;
  function flush(){
   if(!open)return;
