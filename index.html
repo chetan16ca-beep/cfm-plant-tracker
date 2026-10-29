@@ -180,7 +180,7 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261029-v193';
+ const urls=groups.flat(), ver='20261029-v194';
  // Service Worker v168 manages ONLY CFM UI caches. Preserve all other caches and business data.
  const texts=await Promise.all(urls.map(async u=>{
    const cacheKey='cfm-chunk-v185-'+u;
