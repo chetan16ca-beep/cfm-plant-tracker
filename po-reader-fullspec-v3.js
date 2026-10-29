@@ -12,7 +12,8 @@ const qty=s=>{const a=[...String(s).matchAll(unit)];if(a.length)return +a[a.leng
 function getDate(raw){
  const rows=raw.split(/\r?\n/);
  for(let i=0;i<Math.min(rows.length,110);i++){
-  const m=rows[i].match(/\b(?:PO|P\.O\.|ORDER)?\s*DATE\b\s*[:=-]?\s*(.*)/i);
+  if(/\b(?:DELIVERY|INVOICE|DISPATCH|DUE|EXPIRY|PAYMENT|SHIP(?:MENT)?)\s*DATE\b/i.test(rows[i])&&!/\b(?:PO|ORDER)\s*DATE\b/i.test(rows[i]))continue;
+  const m=rows[i].match(/\b(?:PO|P\.O\.|PURCHASE\s*ORDER|ORDER)?\s*DATE\b\s*[:=-]?\s*(.*)/i);
   if(!m)continue;
   for(const item of [m[1],rows[i+1]||'']){
    let p=item.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/);
