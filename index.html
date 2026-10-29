@@ -364,10 +364,14 @@ document.getElementById('cfmLabelImportFile').addEventListener('change',async ev
 #cfmMeterPendingPanel[hidden]{display:none!important}
 #cfmMeterPendingPanel table{border-collapse:collapse;width:100%;font-size:13px}#cfmMeterPendingPanel td,#cfmMeterPendingPanel th{padding:9px;border-bottom:1px solid #e6edf2;text-align:left}#cfmMeterPendingPanel button{padding:8px 12px;border:1px solid #abc9e2;border-radius:8px;background:#eef7ff;cursor:pointer}
 </style>
-<button id="cfmMeterPendingBtn" type="button">⚠ Meter Verification Pending · 12 SRL</button>
+<button id="cfmMeterPendingBtn" type="button">⏳ Cutting MTR Pending · Loading</button>
 <section id="cfmMeterPendingPanel" hidden role="dialog" aria-label="Meter Verification Pending">
 <button id="cfmMeterPendingClose" type="button" style="float:right">✕ Close</button>
-<h2 style="margin-top:2px">⚠ Meter Verification Pending — 12 SRL</h2>
+<h2 style="margin-top:2px">⏳ Cutting MTR Pending — Live</h2>
+<p style="font-size:13px;color:#395468">Every row below is a saved Cutting photo entry whose cloth MTR has <b>not</b> been deducted. Search by Work No, Party or SRL. This is read-only.</p>
+<input id="cfmCuttingPendingSearch" type="search" placeholder="Search Work No / Party / SRL…" aria-label="Find pending cutting" style="box-sizing:border-box;width:100%;padding:11px;border-radius:9px;border:1px solid #b4cfe0;margin:3px 0 12px"/>
+<div id="cfmCuttingPendingLive" aria-live="polite">Opening live Cutting records…</div>
+<h3 style="margin:20px 0 6px">Separate reminder — 12 unmatched physical SRLs (27 Oct)</h3>
 <p>These OPEN serials are listed on physical register pages 03/04 but were not matched in the current Cloud Store records. <b>Physical meter must be checked.</b> This is a reminder only; no stock, cutting, or work-order data is changed.</p>
 <table><thead><tr><th>OPEN SRL</th><th>Photo Page</th><th>Action</th></tr></thead><tbody>
 <tr><td>CFM/11 (0011)</td><td>03</td><td>Check physical meter / serial format</td></tr>
@@ -384,7 +388,43 @@ document.getElementById('cfmLabelImportFile').addEventListener('change',async ev
 <tr><td>0551</td><td>04</td><td>Check physical meter / serial format</td></tr>
 </tbody></table><p style="font-size:12px;color:#596d7d">Verified against Cloud Store on 27 Oct 2026. Missing from this list does not prove deletion from the ERP. No automatic additions or deletions.</p>
 </section>
-<script>(function(){const b=document.getElementById('cfmMeterPendingBtn'),p=document.getElementById('cfmMeterPendingPanel');b.addEventListener('click',()=>{p.hidden=false});document.getElementById('cfmMeterPendingClose').addEventListener('click',()=>{p.hidden=true})})();</script>
+<script>
+(function(){
+'use strict';
+const b=document.getElementById('cfmMeterPendingBtn'),p=document.getElementById('cfmMeterPendingPanel');
+const box=document.getElementById('cfmCuttingPendingLive'),search=document.getElementById('cfmCuttingPendingSearch');
+const safe=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'}[c]));
+function readRows(){
+ try{
+   const w=document.getElementById('app')?.contentWindow;
+   const rows=w?.cfmGetPendingCuttingRows?.();
+   return Array.isArray(rows)?rows:null;
+ }catch(_){return null}
+}
+function refresh(){
+ const all=readRows();
+ if(!all){b.textContent='⏳ Cutting MTR Pending · Loading';if(!p.hidden)box.textContent='ERP is still opening or syncing. Reopen this panel after the ERP loads.';return}
+ b.textContent='⏳ Cutting MTR Pending · '+all.length;
+ if(p.hidden)return;
+ const needle=search.value.trim().toLowerCase();
+ const rows=all.filter(r=>[r.workNo,r.party,r.srlNo,r.cloth,r.part,r.reason].some(s=>String(s||'').toLowerCase().includes(needle)));
+ const orders=new Set(all.map(r=>r.workNo));
+ let markup='<p style="font-weight:700;color:#7b4e09;margin:5px 0 12px">'+all.length+' pending Cutting lines · '+orders.size+' Work Orders · '+rows.length+' shown</p>';
+ if(!rows.length)markup+='<p>No matching pending cutting lines.</p>';
+ else markup+='<div style="overflow-x:auto"><table style="min-width:540px"><thead><tr><th>Work / Party</th><th>SRL</th><th>Cut Details</th><th>Reason Pending</th></tr></thead><tbody>'+
+   rows.map(r=>'<tr><td><b>'+safe(r.workNo)+'</b><div style="font-size:11px;color:#567">'+safe(r.party)+'</div></td><td>'+safe(r.srlNo||'Not entered')+
+   '<div style="font-size:11px;color:#567">'+safe(r.cloth)+'</div></td><td>'+safe(r.part)+' · '+safe(r.size)+'<div>Qty '+safe(r.qty)+
+   (r.clothWidth?' · Roll '+safe(r.clothWidth)+'″':'')+'</div></td><td>'+safe(r.reason)+'</td></tr>').join('')+'</tbody></table></div>';
+ box.innerHTML=markup;
+}
+b.addEventListener('click',()=>{p.hidden=false;refresh();search.focus()});
+document.getElementById('cfmMeterPendingClose').addEventListener('click',()=>p.hidden=true);
+search.addEventListener('input',refresh);
+document.getElementById('app').addEventListener('load',()=>{setTimeout(refresh,1000);setTimeout(refresh,4500)});
+setInterval(refresh,15000);
+refresh();
+})();
+</script>
 
 <!-- Material receiving worksheet and label printing; stock posting deliberately disabled until cloud atomic allocation is integrated -->
 <style>
