@@ -192,6 +192,31 @@ function cfmPhotoStockPendingRows(){
   x.r&&x.r._redPenPendingStock===true&&
   (/PHOTO CUTTING|RED PEN PHOTO/i.test(String(x.r.entryType||''))||x.r._photoRowId||x.r._redPenFingerprint));
 }
+/* Read-only pending list for the main ERP shell. No stock or cutting writes. */
+window.cfmGetPendingCuttingRows=function(){
+ return cfmPhotoStockPendingRows().map(({r})=>{
+   const stock=getStore(r.srlNo||'');
+   const width=stock?Number(stock.width):null;
+   const a=Number(r.length),b=Number(r.height);
+   let reason='MTR not deducted — review stock use';
+   if(!stock)reason='SRL not found in Physical Store';
+   else if(!(width>0))reason='Cloth roll width missing';
+   else if(a>width&&b>width)reason='Piece exceeds roll width — verify layout/joins';
+   else if(!cfmPhotoStockKnownBalance(stock))reason='Physical MTR baseline not confirmed';
+   return {
+     date:String(r.date||''),
+     workNo:String(r.workNo||''),
+     party:String(r.party||''),
+     srlNo:String(r.srlNo||''),
+     cloth:String(r.cloth||stock?.quality||''),
+     clothWidth:width,
+     size:String(r.length||'')+' × '+String(r.height||'')+' in',
+     qty:Number(r.cutQty)||0,
+     part:String(r._photoPart||r._redPenPart||String(r.sizeLine||'').split('|')[0]||''),
+     reason
+   };
+ }).sort((a,b)=>a.workNo.localeCompare(b.workNo,undefined,{numeric:true})||a.date.localeCompare(b.date));
+};
 function cfmPhotoStockKnownBalance(stock){
  if(!stock)return false;
  if(stock.excelLiveBalanceMtr!==null&&stock.excelLiveBalanceMtr!==undefined&&stock.excelLiveBalanceMtr!==''
