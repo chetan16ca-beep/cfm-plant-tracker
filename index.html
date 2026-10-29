@@ -180,7 +180,7 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261029-v190';
+ const urls=groups.flat(), ver='20261029-v191';
  // Service Worker v168 manages ONLY CFM UI caches. Preserve all other caches and business data.
  const texts=await Promise.all(urls.map(async u=>{
    const cacheKey='cfm-chunk-v185-'+u;
@@ -428,7 +428,7 @@ $('mrPrintBtn').onclick=()=>{const a=meters(),total=Number($('mrTotal').value);i
  const p=document.getElementById('cfmPOPanel'),f=document.getElementById('cfmPOFrame');
  window.openCFMPOWorkOrders=function(){
    p.hidden=false;
-   if(!f.getAttribute('src'))f.src='./po-workorder.html?v=5';
+   if(!f.getAttribute('src'))f.src='./po-workorder.html?v=6';
  };
  document.getElementById('cfmPOOpen').addEventListener('click',window.openCFMPOWorkOrders);
  if(new URLSearchParams(location.search).get('openPO')==='1')setTimeout(window.openCFMPOWorkOrders,100);
