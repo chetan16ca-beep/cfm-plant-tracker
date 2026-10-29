@@ -123,4 +123,18 @@ const style=document.createElement('style');style.id='po-fullspec-v3';style.text
  '#lines td:first-child{min-width:250px}#lines td:nth-child(2){min-width:90px}#lines td{vertical-align:top}'+
  '@media(max-width:680px){main{padding:9px}section{padding:11px}#lines,#lines tbody{display:block;width:100%}#lines thead{display:none}#lines tr{display:grid;grid-template-columns:minmax(0,1fr) 84px 45px;gap:9px;margin:0 0 12px;padding:11px;border:1px solid #d6e2ed;border-radius:12px;background:#fbfdff}#lines tr td{display:block;border:0;padding:0;width:auto;min-width:0!important}#lines tr td:first-child{grid-column:1/-1}#lines tr td:nth-child(2):before{content:"Qty";font-size:11px;display:block;font-weight:700;margin-bottom:7px}#lines tr td:nth-child(2) input{min-height:42px;text-align:center}#lines tr td:nth-child(3){grid-column:3}#lines tr td:nth-child(3) button{padding:9px 11px;min-height:42px}}';
 document.head.appendChild(style);
+// View the original PO at full size while verifying lengthy technical specifications.
+const original=$('preview');
+const originalLink=document.createElement('a');
+originalLink.id='poOriginalFullView';
+originalLink.target='_blank';originalLink.rel='noopener noreferrer';
+originalLink.textContent='🔎 Open Original PO Full Size';
+originalLink.style.cssText='display:none;font-weight:700;color:#126eb4;margin:8px 0 12px;font-size:13px;';
+original.after(originalLink);
+function sourceLink(){
+ const view=original.querySelector('iframe,img');
+ if(view?.src){originalLink.href=view.src;originalLink.style.display='inline-block'}
+ else originalLink.style.display='none';
+}
+new MutationObserver(sourceLink).observe(original,{childList:true});sourceLink();
 })();
