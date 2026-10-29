@@ -228,12 +228,59 @@ function cfmPhotoStockKnownBalance(stock){
   &&Math.abs(Number(x.width)-Number(stock.width))<0.11);
  return matches.length===1;
 }
-function cfmPhotoStockMinLength(r,stock){
+/* Practical single-piece strip layout preview. Dimension L x W is the CUT PART;
+   width comes solely from the matching physical SRL roll, never from part W.
+   Batch multiple identical parts across the roll when they fit. Mixing different
+   parts, nesting, seam allowance, offcuts and waste can change ACTUAL use.
+   This result is a PREVIEW only. No meter is deducted from this estimate. */
+function cfmPhotoStockStripEstimate(r,stock){
  const l=Number(r.length),w=Number(r.height),roll=Number(stock?.width),qty=Number(r.cutQty);
- if(!(l>0&&w>0&&qty>0&&roll>0))return null;
- if(Math.min(l,w)>roll+0.11)return null;
- const along=(l<=roll+0.11&&w<=roll+0.11)?Math.min(l,w):(l<=roll+0.11?w:l);
- return along*qty*0.0254;
+ if(!(l>0&&w>0&&qty>0&&roll>0&&Number.isInteger(qty)))return null;
+ const opts=[{cross:l,along:w},{cross:w,along:l}].filter(x=>x.cross<=roll+0.0001).map(x=>({
+   across:Math.max(1,Math.floor((roll+0.0001)/x.cross)),
+   alongIn:x.along,
+   crossIn:x.cross
+ }));
+ if(!opts.length)return null;
+ const layouts=opts.map(o=>({...o,rows:Math.ceil(qty/o.across),meters:Math.ceil(qty/o.across)*o.alongIn*0.0254}));
+ return layouts.sort((a,b)=>a.meters-b.meters)[0];
+}
+function cfmPhotoStockMinLength(r,stock){
+ return cfmPhotoStockStripEstimate(r,stock)?.meters??null;
+}
+function cfmPhotoStockEstimateOverview(rows){
+ const groups=new Map();
+ for(const x of rows){
+  const r=x.r,full=resolveSRL(r.srlNo||''),st=getStore(full);
+  const key=st?.srlNo||String(r.srlNo||'UNKNOWN SRL');
+  if(!groups.has(key))groups.set(key,{key,stock:st,estimate:0,valid:0,invalid:0,review:0,work:new Set()});
+  const g=groups.get(key),calc=cfmPhotoStockStripEstimate(r,st);
+  g.work.add(String(r.workNo||''));
+  if(calc){g.estimate+=calc.meters;g.valid++}else g.invalid++;
+  if(r._photoReviewPending===true||r._photoSRLReviewRequired===true)g.review++;
+ }
+ const format=m=>Number(m).toFixed(3)+' m';
+ const items=[...groups.values()].sort((a,b)=>(b.invalid?1:0)-(a.invalid?1:0)||b.estimate-a.estimate).slice(0,14);
+ return '<div style="margin:9px 0 10px"><b>📏 Calculated strip cutting — SRL-wise (PREVIEW ONLY)</b>'+
+  '<p style="font-size:11px;color:#765520;margin:3px 0 8px">Calculated from actual SRL roll width, cut L × W and cut-piece Qty; identical pieces may fit across the roll. Actual used meters need confirmation of layout, wastage, SRL and material. Not auto deducted.</p>'+
+  '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th>SRL</th><th>Estimate</th><th>Recorded opening / live</th><th>Check</th></tr></thead><tbody>'+
+  items.map(g=>{
+    const base=g.stock;
+    const live=base?.excelLiveBalanceMtr;
+    const liveKnown=cfmPhotoStockKnownBalance(base);
+    const avail=liveKnown?srlBalance(base):null;
+    const opening=Number(base?.openingMtr);
+    let status=g.invalid?'⚠ '+g.invalid+' part(s) exceed roll/unknown':'';
+    if(g.review)status+=(status?' • ':'')+g.review+' paper corrections';
+    if(avail!==null&&g.estimate>avail+0.001)status+=(status?' • ':'')+'⚠ SHORT by '+format(g.estimate-avail);
+    if(!liveKnown)status+=(status?' • ':'')+'Physical meter unverified';
+    if(!status)status='Check actual cutting layout';
+    const knownText=liveKnown?format(avail)+' live':Number.isFinite(opening)?format(opening)+' opening only':'Unknown';
+    return '<tr><td style="padding:6px;border-bottom:1px solid #dde7ed"><b>'+esc(g.key)+'</b><small style="display:block">'+g.work.size+' work orders</small></td>'+
+    '<td style="padding:6px;border-bottom:1px solid #dde7ed">'+format(g.estimate)+'</td>'+
+    '<td style="padding:6px;border-bottom:1px solid #dde7ed">'+esc(knownText)+'</td>'+
+    '<td style="padding:6px;border-bottom:1px solid #dde7ed">'+esc(status)+'</td></tr>'
+  }).join('')+'</tbody></table></div></div>';
 }
 window.cfmRenderPhotoStockReconciliation=function(){
  const sum=$('cfmPhotoStockSummary'),box=$('cfmPhotoStockRows');
@@ -246,7 +293,7 @@ window.cfmRenderPhotoStockReconciliation=function(){
  const used=posted.reduce((a,r)=>a+Number(r._redPenUsedMtr||0),0);
  sum.innerHTML='<b>'+pending.length+' photo Cutting rows pending meter verification</b> • '+posted.length+' physically confirmed deductions ('+fmt(used)+' MTR). '+
   '<div style="margin-top:5px">Recorded SRL meter baseline: <b>'+fmt(recorded)+' MTR</b> ('+known.length+'/'+state.store.length+' SRL with recorded balance).<div>Live calculated balance on those SRLs: <b>'+fmt(adjusted)+' MTR</b> (includes verified Cutting issues and physical reading adjustments).</div></div>'+
-  '<div style="font-size:11px;color:#765520;margin-top:5px">Part Qty is not used MTR. Missing actual meters, incorrect roll width or unknown SRL balance will never auto-deduct stock.</div>';
+  '<div style="font-size:11px;color:#765520;margin-top:5px">Part Qty is not used MTR. Missing actual meters, incorrect roll width or unknown SRL balance will never auto-deduct stock.</div>'+cfmPhotoStockEstimateOverview(pending);
  if(box.hidden)return;
  if(!pending.length){box.innerHTML='<div class="notice">✅ No pending photo Cutting meter verification. Verified deductions appear in SRL balance and stock reports.</div>';return}
  box.innerHTML='<div style="font-size:12px;margin-bottom:9px">Select a line, verify exact SRL and enter actual used MTR to reduce physical stock.</div>'+
@@ -290,14 +337,27 @@ window.cfmOpenPhotoStockDeduction=function(index){
   const id=resolveSRL(ser.value.trim()),stock=getStore(id);
   if(!stock){box.textContent='⚠️ Exact SRL not found in Physical Store. Check complete SRL before deducting.';return}
   const before=cfmPhotoStockKnownBalance(stock)?srlBalance(stock):null;
-  const min=cfmPhotoStockMinLength(r,stock);
+  const suggestion=cfmPhotoStockStripEstimate(r,stock);
   box.textContent='SRL: '+stock.srlNo+' • '+stock.quality+' • Roll width: '+stock.width+' inch\n'+
    'Physical/ERP balance before: '+(before===null?'UNKNOWN — update physical stock before deduction':fmt(before)+' MTR')+'\n'+
-   'Rough 1-piece-across layout: '+(min===null?'SIZE DOES NOT FIT THIS ROLL':fmt(min)+' MTR (not actual consumption)')+
+   'Calculated strip layout: '+(!suggestion?'SIZE DOES NOT FIT THIS ROLL':fmt(suggestion.meters)+' MTR ('+suggestion.across+' piece(s) across × '+suggestion.rows+' rows; NOT actual usage)')+
    '\nActual meter must be physically verified. Do not use the estimated figure automatically.';
+  const actualPreview=Number(used.value);
+  if(used.value.trim()&&Number.isFinite(actualPreview)&&actualPreview>0&&before!==null)
+    box.textContent+='\nBEFORE '+fmt(before)+' − ENTERED '+fmt(actualPreview)+' = PREVIEW AFTER '+fmt(before-actualPreview)+' MTR'+(actualPreview>before?' • NOT ENOUGH STOCK':'');
   box.style.whiteSpace='pre-wrap';
  }
- ser.addEventListener('input',details);details();
+ ser.addEventListener('input',details);
+ used.addEventListener('input',details);
+ details();
+ const initial=cfmPhotoStockStripEstimate(r,getStore(resolved));
+ if(initial&&cfmPhotoStockKnownBalance(getStore(resolved))&&initial.meters<=srlBalance(getStore(resolved))+0.00001){
+   used.value=initial.meters.toFixed(3);
+   const prefill=document.createElement('p');prefill.style.cssText='font-size:11px;color:#7f552a;line-height:1.5;margin:3px 0 10px';
+   prefill.textContent='Suggested MTR filled from identical-piece strip layout, NOT physically measured. Verify roll, offcuts, nesting, and wastage; edit amount before confirming.';
+   used.closest('label').after(prefill);
+ }
+ details();
  const close=()=>{try{dialog.close()}catch(_){}dialog.remove()};
  dialog.addEventListener('cancel',event=>{event.preventDefault();close()});
  dialog.querySelector('[data-act="cancel"]').onclick=close;
