@@ -513,6 +513,7 @@ function renderDashboard(){
   if($('dashPlanCount'))$('dashPlanCount').textContent=planned.length?`(${planned.length} work)`:'';
   if($('dashPlanning'))$('dashPlanning').innerHTML=planned.slice(0,6).map(r=>planningCard(r,true,tdate)).join('')||'<div class="empty">Tomorrow plan not selected yet</div>';
   $('dashCutting').innerHTML=state.cutting.slice(-6).reverse().map(r=>cutCard(r,true)).join('')||'<div class="empty">No cutting entries</div>';
+  if(typeof window.cfmRenderPhotoStockReconciliation==='function')window.cfmRenderPhotoStockReconciliation();
 }
 
 function pendingCard(r,compact=false){

@@ -182,6 +182,167 @@ window.cfmPostRedPenVerified=async function(payload){
   }catch(e){return reject('Photo Cutting update failed: '+String(e.message||e));}
 };
 
+
+/* Photo Cutting => Physical stock reconciliation.
+   No guessed meters: the verified operator enters actual used MTR.
+   srlBalance() already subtracts _trackSrl part usage. Do NOT also
+   overwrite excelLiveBalanceMtr (double counting). */
+function cfmPhotoStockPendingRows(){
+ return (state.cutting||[]).map((r,i)=>({r,i})).filter(x=>
+  x.r&&x.r._redPenPendingStock===true&&
+  (/PHOTO CUTTING|RED PEN PHOTO/i.test(String(x.r.entryType||''))||x.r._photoRowId||x.r._redPenFingerprint));
+}
+function cfmPhotoStockKnownBalance(stock){
+ if(!stock)return false;
+ if(stock.excelLiveBalanceMtr!==null&&stock.excelLiveBalanceMtr!==undefined&&stock.excelLiveBalanceMtr!==''
+     &&Number.isFinite(Number(stock.excelLiveBalanceMtr)))return true;
+ const no=String(stock.srlNo||'').split('/').pop().replace(/^0+/,'');
+ const matches=(window.CFM_PHYSICAL_20261027?.rows||[]).filter(x=>
+  String(x.srl||'').replace(/^0+/,'')===no
+  &&x.meters!==null&&Number.isFinite(Number(x.meters))
+  &&Math.abs(Number(x.width)-Number(stock.width))<0.11);
+ return matches.length===1;
+}
+function cfmPhotoStockMinLength(r,stock){
+ const l=Number(r.length),w=Number(r.height),roll=Number(stock?.width),qty=Number(r.cutQty);
+ if(!(l>0&&w>0&&qty>0&&roll>0))return null;
+ if(Math.min(l,w)>roll+0.11)return null;
+ const along=(l<=roll+0.11&&w<=roll+0.11)?Math.min(l,w):(l<=roll+0.11?w:l);
+ return along*qty*0.0254;
+}
+window.cfmRenderPhotoStockReconciliation=function(){
+ const sum=$('cfmPhotoStockSummary'),box=$('cfmPhotoStockRows');
+ if(!sum||!box)return;
+ const pending=cfmPhotoStockPendingRows();
+ const posted=(state.cutting||[]).filter(r=>r._stockCalcMode==='PHYSICAL_METER_OPERATOR_VERIFIED');
+ const known=state.store.filter(s=>s.excelLiveBalanceMtr!==null&&s.excelLiveBalanceMtr!==undefined&&s.excelLiveBalanceMtr!==''&&Number.isFinite(Number(s.excelLiveBalanceMtr)));
+ const recorded=known.reduce((a,s)=>a+Number(s.excelLiveBalanceMtr),0);
+ const adjusted=known.reduce((a,s)=>a+srlBalance(s),0);
+ const used=posted.reduce((a,r)=>a+Number(r._redPenUsedMtr||0),0);
+ sum.innerHTML='<b>'+pending.length+' photo Cutting rows pending meter verification</b> • '+posted.length+' physically confirmed deductions ('+fmt(used)+' MTR). '+
+  '<div style="margin-top:5px">Recorded SRL meter baseline: <b>'+fmt(recorded)+' MTR</b> ('+known.length+'/'+state.store.length+' SRL with recorded balance).<div>Live calculated balance on those SRLs: <b>'+fmt(adjusted)+' MTR</b> (includes verified Cutting issues and physical reading adjustments).</div></div>'+
+  '<div style="font-size:11px;color:#765520;margin-top:5px">Part Qty is not used MTR. Missing actual meters, incorrect roll width or unknown SRL balance will never auto-deduct stock.</div>';
+ if(box.hidden)return;
+ if(!pending.length){box.innerHTML='<div class="notice">✅ No pending photo Cutting meter verification. Verified deductions appear in SRL balance and stock reports.</div>';return}
+ box.innerHTML='<div style="font-size:12px;margin-bottom:9px">Select a line, verify exact SRL and enter actual used MTR to reduce physical stock.</div>'+
+ pending.slice(-150).reverse().map(x=>{
+  const r=x.r,full=resolveSRL(r.srlNo||''),stock=getStore(full);
+  const before=stock&&cfmPhotoStockKnownBalance(stock)?fmt(srlBalance(stock))+' MTR':'balance not verified';
+  const issue=!stock?' • SRL needs correction':!cfmPhotoStockKnownBalance(stock)?' • Physical meters missing':cfmPhotoStockMinLength(r,stock)===null?' • Width/size mismatch':'';
+  const part=String(r._photoPart||r._redPenPart||String(r.sizeLine||'').split('|')[0]||'PART');
+  return '<div style="background:#fff;border:1px solid #d5e6f0;padding:10px 12px;margin:7px 0;border-radius:10px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:9px">'+
+   '<div style="font-size:12px;line-height:1.55;min-width:180px;flex:1"><b>'+esc(r.workNo||'')+' • '+esc(r.date||'')+'</b><div>'+esc(String(r.srlNo||'SRL UNKNOWN'))+' • '+esc(part)+' • '+esc(r.length)+' × '+esc(r.height)+' in • '+esc(r.cutQty)+' pieces</div>'+
+   '<div style="color:#7f5937">Before: '+esc(before)+esc(issue)+'</div></div>'+
+   '<button type="button" class="btn btn-primary" onclick="window.cfmOpenPhotoStockDeduction('+x.i+')" style="font-size:12px;padding:9px 11px">Verify &amp; Minus MTR</button></div>'
+ }).join('');
+};
+window.cfmTogglePhotoStockRows=function(){
+ const b=$('cfmPhotoStockRows');if(!b)return;b.hidden=!b.hidden;
+ window.cfmRenderPhotoStockReconciliation();
+};
+window.cfmOpenPhotoStockDeduction=function(index){
+ const r=state.cutting[index];
+ if(!r||r._redPenPendingStock!==true){toast('Already deducted or row no longer exists. Refresh Cloud first.');return}
+ const previous=$('cfmPhotoStockModal');if(previous)previous.remove();
+ const dialog=document.createElement('dialog');dialog.id='cfmPhotoStockModal';
+ dialog.style.cssText='box-sizing:border-box;width:min(94vw,520px);max-height:88vh;overflow:auto;border-radius:15px;border:1px solid #bcd8e5;padding:18px;background:white;color:#17374a;box-shadow:0 18px 54px #0006';
+ const resolved=resolveSRL(r.srlNo||'');
+ const src=String(r._photoPart||r._redPenPart||String(r.sizeLine||'').split('|')[0]||'PART');
+ dialog.innerHTML='<h3 style="margin:0 0 10px">✂️ Cutting → Physical Stock Minus</h3>'+
+  '<div style="font-size:13px;line-height:1.6;margin-bottom:10px"><b>'+esc(r.workNo||'')+'</b> • '+esc(r.date||'')+'<div>'+esc(src)+' • '+esc(r.length)+' × '+esc(r.height)+' inch • '+esc(r.cutQty)+' cut pieces</div></div>'+
+  '<label style="display:block;font-weight:bold;font-size:13px;margin-bottom:10px">Full Physical SRL No.'+
+  '<input id="cfmPhotoStockSrl" placeholder="EFPPL03/0351" value="'+esc(resolved||'')+'" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid #9ab6c9;border-radius:8px;margin-top:5px"/></label>'+
+  '<div id="cfmPhotoStockPreview" style="background:#f1f8fc;padding:12px;border:1px solid #c9e0f0;border-radius:8px;font-size:13px;line-height:1.7;margin-bottom:10px">Checking physical SRL…</div>'+
+  '<label style="display:block;font-weight:bold;font-size:13px;margin:10px 0">Actual USED MTR on this Cutting line'+
+  '<input id="cfmPhotoStockUsed" type="number" min="0.001" step="0.001" placeholder="Enter meter used, NOT pieces" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid #9ab6c9;border-radius:8px;margin-top:5px"/></label>'+
+  '<label style="display:flex;gap:9px;font-size:12px;line-height:1.5;padding:10px 0"><input id="cfmPhotoStockConfirmed" type="checkbox" style="width:21px;min-width:21px"/>I checked the physical roll SRL, cloth quality, dimensions, actual used meter and balance. Deduct this amount ONCE.</label>'+
+  '<div id="cfmPhotoStockValidation" role="alert" style="color:#a33228;font-size:12px;min-height:20px"></div>'+
+  '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"><button type="button" data-act="deduct" class="btn btn-primary">✓ Minus from Physical SRL Stock</button><button type="button" data-act="cancel" class="btn">Cancel</button></div>';
+ document.body.append(dialog);
+ const ser=dialog.querySelector('#cfmPhotoStockSrl'),used=dialog.querySelector('#cfmPhotoStockUsed'),box=dialog.querySelector('#cfmPhotoStockPreview');
+ const error=dialog.querySelector('#cfmPhotoStockValidation'),check=dialog.querySelector('#cfmPhotoStockConfirmed');
+ function details(){
+  const id=resolveSRL(ser.value.trim()),stock=getStore(id);
+  if(!stock){box.textContent='⚠️ Exact SRL not found in Physical Store. Check complete SRL before deducting.';return}
+  const before=cfmPhotoStockKnownBalance(stock)?srlBalance(stock):null;
+  const min=cfmPhotoStockMinLength(r,stock);
+  box.textContent='SRL: '+stock.srlNo+' • '+stock.quality+' • Roll width: '+stock.width+' inch\n'+
+   'Physical/ERP balance before: '+(before===null?'UNKNOWN — update physical stock before deduction':fmt(before)+' MTR')+'\n'+
+   'Rough 1-piece-across layout: '+(min===null?'SIZE DOES NOT FIT THIS ROLL':fmt(min)+' MTR (not actual consumption)')+
+   '\nActual meter must be physically verified. Do not use the estimated figure automatically.';
+  box.style.whiteSpace='pre-wrap';
+ }
+ ser.addEventListener('input',details);details();
+ const close=()=>{try{dialog.close()}catch(_){}dialog.remove()};
+ dialog.addEventListener('cancel',event=>{event.preventDefault();close()});
+ dialog.querySelector('[data-act="cancel"]').onclick=close;
+ dialog.querySelector('[data-act="deduct"]').onclick=async function(){
+  error.textContent='';
+  const button=this,actual=Number(used.value);
+  if(!used.value.trim()||!Number.isFinite(actual)||actual<=0||actual>100000){error.textContent='Enter the actual measured used meter, not number of pieces.';return}
+  if(!check.checked){error.textContent='Confirm that you physically verified the SRL, quality, meter and balance.';return}
+  const full=resolveSRL(ser.value.trim()),stock=getStore(full);
+  if(!stock){error.textContent='Stock SRL not found. Enter exact existing SRL from Physical Store.';return}
+  const minimum=cfmPhotoStockMinLength(r,stock);
+  if(minimum===null){error.textContent='Cutting size cannot fit this roll width. Correct dimensions or SRL first; no stock deducted.';return}
+  if(!cfmPhotoStockKnownBalance(stock)){error.textContent='This SRL has no verified live meter baseline. Update Physical Stock meter first; no deduction.';return}
+  const order=getPending(r.workNo);
+  const cloth=String(order?.cloth||r.cloth||'').match(/\b\d{3,5}\b/);
+  const quality=String(stock.quality||'').match(/\b\d{3,5}\b/);
+  if(cloth&&quality&&cloth[0]!==quality[0]){
+   error.textContent='Cloth mismatch: Work Order '+cloth[0]+' vs SRL '+quality[0]+'. Resolve physical material before deduction.';return
+  }
+  const orderType=String(order?.cloth||r.cloth||'').toUpperCase();
+  const stockType=String(stock.quality||'').toUpperCase();
+  const isAnt=s=>/\b(?:ANT|AS|ANTISTATIC)\b/.test(s)&&!/\bNON[ -]?ANTISTATIC\b/.test(s);
+  const isPlain=s=>/\b(?:PL|PLAIN|NON[ -]?ANTISTATIC)\b/.test(s);
+  if((isAnt(orderType)&&isPlain(stockType))||(isPlain(orderType)&&isAnt(stockType))){
+   error.textContent='Antistatic / Plain cloth mismatch. Verify stock material and order before any meter deduction.';return
+  }
+  if(!cloudReady||cloudDirty||cloudBusy){error.textContent='Cloud sync not ready. Sync/refresh old ERP before stock deduction.';return}
+  const before=srlBalance(stock);
+  if(actual>before+0.00001){error.textContent='Only '+fmt(before)+' MTR available; cannot deduct '+actual+' MTR.';return}
+  if(!confirm('Physical stock deduction:\n'+r.workNo+' / '+stock.srlNo+'\nBEFORE '+fmt(before)+' MTR\nUSED '+fmt(actual)+' MTR\nAFTER '+fmt(before-actual)+' MTR\n\nConfirm actual measured usage?'))return;
+  button.disabled=true;button.textContent='Saving & syncing…';
+  try{
+   const meta=await cloudFetchMeta();
+   if(num(meta?.version)!==num(cloudVersion))throw Error('Cloud changed on another device. Refresh Cloud and retry.');
+   const current=state.cutting[index];
+   if(current!==r||current._redPenPendingStock!==true)throw Error('Cutting record changed; refresh to prevent duplicate stock subtraction.');
+   const beforeCopy=clone(current);
+   const now=new Date().toISOString();
+   current.srlNo=stock.srlNo;
+   current._photoPaperSrl=current._photoPaperSrl||beforeCopy.srlNo;
+   current._trackSrl=true;
+   current._redPenPendingStock=false;
+   current._redPenVerified=true;
+   current._redPenUsedMtr=actual;
+   current._stockCalcMode='PHYSICAL_METER_OPERATOR_VERIFIED';
+   current._stockCalculationBasis='Physical meter verified by operator, not calculated from cut pieces';
+   current._physicalRollBalanceUnverified=false;
+   current._stockBeforeMtr=before;
+   current._stockAfterMtr=before-actual;
+   current._stockDeductedAt=now;
+   current._stockDeductedBy=deviceLabel();
+   current.remark=(String(current.remark||'')+' | Physical stock meter verified: '+actual+' MTR on '+stock.srlNo).slice(0,1000);
+   const after=srlBalance(stock);
+   if(Math.abs(after-(before-actual))>0.02){state.cutting[index]=beforeCopy;throw Error('Computed stock balance mismatch. No deduction saved.')}
+   try{save();clearTimeout(cloudPushTimer)}catch(e){state.cutting[index]=beforeCopy;throw e}
+   const pushed=await cloudPush(true);
+   window.cfmRenderPhotoStockReconciliation();
+   close();
+   const receipt=$('cfmPhotoStockReceipt');
+   const info='SRL '+stock.srlNo+' • '+r.workNo+' • BEFORE '+fmt(before)+' − USED '+fmt(actual)+' = BALANCE '+fmt(after)+' MTR';
+   if(receipt){receipt.textContent=(pushed?'✅ Cloud confirmed: ':'⚠️ Saved on device only; Cloud sync not confirmed: ')+info;receipt.style.cssText='padding:10px;border-radius:8px;background:'+(pushed?'#e8faed':'#fff2e0')+';color:'+(pushed?'#155c35':'#8a5320')+';margin-top:10px;font-size:12px;font-weight:bold'}
+   if(!pushed)alert('Stock deducted on this device but CLOUD SYNC FAILED. Do not enter the same deduction again. Use Sync Now and verify.');
+  }catch(e){
+   error.textContent='NOT SAVED: '+String(e.message||e);
+   button.disabled=false;button.textContent='✓ Minus from Physical SRL Stock';
+  }
+ };
+ try{dialog.showModal()}catch(_){dialog.style.display='block';dialog.style.position='fixed';dialog.style.zIndex=999999;dialog.style.top='5vh';dialog.style.left='3vw'}
+};
+
 window.deleteRecord=function(type,i){
   if(!confirm('Delete this record?'))return;
   if(type==='cutting'){const r=state.cutting[i];if(r?._autoPendingLinked)applyPendingDelta(r.workNo,-num(r.cutQty));}

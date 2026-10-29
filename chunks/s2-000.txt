@@ -74,6 +74,15 @@
         <button class="cfm-main-action physical" type="button" onclick="showView('srltracker')"><span class="cfm-ma-icon" aria-hidden="true">📦</span><span class="cfm-ma-copy"><strong>Physical Stock</strong><small>Physical SRL stock tracker</small></span><span class="cfm-ma-arrow" aria-hidden="true">›</span></button>
         
       </nav>
+      <section class="panel" id="cfmPhotoStockPanel" style="margin:14px 0;border:1px solid #b7d6e9;border-left:5px solid #2178a9;background:#f8fcff;border-radius:13px;padding:14px">
+        <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">
+          <div><h3 style="margin:0 0 5px;font-size:18px">📦 Cutting → Physical Stock Minus</h3><p style="font-size:12px;color:#4a667c;margin:0">SRL-wise before / actual used meters / remaining • verified photo Cutting only</p></div>
+          <button class="btn btn-primary" type="button" onclick="window.cfmTogglePhotoStockRows()">Review &amp; Minus MTR</button>
+        </div>
+        <div id="cfmPhotoStockSummary" role="status" aria-live="polite" style="font-size:13px;line-height:1.6;margin-top:12px">Loading live SRL stock status…</div>
+        <div id="cfmPhotoStockReceipt" role="status" aria-live="polite" style="margin-top:8px"></div>
+        <div id="cfmPhotoStockRows" hidden style="margin-top:12px"></div>
+      </section>
       <div class="kpis" id="kpis"></div>
 
       <div class="exec-group"><div class="dashboard-section-title"><h3>⚙️ Operations</h3><span>Daily production control</span></div><div class="module-command-grid primary-modules">
