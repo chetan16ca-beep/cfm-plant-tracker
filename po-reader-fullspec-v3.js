@@ -98,7 +98,15 @@ function extract(raw){
   if(/^(?:(?:GENERAL|STANDARD|PURCHASE)\s+)?TERMS?\s*(?:(?:&|AND|\/)\s*CONDITIONS?)\s*:?$/i.test(line)){
    flush();inItemTable=false;inTerms=true;continue;
   }
-  if(inTerms)continue;
+  if(inTerms){
+   // Some buyers place terms before the item grid. Resume only on an
+   // explicit grid header; never turn numbered legal clauses into products.
+   const explicitHeader=/^(?:SR\.?|SL\.?|S\.?\s*NO\.?|ITEM|PRODUCT|DESCRIPTION|MATERIAL)\b/i.test(line)
+     &&/\b(?:DESCRIPTION|PARTICULARS|PRODUCT|ITEM\s*NAME|MATERIAL|SPECIFICATION)\b/i.test(line)
+     &&/\b(?:QTY|QUANTITY|UOM|UNITS?)\b/i.test(line);
+   if(explicitHeader){inTerms=false;inItemTable=true;continue}
+   continue;
+  }
   const groupHead=line.match(/^(CENTRIFUGE|CF|FBD)\s*(?:FINGER)?\s*BAGS?\s*[:\-]?\s*(\d{1,5})\s*(?:NOS?|PCS?|PIECES?)\s*$/i);
   if(groupHead){flush();group=/FBD/i.test(groupHead[1])?'FBD Bag':'Centrifuge Bag';expected[group]=Number(groupHead[2]);continue}
   if(stop.test(line)){
