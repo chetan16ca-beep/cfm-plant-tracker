@@ -101,7 +101,7 @@ function poExtract(text){
 }
 window.cfmPOExtractV2=poExtract; // Pure, read-only parser for diagnostics.
 function applyText(text){
- const result=poExtract(text);
+ const result=(window.cfmPOExtractV3||poExtract)(text);
  if(result.party&&!$('party').value.trim())$('party').value=result.party;
  if(result.po&&!$('po').value.trim())$('po').value=result.po;
  if(result.date&&!$('date').value)$('date').value=result.date;
@@ -115,6 +115,7 @@ function applyText(text){
   });
  }
  window.cfmPOExpectedGroups=result.expected;
+ if(typeof window.cfmPOAfterParse==='function')window.cfmPOAfterParse(result);
  const missing=result.found.filter(x=>x.qty===null).length;
  const warnings=[];
  if(!result.party&&!$('party').value)warnings.push('Party name needs manual entry');
@@ -138,7 +139,26 @@ async function recognizeImage(image){
     if(p.status==='recognizing text')status('Reading image… '+Math.round(100*(p.progress||0))+'%');
    }}),100000,'OCR engine');
    const r=await withTimeout(worker.recognize(image),110000,'OCR recognition');
-   return String(r.data?.text||'');
+   let text=String(r.data?.text||'');
+   if(image instanceof File && typeof worker.setParameters==='function' && window.cfmPOExtractV3){
+    const assess=value=>{
+     const p=window.cfmPOExtractV3(value);
+     return p.found.length*90+p.found.filter(x=>x.qty!==null).length*45+
+        (p.party?20:0)+(p.po?25:0)+(p.date?35:0)+
+        p.found.reduce((n,x)=>n+Math.min(x.description.length,160)/8,0);
+    };
+    const first=window.cfmPOExtractV3(text);
+    if(!first.found.length||!first.date||!first.po||first.found.some(x=>x.qty===null)){
+     try{
+      status('Rechecking product specs, PO number and date with a second OCR layout…');
+      await worker.setParameters({tessedit_pageseg_mode:'6'});
+      const attempt=await withTimeout(worker.recognize(image),100000,'OCR second layout');
+      const alternative=String(attempt.data?.text||'');
+      if(assess(alternative)>assess(text))text=alternative;
+     }catch(e){console.warn('PO OCR alternative layout skipped',e)}
+    }
+   }
+   return text;
   }
   const r=await withTimeout(T.recognize(image,'eng'),110000,'OCR recognition');
   return String(r.data?.text||'');
@@ -164,7 +184,7 @@ async function pdfRead(file){
   const text=[...rows.entries()].sort((a,b)=>b[0]-a[0]).map(([,line])=>line.sort((a,b)=>a.x-b.x).map(k=>k.text).join(' ')).join('\n');
   all+='\n=== PO PAGE '+i+' ===\n'+text+'\n';
   const chars=text.replace(/[^a-z0-9]/gi,'').length;
-  if(chars<100||(chars<1000&&poExtract(text).found.length===0)){
+  if(chars<100||(chars<1000&&(window.cfmPOExtractV3||poExtract)(text).found.length===0)){
    status('Scanned PDF page '+i+': running OCR…');
    const view=page.getViewport({scale:1.65});
    const scale=Math.min(1,Math.sqrt(3100000/(view.width*view.height)));
