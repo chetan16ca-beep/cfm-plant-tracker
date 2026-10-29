@@ -63,7 +63,7 @@ function getParty(raw){
 }
 function extract(raw){
  const lines=String(raw||'').replace(/[‐‑–—]/g,'-').split(/\r?\n/).map(clean).filter(Boolean);
- const found=[],expected={};let open=null,group='',inItemTable=false;
+ const found=[],expected={};let open=null,group='',inItemTable=false,inTerms=false;
  function flush(){
   if(!open)return;
   let description=open.parts.join(' ').replace(/^\s*\d{1,3}\s*[.)-]\s*/,'').replace(/\s+/g,' ').trim();
@@ -92,6 +92,13 @@ function extract(raw){
  for(let i=0;i<lines.length;i++){
   const line=lines[i];
   if(/^={2,}\s*(?:PO\s*)?PAGE\b/i.test(line))continue;
+  // Stop reading goods when the buyer's legal Terms & Conditions begin.
+  // Otherwise numbered legal clauses such as "Goods ... quantity" can be
+  // accidentally interpreted as product lines and create false Work Orders.
+  if(/^(?:(?:GENERAL|STANDARD|PURCHASE)\s+)?TERMS?\s*(?:(?:&|AND|\/)\s*CONDITIONS?)\s*:?$/i.test(line)){
+   flush();inItemTable=false;inTerms=true;continue;
+  }
+  if(inTerms)continue;
   const groupHead=line.match(/^(CENTRIFUGE|CF|FBD)\s*(?:FINGER)?\s*BAGS?\s*[:\-]?\s*(\d{1,5})\s*(?:NOS?|PCS?|PIECES?)\s*$/i);
   if(groupHead){flush();group=/FBD/i.test(groupHead[1])?'FBD Bag':'Centrifuge Bag';expected[group]=Number(groupHead[2]);continue}
   if(stop.test(line)){
@@ -99,7 +106,7 @@ function extract(raw){
    if(/^(?:TERMS|CONDITIONS|PAYMENT|DELIVERY|SIGNATURE|BANK|REMARKS?|NOTES?|INVOICE)\b/i.test(line))inItemTable=false;
    continue;
   }
-  if(/\b(?:DESCRIPTION|PARTICULARS|ITEM\s*(?:NAME|DETAILS)|PRODUCT|MATERIAL|SPECIFICATION|ARTICLE|GOODS)\b/i.test(line)&&/\b(?:QTY|QUANTITY|UOM|UNIT|NOS|PCS)\b/i.test(line)){
+  if(!/^\d{1,3}\s*[.)-]/.test(line)&&line.length<180&&/\b(?:DESCRIPTION|PARTICULARS|ITEM\s*(?:NAME|DETAILS)|PRODUCT|MATERIAL|SPECIFICATION|ARTICLE|GOODS)\b/i.test(line)&&/\b(?:QTY|QUANTITY|UOM|UNIT|NOS|PCS)\b/i.test(line)){
    flush();inItemTable=true;continue;
   }
   if(/^(?:SR\.?\s*NO|SL\.?\s*NO|ITEM\s*NO)\b/i.test(line)&&/\b(?:DESC|QTY|RATE)\b/i.test(line)){flush();continue}
