@@ -233,4 +233,5 @@ btn.onclick=async()=>{
   status('PO reading failed: '+String(e.message||e)+' Manual entry is still available below. You can also paste PO text and press Parse Edited Text.',true);
  }finally{btn.disabled=false;btn.textContent='🔎 Auto Read PO'}
 };
+window.cfmPOReaderReady=true;
 })();
