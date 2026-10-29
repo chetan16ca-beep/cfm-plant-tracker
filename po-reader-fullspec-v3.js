@@ -63,7 +63,7 @@ function getParty(raw){
 }
 function extract(raw){
  const lines=String(raw||'').replace(/[‐‑–—]/g,'-').split(/\r?\n/).map(clean).filter(Boolean);
- const found=[],expected={};let open=null,group='';
+ const found=[],expected={};let open=null,group='',inItemTable=false;
  function flush(){
   if(!open)return;
   let description=open.parts.join(' ').replace(/^\s*\d{1,3}\s*[.)-]\s*/,'').replace(/\s+/g,' ').trim();
@@ -79,8 +79,14 @@ function extract(raw){
     }
    }
   description=description.replace(/^\s*[|│]\s*/,'').replace(/[\s,;|:-]+$/,'').slice(0,600);
-  if(description.length>=5&&(open.isNumbered||product.test(description)||codeRx.test(description))){
-   if(!found.some(x=>x.description===description&&x.qty===open.quantity))found.push({description,qty:open.quantity,group:open.group});
+  // Separate the buyer's own item code from the PO's exact description.
+  // Do not replace descriptions with a product master or infer unavailable specs.
+  const codeMatch=description.match(/^((?:GA|CA|I?CFG|I?FBD|NF|EFP[- ]?P)[ -]?\d{2,6}[A-Z]?)\s*[-|:]?\s+(.{5,})$/i);
+  const itemCode=codeMatch?codeMatch[1].trim():'';
+  if(codeMatch)description=codeMatch[2].trim();
+  if(description.length>=5&&(open.isNumbered||product.test(description)||itemCode||codeRx.test(description))){
+   if(!found.some(x=>x.description===description&&x.qty===open.quantity&&x.itemCode===itemCode))
+     found.push({description,itemCode,qty:open.quantity,group:open.group});
   }
   open=null;
  }
@@ -89,12 +95,20 @@ function extract(raw){
   if(/^={2,}\s*(?:PO\s*)?PAGE\b/i.test(line))continue;
   const groupHead=line.match(/^(CENTRIFUGE|CF|FBD)\s*(?:FINGER)?\s*BAGS?\s*[:\-]?\s*(\d{1,5})\s*(?:NOS?|PCS?|PIECES?)\s*$/i);
   if(groupHead){flush();group=/FBD/i.test(groupHead[1])?'FBD Bag':'Centrifuge Bag';expected[group]=Number(groupHead[2]);continue}
-  if(stop.test(line)){flush();continue}
+  if(stop.test(line)){
+   flush();
+   if(/^(?:TERMS|CONDITIONS|PAYMENT|DELIVERY|SIGNATURE|BANK|REMARKS?|NOTES?|INVOICE)\b/i.test(line))inItemTable=false;
+   continue;
+  }
+  if(/\b(?:DESCRIPTION|PARTICULARS|ITEM\s*NAME|MATERIAL)\b/i.test(line)&&/\b(?:QTY|QUANTITY|UOM|UNIT)\b/i.test(line)){
+   flush();inItemTable=true;continue;
+  }
   if(/^(?:SR\.?\s*NO|SL\.?\s*NO|ITEM\s*NO)\b/i.test(line)&&/\b(?:DESC|QTY|RATE)\b/i.test(line)){flush();continue}
   const n=line.match(/^(\d{1,3})\s*(?:[.)\-]\s*|\s+)(.+)$/);
   const body=(n?n[2]:line).replace(/^\s*[|│]\s*/,'').trim();
-  const isProd=product.test(body)||codeRx.test(body);
+  const isProd=product.test(body)||codeRx.test(body)||Boolean(n&&body.length>=8&&/[A-Za-z]{4}/.test(body)&&(qty(line)!==null||inItemTable));
   const newLine=Boolean((n&&isProd)||(isProd&&(!open||codeRx.test(body)||qty(line)!==null)));
+  if(n&&isProd)inItemTable=true;
   if(newLine){
    flush();open={parts:[body],quantity:qty(line),group,isNumbered:Boolean(n)};
    continue;
@@ -141,13 +155,22 @@ function enlarge(tr){
  });
  input.after(area);
  const cap=document.createElement('div');cap.textContent='Full Product / Technical Specification';cap.className='po-spec-caption';area.before(cap);
+ const codeCaption=document.createElement('div');codeCaption.className='po-spec-caption';codeCaption.textContent='PO Item Code (optional; correct OCR if needed)';
+ const codeEdit=document.createElement('input');codeEdit.className='po-code-edit';codeEdit.value=input.dataset.poItemCode||'';
+ codeEdit.maxLength=60;codeEdit.placeholder='e.g. GA1270';
+ codeEdit.addEventListener('input',()=>{
+  input.dataset.poItemCode=codeEdit.value.trim();
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+ });
+ area.after(codeCaption,codeEdit);
 }
 function enhance(){for(const row of table.querySelectorAll('tr'))enlarge(row)}
 new MutationObserver(enhance).observe(table,{childList:true});enhance();
 const style=document.createElement('style');style.id='po-fullspec-v3';style.textContent=
  '#lines .legacy-description{display:none!important}'+
  '#lines .po-big-spec{display:block;min-height:112px;max-height:340px;resize:vertical;white-space:pre-wrap;font:14px/1.5 system-ui!important;border:1px solid #b4c8d6;border-radius:10px;padding:11px;width:100%;margin:0;background:#fff;color:#173047}'+
- '#lines .po-spec-caption{font-size:11px;color:#566c79;font-weight:700;margin-bottom:7px}'+
+ '#lines .po-spec-caption{font-size:11px;color:#566c79;font-weight:700;margin:9px 0 6px}'+
+ '#lines .po-code-edit{width:100%;max-width:300px;padding:9px;border:1px solid #b4c8d6;border-radius:8px;font-size:13px;margin:0 0 9px}'+
  '#lines td:first-child{min-width:250px}#lines td:nth-child(2){min-width:90px}#lines td{vertical-align:top}'+
  '@media(max-width:680px){main{padding:9px}section{padding:11px}#lines,#lines tbody{display:block;width:100%}#lines thead{display:none}#lines tr{display:grid;grid-template-columns:minmax(0,1fr) 84px 45px;gap:9px;margin:0 0 12px;padding:11px;border:1px solid #d6e2ed;border-radius:12px;background:#fbfdff}#lines tr td{display:block;border:0;padding:0;width:auto;min-width:0!important}#lines tr td:first-child{grid-column:1/-1}#lines tr td:nth-child(2):before{content:"Qty";font-size:11px;display:block;font-weight:700;margin-bottom:7px}#lines tr td:nth-child(2) input{min-height:42px;text-align:center}#lines tr td:nth-child(3){grid-column:3}#lines tr td:nth-child(3) button{padding:9px 11px;min-height:42px}}';
 document.head.appendChild(style);
