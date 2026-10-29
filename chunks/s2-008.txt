@@ -219,11 +219,13 @@ async function cloudPush(force=false){
       setCloudBadge('☁️ Syncing latest…','amber');
       setTimeout(()=>queueCloudPush(),80);
     }
+    try{document.dispatchEvent(new CustomEvent('cfm:po-cloud-result',{detail:{ok:true,workNos:(snapshot.pending||[]).map(x=>String(x.workNo||'')),version:cloudVersion}}))}catch(_){}
     return true;
   }catch(e){
     console.warn(e);
     cloudDirty=true;
     setCloudBadge('☁️ Sync failed • tap Sync','red');
+    try{document.dispatchEvent(new CustomEvent('cfm:po-cloud-result',{detail:{ok:false,workNos:(snapshot.pending||[]).map(x=>String(x.workNo||'')),reason:String(e?.message||e)}}))}catch(_){}
     return false;
   }finally{
     cloudBusy=false;
