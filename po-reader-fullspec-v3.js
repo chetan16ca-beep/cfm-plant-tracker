@@ -191,4 +191,5 @@ function sourceLink(){
  else originalLink.style.display='none';
 }
 new MutationObserver(sourceLink).observe(original,{childList:true});sourceLink();
+window.cfmPOParserReady=true;
 })();
