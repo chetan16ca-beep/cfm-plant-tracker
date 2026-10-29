@@ -476,6 +476,18 @@ window.addEventListener('message',function(event){
       const root=editors[i];
       root.dataset.poSource='verified'; // Prevent Product Master replacing original buyer description.
       set(root,'.multi-item-product',x.description);
+      const originalInput=root.querySelector('.multi-item-product');
+      const full=doc.createElement('textarea');
+      full.className='multi-po-original-description';
+      full.rows=3;full.maxLength=600;full.value=x.description;
+      full.setAttribute('aria-label','Original PO Description 1');
+      full.style.cssText='width:100%;box-sizing:border-box;min-height:110px;padding:10px;border:1px solid #9bb8c7;border-radius:9px;font:14px/1.5 inherit;resize:vertical;background:#f9fcff;white-space:pre-wrap';
+      originalInput.after(full);
+      originalInput.style.display='none';
+      full.addEventListener('input',()=>{
+        originalInput.value=full.value;
+        originalInput.dispatchEvent(new Event('input',{bubbles:true}));
+      });
       set(root,'.multi-item-code',x.customerCode);
       set(root,'.multi-qty',x.quantity);
       if(issue&&reason)set(root,'.multi-description2','PO qty discrepancy verified: '+issue+' | '+reason);
