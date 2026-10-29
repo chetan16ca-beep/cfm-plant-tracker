@@ -105,6 +105,7 @@ function applyText(text){
  if(result.party&&!$('party').value.trim())$('party').value=result.party;
  if(result.po&&!$('po').value.trim())$('po').value=result.po;
  if(result.date&&!$('date').value)$('date').value=result.date;
+ if(result.deliveryDate&&$('deliveryDate')&&!$('deliveryDate').value)$('deliveryDate').value=result.deliveryDate;
  if(result.found.length){
   $('lines').replaceChildren();
   result.found.forEach(x=>{
