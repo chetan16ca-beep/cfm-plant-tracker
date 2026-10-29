@@ -50,7 +50,7 @@ function extract(raw){
   if(!open)return;
   let description=open.parts.join(' ').replace(/^\s*\d{1,3}\s*[.)-]\s*/,'').replace(/\s+/g,' ').trim();
   if(open.quantity!==null)description=description.replace(new RegExp('\\b'+open.quantity+'(?:\\.0+)?\\s*(?:NOS?\\.?|PCS?\\.?|PIECES?|EA|EACH|UNITS?|BAGS?|SETS?)\\b','i'),'').trim();
-  description=description.replace(/[\s,;|:-]+$/,'').slice(0,1000);
+  description=description.replace(/[\s,;|:-]+$/,'').slice(0,600);
   if(description.length>=5&&(open.isNumbered||product.test(description)||codeRx.test(description))){
    if(!found.some(x=>x.description===description&&x.qty===open.quantity))found.push({description,qty:open.quantity,group:open.group});
   }
@@ -104,7 +104,7 @@ function enlarge(tr){
  if(tr.dataset.fullPo)return;
  const input=tr.cells[0]?.querySelector('input');if(!input)return;
  tr.dataset.fullPo='1';input.classList.add('legacy-description');
- const area=document.createElement('textarea');area.className='po-big-spec';area.rows=4;
+ const area=document.createElement('textarea');area.className='po-big-spec';area.rows=4;area.maxLength=600;
  area.value=input.value;
  area.placeholder='Enter COMPLETE description • Product Code • Material • Size • Micron • Layer • Stitching';
  area.addEventListener('input',()=>{
