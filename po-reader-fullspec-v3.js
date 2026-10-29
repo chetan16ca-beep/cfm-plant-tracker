@@ -63,7 +63,7 @@ function getParty(raw){
 }
 function extract(raw){
  const lines=String(raw||'').replace(/[‐‑–—]/g,'-').split(/\r?\n/).map(clean).filter(Boolean);
- const found=[],expected={};let open=null,group='';
+ const found=[],expected={};let open=null,group='',inItemTable=false;
  function flush(){
   if(!open)return;
   let description=open.parts.join(' ').replace(/^\s*\d{1,3}\s*[.)-]\s*/,'').replace(/\s+/g,' ').trim();
@@ -95,12 +95,20 @@ function extract(raw){
   if(/^={2,}\s*(?:PO\s*)?PAGE\b/i.test(line))continue;
   const groupHead=line.match(/^(CENTRIFUGE|CF|FBD)\s*(?:FINGER)?\s*BAGS?\s*[:\-]?\s*(\d{1,5})\s*(?:NOS?|PCS?|PIECES?)\s*$/i);
   if(groupHead){flush();group=/FBD/i.test(groupHead[1])?'FBD Bag':'Centrifuge Bag';expected[group]=Number(groupHead[2]);continue}
-  if(stop.test(line)){flush();continue}
+  if(stop.test(line)){
+   flush();
+   if(/^(?:TERMS|CONDITIONS|PAYMENT|DELIVERY|SIGNATURE|BANK|REMARKS?|NOTES?|INVOICE)\b/i.test(line))inItemTable=false;
+   continue;
+  }
+  if(/\b(?:DESCRIPTION|PARTICULARS|ITEM\s*NAME|MATERIAL)\b/i.test(line)&&/\b(?:QTY|QUANTITY|UOM|UNIT)\b/i.test(line)){
+   flush();inItemTable=true;continue;
+  }
   if(/^(?:SR\.?\s*NO|SL\.?\s*NO|ITEM\s*NO)\b/i.test(line)&&/\b(?:DESC|QTY|RATE)\b/i.test(line)){flush();continue}
   const n=line.match(/^(\d{1,3})\s*(?:[.)\-]\s*|\s+)(.+)$/);
   const body=(n?n[2]:line).replace(/^\s*[|│]\s*/,'').trim();
-  const isProd=product.test(body)||codeRx.test(body);
+  const isProd=product.test(body)||codeRx.test(body)||Boolean(n&&body.length>=8&&/[A-Za-z]{4}/.test(body)&&(qty(line)!==null||inItemTable));
   const newLine=Boolean((n&&isProd)||(isProd&&(!open||codeRx.test(body)||qty(line)!==null)));
+  if(n&&isProd)inItemTable=true;
   if(newLine){
    flush();open={parts:[body],quantity:qty(line),group,isNumbered:Boolean(n)};
    continue;
