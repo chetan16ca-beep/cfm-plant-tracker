@@ -1,0 +1,196 @@
+/* CFM Forge UI | distinctive industrial-filtration visual design
+ * V213 — presentation only. Maintains all existing application functions.
+ */
+:root{
+ --forge-ink:#082336;--forge-ink2:#0c344c;--forge-dark:#061a28;
+ --forge-blue:#0966b2;--forge-cyan:#22baa9;--forge-gold:#eeb95e;
+ --forge-paper:#f2f6f8;--forge-white:#fff;--forge-line:#d7e4eb;
+ --forge-radius:14px;
+}
+html,body{background:var(--forge-paper)!important;color:#17384d!important}
+body.cfm-forge{font-family:"Segoe UI",Inter,system-ui,-apple-system,sans-serif!important}
+body.cfm-forge::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.52;
+ background-image:linear-gradient(#75a5c308 1px,transparent 1px),linear-gradient(90deg,#75a5c308 1px,transparent 1px);
+ background-size:32px 32px}
+.cfm-forge .topbar,.cfm-forge header.topbar{
+ background:#081f30!important;background-image:linear-gradient(102deg,#081a2b,#0c3449 70%,#07485c)!important;
+ color:#fff!important;border-bottom:1px solid #257b97!important;
+ box-shadow:0 7px 24px #052c4830!important;
+ min-height:70px!important;padding:11px 23px!important
+}
+.cfm-forge .topbar .brand{gap:12px!important}
+.cfm-forge .topbar .brand h1,.cfm-forge .topbar .brand p,
+.cfm-forge .topbar .brand span{color:#fff!important}
+.cfm-forge .topbar .brand p{color:#bfe4ee!important;font-weight:750!important;font-size:12px!important;letter-spacing:.04em!important}
+.cfm-forge .topbar .brand img{border-radius:11px!important;box-shadow:0 0 0 2px #ffffff1f,0 3px 10px #0005!important}
+.cfm-forge .topbar .app-version-badge{background:#183f56!important;color:#a8e7e1!important;border:1px solid #347382!important;
+ letter-spacing:.06em!important;border-radius:4px!important}
+.cfm-forge .topbar button{min-height:36px!important;border-radius:7px!important;
+ background:#103f57!important;color:#d9f6fc!important;border:1px solid #386a7e!important;
+ box-shadow:none!important}
+.cfm-forge .topbar button:hover{background:#12526b!important;border-color:#6bb9c6!important}
+.cfm-forge .topbar button.cfm-sap-open{background:linear-gradient(95deg,#0a817c,#0c7f99)!important;
+ border:1px solid #43c9c1!important;color:#fff!important;font-weight:850!important}
+.cfm-forge .topbar button.cfm-sap-classic{background:transparent!important;color:#c0e5ee!important;border-color:#578193!important}
+.cfm-forge #nav{border-color:#264c63!important}
+.cfm-forge #nav button{transition:background .15s ease,color .15s ease!important}
+.cfm-forge #nav button .ico{border-radius:8px!important}
+.cfm-forge #nav button.active .ico{background:#ffffff27!important;color:#72eadf!important}
+.cfm-forge .sap-workspace{margin:0 0 24px!important}
+.cfm-forge .sap-intro{
+ border:1px solid #1b7190!important;border-radius:17px!important;
+ background:linear-gradient(113deg,#082637 0%,#10445c 58%,#076573 100%)!important;
+ min-height:205px!important;position:relative!important;overflow:hidden!important;
+ padding:27px 32px!important;isolation:isolate!important;box-shadow:0 16px 35px #09354d36!important
+}
+.cfm-forge .sap-intro:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.58;
+ background:repeating-linear-gradient(45deg,transparent 0 14px,#bfe3ed14 14px 15px,transparent 15px 29px),
+ repeating-linear-gradient(-45deg,transparent 0 14px,#bfe3ed11 14px 15px,transparent 15px 29px);
+ mask-image:linear-gradient(to right,transparent,black)}
+.cfm-forge .sap-intro:after{
+ content:"";position:absolute;pointer-events:none;z-index:-1;
+ width:330px;height:330px;border:1px solid #a3e5e547;border-radius:50%;
+ right:-76px;top:-78px;box-shadow:0 0 0 31px #ffffff07,0 0 0 62px #ffffff06,0 0 0 96px #ffffff04;
+ background:radial-gradient(circle,#45bcb71c 0%,transparent 65%)
+}
+.cfm-forge .sap-kicker{color:#8bebe0!important;font-weight:900!important;letter-spacing:.17em!important;font-size:11px!important}
+.cfm-forge .sap-intro h1{font-size:clamp(26px,3.4vw,40px)!important;line-height:1.12!important;
+ letter-spacing:-.047em!important;font-weight:850!important;margin:11px 0 12px!important;
+ color:#fff!important;max-width:650px!important}
+.cfm-forge .sap-intro p{font-size:13px!important;letter-spacing:.015em!important;color:#c8eaf0!important;line-height:1.6!important}
+.cfm-forge .sap-intro button{background:#f5fffe!important;color:#086d72!important;border-radius:7px!important;
+ border:1px solid #bce9e4!important;box-shadow:0 5px 14px #0218233e!important;
+ padding:13px 17px!important;font-size:12px!important;font-weight:850!important}
+.cfm-forge .sap-intro button:hover{background:#dcf7f4!important}
+.cfm-forge .cfm-forge-signature{font-size:10px!important;font-weight:850!important;letter-spacing:.17em!important;
+ color:#86dece!important;margin:10px 0 0!important;display:flex!important;align-items:center!important;gap:9px!important}
+.cfm-forge .cfm-forge-signature:before{content:"";width:27px;height:2px;background:#d5b46e;display:block}
+.cfm-forge .cfm-forge-ribbon{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;
+ margin:14px 0 9px;border-radius:11px;overflow:hidden}
+.cfm-forge .cfm-forge-ribbon button{min-height:61px;text-align:left;border:1px solid #bcd6df!important;
+ background:#fff!important;color:#16394e!important;border-radius:7px!important;
+ display:flex;align-items:center;gap:11px;padding:10px 13px;cursor:pointer;
+ transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.cfm-forge .cfm-forge-ribbon button:hover{background:#eaf8f9!important;border-color:#46b9bd!important;transform:translateY(-1px)}
+.cfm-forge .cfm-forge-ribbon button:focus-visible{outline:3px solid #83d8d1;outline-offset:2px}
+.cfm-forge .cfm-forge-ribbon .flow-no{display:grid;place-items:center;flex:none;width:34px;height:34px;
+ border-radius:9px;background:#0c4860;color:#94f2e4;font-weight:850;font-size:11px}
+.cfm-forge .cfm-forge-ribbon .flow-copy{min-width:0;display:flex;flex-direction:column;gap:3px}
+.cfm-forge .cfm-forge-ribbon strong{font-size:12px;color:#113d56;line-height:1.25}
+.cfm-forge .cfm-forge-ribbon small{font-size:10px;color:#708597;line-height:1.3}
+.cfm-forge .sap-section-title{font-size:15px!important;font-weight:850!important;
+ letter-spacing:.005em!important;margin:23px 0 13px!important;color:#133a53!important;
+ padding-left:13px!important;position:relative!important}
+.cfm-forge .sap-section-title:before{content:"";position:absolute;left:0;top:2px;bottom:2px;width:4px;
+ border-radius:2px;background:linear-gradient(#17b9a5,#1775b5)}
+.cfm-forge .sap-metric{border:1px solid #d0dee6!important;border-top:3px solid #2996b2!important;
+ background:#fff!important;border-radius:10px!important;box-shadow:0 5px 17px #0a38500b!important;
+ padding:18px!important;min-height:119px!important;position:relative;overflow:hidden}
+.cfm-forge .sap-metric:after{content:"";position:absolute;right:-15px;top:-24px;width:95px;height:95px;
+ background:radial-gradient(circle,#8ad8cd1a,transparent 68%);pointer-events:none}
+.cfm-forge .sap-metric.sap-metric-cloud{background:#f9fefe!important;border-top-color:#20a6aa!important}
+.cfm-forge .sap-metric.sap-metric-cloud:nth-child(2){border-top-color:#e8a94d!important}
+.cfm-forge .sap-metric span{font-size:11px!important;font-weight:850!important;color:#638096!important;letter-spacing:.005em}
+.cfm-forge .sap-metric strong{font-size:32px!important;font-weight:860!important;letter-spacing:-.05em!important;
+ color:#103b56!important;margin:9px 0 8px!important}
+.cfm-forge .sap-metric small{color:#7e909e!important;font-size:10px!important;line-height:1.35}
+.cfm-forge .sap-cloud-status{background:#edf8f9!important;border:1px solid #c0e3e1!important;
+ color:#24546b!important;border-radius:8px!important;padding:11px 13px!important;font-size:11px!important}
+.cfm-forge .sap-cloud-status[data-mode=ok]{background:#e9f8f3!important;border-color:#b5dfcf!important;color:#17644f!important}
+.cfm-forge .sap-cloud-status[data-mode=error]{background:#fff7e9!important;border-color:#ebd6ae!important;color:#865c21!important}
+.cfm-forge .sap-cloud-verify{border-radius:6px!important;border-color:#a9c9d6!important;color:#0e718e!important;
+ background:#fff!important;font-weight:850!important}
+.cfm-forge .sap-tile-grid{gap:13px!important}
+.cfm-forge .sap-tile{position:relative!important;min-height:151px!important;
+ background:#fff!important;border:1px solid #d5e2e8!important;border-radius:12px!important;
+ border-top:3px solid #0d829e!important;box-shadow:0 6px 17px #08364f0c!important;
+ padding:17px!important;overflow:hidden!important;isolation:isolate!important}
+.cfm-forge .sap-tile:before{content:"";position:absolute;top:0;right:0;width:92px;height:92px;z-index:-1;
+ background:radial-gradient(circle at top right,#42bdc720,transparent 70%);pointer-events:none}
+.cfm-forge .sap-tile:hover,.cfm-forge .sap-tile:focus-visible{
+ border-color:#78cdd1!important;border-top-color:#18b8aa!important;background:#fbffff!important;
+ box-shadow:0 12px 24px #0d567424!important;transform:translateY(-3px)}
+.cfm-forge .sap-tile:nth-child(3n+2){border-top-color:#d8a04f!important}
+.cfm-forge .sap-tile:nth-child(3n){border-top-color:#2e77c5!important}
+.cfm-forge .sap-tile-icon{background:#e2f5f3!important;color:#087b7b!important;
+ width:48px!important;height:48px!important;border-radius:11px!important;padding:10px!important}
+.cfm-forge .sap-tile:nth-child(3n+2) .sap-tile-icon{background:#fff3df!important;color:#a56e22!important}
+.cfm-forge .sap-tile:nth-child(3n) .sap-tile-icon{background:#e8f1fc!important;color:#165cb0!important}
+.cfm-forge .sap-tile strong{font-size:14px!important;color:#123b51!important;font-weight:850!important}
+.cfm-forge .sap-tile small{color:#6e8794!important}
+.cfm-forge .sap-workspace-note{border-left:3px solid #81b5c0;background:#eaf2f6!important;border-radius:0 7px 7px 0;
+ padding:12px 15px!important;color:#627e8c!important;font-size:11px!important;line-height:1.5!important}
+.cfm-forge .view:not(#view-dashboard)>.section-head{padding-bottom:17px!important}
+.cfm-forge .view:not(#view-dashboard)>.section-head h2{font-weight:850!important;letter-spacing:-.022em!important}
+.cfm-forge .view .panel{border:1px solid #d5e3eb!important;border-radius:11px!important;box-shadow:0 5px 17px #0a385010!important}
+.cfm-forge .view .data-card{border-radius:10px!important;border:1px solid #d4e3e9!important;
+ border-left:3px solid #2a92aa!important}
+.cfm-forge .view button.btn-primary,.cfm-forge .view button.btn-green{
+ background:linear-gradient(103deg,#09679c,#0a8396)!important;border-color:#116e94!important;
+ box-shadow:0 3px 8px #06668a20!important;color:#fff!important;border-radius:7px!important}
+.cfm-forge .view button.btn:hover{background:#dff2f4!important}
+.cfm-forge .view table th{background:#eaf3f7!important;color:#1a5065!important}
+.cfm-forge #editDialog.cfm-wo-dialog,.cfm-forge #editDialog.cfm-wo-multi-dialog{
+ border-color:#79bcc2!important;box-shadow:0 35px 95px #052b3d7a!important}
+.cfm-forge #editDialog.cfm-wo-dialog .dialog-head,.cfm-forge #editDialog.cfm-wo-multi-dialog .dialog-head{
+ background:linear-gradient(100deg,#071f32,#0a4b60)!important;border-bottom:2px solid #1baea6!important}
+.cfm-forge #editDialog .cfm-wo-group{border-radius:11px!important;border:1px solid #cddfe6!important;
+ border-top:3px solid #1c98a1!important}
+.cfm-forge #editDialog .cfm-wo-group:nth-child(2){border-top-color:#dca24c!important}
+.cfm-forge #editDialog .cfm-wo-group:nth-child(3){border-top-color:#287bb6!important}
+.cfm-forge #editDialog .cfm-wo-group:nth-child(4){border-top-color:#16a88f!important}
+.cfm-forge #editDialog .cfm-wo-group:nth-child(5){border-top-color:#4e73b2!important}
+.cfm-forge #editDialog .cfm-wo-icon{background:#e5f6f4!important;color:#128a83!important}
+.cfm-forge #editDialog .cfm-wo-step{background:#eff9fa!important;border-color:#c8e5e6!important;color:#17787b!important}
+.cfm-forge #editDialog.cfm-wo-dialog .dialog-actions #saveFormBtn,.cfm-forge #editDialog.cfm-wo-multi-dialog .dialog-actions #saveFormBtn{
+ background:linear-gradient(100deg,#096e9d,#0b9b91)!important;border-color:#0d888c!important}
+.cfm-forge #editDialog.cfm-wo-dialog .dialog-actions #saveFormBtn:hover,.cfm-forge #editDialog.cfm-wo-multi-dialog .dialog-actions #saveFormBtn:hover{
+ background:linear-gradient(100deg,#075880,#0a7b76)!important}
+.cfm-forge #editDialog .cfm-wo-intro{background:linear-gradient(107deg,#092c42,#0b596e 60%,#08756d)!important;
+ border-bottom:1px solid #35afac!important}
+.cfm-forge .cfm-sap-overlay:not([hidden]){backdrop-filter:blur(7px)}
+.cfm-forge .cfm-sap-dialog{border:1px solid #65b8c0!important;border-radius:13px!important;overflow:hidden!important}
+.cfm-forge .cfm-sap-dialog-header{background:linear-gradient(100deg,#08283e,#0c6474)!important}
+.cfm-forge .cfm-sap-item:hover{background:#ecf9f9!important}
+.cfm-forge .cfm-sap-item>span:first-child{background:#e4f5f4!important;color:#0d8b88!important}
+@media(min-width:1050px){
+ .cfm-forge #nav{background:#082639!important;background-image:linear-gradient(160deg,#0a2c40,#082337 60%,#063d48)!important;
+  width:246px!important;border-right:1px solid #175368!important;box-shadow:5px 0 22px #0d3a4c21!important}
+ .cfm-forge #nav:before{content:"CFM / CONTROL DECK"!important;color:#64d1c6!important;
+  font-size:10px!important;letter-spacing:.16em!important;font-weight:900!important;padding:8px 10px 18px!important}
+ .cfm-forge #nav button{color:#c3dae1!important;border-radius:8px!important;padding:11px 12px!important;min-height:46px!important;
+  border-left:3px solid transparent!important;justify-content:flex-start!important}
+ .cfm-forge #nav button.active{background:#14556c!important;color:#fff!important;border-left:3px solid #3bd7c4!important;
+  box-shadow:inset 0 0 16px #54bcbc18!important}
+ .cfm-forge #nav button:hover{background:#17485e!important;color:#fff!important}
+ .cfm-forge #nav button .ico{color:#9bd1d4!important}
+ .cfm-forge main{margin-left:246px!important;width:calc(100% - 246px)!important;
+  padding:28px clamp(20px,2.6vw,42px)!important}
+}
+@media(max-width:1049px){
+ .cfm-forge .topbar,.cfm-forge header.topbar{padding:9px 12px!important;min-height:60px!important}
+ .cfm-forge #nav{background:#fff!important;border-bottom:1px solid #cddfe6!important;box-shadow:0 4px 10px #163c5411!important}
+ .cfm-forge #nav button{color:#557388!important}
+ .cfm-forge #nav button.active{background:#e5f5f5!important;color:#087b83!important;border-bottom:2px solid #18ada8!important}
+ .cfm-forge #nav button .ico{color:#0d8890!important}
+ .cfm-forge .sap-intro{min-height:170px!important;padding:22px 21px!important}
+ .cfm-forge .cfm-forge-ribbon{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+ .cfm-forge .sap-intro{padding:20px 16px!important;border-radius:13px!important;min-height:176px!important}
+ .cfm-forge .sap-intro h1{font-size:27px!important}
+ .cfm-forge .sap-intro p{font-size:11px!important}
+ .cfm-forge .cfm-forge-ribbon{gap:7px!important;margin:11px 0 5px!important}
+ .cfm-forge .cfm-forge-ribbon button{padding:8px!important;min-height:62px!important;gap:8px!important}
+ .cfm-forge .cfm-forge-ribbon .flow-no{width:29px;height:31px;font-size:10px}
+ .cfm-forge .cfm-forge-ribbon strong{font-size:10px!important}
+ .cfm-forge .cfm-forge-ribbon small{font-size:9px!important}
+ .cfm-forge .sap-tile{min-height:143px!important;padding:13px!important}
+ .cfm-forge .sap-metric{min-height:112px!important;padding:12px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .cfm-forge .sap-tile,.cfm-forge .cfm-forge-ribbon button{transition:none!important;transform:none!important}
+}
+@media print{
+ .cfm-forge .cfm-forge-ribbon,.cfm-forge .cfm-forge-signature{display:none!important}
+}
