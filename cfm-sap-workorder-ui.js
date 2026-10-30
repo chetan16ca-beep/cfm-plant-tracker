@@ -176,7 +176,10 @@ function init(){
  observer.observe(dlg,{subtree:true,childList:true,attributes:true,attributeFilter:['class','open']});
  dlg.addEventListener('close',()=>{
   dlg.classList.remove('cfm-wo-dialog','cfm-wo-multi-dialog');
+  const fields=id('formFields');if(fields)delete fields.dataset.cfmWoStyled;
   id('saveFormBtn')?.classList.remove('cfm-wo-save');
+  dlg.querySelector('.dialog-actions')?.classList.remove('cfm-wo-footer');
+  dlg.querySelector('.dialog-head')?.classList.remove('cfm-wo-titlebar');
  });
  schedule();
 }
