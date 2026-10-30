@@ -103,7 +103,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP new UI version · 28 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V199</div>
+<div id="cfmUpdateVersion" title="CFM ERP new UI version · 28 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V200</div>
 <script src="./backup-safe.js?v=3"></script>
 <button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
@@ -117,7 +117,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261030-v199',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261030-v200',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -182,19 +182,42 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261030-v199';
- // Service Worker v168 manages ONLY CFM UI caches. Preserve all other caches and business data.
- const texts=await Promise.all(urls.map(async u=>{
-   const cacheKey='cfm-chunk-v185-'+u;
+ const urls=groups.flat(), ver='20261030-v200';
+ // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
+ // Never clear browser storage or replace Cloud data while recovering from a network failure.
+ let nextChunk=0;
+ const texts=new Array(urls.length);
+ async function loadChunk(u){
+  let lastError;
+  for(let attempt=1;attempt<=3;attempt++){
+   let controller;
+   let timeout;
    try{
-     const saved=null; // Always fetch current chunk; old PWA chunk cache caused stale mobile versions.
-   }catch(_){}
-   const r=await fetch('./'+u+'?v='+ver,{cache:'no-store'});
-   if(!r.ok)throw Error(u);
-   const txt=await r.text();
-   /* chunk localStorage cache disabled: prevents quota/stale-version issues */
-   done++;st.textContent='Loading '+done+'/'+total;return txt
- }));
+    controller=new AbortController();
+    timeout=setTimeout(()=>controller.abort(),25000);
+    const r=await fetch('./'+u+'?v='+ver,{
+     cache:'no-store',signal:controller.signal
+    });
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const txt=await r.text();
+    if(!txt || txt.length<10)throw new Error('File empty');
+    done++;
+    st.textContent='Loading CFM ERP '+done+'/'+total;
+    return txt;
+   }catch(e){
+    lastError=e;
+    st.textContent='Loading retry '+attempt+'/3: '+u;
+   }finally{if(timeout)clearTimeout(timeout)}
+  }
+  throw new Error('Could not load '+u+' ('+String(lastError?.message||lastError||'Network issue')+'). Check PC internet / firewall.');
+ }
+ async function chunkWorker(){
+  while(nextChunk<urls.length){
+   const i=nextChunk++;
+   texts[i]=await loadChunk(urls[i]);
+  }
+ }
+ await Promise.all(Array.from({length:Math.min(5,total)},()=>chunkWorker()));
  let src=texts.join('')+'\n';
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
@@ -310,7 +333,22 @@ html,body{background:#f4faff!important;color:#13233b!important}
  app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
-})().catch(e=>{document.getElementById('st').textContent='Load failed: '+e.message});
+})().catch(e=>{
+ const load=document.getElementById('load'),st=document.getElementById('st');
+ if(load)load.style.display='grid';
+ if(st){
+  st.textContent='ERP cannot load on this PC: '+(e?.message||String(e));
+  st.style.cssText='margin-top:10px;max-width:520px;line-height:1.5;overflow-wrap:anywhere;color:#9c2727';
+  if(!document.getElementById('cfmPcRetry')){
+   const retry=document.createElement('button');retry.id='cfmPcRetry';retry.type='button';
+   retry.textContent='↻ Retry Loading (keep all data)';
+   retry.style.cssText='display:block;margin:15px auto 0;padding:11px 15px;border:0;border-radius:9px;background:#146fb3;color:#fff;font:700 14px system-ui;cursor:pointer';
+   retry.onclick=()=>{const u=new URL(location.href);u.searchParams.set('v','200');u.searchParams.set('retry',String(Date.now()));location.replace(u.href)};
+   st.after(retry);
+  }
+ }
+ console.error('CFM PC load error',e);
+});
 </script>
 <!-- V184: remove only front-facing floating buttons; retain their actions in ERP Settings. -->
 <style id="cfm-v184-clean-floating">
