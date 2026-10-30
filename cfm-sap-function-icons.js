@@ -124,6 +124,13 @@ function decorate(root){
   h.prepend(icon(navMap[nearestView(h)]||'dashboard','cfm-v208-heading-icon'));
  });
  // Print Center & function-grid buttons look like real app tiles, not text-only buttons.
+ root.querySelectorAll('#cfmCCStages203 .stage>span:first-child').forEach((el,i)=>use(el,['scissors','users','scissors','factory','package'][i]||'list'));
+ root.querySelectorAll('#cfmCommandCenter203 .actions button').forEach(b=>{
+  if(b.dataset.cfmV208Icon)return;
+  const action=b.dataset.action||'';
+  use(b,({backup:'download',refresh:'refresh',print:'printer',close:'close'})[action]||'list','prepend');
+ });
+ root.querySelectorAll('.sap-intro button[data-action]').forEach(b=>use(b,'factory','prepend'));
  root.querySelectorAll('button.action-card').forEach(b=>{
   if(b.dataset.cfmV208Icon)return;
   let ic=identifyButton(b)||(/daily|register/i.test(b.textContent)?'printer':'file');
@@ -145,7 +152,7 @@ function schedule(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
 const observer=new MutationObserver(changes=>{
  for(const c of changes){
-  if(c.addedNodes.length){schedule();break}
+  if(Array.from(c.addedNodes).some(n=>n.nodeType===1)){schedule();break}
  }
 });
 observer.observe(document.documentElement,{subtree:true,childList:true});
