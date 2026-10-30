@@ -271,6 +271,40 @@ window.cfmGetDashboardStockAudit=function(){
   .map(o=>({workNo:String(o.workNo),party:String(o.party||''),qty:o.orderQty??''}))
   .sort((a,b)=>a.workNo.localeCompare(b.workNo,undefined,{numeric:true}));
  const pendingWorks=[...new Set(pending.map(r=>String(r.workNo||'').trim()).filter(Boolean))];
+ const stockPendingByWork=new Map();
+ for(const r of pending){
+  const workNo=String(r.workNo||'').trim();
+  if(!workNo)continue;
+  if(!stockPendingByWork.has(workNo))stockPendingByWork.set(workNo,{
+   workNo,party:String(r.party||''),serials:[],cuttingLines:0,
+   estimatedMtr:0,estimatedLines:0,reasons:[],onHold:workNo==='CFM-693'
+  });
+  const w=stockPendingByWork.get(workNo);
+  w.cuttingLines++;
+  const srl=String(r.srlNo||'').trim();
+  if(srl&&!w.serials.includes(srl))w.serials.push(srl);
+  const em=Number(r._estimatedUsedMtr);
+  if(r._estimatedUsedMtr!=null&&r._estimatedUsedMtr!==''&&Number.isFinite(em)&&em>=0){
+   w.estimatedMtr+=em;w.estimatedLines++;
+  }
+  let issue;
+  const stock=srl?existing.get(srl.toUpperCase()):null;
+  if(!srl)issue='SRL unclear / not entered';
+  else if(!hasMtr(stock))issue='Stock opening MTR missing';
+  else {
+   let remaining=null;
+   try{remaining=Number(srlBalance(stock))}catch(_){}
+   if(r._stockCalcMode==='PENDING_INSUFFICIENT_STOCK_AREA_ESTIMATE'||
+      (Number.isFinite(remaining)&&r._estimatedUsedMtr!=null&&r._estimatedUsedMtr!==''&&em>remaining+0.001))
+    issue='Insufficient available stock';
+   else issue='Physical meter deduction not verified';
+  }
+  if(!w.reasons.includes(issue))w.reasons.push(issue);
+ }
+ const pendingWorkDetails=[...stockPendingByWork.values()].map(w=>({
+  ...w,estimatedMtr:w.estimatedLines?Math.round(w.estimatedMtr*1000)/1000:null,
+  reason:(w.onHold?'On hold by request — ':'')+w.reasons.join('; ')
+ })).sort((a,b)=>a.workNo.localeCompare(b.workNo,undefined,{numeric:true}));
  return {
   missingPhotoMeterCount:photoBlank.length,
   missingCloudMeterCount:missing.size,
@@ -279,6 +313,7 @@ window.cfmGetDashboardStockAudit=function(){
   workOrdersWithoutCuttingCount:noCut.length,
   pendingCuttingLines:pending.length,
   pendingCuttingWorkOrders:pendingWorks.length,
+  stockPendingWorkOrders:pendingWorkDetails,
   totalWorkOrders:orders.length,
   totalCuttingLines:cuttingRows.length,
   photoMissingWithKnownCloudMeter:photoBlank.length-[...missing.values()].filter(r=>r.inPhoto).length
@@ -306,6 +341,9 @@ window.cfmGetDashboardStockAudit=function(){
    '<details class="cfm-v195-detail" open><summary>⚠️ Serial Numbers without Stock MTR <span id="cfmV195MissingCount"></span></summary>'+
    '<p>Photo meter not visible AND no available Cloud Store meter baseline. An absent SRL record does not mean zero stock.</p>'+
    '<div class="cfm-v195-scroll"><table><thead><tr><th>SRL</th><th>Width</th><th>Related Work Nos.</th><th>Status</th></tr></thead><tbody id="cfmV195MissingBody"></tbody></table></div></details>'+
+   '<details class="cfm-v195-detail" open><summary>⏳ Stock Reconciliation Pending — Cutting already entered <span id="cfmV196StockWorkCount"></span></summary>'+
+   '<p>These Cutting entries are saved. Keep them separate from Work Orders without any Cutting entry. No automatic stock deduction.</p>'+
+   '<div class="cfm-v195-scroll"><table><thead><tr><th>Work No.</th><th>Party</th><th>SRL</th><th>Lines</th><th>Estimated MTR</th><th>Pending Reason</th></tr></thead><tbody id="cfmV196StockBody"><tr><td colspan="6">Loading…</td></tr></tbody></table></div></details>'+
    '<details class="cfm-v195-detail"><summary>📝 Work Orders without Cutting Entry <span id="cfmV195NoCutCount"></span></summary>'+
    '<p>Saved Work Orders with no matching Cutting Register entry. These are not confirmed as uncut in the plant.</p>'+
    '<input id="cfmV195Search" type="search" aria-label="Find Work No. without cutting" placeholder="Search Work No. / Party…">'+
@@ -357,6 +395,14 @@ window.cfmGetDashboardStockAudit=function(){
    set('cfmV195Missing',audit.missingCloudMeterCount);
    set('cfmV195NoCut',audit.workOrdersWithoutCuttingCount);
    set('cfmV195PendingWorks',audit.pendingCuttingWorkOrders);
+   const pendingWorks=Array.isArray(audit.stockPendingWorkOrders)?audit.stockPendingWorkOrders:[];
+   set('cfmV196StockWorkCount','('+pendingWorks.length+')');
+   const stockBody=panel.querySelector('#cfmV196StockBody');
+   if(stockBody)stockBody.innerHTML=pendingWorks.length?pendingWorks.map(r=>
+    '<tr><td><b>'+esc(r.workNo)+'</b></td><td>'+esc(r.party)+'</td><td>'+esc(r.serials.join(', ')||'Unclear')+
+    '</td><td>'+esc(r.cuttingLines)+'</td><td>'+esc(r.estimatedMtr==null?'Not calculated':r.estimatedMtr.toFixed(3))+
+    '</td><td>'+esc(r.reason)+'</td></tr>').join(''):
+    '<tr><td colspan="6">No stock reconciliation pending.</td></tr>';
    set('cfmV195PendingLines',audit.pendingCuttingLines);
    set('cfmV195MissingCount','('+audit.missingCloudMeterCount+')');
    set('cfmV195NoCutCount','('+audit.workOrdersWithoutCuttingCount+')');
