@@ -21,7 +21,8 @@
 
   <main>
     <section id="view-dashboard" class="view active">
-      <div class="section-head"><div><h2><span class="ico">🏠</span><span>Dashboard</span></h2><p>Executive operations dashboard • live plant control • 3–4 mobile cloud sync</p></div><div class="cfm-mobile-sync-actions"><button class="cfm-mobile-sync-widget" id="cfmDashboardCloudSync" type="button" data-sync-mode="amber" onclick="manualCloudSync()" title="Cloud sync status • supports 3–4 mobiles • tap to sync" aria-label="3 to 4 mobile cloud sync, connecting. Tap to sync"><span class="cfm-mobile-sync-icons" aria-hidden="true">📱📱☁️</span><span class="cfm-mobile-sync-copy"><strong>3–4 Mobile Sync</strong><small id="cfmDashboardCloudSyncStatus" aria-live="polite">Connecting…</small></span><span class="cfm-mobile-sync-refresh" aria-hidden="true">↻</span></button><button class="btn" onclick="showView('pending')">Open Pending</button></div></div>
+      <div class="section-head"><div><h2><span class="ico">🏠</span><span>Dashboard</span></h2><p>Executive operations dashboard • live plant control • 3–4 mobile cloud sync</p></div><button class="btn" onclick="showView('pending')">Open Pending</button></div>
+      <div class="cfm-mobile-sync-actions"><button class="cfm-mobile-sync-widget" id="cfmDashboardCloudSync" type="button" data-sync-mode="amber" onclick="manualCloudSync()" title="3–4 mobile cloud sync support • tap to sync" aria-label="3 to 4 mobile cloud sync, connecting. Tap to sync"><span class="cfm-mobile-sync-icons" aria-hidden="true">📱📱☁️</span><span class="cfm-mobile-sync-copy"><strong>3–4 Mobile Sync</strong><small id="cfmDashboardCloudSyncStatus" aria-live="polite">Connecting…</small></span><span class="cfm-mobile-sync-refresh" aria-hidden="true">↻</span></button></div>
 
             <div class="photo-quick-actions">
         <button onclick="showView('pending')"><span>🧾</span><b>New Order</b></button>
@@ -44,7 +45,7 @@
       </div>
 
       <style id="cfm-v182-dashboard-actions-css">
-      #view-dashboard .cfm-mobile-sync-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+      #view-dashboard .cfm-mobile-sync-actions{display:flex!important;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-start!important;margin:0 0 15px;padding:1px 0;min-height:54px}
       #view-dashboard .cfm-mobile-sync-widget{display:flex;align-items:center;gap:8px;min-height:52px;padding:8px 12px;border-radius:13px;background:#f0f8ff;border:1px solid #bcdff5;color:#0f5487;box-shadow:0 3px 12px #1772a014;cursor:pointer;text-align:left}
       #view-dashboard .cfm-mobile-sync-icons{font-size:20px;line-height:1;white-space:nowrap}
       #view-dashboard .cfm-mobile-sync-copy{display:flex;flex-direction:column;gap:2px;white-space:nowrap}
