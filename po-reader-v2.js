@@ -143,7 +143,7 @@ async function recognizeImage(image){
    }}),100000,'OCR engine');
    const r=await withTimeout(worker.recognize(image),110000,'OCR recognition');
    let text=String(r.data?.text||'');
-   if(image instanceof File && typeof worker.setParameters==='function' && window.cfmPOExtractV3){
+   if((image instanceof File || (typeof HTMLCanvasElement!=='undefined'&&image instanceof HTMLCanvasElement)) && typeof worker.setParameters==='function' && window.cfmPOExtractV3){
     const assess=value=>{
      const p=window.cfmPOExtractV3(value);
      return p.found.length*90+p.found.filter(x=>x.qty!==null).length*45+
@@ -187,7 +187,7 @@ async function pdfRead(file){
   const text=[...rows.entries()].sort((a,b)=>b[0]-a[0]).map(([,line])=>line.sort((a,b)=>a.x-b.x).map(k=>k.text).join(' ')).join('\n');
   all+='\n=== PO PAGE '+i+' ===\n'+text+'\n';
   const chars=text.replace(/[^a-z0-9]/gi,'').length;
-  if(chars<100||(chars<1000&&(window.cfmPOExtractV3||poExtract)(text).found.length===0)){
+  if(chars<100||(chars<2400&&(window.cfmPOExtractV3||poExtract)(text).found.length===0)){
    status('Scanned PDF page '+i+': running OCR…');
    const view=page.getViewport({scale:1.65});
    const scale=Math.min(1,Math.sqrt(3100000/(view.width*view.height)));
@@ -195,7 +195,14 @@ async function pdfRead(file){
    const canvas=document.createElement('canvas');
    canvas.width=Math.round(vp.width);canvas.height=Math.round(vp.height);
    await page.render({canvasContext:canvas.getContext('2d',{willReadFrequently:true}),viewport:vp}).promise;
-   all+='\n'+await recognizeImage(canvas)+'\n';ocrPages++;
+   try{
+    all+='\n'+await recognizeImage(canvas)+'\n';ocrPages++;
+   }catch(ocrError){
+    // Retain embedded PDF text if an additional scanned page cannot run OCR.
+    if(all.replace(/[^a-z0-9]/gi,'').length<100)throw ocrError;
+    status('OCR page '+i+' unavailable; keeping readable PDF text. Check this page.',true);
+    console.warn('CFM OCR fallback',ocrError);
+   }
    canvas.width=1;canvas.height=1;
   }
  }
@@ -234,5 +241,16 @@ btn.onclick=async()=>{
   status('PO reading failed: '+String(e.message||e)+' Manual entry is still available below. You can also paste PO text and press Parse Edited Text.',true);
  }finally{btn.disabled=false;btn.textContent='🔎 Auto Read PO'}
 };
-window.cfmPOReaderReady=true;
+// V8 one-touch flow: file selection starts PDF/photo reading automatically.
+ // The operator still verifies PO and manually approves final work-order save.
+ let lastSelection=null;
+ $('poFile').addEventListener('change',()=>{
+  const file=$('poFile').files?.[0];lastSelection=file||null;
+  if(!file)return;
+  status('File selected • Auto Read starting…');
+  setTimeout(()=>{
+   if(lastSelection===file&&!btn.disabled&&window.cfmPOReaderReady)btn.click();
+  },100);
+ });
+ window.cfmPOReaderReady=true;
 })();
