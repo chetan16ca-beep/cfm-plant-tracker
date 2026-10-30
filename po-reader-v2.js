@@ -127,6 +127,15 @@ function applyText(text){
  if(!result.found.length)warnings.push('No confident product lines; enter product and quantity manually');
  if(missing)warnings.push(missing+' product lines need quantity');
  status('Text extracted ('+result.lines+' lines). Found '+result.found.length+' possible products. '+(warnings.length?'CHECK: '+warnings.join('; ')+'. ':'')+'Always verify against original PO.',Boolean(warnings.length));
+ // Prepare a review-only Work Order draft when critical fields were extracted.
+ // Do not tick buyer verification and never save Work Orders automatically.
+ const complete=result.found.length>0&&result.found.every(x=>Number.isSafeInteger(x.qty)&&x.qty>0);
+ if(complete&&$('party').value.trim()&&$('po').value.trim()&&$('date').value){
+  setTimeout(()=>{
+   const button=$('poGenerate');
+   if(button&&!button.disabled)button.click();
+  },0);
+ }
  return result;
 }
 function withTimeout(promise,ms,label){
