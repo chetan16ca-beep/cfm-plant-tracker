@@ -266,3 +266,10 @@ header.topbar .cfm-sap-classic{background:transparent!important;color:#fff!impor
  #nav button .ico .cfm-v208-svg{width:18px!important;height:18px!important}
 }
 @media print{.cfm-v208-button-icon{display:none!important}.sap-tile-grid{display:none!important}}
+
+
+/* V209: distinguish current-device active WOs from historical known WO numbers. */
+.sap-metrics{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.sap-metric:nth-child(2){border-top-color:#0b8290!important}
+.sap-metric small{line-height:1.4;display:block}
+@media(max-width:1049px){.sap-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
