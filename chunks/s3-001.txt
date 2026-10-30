@@ -267,7 +267,15 @@ window.cfmGetDashboardStockAudit=function(){
   if(entry&&r.workNo&&!entry.workNos.includes(String(r.workNo)))entry.workNos.push(String(r.workNo));
  }
  const cutWorks=new Set(cuttingRows.map(r=>String(r.workNo||'').trim().toUpperCase()).filter(Boolean));
- const noCut=orders.filter(o=>o.workNo&&!cutWorks.has(String(o.workNo).trim().toUpperCase()))
+ // Dashboard-only exclusion requested 30-Oct: CFM-579 through CFM-665
+ // (the last SNL PHARMA order). Keep original Work Orders, Cutting and Stock intact.
+ const cfmHiddenNoCutRange=workNo=>{
+  const match=/^CFM-(\d+)$/i.exec(String(workNo||'').trim());
+  if(!match)return false;
+  const number=Number(match[1]);
+  return number>=579&&number<=665;
+ };
+ const noCut=orders.filter(o=>o.workNo&&!cutWorks.has(String(o.workNo).trim().toUpperCase())&&!cfmHiddenNoCutRange(o.workNo))
   .map(o=>({workNo:String(o.workNo),party:String(o.party||''),qty:o.orderQty??''}))
   .sort((a,b)=>a.workNo.localeCompare(b.workNo,undefined,{numeric:true}));
  const pendingWorks=[...new Set(pending.map(r=>String(r.workNo||'').trim()).filter(Boolean))];
