@@ -122,12 +122,12 @@ function setup(){
  section.innerHTML='<div class="sap-intro"><div><div class="sap-kicker">CFM • ENTERPRISE OPERATIONS</div>'+
   '<h1>Plant Operations Workspace</h1><p>Orders · Stock · Cutting · Production · Dispatch</p></div>'+
   '<button type="button" data-action="__command">Open Production Center</button></div>'+
-  '<div class="sap-section-title">Plant Overview</div>'+
-  '<div class="sap-metrics"><div class="sap-metric"><span>Work Orders</span><strong id="cfmSapOrderCount">—</strong><small>Loaded ERP records</small></div>'+
+  '<div class="sap-section-title">Plant Overview · Device Records</div>'+
+  '<div class="sap-metrics"><div class="sap-metric"><span>Active Orders</span><strong id="cfmSapOrderCount">—</strong><small>Current Pending list on this device</small></div><div class="sap-metric"><span>Known Work Nos</span><strong id="cfmSapKnownCount">—</strong><small>Pending + Cutting + Issue history (device)</small></div>'+
   '<div class="sap-metric"><span>SRL Stock Rolls</span><strong id="cfmSapStoreCount">—</strong><small>Store register entries</small></div>'+
   '<div class="sap-metric"><span>Cutting Entries</span><strong id="cfmSapCutCount">—</strong><small>Cutting register entries</small></div></div>'+
   '<div class="sap-section-title">ERP Modules</div><div class="sap-tile-grid"></div>'+
-  '<p class="sap-workspace-note">Numbers reflect ERP records currently loaded on this device; they are not a verified physical-stock or cloud-sync confirmation. No work orders or stock are changed by this screen.</p>';
+  '<p class="sap-workspace-note">Active Orders counts distinct non-archived Work Nos currently loaded in Pending. Known Work Nos combines Pending + Cutting + Issue history on this device, including archived orders; it is NOT a verified Cloud total. Missing Cloud orders are not included. No work orders or stock are changed by this screen.</p>';
  const grid=section.querySelector('.sap-tile-grid');
  tiles.forEach(([emoji,title,desc,action])=>{
   const b=document.createElement('button');b.type='button';b.className='sap-tile';
@@ -142,14 +142,18 @@ function setup(){
   try{
    if(typeof state==='undefined'||!state)return;
    const orders=Array.isArray(state.pending)?state.pending:[];
-   const map=new Set(orders.filter(x=>x&&x.workNo&&
-     !/^(true|1|yes)$/i.test(String(x.archived||''))).map(x=>String(x.workNo).trim().toUpperCase()));
+   const key=x=>String(x?.workNo||x?.workOrder||x?.wo||'').trim().toUpperCase();
+   const map=new Set(orders.filter(x=>x&&!/^(true|1|yes)$/i.test(String(x.archived||''))).map(key).filter(Boolean));
    const store=Array.isArray(state.store)?state.store:[];
    const cuts=Array.isArray(state.cutting)?state.cutting:[];
+   const issues=Array.isArray(state.issueRegister)?state.issueRegister:[];
+   const known=new Set([...orders,...cuts,...issues].map(key).filter(Boolean));
    const o=document.getElementById('cfmSapOrderCount');
+   const k=document.getElementById('cfmSapKnownCount');
    const s=document.getElementById('cfmSapStoreCount');
    const c=document.getElementById('cfmSapCutCount');
    if(o)o.textContent=String(map.size);
+   if(k)k.textContent=String(known.size);
    if(s)s.textContent=String(store.length);
    if(c)c.textContent=String(cuts.length);
   }catch(e){console.warn('CFM SAP overview counters unavailable',e)}
