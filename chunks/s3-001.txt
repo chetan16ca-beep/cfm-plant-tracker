@@ -217,6 +217,73 @@ window.cfmGetPendingCuttingRows=function(){
    };
  }).sort((a,b)=>a.workNo.localeCompare(b.workNo,undefined,{numeric:true})||a.date.localeCompare(b.date));
 };
+
+/* Dashboard audit, read-only. Distinguishes unreadable 27-Oct physical meters
+   from missing Cloud Store baselines and separately counts unentered work orders. */
+window.cfmGetDashboardStockAudit=function(){
+ const photoRows=Array.isArray(window.CFM_PHYSICAL_20261027?.rows)?window.CFM_PHYSICAL_20261027.rows:[];
+ const stockRows=Array.isArray(state.store)?state.store:[];
+ const cuttingRows=Array.isArray(state.cutting)?state.cutting:[];
+ const orders=Array.isArray(state.pending)?state.pending:[];
+ const hasMtr=st=>!!st&&(
+  (st.excelLiveBalanceMtr!==''&&st.excelLiveBalanceMtr!=null&&Number.isFinite(Number(st.excelLiveBalanceMtr)))||
+  (st.openingMtr!==''&&st.openingMtr!=null&&Number.isFinite(Number(st.openingMtr)))
+ );
+ const photoBlank=photoRows.filter(r=>r.meters==null||r.meters===''||!Number.isFinite(Number(r.meters)));
+ const existing=new Map(stockRows.map(st=>[String(st.srlNo||'').trim().toUpperCase(),st]));
+ const missing=new Map();
+ for(const r of photoBlank){
+  const raw=String(r.srl||'').trim();
+  const formatted=/^\d{1,4}$/.test(raw)?'EFPPL03/'+raw.padStart(4,'0'):raw;
+  const st=existing.get(formatted.toUpperCase());
+  if(hasMtr(st))continue;
+  const key=formatted.toUpperCase();
+  if(!missing.has(key))missing.set(key,{
+   srl:formatted,photoWidth:Number(r.width)||null,
+   workNos:[],photoPage:/^CFM\//i.test(raw)?'03/04 (format check)':'27 Oct photo register',
+   reason:st?'Cloud MTR missing':'Cloud Store MTR missing / roll not matched',
+   inPhoto:true
+  });
+ }
+ const pending=cfmPhotoStockPendingRows().map(({r})=>r);
+ for(const r of pending){
+  const srl=String(r.srlNo||'').trim();
+  if(!srl)continue;
+  const st=existing.get(srl.toUpperCase());
+  if(hasMtr(st))continue;
+  const key=srl.toUpperCase();
+  if(!missing.has(key))missing.set(key,{
+   srl,photoWidth:Number(r._confirmedClothWidth||r._stockActualRollWidth||r.plannedWidth)||null,
+   workNos:[],photoPage:'Cutting register',
+   reason:st?'Cloud MTR missing':'No Cloud Store MTR baseline',
+   inPhoto:false
+  });
+  const row=missing.get(key);
+  if(r.workNo&&!row.workNos.includes(String(r.workNo)))row.workNos.push(String(r.workNo));
+ }
+ // Link already-known work numbers to photo-blank rows where possible.
+ for(const r of pending){
+  const entry=missing.get(String(r.srlNo||'').trim().toUpperCase());
+  if(entry&&r.workNo&&!entry.workNos.includes(String(r.workNo)))entry.workNos.push(String(r.workNo));
+ }
+ const cutWorks=new Set(cuttingRows.map(r=>String(r.workNo||'').trim().toUpperCase()).filter(Boolean));
+ const noCut=orders.filter(o=>o.workNo&&!cutWorks.has(String(o.workNo).trim().toUpperCase()))
+  .map(o=>({workNo:String(o.workNo),party:String(o.party||''),qty:o.orderQty??''}))
+  .sort((a,b)=>a.workNo.localeCompare(b.workNo,undefined,{numeric:true}));
+ const pendingWorks=[...new Set(pending.map(r=>String(r.workNo||'').trim()).filter(Boolean))];
+ return {
+  missingPhotoMeterCount:photoBlank.length,
+  missingCloudMeterCount:missing.size,
+  missingRows:[...missing.values()].sort((a,b)=>a.srl.localeCompare(b.srl,undefined,{numeric:true})),
+  workOrdersWithoutCutting:noCut,
+  workOrdersWithoutCuttingCount:noCut.length,
+  pendingCuttingLines:pending.length,
+  pendingCuttingWorkOrders:pendingWorks.length,
+  totalWorkOrders:orders.length,
+  totalCuttingLines:cuttingRows.length,
+  photoMissingWithKnownCloudMeter:photoBlank.length-[...missing.values()].filter(r=>r.inPhoto).length
+ };
+};
 function cfmPhotoStockKnownBalance(stock){
  if(!stock)return false;
  if(stock.excelLiveBalanceMtr!==null&&stock.excelLiveBalanceMtr!==undefined&&stock.excelLiveBalanceMtr!==''
