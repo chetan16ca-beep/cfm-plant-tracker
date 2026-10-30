@@ -11,6 +11,9 @@ const norm=x=>str(x).trim().toUpperCase();
 const num=x=>Number.isFinite(Number(x))?Number(x):0;
 const iso=x=>{let s=str(x).trim();if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);let m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);return m?m[3]+'-'+m[2]+'-'+m[1]:''};
 function day(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+// Honor the existing dashboard-only exclusion: CFM-579 through CFM-665 are not
+// shown in the No-Cutting backlog, but remain in All Work Orders and the database.
+function legacyNoCutHidden(w){const m=/^CFM-(\d+)$/i.exec(str(w).trim());return Boolean(m&&Number(m[1])>=579&&Number(m[1])<=665)}
 function snapshot(){
  if(typeof state==='undefined')return null;
  const orders=Array.isArray(state.pending)?state.pending:[],cuts=Array.isArray(state.cutting)?state.cutting:[],
@@ -50,7 +53,7 @@ function snapshot(){
   }
   return {srl:str(r.srlNo),cloth:str(r.quality||r.cloth),width:str(r.width),balance};
  });
- const urgent=rows.filter(r=>r.urgent),noCut=rows.filter(r=>!r.hasCut);
+ const urgent=rows.filter(r=>r.urgent),noCut=rows.filter(r=>!r.hasCut&&!legacyNoCutHidden(r.work));
  return {orders:rows,all:rows.length,urgent,noCut:noCut.length,
   stockPending:pendingWorks.size,shortage:shortWorks.size,missingRolls:missingRolls.size,
   noDue:rows.filter(r=>!r.date).length,dept:[...dept.values()],rollRows,
@@ -110,7 +113,7 @@ function mount(){
   '<div class="actions"><button data-action="backup">⬇ Save PC Data</button><button data-action="refresh">↻ Refresh</button><button data-action="print">🖨 Print</button><button data-action="close">✕ Close</button></div></div>'+
   '<div id="cfmCCStatus203" class="status"></div><div id="cfmCCNumbers203" class="numbers"></div>'+
   '<div class="grid"><div class="panel"><h2>👷 Department Load / Activity</h2><div class="stages" id="cfmCCStages203"></div>'+
-  '<p>Only recorded department activity is counted. Unrecorded Stitching / Packing is not assumed completed.</p></div>'+
+  '<p>Only recorded department activity is counted. Unrecorded Stitching / Packing is not assumed completed. CFM-579 to 665 are excluded from the No-Cutting backlog by request.</p></div>'+
   '<div class="panel"><h2>⚠️ Cloth Shortage & Stock Attention</h2><div id="cfmCCShortage203"></div></div>'+
   '<div class="panel"><h2>🚚 Urgent Deliveries</h2><div id="cfmCCUrgent203"></div></div>'+
   '<div class="panel"><h2>📦 SRL Stock (read-only)</h2><div class="scroll" id="cfmCCStock203"></div>'+
@@ -155,7 +158,7 @@ function drawRows(){
  const q=query.trim().toLowerCase();let list=cache.orders.filter(r=>{
   if(filter==='urgent'&&!r.urgent)return false;
   if(filter==='stock'&&!r.stockPending)return false;
-  if(filter==='uncut'&&r.hasCut)return false;
+  if(filter==='uncut'&&(r.hasCut||legacyNoCutHidden(r.work)))return false;
   return (r.work+' '+r.party+' '+r.item).toLowerCase().includes(q);
  });
  list.sort((a,b)=>Number(b.urgent)-Number(a.urgent)||Number(b.stockPending)-Number(a.stockPending)||
@@ -180,7 +183,7 @@ function refresh(){
   (d.localSpecial.length?' · PC orders: '+safe(d.localSpecial.map(x=>x.work).join(', ')):'')+
   (d.connected?'':' · Do not clear PC browser data until backup is saved.')+
   '</small><small>Read-only • '+safe(d.timestamp)+'</small>';
- byId('cfmCCNumbers203').innerHTML=metric(d.all,'Work Orders')+metric(d.noCut,'No Cutting Entry')+
+ byId('cfmCCNumbers203').innerHTML=metric(d.all,'Work Orders')+metric(d.noCut,'No Cutting Entry (filtered)')+
   metric(d.stockPending,'Stock Reconciliation Pending',d.stockPending>0)+
   metric(d.shortage,'Work Orders with Insufficient Stock',d.shortage>0)+
   metric(d.urgent.length,'Urgent / Overdue Deliveries',d.urgent.length>0)+
