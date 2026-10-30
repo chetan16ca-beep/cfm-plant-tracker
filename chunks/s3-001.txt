@@ -284,6 +284,98 @@ window.cfmGetDashboardStockAudit=function(){
   photoMissingWithKnownCloudMeter:photoBlank.length-[...missing.values()].filter(r=>r.inPhoto).length
  };
 };
+
+/* V195 dashboard lists are display-only; source data is cloud-synced state. */
+(function(){
+ function makeAuditPanel(){
+  const dash=document.getElementById('view-dashboard');
+  if(!dash)return null;
+  let panel=document.getElementById('cfmV195DashboardAudit');
+  if(panel)return panel;
+  panel=document.createElement('section');
+  panel.id='cfmV195DashboardAudit';
+  panel.className='cfm-v195-audit';
+  panel.setAttribute('aria-label','Stock MTR and Cutting Entry audit');
+  panel.innerHTML='<div class="cfm-v195-head"><div><b>📋 Stock MTR & Cutting Entries</b><small>Live dashboard — missing meter SRLs listed separately</small></div><span id="cfmV195Live">Syncing…</span></div>'+
+   '<div class="cfm-v195-grid">'+
+    '<div><strong id="cfmV195Missing">—</strong><span>SRL — MTR Missing</span></div>'+
+    '<div><strong id="cfmV195NoCut">—</strong><span>Work Orders — Cutting Not Entered</span></div>'+
+    '<div><strong id="cfmV195PendingWorks">—</strong><span>Work Orders — Stock Deduction Pending</span></div>'+
+    '<div><strong id="cfmV195PendingLines">—</strong><span>Cutting Lines — Stock Pending</span></div></div>'+
+   '<p id="cfmV195PhotoNote" class="cfm-v195-note">Reviewing Physical Register…</p>'+
+   '<details class="cfm-v195-detail" open><summary>⚠️ Serial Numbers without Stock MTR <span id="cfmV195MissingCount"></span></summary>'+
+   '<p>Photo meter not visible AND no available Cloud Store meter baseline. An absent SRL record does not mean zero stock.</p>'+
+   '<div class="cfm-v195-scroll"><table><thead><tr><th>SRL</th><th>Width</th><th>Related Work Nos.</th><th>Status</th></tr></thead><tbody id="cfmV195MissingBody"></tbody></table></div></details>'+
+   '<details class="cfm-v195-detail"><summary>📝 Work Orders without Cutting Entry <span id="cfmV195NoCutCount"></span></summary>'+
+   '<p>Saved Work Orders with no matching Cutting Register entry. These are not confirmed as uncut in the plant.</p>'+
+   '<input id="cfmV195Search" type="search" aria-label="Find Work No. without cutting" placeholder="Search Work No. / Party…">'+
+   '<div class="cfm-v195-scroll"><table><thead><tr><th>Work No.</th><th>Party</th><th>Order Qty</th></tr></thead><tbody id="cfmV195NoCutBody"></tbody></table></div></details>';
+  dash.insertBefore(panel,dash.querySelector('.photo-quick-actions')||dash.firstChild?.nextSibling||null);
+  const style=document.createElement('style');
+  style.id='cfmV195DashboardCSS';
+  style.textContent=
+   '#view-dashboard .cfm-v195-audit{margin:0 0 16px;padding:14px;background:#fff;border:1px solid #c4e0ef;border-radius:16px;box-shadow:0 6px 22px #176eb514;color:#1b3851}'+
+   '#view-dashboard .cfm-v195-head{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px}'+
+   '#view-dashboard .cfm-v195-head b{font-size:17px;color:#0c598e}#view-dashboard .cfm-v195-head small{display:block;color:#637889;font-size:12px;margin-top:4px}'+
+   '#view-dashboard #cfmV195Live{font-size:11px;color:#5f7686}'+
+   '#view-dashboard .cfm-v195-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}'+
+   '#view-dashboard .cfm-v195-grid>div{border:1px solid #d1e7f5;border-radius:12px;padding:11px;background:#f1f9ff;min-width:0}'+
+   '#view-dashboard .cfm-v195-grid strong{display:block;color:#0868a7;font-size:26px;font-variant-numeric:tabular-nums}'+
+   '#view-dashboard .cfm-v195-grid span{display:block;font-size:11px;font-weight:750;color:#496b80;line-height:1.4;margin-top:4px}'+
+   '#view-dashboard .cfm-v195-note{font-size:12px;color:#5f7180;margin:12px 0 10px}'+
+   '#view-dashboard .cfm-v195-detail{padding:10px;margin:9px 0;border:1px solid #dcebf4;border-radius:11px}'+
+   '#view-dashboard .cfm-v195-detail summary{font-size:13px;font-weight:800;color:#235573;cursor:pointer}'+
+   '#view-dashboard .cfm-v195-detail p{font-size:11px;color:#5d7382;margin:9px 0}'+
+   '#view-dashboard .cfm-v195-scroll{max-height:255px;overflow:auto}'+
+   '#view-dashboard .cfm-v195-detail table{min-width:440px;border-collapse:collapse;width:100%;font-size:12px}'+
+   '#view-dashboard .cfm-v195-detail th,#view-dashboard .cfm-v195-detail td{padding:8px 7px;text-align:left;border-bottom:1px solid #e7eff6}'+
+   '#view-dashboard .cfm-v195-detail th{position:sticky;top:0;background:#f1f7fc;color:#40637a}'+
+   '#view-dashboard #cfmV195Search{width:100%;box-sizing:border-box;padding:10px;margin:7px 0;border:1px solid #c4dbe9;border-radius:9px}'+
+   '@media(max-width:720px){#view-dashboard .cfm-v195-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#view-dashboard .cfm-v195-head b{font-size:15px}#view-dashboard .cfm-v195-audit{padding:11px}}';
+  document.head.appendChild(style);
+  panel.querySelector('#cfmV195Search').addEventListener('input',()=>drawNoCut());
+  return panel;
+ }
+ let last=null;
+ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ function drawNoCut(){
+  const target=document.getElementById('cfmV195NoCutBody');
+  if(!target||!last)return;
+  const q=String(document.getElementById('cfmV195Search')?.value||'').trim().toLowerCase();
+  const data=last.workOrdersWithoutCutting.filter(r=>(r.workNo+' '+r.party).toLowerCase().includes(q));
+  target.innerHTML=data.length?data.map(r=>'<tr><td><b>'+esc(r.workNo)+'</b></td><td>'+esc(r.party)+'</td><td>'+esc(r.qty)+'</td></tr>').join(''):
+   '<tr><td colspan="3">No matching Work Orders</td></tr>';
+ }
+ function render(){
+  const panel=makeAuditPanel();
+  if(!panel||typeof window.cfmGetDashboardStockAudit!=='function')return;
+  try{
+   const audit=window.cfmGetDashboardStockAudit();
+   if(!audit||!Array.isArray(audit.missingRows)||!Array.isArray(audit.workOrdersWithoutCutting))return;
+   last=audit;
+   const set=(id,v)=>{const x=panel.querySelector('#'+id);if(x)x.textContent=String(v)};
+   set('cfmV195Missing',audit.missingCloudMeterCount);
+   set('cfmV195NoCut',audit.workOrdersWithoutCuttingCount);
+   set('cfmV195PendingWorks',audit.pendingCuttingWorkOrders);
+   set('cfmV195PendingLines',audit.pendingCuttingLines);
+   set('cfmV195MissingCount','('+audit.missingCloudMeterCount+')');
+   set('cfmV195NoCutCount','('+audit.workOrdersWithoutCuttingCount+')');
+   set('cfmV195Live','Live ERP • Updated');
+   set('cfmV195PhotoNote','27-Oct physical photos: '+audit.missingPhotoMeterCount+
+    ' SRLs with blank/unreadable photo meters. '+audit.photoMissingWithKnownCloudMeter+
+    ' of those have a usable Cloud Stock MTR; only unresolved stock meters are listed below.');
+   const target=panel.querySelector('#cfmV195MissingBody');
+   target.innerHTML=audit.missingRows.length?audit.missingRows.map(r=>
+    '<tr><td><b>'+esc(r.srl)+'</b></td><td>'+esc(r.photoWidth?String(r.photoWidth)+'″':'—')+
+    '</td><td>'+esc(r.workNos.join(', ')||'—')+'</td><td>'+esc(r.reason)+'</td></tr>').join(''):
+    '<tr><td colspan="4">No SRL with missing stock MTR.</td></tr>';
+   drawNoCut();
+  }catch(err){console.warn('CFM Dashboard Stock Audit:',err)}
+ }
+ setTimeout(render,1000);
+ setTimeout(render,3500);
+ setInterval(render,12000);
+})();
 function cfmPhotoStockKnownBalance(stock){
  if(!stock)return false;
  if(stock.excelLiveBalanceMtr!==null&&stock.excelLiveBalanceMtr!==undefined&&stock.excelLiveBalanceMtr!==''
