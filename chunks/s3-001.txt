@@ -353,7 +353,7 @@ window.cfmGetDashboardStockAudit=function(){
    '<p>These Cutting entries are saved. Keep them separate from Work Orders without any Cutting entry. No automatic stock deduction.</p>'+
    '<div class="cfm-v195-scroll"><table><thead><tr><th>Work No.</th><th>Party</th><th>SRL</th><th>Lines</th><th>Estimated MTR</th><th>Pending Reason</th></tr></thead><tbody id="cfmV196StockBody"><tr><td colspan="6">Loading…</td></tr></tbody></table></div></details>'+
    '<details class="cfm-v195-detail"><summary>📝 Work Orders without Cutting Entry <span id="cfmV195NoCutCount"></span></summary>'+
-   '<p>Saved Work Orders with no matching Cutting Register entry. These are not confirmed as uncut in the plant.</p>'+
+   '<p>Saved Work Orders with no matching Cutting Register entry. CFM-579 to CFM-665 (through SNL PHARMA) are hidden here by request, not deleted.</p>'+
    '<input id="cfmV195Search" type="search" aria-label="Find Work No. without cutting" placeholder="Search Work No. / Party…">'+
    '<div class="cfm-v195-scroll"><table><thead><tr><th>Work No.</th><th>Party</th><th>Order Qty</th></tr></thead><tbody id="cfmV195NoCutBody"></tbody></table></div></details>';
   dash.insertBefore(panel,dash.querySelector('.photo-quick-actions')||dash.firstChild?.nextSibling||null);
