@@ -76,7 +76,22 @@ let cloudReady=false;
 let cloudPushTimer=null;
 let localMutationSeq=0;
 const cloudHeaders=()=>{if(!ensureCloudKey())throw new Error('Sync code required');return {'apikey':CLOUD_ANON,'Authorization':'Bearer '+CLOUD_ANON,'Content-Type':'application/json','x-cfm-key':CLOUD_KEY};};
-function setCloudBadge(msg,mode='green'){const el=$('cloudSyncBadge');if(!el)return;el.textContent=msg;el.className='chip '+(mode==='red'?'red':mode==='amber'?'amber':'green');}
+function setCloudBadge(msg,mode='green'){
+ const el=$('cloudSyncBadge');
+ if(el){el.textContent=msg;el.className='chip '+(mode==='red'?'red':mode==='amber'?'amber':'green');}
+ // Keep dashboard 3–4 mobile sync symbol tied to the actual cloud status.
+ // 3–4 refers to supported devices, NOT a claimed number currently online.
+ const dashboard=document.getElementById('cfmDashboardCloudSync');
+ if(dashboard){
+  const connected=mode==='green'&&cloudReady&&/3[-–]4\s*Mobile\s*LIVE/i.test(String(msg||''));
+  const status=connected?'Cloud Connected':mode==='red'?'Sync Error':mode==='amber'?'Syncing / Pending':'Checking Connection';
+  dashboard.dataset.syncMode=connected?'green':mode==='red'?'red':'amber';
+  dashboard.title='3–4 mobile cloud sync support • '+status+' • Tap to sync now';
+  dashboard.setAttribute('aria-label','3 to 4 mobile cloud sync. '+status+'. Tap to sync now.');
+  const label=document.getElementById('cfmDashboardCloudSyncStatus');
+  if(label)label.textContent=status;
+ }
+}
 function cloudStatePayload(){const d=clone(state);delete d.measurements;delete d.srlTracker;delete d.issueRegister;delete d.srlOpenClose;delete d.productMaster;return d}
 async function cloudFetchMeta(){
   const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&select=version,updated_at';
