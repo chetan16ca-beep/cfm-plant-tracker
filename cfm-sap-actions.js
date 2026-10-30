@@ -78,3 +78,83 @@ function ready(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
 })();
+
+
+/* V207: visually distinct, read-only SAP-style plant launchpad.
+   All module shortcuts call existing ERP navigation. No data writes. */
+(function(){
+'use strict';
+const tiles=[
+ ['📋','Work Orders','Create or review pending orders','pending'],
+ ['✂️','Cutting Register','Cutting entries, SRL and meter records','cutting'],
+ ['📦','Store & Stock','Physical rolls and cloth balances','store'],
+ ['🏭','Production Center','Read-only orders and department load','__command'],
+ ['👷','Department Activity','Stitching, thread cut, gun finish, packing','deptwork'],
+ ['🚚','Ready to Dispatch','Review finished order status','readydispatch'],
+ ['🔎','Search & History','Find old and new work numbers','search'],
+ ['🖨️','Reports & Print','Daily printing and work tags','print']
+];
+function nav(action){
+ if(action==='__command'){
+  if(typeof window.cfmOpenProductionCommandCenter==='function')window.cfmOpenProductionCommandCenter();
+  else alert('Production Center is loading. Try again.');
+ }else if(document.getElementById('view-'+action)&&typeof window.showView==='function'){
+  window.showView(action);
+ }else alert('Module not ready. Open it from ERP navigation.');
+}
+function setup(){
+ const dashboard=document.getElementById('view-dashboard');
+ if(!dashboard||document.getElementById('cfmSapWorkspace'))return;
+ const header=document.querySelector('header.topbar');
+ const actions=header&&header.lastElementChild;
+ if(actions&&!document.getElementById('cfmSapClassic')){
+  const b=document.createElement('button');b.type='button';b.id='cfmSapClassic';b.className='cfm-sap-classic';
+  b.textContent='Original Theme';b.title='Switch to original ERP appearance without changing records';
+  b.addEventListener('click',()=>{
+   const url=new URL(window.parent.location.href);
+   url.searchParams.set('theme','classic');
+   window.parent.location.assign(url.href);
+  });
+  actions.appendChild(b);
+ }
+ const section=document.createElement('section');
+ section.id='cfmSapWorkspace';section.className='sap-workspace';
+ section.innerHTML='<div class="sap-intro"><div><div class="sap-kicker">CFM • ENTERPRISE OPERATIONS</div>'+
+  '<h1>Plant Operations Workspace</h1><p>Orders · Stock · Cutting · Production · Dispatch</p></div>'+
+  '<button type="button" data-action="__command">Open Production Center</button></div>'+
+  '<div class="sap-section-title">Plant Overview</div>'+
+  '<div class="sap-metrics"><div class="sap-metric"><span>Work Orders</span><strong id="cfmSapOrderCount">—</strong><small>Loaded ERP records</small></div>'+
+  '<div class="sap-metric"><span>SRL Stock Rolls</span><strong id="cfmSapStoreCount">—</strong><small>Store register entries</small></div>'+
+  '<div class="sap-metric"><span>Cutting Entries</span><strong id="cfmSapCutCount">—</strong><small>Cutting register entries</small></div></div>'+
+  '<div class="sap-section-title">ERP Modules</div><div class="sap-tile-grid"></div>'+
+  '<p class="sap-workspace-note">Numbers reflect ERP records currently loaded on this device; they are not a verified physical-stock or cloud-sync confirmation. No work orders or stock are changed by this screen.</p>';
+ const grid=section.querySelector('.sap-tile-grid');
+ tiles.forEach(([emoji,title,desc,action])=>{
+  const b=document.createElement('button');b.type='button';b.className='sap-tile';
+  b.innerHTML='<span class="sap-tile-icon"></span><span><strong></strong><small></small></span>';
+  b.querySelector('.sap-tile-icon').textContent=emoji;
+  b.querySelector('strong').textContent=title;b.querySelector('small').textContent=desc;
+  b.addEventListener('click',()=>nav(action));grid.appendChild(b);
+ });
+ section.querySelector('[data-action]').addEventListener('click',()=>nav('__command'));
+ dashboard.prepend(section);
+ function update(){
+  try{
+   if(typeof state==='undefined'||!state)return;
+   const orders=Array.isArray(state.pending)?state.pending:[];
+   const map=new Set(orders.filter(x=>x&&x.workNo&&
+     !/^(true|1|yes)$/i.test(String(x.archived||''))).map(x=>String(x.workNo).trim().toUpperCase()));
+   const store=Array.isArray(state.store)?state.store:[];
+   const cuts=Array.isArray(state.cutting)?state.cutting:[];
+   const o=document.getElementById('cfmSapOrderCount');
+   const s=document.getElementById('cfmSapStoreCount');
+   const c=document.getElementById('cfmSapCutCount');
+   if(o)o.textContent=String(map.size);
+   if(s)s.textContent=String(store.length);
+   if(c)c.textContent=String(cuts.length);
+  }catch(e){console.warn('CFM SAP overview counters unavailable',e)}
+ }
+ update();setInterval(()=>{if(document.getElementById('view-dashboard')?.classList.contains('active'))update()},15000);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
+})();
