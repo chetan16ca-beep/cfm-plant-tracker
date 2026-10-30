@@ -273,3 +273,20 @@ header.topbar .cfm-sap-classic{background:transparent!important;color:#fff!impor
 .sap-metric:nth-child(2){border-top-color:#0b8290!important}
 .sap-metric small{line-height:1.4;display:block}
 @media(max-width:1049px){.sap-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+
+/* V210: explicit Cloud vs. device data provenance. */
+.sap-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.sap-section-title:has(.sap-cloud-verify){display:flex!important;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.sap-cloud-verify{border:1px solid #9fc8e9!important;color:#0b65a4!important;background:#fff!important;padding:8px 12px!important;border-radius:5px!important;font-size:12px!important;font-weight:800!important;cursor:pointer}
+.sap-cloud-verify:hover{background:#eaf5fe!important}
+.sap-cloud-verify:disabled{opacity:.65;cursor:progress}
+.sap-cloud-status{font-size:12px;padding:10px 12px;margin:8px 0 12px;border:1px solid #c7dae8;border-radius:6px;color:#335e79;background:#f2f9fd;line-height:1.5}
+.sap-cloud-status[data-mode=ok]{border-color:#a8d4c3;background:#f1faf6;color:#19684b}
+.sap-cloud-status[data-mode=error]{border-color:#e7c18e;background:#fff8ea;color:#8e5911}
+.sap-cloud-status[data-mode=pending]{background:#f2f8fd;color:#416783}
+.sap-metric.sap-metric-cloud{border-top:3px solid #0b79c9!important;background:#fafdff}
+.sap-metric.sap-metric-cloud:nth-child(2){border-top-color:#10877f!important}
+.sap-metric.sap-metric-cloud strong{font-size:30px!important}
+@media(max-width:1049px){.sap-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:550px){.sap-cloud-verify{width:100%!important}.sap-metrics{gap:7px!important}.sap-metric.sap-metric-cloud strong{font-size:25px!important}}
