@@ -290,3 +290,203 @@ header.topbar .cfm-sap-classic{background:transparent!important;color:#fff!impor
 .sap-metric.sap-metric-cloud strong{font-size:30px!important}
 @media(max-width:1049px){.sap-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:550px){.sap-cloud-verify{width:100%!important}.sap-metrics{gap:7px!important}.sap-metric.sap-metric-cloud strong{font-size:25px!important}}
+
+
+/* V212 — SAP-inspired Work Order creation/editing + Multi-item PO entry.
+   Presentation-only. Original inputs, names, values, handlers, and storage preserved. */
+#editDialog.cfm-wo-dialog,#editDialog.cfm-wo-multi-dialog{
+  width:min(1120px,calc(100vw - 32px))!important;max-width:1120px!important;
+  max-height:min(94dvh,1020px)!important;border:1px solid #b7ccdd!important;
+  border-radius:11px!important;background:#f3f7fb!important;
+  padding:0!important;box-shadow:0 30px 95px #08283f73!important;color:#213d55!important;
+  overflow:hidden!important;
+}
+#editDialog.cfm-wo-multi-dialog{width:min(1230px,calc(100vw - 28px))!important;max-width:1230px!important}
+#editDialog.cfm-wo-dialog #editForm,#editDialog.cfm-wo-multi-dialog #editForm{
+ display:flex!important;flex-direction:column!important;padding:0!important;
+ max-height:min(94dvh,1020px)!important;height:100%!important;min-height:0!important;
+ background:#f3f7fb!important
+}
+#editDialog.cfm-wo-dialog .dialog-head,#editDialog.cfm-wo-multi-dialog .dialog-head{
+ display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;
+ flex:0 0 auto!important;position:relative!important;top:auto!important;margin:0!important;
+ padding:13px 24px!important;min-height:58px!important;
+ background:#0b3557!important;background-image:none!important;color:#fff!important;
+ border:0!important;border-radius:0!important;box-shadow:0 4px 14px #0d39501e!important;z-index:4!important
+}
+#editDialog.cfm-wo-dialog .dialog-head h3,#editDialog.cfm-wo-multi-dialog .dialog-head h3{
+ font-family:"Segoe UI",Arial,sans-serif!important;font-size:16px!important;
+ font-weight:780!important;color:#fff!important;letter-spacing:-.01em!important
+}
+#editDialog.cfm-wo-dialog .dialog-head .icon-btn,#editDialog.cfm-wo-multi-dialog .dialog-head .icon-btn{
+ color:#fff!important;background:#ffffff18!important;border:1px solid #ffffff45!important;
+ border-radius:6px!important;display:flex!important;justify-content:center!important;align-items:center!important;
+ width:34px!important;height:34px!important;flex:0 0 auto!important;font-size:21px!important
+}
+#editDialog.cfm-wo-dialog #formFields,#editDialog.cfm-wo-multi-dialog #formFields{
+ display:block!important;flex:1 1 auto!important;min-height:0!important;
+ max-height:none!important;overflow:auto!important;overscroll-behavior:contain!important;
+ padding:0 24px 18px!important;background:#f3f7fb!important;
+ scrollbar-color:#b4ccd9 transparent!important
+}
+#editDialog.cfm-wo-dialog #formFields .cfm-wo-intro,
+#editDialog.cfm-wo-multi-dialog #formFields .cfm-wo-intro{
+ display:flex!important;justify-content:space-between!important;align-items:center!important;
+ gap:16px!important;margin:0 -24px 18px!important;padding:22px 25px!important;
+ color:#fff!important;background:linear-gradient(110deg,#0d5a92,#0a729f 70%,#07817f)!important;
+ box-shadow:0 4px 14px #0a476522!important;border:0!important;border-radius:0!important
+}
+#editDialog.cfm-wo-dialog .cfm-wo-kicker,#editDialog.cfm-wo-multi-dialog .cfm-wo-kicker{
+ font:800 10px/1.4 "Segoe UI",Arial,sans-serif!important;color:#c7f0ff!important;letter-spacing:.11em!important
+}
+#editDialog.cfm-wo-dialog .cfm-wo-intro h2,#editDialog.cfm-wo-multi-dialog .cfm-wo-intro h2{
+ font:800 clamp(20px,2.7vw,29px)/1.2 "Segoe UI",Arial,sans-serif!important;
+ margin:5px 0 6px!important;color:#fff!important;letter-spacing:-.025em!important
+}
+#editDialog.cfm-wo-dialog .cfm-wo-intro p,#editDialog.cfm-wo-multi-dialog .cfm-wo-intro p{
+ color:#dbf1ff!important;font:500 12px/1.5 "Segoe UI",Arial,sans-serif!important;margin:0!important
+}
+#editDialog .cfm-wo-current{display:flex!important;flex-direction:column!important;gap:3px!important;align-items:flex-end!important;
+ border:1px solid #ffffff55!important;border-radius:7px!important;padding:11px 16px!important;min-width:130px!important;
+ background:#ffffff20!important;box-shadow:0 2px 8px #04446119!important}
+#editDialog .cfm-wo-current small{font-size:9px!important;letter-spacing:.11em!important;font-weight:800!important;color:#d8f6ff!important}
+#editDialog .cfm-wo-current strong{font-size:18px!important;font-weight:800!important;color:#fff!important;white-space:nowrap!important}
+#editDialog .cfm-wo-sections{display:flex!important;flex-direction:column!important;gap:15px!important}
+#editDialog .cfm-wo-group{
+ border:1px solid #d0dee9!important;border-radius:9px!important;background:#fff!important;
+ box-shadow:0 3px 11px #0b37500e!important;overflow:hidden!important;
+}
+#editDialog .cfm-wo-group-head{
+ display:flex!important;align-items:center!important;gap:12px!important;padding:13px 18px!important;
+ background:#f8fbfe!important;border-bottom:1px solid #e0eaf1!important
+}
+#editDialog .cfm-wo-icon{display:flex!important;flex:none!important;align-items:center!important;justify-content:center!important;
+ width:37px!important;height:37px!important;padding:8px!important;border-radius:9px!important;
+ background:#e7f2fd!important;color:#096cae!important}
+#editDialog .cfm-wo-svg{width:100%!important;height:100%!important;stroke:currentColor!important;fill:none!important}
+#editDialog .cfm-wo-group-head-text{flex:1 1 auto!important;min-width:0!important}
+#editDialog .cfm-wo-group-head h4{font:800 14px/1.25 "Segoe UI",Arial,sans-serif!important;
+ color:#183e5b!important;margin:0!important}
+#editDialog .cfm-wo-group-head p{font:500 11px/1.35 "Segoe UI",Arial,sans-serif!important;
+ color:#718798!important;margin:4px 0 0!important}
+#editDialog .cfm-wo-step{font-size:11px!important;font-weight:800!important;color:#62859c!important;
+ border:1px solid #d6e7f1!important;border-radius:5px!important;padding:5px 7px!important;background:#fff!important}
+#editDialog .cfm-wo-group-grid{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ gap:16px 15px!important;padding:17px 18px 19px!important;min-width:0!important
+}
+#editDialog .cfm-wo-group-grid .field{grid-column:auto!important;min-width:0!important;
+ margin:0!important;padding:0!important;display:flex!important;flex-direction:column!important;gap:6px!important}
+#editDialog .cfm-wo-group-grid .field.full,
+#editDialog .cfm-wo-group-grid .field.cfm-wo-long{grid-column:1/-1!important}
+#editDialog .cfm-wo-group-grid .field label{display:block!important;
+ font:750 11px/1.35 "Segoe UI",Arial,sans-serif!important;color:#4c6b82!important;
+ margin:0!important;letter-spacing:.015em!important}
+#editDialog .cfm-wo-important>label:after{content:" •"!important;color:#1170b0!important;font-weight:900!important}
+#editDialog.cfm-wo-dialog .field input:not([type="checkbox"]),#editDialog.cfm-wo-dialog .field select,
+#editDialog.cfm-wo-dialog .field textarea,
+#editDialog.cfm-wo-multi-dialog .field input:not([type="checkbox"]),#editDialog.cfm-wo-multi-dialog .field select,
+#editDialog.cfm-wo-multi-dialog .field textarea{
+ display:block!important;box-sizing:border-box!important;width:100%!important;max-width:100%!important;
+ min-height:41px!important;border:1px solid #bed0de!important;border-radius:6px!important;
+ padding:10px 12px!important;background:#fff!important;color:#123e5d!important;
+ box-shadow:0 1px 2px #18456709!important;font:600 13px/1.4 "Segoe UI",Arial,sans-serif!important
+}
+#editDialog .field input:focus,#editDialog .field select:focus,#editDialog .field textarea:focus{
+ border-color:#0a6ed1!important;outline:2px solid #c2e1ff!important;outline-offset:1px!important;background:#fff!important
+}
+#editDialog .field input[readonly]{background:#f1f5f8!important;border-color:#d2dce5!important;color:#557082!important}
+#editDialog .cfm-wo-number input{border-color:#91bfe0!important;background:#f5faff!important;
+ color:#0b5b9e!important;font-weight:850!important;font-size:16px!important}
+#editDialog .field textarea{min-height:84px!important;resize:vertical!important}
+#editDialog .cfm-wo-long textarea{min-height:95px!important}
+#editDialog .cfm-wo-locked input{color:#657a8a!important;background:#f3f7fa!important}
+#editDialog .field.full .auto-box{background:#f1f9ff!important;border:1px solid #c5dff2!important;
+ color:#164c73!important;border-radius:6px!important;padding:12px!important;font-size:13px!important}
+#editDialog .field .inline-help,#editDialog .field .smart-order-hint{
+ font-size:11px!important;color:#738999!important;line-height:1.5!important
+}
+#editDialog .cfm-wo-group .card-actions button{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ padding:10px 12px!important;border:1px solid #8cbfdf!important;border-radius:5px!important;
+ background:#edf7ff!important;color:#125f9f!important;font-weight:800!important;
+ min-height:42px!important;box-shadow:none!important;font-size:12px!important;white-space:normal!important;
+}
+#editDialog .cfm-wo-group .card-actions button.btn-green{
+ background:#0a6ed1!important;color:#fff!important;border-color:#0a6ed1!important
+}
+#editDialog .cfm-wo-form-note{display:flex!important;align-items:flex-start!important;gap:10px!important;
+ margin:14px 0 0!important;padding:12px 14px!important;background:#eff7fb!important;
+ border:1px solid #d4e7f1!important;border-radius:7px!important;color:#4a6a7e!important;
+ font-size:11px!important;line-height:1.55!important}
+#editDialog .cfm-wo-form-note .cfm-wo-svg{width:19px!important;height:19px!important;flex:none!important;color:#168370!important}
+#editDialog.cfm-wo-dialog .dialog-actions,#editDialog.cfm-wo-multi-dialog .dialog-actions{
+ display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:11px!important;
+ position:relative!important;bottom:auto!important;z-index:5!important;flex:0 0 auto!important;
+ padding:14px 24px!important;margin:0!important;border:0!important;border-top:1px solid #c9d9e7!important;
+ background:#fff!important;box-shadow:0 -4px 13px #0e415713!important;border-radius:0!important
+}
+#editDialog.cfm-wo-dialog .dialog-actions button,#editDialog.cfm-wo-multi-dialog .dialog-actions button{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ min-height:44px!important;padding:11px 22px!important;border-radius:5px!important;font:750 13px/1.25 "Segoe UI",Arial,sans-serif!important
+}
+#editDialog.cfm-wo-dialog .dialog-actions #saveFormBtn,#editDialog.cfm-wo-multi-dialog .dialog-actions #saveFormBtn{
+ color:#fff!important;background:#0a6ed1!important;border:1px solid #0a6ed1!important;
+ min-width:155px!important;box-shadow:0 3px 8px #0b5aa925!important
+}
+#editDialog .dialog-actions #saveFormBtn:disabled{opacity:.65!important;cursor:wait!important}
+#editDialog.cfm-wo-dialog .dialog-actions [value="cancel"],#editDialog.cfm-wo-multi-dialog .dialog-actions [value="cancel"]{
+ background:#fff!important;border:1px solid #b9ccd9!important;color:#27506c!important
+}
+/* Multi-item PO fields are left intact, but match the same design vocabulary. */
+#editDialog.cfm-wo-multi-dialog .multi-po-shell{gap:13px!important}
+#editDialog.cfm-wo-multi-dialog .cfm-wo-intro{margin-top:0!important}
+#editDialog.cfm-wo-multi-dialog .cfm-wo-inline-heading{display:flex!important;align-items:center!important;
+ gap:10px!important;margin:3px 0 0!important;color:#234e6e!important;font-size:14px!important;
+ background:#e7f1f9!important;border-left:4px solid #0b71b7!important;
+ border-radius:6px!important;padding:9px 12px!important}
+#editDialog.cfm-wo-multi-dialog .cfm-wo-inline-heading .cfm-wo-icon{width:32px!important;height:32px!important}
+#editDialog.cfm-wo-multi-dialog .multi-po-top,#editDialog.cfm-wo-multi-dialog .multi-po-item-row{
+ border:1px solid #d4e2eb!important;border-radius:8px!important;background:#fff!important;
+ box-shadow:0 3px 10px #0d3c5911!important
+}
+#editDialog.cfm-wo-multi-dialog .multi-po-top{padding:18px!important;gap:12px!important}
+#editDialog.cfm-wo-multi-dialog .multi-po-item-row{padding:15px!important}
+#editDialog.cfm-wo-multi-dialog .multi-po-title{border-bottom:1px solid #d7e4ed!important;padding:12px 3px!important}
+#editDialog.cfm-wo-multi-dialog .multi-po-title h3{font-size:16px!important;color:#143e61!important}
+#editDialog.cfm-wo-multi-dialog .multi-po-item-head{background:#f2f8fc!important;border-radius:5px!important}
+#editDialog.cfm-wo-multi-dialog .multi-work-badge{color:#0d65a6!important;border-radius:6px!important}
+#editDialog.cfm-wo-multi-dialog .multi-add-item{
+ background:#edf7ff!important;border:1px dashed #7eafcf!important;color:#096cae!important;
+ padding:12px!important;font-size:13px!important;font-weight:800!important;border-radius:7px!important
+}
+#editDialog.cfm-wo-multi-dialog .multi-cut-note{background:#edf8fa!important;border:1px solid #c5e6e8!important;border-radius:8px!important}
+@media(max-width:880px){
+ #editDialog .cfm-wo-group-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #editDialog.cfm-wo-multi-dialog .multi-po-top{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:580px){
+ #editDialog.cfm-wo-dialog,#editDialog.cfm-wo-multi-dialog{width:calc(100vw - 12px)!important;max-height:calc(100dvh - 12px)!important;border-radius:9px!important}
+ #editDialog.cfm-wo-dialog #editForm,#editDialog.cfm-wo-multi-dialog #editForm{max-height:calc(100dvh - 12px)!important}
+ #editDialog.cfm-wo-dialog .dialog-head,#editDialog.cfm-wo-multi-dialog .dialog-head{min-height:49px!important;padding:9px 13px!important}
+ #editDialog.cfm-wo-dialog #formFields,#editDialog.cfm-wo-multi-dialog #formFields{padding:0 11px 11px!important}
+ #editDialog.cfm-wo-dialog #formFields .cfm-wo-intro,#editDialog.cfm-wo-multi-dialog #formFields .cfm-wo-intro{
+   margin:0 -11px 12px!important;padding:15px 13px!important;flex-wrap:wrap!important
+ }
+ #editDialog .cfm-wo-current{align-items:flex-start!important;min-width:0!important;padding:7px 10px!important}
+ #editDialog .cfm-wo-current strong{font-size:15px!important}
+ #editDialog .cfm-wo-intro h2{font-size:21px!important}
+ #editDialog .cfm-wo-group-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:13px 10px!important;padding:12px!important}
+ #editDialog .cfm-wo-group-head{padding:10px 12px!important;gap:8px!important}
+ #editDialog .cfm-wo-group-head h4{font-size:13px!important}
+ #editDialog .cfm-wo-group-head p{font-size:10px!important}
+ #editDialog .cfm-wo-icon{width:32px!important;height:32px!important}
+ #editDialog .cfm-wo-group-grid .field.cfm-wo-important,
+ #editDialog .cfm-wo-group-grid .field.cfm-wo-number{grid-column:1/-1!important}
+ #editDialog .cfm-wo-group-grid .field.full{grid-column:1/-1!important}
+ #editDialog.cfm-wo-dialog .dialog-actions,#editDialog.cfm-wo-multi-dialog .dialog-actions{padding:10px 11px!important;gap:8px!important}
+ #editDialog.cfm-wo-dialog .dialog-actions button,#editDialog.cfm-wo-multi-dialog .dialog-actions button{padding:10px 13px!important;min-height:43px!important;flex:1!important}
+ #editDialog.cfm-wo-dialog .dialog-actions #saveFormBtn,#editDialog.cfm-wo-multi-dialog .dialog-actions #saveFormBtn{min-width:0!important;flex:1.4!important}
+ #editDialog.cfm-wo-multi-dialog .multi-po-top{grid-template-columns:1fr!important;padding:12px!important}
+ #editDialog.cfm-wo-multi-dialog .multi-po-item-row{padding:12px!important}
+}
