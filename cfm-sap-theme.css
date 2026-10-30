@@ -79,3 +79,93 @@ td,th{border-color:#dbe4eb!important}
  #view-dashboard .photo-quick-actions button{min-height:68px!important}
 }
 @media print{.cfm-sap-open,.cfm-sap-overlay{display:none!important}}
+
+
+/* V207: unmistakably different SAP-inspired desktop shell and Fiori-style home. */
+header.topbar{
+  min-height:67px!important;background:#0c3557!important;background-image:none!important;
+  color:#fff!important;border:0!important;border-radius:0!important;margin:0!important;
+  box-shadow:0 3px 13px #061d3190!important;padding:11px 22px!important;
+}
+header.topbar .brand p,header.topbar .brand h1,
+header.topbar .brand span{color:#fff!important}
+header.topbar::after{display:none!important}
+header.topbar .app-version-badge{background:#20638f!important;color:#fff!important;border-color:#4a88af!important}
+header.topbar .cfm-sap-open{background:#1672bb!important;color:#fff!important;border:1px solid #7ab2df!important;border-radius:5px!important}
+header.topbar .cfm-sap-classic{background:transparent!important;color:#fff!important;border:1px solid #8ab5d4!important;border-radius:5px!important;font-weight:700!important;font-size:12px!important;padding:9px 10px!important;cursor:pointer}
+#view-dashboard .photo-quick-actions,#view-dashboard .command-hero{display:none!important}
+#view-dashboard>.section-head{display:none!important}
+.sap-workspace{margin:0 0 18px;font-family:"Segoe UI",Arial,sans-serif}
+.sap-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+ background:linear-gradient(110deg,#0e5182 0%,#0f689b 62%,#0c7d8c 100%);
+ color:#fff;padding:24px 27px;border-radius:9px;box-shadow:0 7px 20px #073c6522}
+.sap-kicker{font-size:11px;font-weight:800;letter-spacing:.12em;color:#bbebff}
+.sap-intro h1{font-size:28px;line-height:1.18;letter-spacing:-.02em;margin:7px 0;color:#fff!important;font-weight:800}
+.sap-intro p{font-size:13px;color:#d6eefa;margin:0;line-height:1.5}
+.sap-intro button{padding:11px 15px!important;background:#fff!important;color:#0b5c9c!important;border:0!important;border-radius:5px!important;font-weight:800!important;cursor:pointer}
+.sap-section-title{color:#1b3d5a;font-size:16px;font-weight:800;margin:18px 0 11px;display:flex;align-items:center;justify-content:space-between}
+.sap-tile-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.sap-tile{display:flex!important;min-width:0;min-height:132px;flex-direction:column;align-items:flex-start;justify-content:space-between;
+ padding:16px!important;border-radius:7px!important;border:1px solid #cddde9!important;
+ background:#fff!important;color:#143b5a!important;box-shadow:0 3px 9px #0e335311!important;
+ text-align:left;cursor:pointer!important;transition:transform .12s ease,box-shadow .12s ease}
+.sap-tile:hover,.sap-tile:focus-visible{transform:translateY(-2px);box-shadow:0 5px 17px #0e33552b!important;outline:2px solid #7ab9ed!important}
+.sap-tile-icon{font-size:26px;display:block;background:#eaf4fd;border-radius:8px;padding:8px}
+.sap-tile strong{font-size:14px;display:block;font-weight:800;margin-top:10px}
+.sap-tile small{font-size:11px;display:block;color:#5e7486;margin-top:5px;line-height:1.35}
+.sap-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin:14px 0}
+.sap-metric{background:#fff;border:1px solid #d7e3ec;border-top:3px solid #0a6ed1;border-radius:6px;padding:14px;min-width:0}
+.sap-metric span{display:block;font-size:11px;color:#617487;font-weight:700}
+.sap-metric strong{display:block;font-size:25px;color:#0b3557;font-weight:800;margin:4px 0}
+.sap-metric small{font-size:10px;color:#7a8996}
+.sap-metric[data-alert="yes"]{border-top-color:#d08617}
+.sap-workspace-note{font-size:11px;color:#647a8d;margin:10px 0 0;line-height:1.5}
+@media(min-width:1050px){
+ body{background:#f2f6fa!important}
+ #nav{position:fixed!important;top:67px!important;bottom:0!important;left:0!important;width:238px!important;
+  height:calc(100dvh - 67px)!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important;
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:3px!important;
+  padding:18px 10px!important;border:0!important;border-right:1px solid #224763!important;
+  border-radius:0!important;background:#123b5b!important;background-image:none!important;
+  box-shadow:3px 0 14px #132e4b17!important;z-index:21!important}
+ #nav::before{content:"PLANT MODULES"!important;display:block!important;font-size:10px!important;
+  font-weight:900!important;letter-spacing:.1em!important;color:#99bad3!important;
+  padding:5px 12px 12px!important;text-align:left!important}
+ #nav::after{display:none!important}
+ #nav button{flex:none!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;
+  width:100%!important;min-height:43px!important;gap:10px!important;padding:10px 12px!important;
+  color:#dcecf8!important;background:transparent!important;border:0!important;
+  border-radius:5px!important;text-align:left!important;font-weight:650!important;
+  box-shadow:none!important;margin:0!important}
+ #nav button.active{background:#0b6eb3!important;color:#fff!important;box-shadow:inset 3px 0 0 #80d2fa!important}
+ #nav button:hover{background:#265777!important;color:#fff!important}
+ #nav button.mobile-more{display:none!important}
+ main{margin:0 0 0 238px!important;padding:25px 29px!important;
+  width:calc(100% - 238px)!important;max-width:none!important;min-height:calc(100vh - 67px)}
+}
+@media(max-width:1049px){
+ header.topbar{padding:9px 11px!important;min-height:55px!important}
+ header.topbar .cfm-sap-open,header.topbar .cfm-sap-classic{padding:7px!important;font-size:10px!important}
+ .sap-intro{padding:20px 16px}
+ .sap-intro h1{font-size:23px}
+ .sap-tile-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .sap-tile{min-height:112px!important;padding:12px!important}
+ .sap-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .sap-metric{padding:11px}
+ .sap-metric strong{font-size:21px}
+}
+@media(max-width:540px){
+ .sap-intro button{width:100%}
+ .sap-tile-grid{gap:9px}
+ .sap-tile strong{font-size:12px}
+ .sap-tile small{font-size:10px}
+ .sap-metrics{gap:6px}
+ .sap-metric{padding:8px 7px}
+ .sap-metric span{font-size:9px}
+ .sap-metric strong{font-size:19px}
+ .sap-metric small{font-size:9px}
+}
+@media print{
+ #nav,header.topbar,.sap-intro button,.sap-tile-grid{display:none!important}
+ main{width:100%!important;margin:0!important}
+}
