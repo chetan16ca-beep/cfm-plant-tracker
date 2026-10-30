@@ -217,3 +217,17 @@ body.cfm-forge::after{content:"";position:fixed;inset:0;pointer-events:none;z-in
  .cfm-forge #editDialog .cfm-forge-journey{margin:0 0 11px!important;padding-bottom:8px!important}
  .cfm-forge #editDialog .cfm-forge-journey button{font-size:10px!important;padding:8px 10px!important}
 }
+
+
+/* Account for historical ERP desktop padding. One rail only; avoid double offset. */
+body.cfm-forge{padding-left:0!important}
+body.cfm-forge .topbar,body.cfm-forge header.topbar{left:0!important;right:0!important;width:100%!important}
+@media(min-width:1050px){
+ body.cfm-forge #nav{left:0!important;top:70px!important;height:calc(100dvh - 70px)!important}
+ body.cfm-forge main{margin-left:246px!important;margin-right:0!important;width:calc(100% - 246px)!important;
+ box-sizing:border-box!important}
+}
+@media(max-width:1049px){
+ body.cfm-forge #nav{left:auto!important;right:auto!important;width:100%!important;position:sticky!important;height:auto!important}
+ body.cfm-forge main{width:100%!important;max-width:none!important;margin:0!important}
+}
