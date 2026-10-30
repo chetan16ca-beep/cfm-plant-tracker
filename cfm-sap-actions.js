@@ -127,7 +127,6 @@ function setup(){
   '<div class="sap-metrics">'+
     '<div class="sap-metric sap-metric-cloud"><span>Cloud Work Orders</span><strong id="cfmSapCloudOrders">—</strong><small>Unique saved Pending Work Nos in Cloud</small></div>'+
     '<div class="sap-metric sap-metric-cloud"><span>Cloud Known Work Nos</span><strong id="cfmSapCloudKnown">—</strong><small>Pending + Cutting history, deduplicated</small></div>'+
-    '<div class="sap-metric"><span>Orders on This Device</span><strong id="cfmSapOrderCount">—</strong><small>Local non-archived Pending Work Nos</small></div>'+
     '<div class="sap-metric"><span>Local Known Work Nos</span><strong id="cfmSapKnownCount">—</strong><small>Pending + Cutting + Issue history</small></div>'+
     '<div class="sap-metric"><span>SRL Stock Rolls</span><strong id="cfmSapStoreCount">—</strong><small>Store records on this device</small></div>'+
     '<div class="sap-metric"><span>Cutting Entries</span><strong id="cfmSapCutCount">—</strong><small>Cutting records on this device</small></div>'+
@@ -149,16 +148,13 @@ function setup(){
    if(typeof state==='undefined'||!state)return;
    const orders=Array.isArray(state.pending)?state.pending:[];
    const key=x=>String(x?.workNo||x?.workOrder||x?.wo||'').trim().toUpperCase();
-   const map=new Set(orders.filter(x=>x&&!/^(true|1|yes)$/i.test(String(x.archived||''))).map(key).filter(Boolean));
    const store=Array.isArray(state.store)?state.store:[];
    const cuts=Array.isArray(state.cutting)?state.cutting:[];
    const issues=Array.isArray(state.issueRegister)?state.issueRegister:[];
    const known=new Set([...orders,...cuts,...issues].map(key).filter(Boolean));
-   const o=document.getElementById('cfmSapOrderCount');
    const k=document.getElementById('cfmSapKnownCount');
    const s=document.getElementById('cfmSapStoreCount');
    const c=document.getElementById('cfmSapCutCount');
-   if(o)o.textContent=String(map.size);
    if(k)k.textContent=String(known.size);
    if(s)s.textContent=String(store.length);
    if(c)c.textContent=String(cuts.length);
