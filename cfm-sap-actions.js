@@ -105,18 +105,6 @@ function nav(action){
 function setup(){
  const dashboard=document.getElementById('view-dashboard');
  if(!dashboard||document.getElementById('cfmSapWorkspace'))return;
- const header=document.querySelector('header.topbar');
- const actions=header&&header.lastElementChild;
- if(actions&&!document.getElementById('cfmSapClassic')){
-  const b=document.createElement('button');b.type='button';b.id='cfmSapClassic';b.className='cfm-sap-classic';
-  b.textContent='Original Theme';b.title='Switch to original ERP appearance without changing records';
-  b.addEventListener('click',()=>{
-   const url=new URL(window.parent.location.href);
-   url.searchParams.set('theme','classic');
-   window.parent.location.assign(url.href);
-  });
-  actions.appendChild(b);
- }
  const section=document.createElement('section');
  section.id='cfmSapWorkspace';section.className='sap-workspace';
  section.innerHTML='<div class="sap-intro"><div><div class="sap-kicker">CFM • ENTERPRISE OPERATIONS</div>'+
