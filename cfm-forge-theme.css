@@ -194,3 +194,26 @@ body.cfm-forge::after{content:"";position:fixed;inset:0;pointer-events:none;z-in
 @media print{
  .cfm-forge .cfm-forge-ribbon,.cfm-forge .cfm-forge-signature{display:none!important}
 }
+
+
+/* Work-order section navigation aligned with the bespoke control-deck theme. */
+.cfm-forge #editDialog .cfm-forge-journey{
+ display:flex!important;flex-wrap:nowrap!important;gap:6px!important;overflow-x:auto!important;scrollbar-width:thin!important;
+ margin:0 0 15px!important;padding:3px 0 10px!important;align-items:center!important;
+ border-bottom:1px solid #d5e4e8!important
+}
+.cfm-forge #editDialog .cfm-forge-journey button{
+ flex:0 0 auto!important;min-height:34px!important;border:1px solid #c0dbe1!important;
+ background:#fff!important;color:#32627a!important;border-radius:99px!important;
+ font:800 11px/1.25 "Segoe UI",Arial,sans-serif!important;
+ padding:8px 13px!important;cursor:pointer!important;white-space:nowrap!important;
+ transition:background .14s ease!important
+}
+.cfm-forge #editDialog .cfm-forge-journey button:hover,
+.cfm-forge #editDialog .cfm-forge-journey button:focus-visible{
+ color:#065d6d!important;background:#dff6f3!important;border-color:#7bcfc8!important
+}
+@media(max-width:560px){
+ .cfm-forge #editDialog .cfm-forge-journey{margin:0 0 11px!important;padding-bottom:8px!important}
+ .cfm-forge #editDialog .cfm-forge-journey button{font-size:10px!important;padding:8px 10px!important}
+}
