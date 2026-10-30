@@ -1,0 +1,81 @@
+/* CFM SAP-inspired enterprise theme, opt-in via ?theme=sap.
+   Presentation only. No data operations or storage changes. */
+:root{
+  --sap-shell:#0b2545;--sap-primary:#0a6ed1;--sap-primary-dark:#0854a0;
+  --sap-surface:#fff;--sap-bg:#f4f7fa;--sap-line:#d8e1e8;
+  --sap-text:#233b53;--sap-muted:#60768b;
+}
+html,body{background:var(--sap-bg)!important;color:var(--sap-text)!important}
+body,button,input,select,textarea{font-family:"72","Segoe UI",Arial,sans-serif!important}
+.topbar{background:#fff!important;background-image:none!important;color:var(--sap-text)!important;border:0!important;border-bottom:3px solid var(--sap-primary)!important;border-radius:0!important;box-shadow:0 2px 9px #153d6316!important}
+.topbar .brand h1,.topbar .brand p{color:var(--sap-shell)!important}
+.topbar .brand p{font-weight:800!important;letter-spacing:.02em!important}
+.topbar .btn,.topbar button{color:#075da8!important;background:#f6faff!important;border:1px solid #b8d4ea!important}
+.app-version-badge{background:#e9f4ff!important;color:#075ca8!important;border:1px solid #b9daf1!important}
+.nav{background:#fff!important;background-image:none!important;border-color:var(--sap-line)!important;box-shadow:0 5px 14px #102e4913!important;border-radius:0!important}
+.nav button{color:#3b5269!important;background:transparent!important;border-color:transparent!important;border-radius:6px!important;font-weight:650!important}
+.nav button.active{background:#eaf3fb!important;color:#075da8!important;border-color:#b8d8f2!important;box-shadow:inset 3px 0 0 var(--sap-primary)!important}
+.nav button:hover,.nav button:focus-visible{background:#edf5fc!important;color:#075da8!important}
+main,.main,.content{background:transparent!important}
+.panel,.data-card,.action-card,.kpi,#kpis .kpi,#docKpis .kpi{
+ background:#fff!important;background-image:none!important;
+ border:1px solid var(--sap-line)!important;border-radius:8px!important;
+ box-shadow:0 2px 7px #163a5910!important;
+}
+.panel{padding:17px!important}
+.section-head h2,h2,h3,.panel h3{color:var(--sap-shell)!important}
+.command-hero{
+ background:#e9f4ff!important;background-image:linear-gradient(110deg,#eaf4fd,#f5faff)!important;
+ color:var(--sap-shell)!important;border:1px solid #b9d5ed!important;
+ border-left:5px solid var(--sap-primary)!important;border-radius:8px!important;
+ min-height:auto!important;box-shadow:0 3px 12px #1b477518!important
+}
+.command-hero h3,.command-hero p{color:var(--sap-shell)!important}
+.command-eyebrow{color:var(--sap-primary-dark)!important}
+.command-tags span,.command-tags span:first-child{color:#08589d!important;background:#fff!important;border:1px solid #bfd9ee!important}
+#kpis .kpi,#docKpis .kpi,.kpi{border-left:4px solid var(--sap-primary)!important;padding:15px!important}
+#kpis .kpi .num,#docKpis .kpi .num,.kpi .num{font-size:25px!important;color:var(--sap-shell)!important;font-weight:800!important}
+#kpis .kpi .label,#docKpis .kpi .label,.kpi .label{color:var(--sap-muted)!important;font-size:12px!important}
+.btn,.btn-primary,.btn-green,button{border-radius:6px!important}
+.btn-primary,.btn-green{background:var(--sap-primary)!important;background-image:none!important;border-color:var(--sap-primary)!important;color:#fff!important}
+.btn-primary:hover,.btn-green:hover{background:var(--sap-primary-dark)!important}
+input,select,textarea{background:#fff!important;color:var(--sap-text)!important;border:1px solid #bfcdd9!important;border-radius:5px!important;box-shadow:none!important}
+input:focus,select:focus,textarea:focus{border-color:var(--sap-primary)!important;outline:2px solid #acd5f7!important;outline-offset:1px!important}
+table{border-collapse:collapse!important}
+th{background:#f0f5f9!important;color:#2b4a65!important}
+td,th{border-color:#dbe4eb!important}
+.photo-quick-actions button,.module-command-card{border:1px solid #c9dbea!important;background:#fff!important;color:#0f4772!important;border-radius:8px!important;box-shadow:0 2px 7px #193e5e12!important}
+.photo-quick-actions button:first-child,.photo-quick-actions button:nth-child(2){background:#eaf3fc!important;color:#0c579c!important}
+#cfmCommandLaunch203{background:#e8f3fd!important;color:#075b9e!important;border:1px solid #b2d2ec!important;border-radius:6px!important}
+.cfm-sap-open{border:1px solid #b1d2e8!important;background:#e9f4fd!important;color:#095b9e!important;font-weight:800!important;font-size:12px!important;padding:9px 12px!important;cursor:pointer}
+.cfm-sap-open:hover{background:#d8edff!important}
+.cfm-sap-overlay[hidden]{display:none!important}
+.cfm-sap-overlay{position:fixed;z-index:9999999;inset:0;background:#091b2b9c;display:grid;place-items:start center;padding:8vh 12px;overflow:auto}
+.cfm-sap-dialog{background:#fff;color:var(--sap-text);width:min(650px,100%);border-radius:10px;border:1px solid #aebfce;box-shadow:0 20px 60px #061e32a0;overflow:hidden}
+.cfm-sap-dialog-header{padding:16px 18px;background:#0d3559;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:800}
+.cfm-sap-dialog-header button{background:transparent!important;color:#fff!important;border:1px solid #b7d2e9!important;padding:5px 9px!important;cursor:pointer}
+.cfm-sap-dialog-search{padding:12px;border-bottom:1px solid var(--sap-line)}
+.cfm-sap-dialog-search input{width:100%!important;box-sizing:border-box!important;min-width:0!important;padding:13px!important;font-size:15px!important}
+.cfm-sap-items{max-height:54vh;overflow:auto;padding:8px}
+.cfm-sap-item{width:100%;text-align:left;display:flex;align-items:center;gap:12px;border:0!important;border-radius:5px!important;background:#fff!important;color:var(--sap-text)!important;padding:13px!important;cursor:pointer}
+.cfm-sap-item:hover,.cfm-sap-item:focus-visible{background:#e9f4fd!important;outline:1px solid #70b6ef!important}
+.cfm-sap-item span{font-size:21px;width:30px;text-align:center}
+.cfm-sap-item strong{display:block;font-size:13px}
+.cfm-sap-item small{display:block;color:var(--sap-muted);margin-top:3px}
+.cfm-sap-foot{padding:10px 15px;color:var(--sap-muted);font-size:11px;border-top:1px solid var(--sap-line)}
+#cfmCommandCenter203{background:#f2f6f9!important;color:#203b54!important;font-family:"Segoe UI",Arial,sans-serif!important}
+#cfmCommandCenter203 .wrap{max-width:1560px!important}
+#cfmCommandCenter203 h1{color:#0b3557!important}
+#cfmCommandCenter203 h2{color:#14466d!important}
+#cfmCommandCenter203 .panel,#cfmCommandCenter203 .metric{border:1px solid #cfdce6!important;border-radius:7px!important;box-shadow:0 2px 7px #163a5912!important}
+#cfmCommandCenter203 .stage{background:#edf5fb!important;border-radius:6px!important}
+#cfmCommandCenter203 th{background:#e8f1f8!important;color:#174c73!important}
+#cfmCommandCenter203 button[data-action=close],#cfmCommandCenter203 button[aria-pressed=true]{background:#096bb9!important;color:#fff!important}
+@media(max-width:740px){
+ .topbar{margin:0!important;padding:10px!important;border-radius:0!important}
+ .panel{padding:12px!important}
+ .cfm-sap-open{padding:7px!important;font-size:11px!important}
+ #view-dashboard .kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #view-dashboard .photo-quick-actions button{min-height:68px!important}
+}
+@media print{.cfm-sap-open,.cfm-sap-overlay{display:none!important}}
