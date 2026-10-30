@@ -122,12 +122,18 @@ function setup(){
  section.innerHTML='<div class="sap-intro"><div><div class="sap-kicker">CFM • ENTERPRISE OPERATIONS</div>'+
   '<h1>Plant Operations Workspace</h1><p>Orders · Stock · Cutting · Production · Dispatch</p></div>'+
   '<button type="button" data-action="__command">Open Production Center</button></div>'+
-  '<div class="sap-section-title">Plant Overview · Device Records</div>'+
-  '<div class="sap-metrics"><div class="sap-metric"><span>Active Orders</span><strong id="cfmSapOrderCount">—</strong><small>Current Pending list on this device</small></div><div class="sap-metric"><span>Known Work Nos</span><strong id="cfmSapKnownCount">—</strong><small>Pending + Cutting + Issue history (device)</small></div>'+
-  '<div class="sap-metric"><span>SRL Stock Rolls</span><strong id="cfmSapStoreCount">—</strong><small>Store register entries</small></div>'+
-  '<div class="sap-metric"><span>Cutting Entries</span><strong id="cfmSapCutCount">—</strong><small>Cutting register entries</small></div></div>'+
+  '<div class="sap-section-title"><span>Plant Overview · Verified Cloud & Device Records</span><button class="sap-cloud-verify" type="button" id="cfmSapVerifyCloud">↻ Verify Cloud Counts</button></div>'+
+  '<div class="sap-cloud-status" id="cfmSapCloudStatus" role="status" aria-live="polite">Reading Cloud Work Orders…</div>'+
+  '<div class="sap-metrics">'+
+    '<div class="sap-metric sap-metric-cloud"><span>Cloud Work Orders</span><strong id="cfmSapCloudOrders">—</strong><small>Unique saved Pending Work Nos in Cloud</small></div>'+
+    '<div class="sap-metric sap-metric-cloud"><span>Cloud Known Work Nos</span><strong id="cfmSapCloudKnown">—</strong><small>Pending + Cutting history, deduplicated</small></div>'+
+    '<div class="sap-metric"><span>Orders on This Device</span><strong id="cfmSapOrderCount">—</strong><small>Local non-archived Pending Work Nos</small></div>'+
+    '<div class="sap-metric"><span>Local Known Work Nos</span><strong id="cfmSapKnownCount">—</strong><small>Pending + Cutting + Issue history</small></div>'+
+    '<div class="sap-metric"><span>SRL Stock Rolls</span><strong id="cfmSapStoreCount">—</strong><small>Store records on this device</small></div>'+
+    '<div class="sap-metric"><span>Cutting Entries</span><strong id="cfmSapCutCount">—</strong><small>Cutting records on this device</small></div>'+
+  '</div>'+
   '<div class="sap-section-title">ERP Modules</div><div class="sap-tile-grid"></div>'+
-  '<p class="sap-workspace-note">Active Orders counts distinct non-archived Work Nos currently loaded in Pending. Known Work Nos combines Pending + Cutting + Issue history on this device, including archived orders; it is NOT a verified Cloud total. Missing Cloud orders are not included. No work orders or stock are changed by this screen.</p>';
+  '<p class="sap-workspace-note">Cloud totals are fetched read-only from the existing CFM Shared State. Cloud Known counts unique Work Nos in Pending + Cutting, including historical Cutting-only numbers; it does not imply all numbers in a sequence exist. Local-only records remain separate, and no Cloud data overwrites this device. Never clear browser data before saving a backup.</p>';
  const grid=section.querySelector('.sap-tile-grid');
  tiles.forEach(([emoji,title,desc,action])=>{
   const b=document.createElement('button');b.type='button';b.className='sap-tile';
@@ -158,7 +164,52 @@ function setup(){
    if(c)c.textContent=String(cuts.length);
   }catch(e){console.warn('CFM SAP overview counters unavailable',e)}
  }
- update();setInterval(()=>{if(document.getElementById('view-dashboard')?.classList.contains('active'))update()},15000);
+ // Read-only Cloud verification; never imports, merges, pushes, restores or saves state.
+ // cloudFetch() is the ERP's existing authenticated public-client read method.
+ let latestCloud=null,cloudBusyView=false,verifiedOnce=false;
+ const verifyBtn=document.getElementById('cfmSapVerifyCloud');
+ const cloudStatus=document.getElementById('cfmSapCloudStatus');
+ const uniq=items=>new Set((Array.isArray(items)?items:[]).map(x=>String(x?.workNo||x?.workOrder||x?.wo||'').trim().toUpperCase()).filter(Boolean));
+ async function verifyCloud(){
+   if(cloudBusyView)return;
+   cloudBusyView=true;
+   if(verifyBtn)verifyBtn.disabled=true;
+   if(cloudStatus){cloudStatus.textContent='Reading latest shared Cloud snapshot (read only)…';cloudStatus.dataset.mode='pending'}
+   try{
+     if(typeof cloudFetch!=='function')throw Error('ERP Cloud reader not initialized');
+     const row=await cloudFetch();
+     const data=row&&row.payload;
+     if(!data||!Array.isArray(data.pending)||!Array.isArray(data.cutting))throw Error('Cloud response is missing the Pending or Cutting register');
+     const pending=uniq(data.pending);
+     const history=uniq([...data.pending,...data.cutting]);
+     latestCloud={version:row.version,updatedAt:row.updated_at,pending:pending.size,known:history.size};
+     const a=document.getElementById('cfmSapCloudOrders'),b=document.getElementById('cfmSapCloudKnown');
+     if(a)a.textContent=String(pending.size);
+     if(b)b.textContent=String(history.size);
+     if(cloudStatus){
+       const updated=row.updated_at?new Date(row.updated_at):null;
+       const time=updated&&!Number.isNaN(updated.getTime())?updated.toLocaleString('en-IN'):'time unavailable';
+       cloudStatus.textContent='Cloud read verified · Version '+String(row.version||'?')+' · Last saved '+time+' · No changes made';
+       cloudStatus.dataset.mode='ok';
+     }
+     verifiedOnce=true;
+     update();
+   }catch(e){
+     console.warn('Cloud count verification failed (read only)',e);
+     if(cloudStatus){
+       cloudStatus.textContent=(latestCloud?'Last verified Cloud snapshot retained; new check failed: ':'Cloud totals unavailable; local-only numbers are NOT Cloud totals. ')+String(e?.message||e);
+       cloudStatus.dataset.mode='error';
+     }
+   }finally{
+     cloudBusyView=false;
+     if(verifyBtn)verifyBtn.disabled=false;
+   }
+ }
+ if(verifyBtn)verifyBtn.addEventListener('click',verifyCloud);
+ update();
+ // First load and every explicit Verify click are read only. No background write.
+ verifyCloud();
+ setInterval(()=>{if(document.getElementById('view-dashboard')?.classList.contains('active'))update()},15000);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
 })();
