@@ -1,4 +1,4 @@
-/* CFM V232 - Safe, operator-approved PC/Cloud Work Order recovery.
+/* CFM V233 - Safe, operator-approved PC/Cloud Work Order recovery.
    Targets the two locally saved YASHO INDS lines shown in the operator's
    screenshot, without reusing 724 (Cloud BBELL). Preserves ALL stock, cutting
    and production data; refuses unsafe changes instead of overwriting records.
@@ -144,10 +144,12 @@ async function show(){
   buildUI(remote,proposal);
  }catch(e){alert('CFM Work No protection: '+(e.message||e)+'. Nothing has changed.')}
 }
-async function execute(ack){
+async function execute(ack,approvedLink=false){
  if(busy)return;
- if(!bpc||!bcloud||!ack){setStatus('Both backups and the confirmation checkbox are REQUIRED before any Work No can change.','error');return}
- const ok=confirm('FINAL CONFIRMATION: Save only YASHO INDS Work Nos '+current.proposal.map(p=>p.old+' → '+p.next).join(', ')+'. Keep BBELL CFM-724 unchanged, and do not touch stock/cutting?');
+ if(!bpc||!bcloud||!ack){setStatus('Verified PC and Cloud backups are REQUIRED before any Work No can change.','error');return}
+ // A separate explicit ?fixwo=approved URL is itself the operator's approval.
+ // Ordinary actions continue to require an in-app confirmation.
+ const ok=approvedLink||confirm('FINAL CONFIRMATION: Save only YASHO INDS Work Nos '+current.proposal.map(p=>p.old+' → '+p.next).join(', ')+'. Keep BBELL CFM-724 unchanged, and do not touch stock/cutting?');
  if(!ok)return;
  setBusy(true);
  let wroteCloud=false;
@@ -232,6 +234,93 @@ async function execute(ack){
    (wroteCloud?' Cloud may contain the YASHO orders; PC was not overwritten. Open Fix Work Nos again for verified recovery.':' No local Work Nos changed.'),'error');
  }finally{busy=false;if(dialog&&dialog.querySelector('.cfm-wo-fix-status')?.dataset.kind!=='success')setBusy(false)}
 }
+// V233: link-authorized PC repair. The user's click on an explicitly labeled
+// recovery URL is approval, but there is NO write unless BOTH original full
+// snapshots are durably backed up and read back from CacheStorage.
+// Never touch Cloud using the server alone: exact local PC objects are required.
+const AUTO_FLAG='fixwo',AUTO_VALUE='approved',BACKUP_CACHE='cfm-workno-recovery-backups-v233';
+async function storeRecoveryBackups(pc,remote){
+ if(!window.caches||typeof window.caches.open!=='function')
+  throw Error('This browser cannot save protected recovery backups. No Work Nos changed.');
+ const cache=await window.caches.open(BACKUP_CACHE);
+ const stamp=String(Date.now()),pcUrl=new URL('./cfm-pc-recovery-'+stamp+'.json',window.parent.location.href).href,
+  cloudUrl=new URL('./cfm-cloud-recovery-'+stamp+'.json',window.parent.location.href).href;
+ const originalPC=JSON.stringify({savedAt:new Date().toISOString(),source:'PC',payload:pc});
+ const originalCloud=JSON.stringify({savedAt:new Date().toISOString(),source:'Cloud',snapshot:remote});
+ try{
+  await cache.put(pcUrl,new Response(originalPC,{headers:{'content-type':'application/json'}}));
+  await cache.put(cloudUrl,new Response(originalCloud,{headers:{'content-type':'application/json'}}));
+  const pcRead=await cache.match(pcUrl),cloudRead=await cache.match(cloudUrl);
+  if(!pcRead||!cloudRead||await pcRead.text()!==originalPC||await cloudRead.text()!==originalCloud)
+   throw Error('Recovery backup read-back failed');
+ }catch(e){throw Error('Unable to preserve both full snapshots: '+(e.message||e)+'. No Work Nos changed.')}
+ return {pcUrl,cloudUrl,stamp};
+}
+async function downloadRecoveryBackup(url,filename){
+ const cache=await window.caches.open(BACKUP_CACHE);
+ const response=await cache.match(url);
+ if(!response)throw Error('Backup copy no longer available');
+ const data=await response.text();
+ download(filename,JSON.parse(data));
+}
+let autoAttempted=false;
+async function autoRepairApproved(){
+ if(autoAttempted)return;
+ autoAttempted=true;
+ try{
+  if(typeof state==='undefined'||!Array.isArray(state.pending))
+   throw Error('ERP has not loaded PC Work Orders');
+  if(typeof cloudBusy!=='undefined'&&cloudBusy)
+   throw Error('Sync is busy. Close and reopen the approved link after ERP loads.');
+  if(typeof cloudDirty!=='undefined'&&cloudDirty)
+   throw Error('There are unsynced PC changes. Save the PC backup, then review.');
+  const remote=await cloudFetch();
+  if(!remote||!Array.isArray(remote.payload?.pending))
+   throw Error('Cloud response is invalid');
+  const proposed=plan(state,remote.payload);
+  // Backup the EXACT snapshots that are about to be checked again by execute.
+  const saved=await storeRecoveryBackups(json(state),json(remote));
+  current={remote,proposal:proposed};
+  buildUI(remote,proposed);
+  bpc=bcloud=true;
+  setStatus('Both full PC and Cloud snapshots saved and verified in recovery cache. Executing your approved Work No correction…');
+  await execute(true,true);
+  const status=dialog?.querySelector('.cfm-wo-fix-status');
+  if(status?.dataset.kind==='success'){
+   const row=dialog.querySelector('.cfm-wo-fix-actions');
+   const a=el('button','⬇ Download Original PC Backup');a.type='button';
+   a.addEventListener('click',async()=>{try{await downloadRecoveryBackup(saved.pcUrl,'CFM-PC-original-before-fix-'+saved.stamp+'.json')}catch(e){alert(e.message)}});
+   const b=el('button','⬇ Download Original Cloud Backup');b.type='button';
+   b.addEventListener('click',async()=>{try{await downloadRecoveryBackup(saved.cloudUrl,'CFM-Cloud-original-before-fix-'+saved.stamp+'.json')}catch(e){alert(e.message)}});
+   row.append(a,b);
+  }
+ }catch(e){
+  console.warn('Approved Work No recovery safely blocked',e);
+  // Keep the error visible without silently changing a single record.
+  if(!dialog){
+   dialog=el('dialog',null,'cfm-wo-fix-dialog');dialog.id='cfmWoFixDialog';
+   dialog.style.cssText='box-sizing:border-box;width:min(96vw,700px);border:2px solid #c69c6e;border-radius:14px;padding:20px;background:#fff;color:#45321b';
+   dialog.append(el('h3','Work No correction safely paused'));
+   dialog.append(el('p',String(e.message||e)));
+   const closeBtn=el('button','Close — Keep All Orders');closeBtn.addEventListener('click',close);
+   dialog.append(closeBtn);document.body.append(dialog);dialog.showModal();
+  }else setStatus('Correction stopped: '+String(e.message||e)+'. No local Work Nos were changed.','error');
+ }
+}
+function isApprovedLink(){
+ try{return new URL(window.parent.location.href).searchParams.get(AUTO_FLAG)===AUTO_VALUE}
+ catch(_){return false}
+}
+if(isApprovedLink()){
+ // Run once the ERP's inline script finished loading local state and startup
+ // Cloud-read had a chance to finish; do not run during active cloud writes.
+ setTimeout(()=>{
+  if(typeof cloudBusy!=='undefined'&&cloudBusy){
+   setTimeout(()=>autoRepairApproved(),1100);
+  }else autoRepairApproved();
+ },1900);
+}
+
 window.cfmResolveWorkNos=show;
 window.cfmWorkNoMergeCheck=Object.freeze({plan,ident,forbiddenLinks});
 })();
