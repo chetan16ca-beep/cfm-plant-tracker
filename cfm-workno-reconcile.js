@@ -28,8 +28,8 @@ function plan(local,cloud){
  if(!local||!cloud||!Array.isArray(local.pending)||!Array.isArray(cloud.pending))throw Error('Invalid PC / Cloud Pending Orders');
  if(!uniqueWorkNos(local.pending)||!uniqueWorkNos(cloud.pending))throw Error('Duplicate Work Nos detected within PC or Cloud. Manual data review needed.');
  const oldRows=srcWorks.map(no=>named(local.pending,no));
- if(oldRows.some((r,i)=>!r||!isYasho(r)||Number(r.orderQty)!==10))
-  throw Error('Expected YASHO INDS CFM-723/724/725 (PO 4100008668, Qty 10 each) not found on this PC. No records changed.');
+ if(oldRows.some(r=>!r||!isYasho(r)||!(Number(r.orderQty)>0)))
+  throw Error('Expected YASHO INDS CFM-723/724/725 with PO 4100008668 and positive quantities not found on this PC. No records changed.');
  const linked=forbiddenLinks(local);
  if(linked.length)throw Error('Linked Cutting / Store / production data found: '+linked.join(', ')+'. Do not renumber automatically; first reconcile linked records using both backups.');
  const cloud723=named(cloud.pending,'CFM-723');
