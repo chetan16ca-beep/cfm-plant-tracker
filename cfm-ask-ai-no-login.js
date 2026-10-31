@@ -35,8 +35,8 @@ function newLauncher(){
  const home=$("cfmSapWorkspace");if(!home||$("cfmAiLauncher"))return;
  const wrap=el("section",undefined,"cfm-ai-launcher");wrap.id="cfmAiLauncher";
  const mark=el("span","✦","cfm-ai-mark"),content=el("div",undefined,"cfm-ai-launcher-text");
- content.append(el("small","CFM FORGE / NO-LOGIN ASSISTANT"),el("h3","Ask CFM"),el("p","Ask about Work Orders, Cutting and SRL Stock · No login"));
- const btn=el("button","Open Factory Assistant");btn.type="button";btn.addEventListener("click",open);
+ content.append(el("small","CFM FORGE / NO-LOGIN ASSISTANT"),el("h3","Jessi Voice Assistant"),el("p","Bolo ya type karo: Work Orders, Cutting aur SRL Stock · No login"));
+ const btn=el("button","Talk to Jessi");btn.type="button";btn.addEventListener("click",open);
  wrap.append(mark,content,btn);
  const tools=$("cfmIntelLauncher");if(tools)tools.after(wrap);else home.append(wrap);
 }
@@ -57,9 +57,9 @@ function restoreOuterShell(){
 function dialog(){
  if($("cfmAiDialog"))return $("cfmAiDialog");
  const d=el("dialog",undefined,"cfm-ai-dialog");d.id="cfmAiDialog";
- d.setAttribute("aria-label","CFM no-login factory assistant");
+ d.setAttribute("aria-label","Jessi no-login factory voice assistant");
  d.innerHTML=[
- '<header class="cfm-ai-header"><span class="cfm-ai-headmark">✦</span><div class="cfm-ai-titles"><small>CFM FORGE / FACTORY ASSISTANT</small><h2>Ask CFM</h2><p>Work Orders · Cutting · Stock</p></div><span id="cfmAiBadge" class="cfm-ai-badge" data-mode="online">NO LOGIN</span><button type="button" id="cfmAiExit" aria-label="Close">×</button></header>',
+ '<header class="cfm-ai-header"><span class="cfm-ai-headmark">✦</span><div class="cfm-ai-titles"><small>CFM FORGE / JESSI VOICE</small><h2>Jessi Voice Assistant</h2><p>Bolo aur suno · Work Orders · Stock</p></div><span id="cfmAiBadge" class="cfm-ai-badge" data-mode="online">NO LOGIN</span><button type="button" id="cfmAiExit" aria-label="Close">×</button></header>',
  '<div id="cfmAiFeedback" class="cfm-ai-feedback" role="status" aria-live="polite" hidden></div>',
  '<div class="cfm-ai-main" id="cfmAiMain"><div class="cfm-ai-chat">',
  '<div class="cfm-ai-prompts"><button type="button" data-prompt="CFM-722 ka work status batao">Work Status</button>',
@@ -69,7 +69,7 @@ function dialog(){
  '<div class="cfm-ai-source-row"><span id="cfmAiSource">This device (saved records)</span><button type="button" id="cfmAiReadCloud">Read Cloud</button><button type="button" id="cfmAiUseDevice" hidden>Use Device</button></div>',
  '<div id="cfmAiMessages" class="cfm-ai-messages" aria-live="polite"></div>',
  '<form class="cfm-ai-compose" id="cfmAiQuestionForm"><textarea id="cfmAiQuestion" maxlength="800" rows="2" placeholder="Example: CFM-677 mein kaunsa SRL use hua?"></textarea><button id="cfmAiSend" type="submit">Ask</button></form>',
- '<p class="cfm-ai-note">No login · This is a rule-based ERP record assistant, not connected to OpenAI. No data changes. Stock meters require verification.</p>',
+ '<p class="cfm-ai-note">Jessi is a no-login, rule-based ERP record voice assistant (not connected to OpenAI). Voice input/output depend on browser support. She cannot change any ERP data.</p>',
  '</div></div>',
  '<footer class="cfm-ai-footer"><span>Read-only. No Work Order, Cutting or Stock edits.</span><button type="button" id="cfmAiReset">Clear Chat</button></footer>'
  ].join("");
@@ -96,7 +96,7 @@ function render(){
  if(!chat.length)box.append(el("div","Ask me: CFM-722 status, stock by SRL, cutting history or pending orders.","cfm-ai-empty"));
  for(const x of chat){
   const row=el("div",undefined,"cfm-ai-message "+x.role);
-  row.append(el("b",x.role==="assistant"?"CFM Factory Assistant":"You"),
+  row.append(el("b",x.role==="assistant"?"Jessi":"You"),
    el("div",x.text,"cfm-ai-answer"));
   if(x.source)row.append(el("small",x.source));
   box.append(row);
