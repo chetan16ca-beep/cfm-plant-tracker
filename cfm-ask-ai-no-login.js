@@ -40,6 +40,32 @@ function newLauncher(){
  wrap.append(mark,content,btn);
  const tools=$("cfmIntelLauncher");if(tools)tools.after(wrap);else home.append(wrap);
 }
+function ensureFloatingJessi(){
+ // One floating shortcut on every ERP screen, independent of Dashboard cards.
+ if($("cfmJessiFloat"))return $("cfmJessiFloat");
+ const button=el("button",undefined,"cfm-jessi-float");
+ button.id="cfmJessiFloat";
+ button.type="button";
+ button.title="Open Jessi Voice Assistant";
+ button.setAttribute("aria-label","Open Jessi Voice Assistant");
+ const avatar=el("span",undefined,"cfm-jessi-float-avatar");
+ avatar.setAttribute("aria-hidden","true");
+ avatar.append(el("span","✦","cfm-jessi-float-star"),el("span","🎤","cfm-jessi-float-mic"));
+ const label=el("span","Jessi","cfm-jessi-float-name");
+ button.append(avatar,label);
+ button.addEventListener("click",()=>{
+  try{open()}catch(err){
+   console.error("Jessi launch error",err);
+   alert("Jessi cannot open: "+(err?.message||"unknown")+". Reload this ERP page, without clearing any data.");
+  }
+ });
+ document.body.append(button);
+ return button;
+}
+function syncFloatingJessi(){
+ const b=$("cfmJessiFloat"),d=$("cfmAiDialog");
+ if(b)b.hidden=!!d?.open;
+}
 function hideOuterShell(){
  try{
   const doc=window.parent.document;
@@ -75,7 +101,7 @@ function dialog(){
  ].join("");
  document.body.append(d);
  $("cfmAiExit").addEventListener("click",()=>d.close());
- d.addEventListener("close",restoreOuterShell);
+ d.addEventListener("close",()=>{restoreOuterShell();syncFloatingJessi()});
  $("cfmAiReset").addEventListener("click",()=>{chat=[];lastWork="";lastSrl="";render();showAlert("Chat cleared. ERP records unchanged.","ok")});
  $("cfmAiQuestionForm").addEventListener("submit",event=>{event.preventDefault();send()});
  $("cfmAiQuestion").addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();send()}});
@@ -102,6 +128,7 @@ function dialog(){
 function open(){
  const d=dialog();sourceChanged();showAlert("");
  if(!d.open){hideOuterShell();d.showModal()}
+ syncFloatingJessi();
  $("cfmAiQuestion")?.focus();
 }
 function render(){
@@ -289,6 +316,7 @@ function send(){
  render();
 }
 function init(){
+ ensureFloatingJessi();
  newLauncher();
  if(!$("cfmAiLauncher")){
   const root=$("view-dashboard");
