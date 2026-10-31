@@ -54,11 +54,13 @@ function fields(text){
 function classify(text){
  const q=norm(clean(text));
  const create=/\b(CREATE|ADD|NEW|BANAO|BANA|BANA DO|BANADO|KARO|KARNA|ENTER|ENTRY|SAVE|REGISTER)\b|बनाओ|बनाना|बना दो|जोड़ो|जोड़ो|करो|करना|डालो|डालना|बनवा|बनादो|બનાવો|જોડો|કરો/i.test(q);
+ const explicitCreate=/\b(CREATE|ADD|NEW|BANAO|BANA|BANA DO|BANADO|ENTRY|REGISTER|MAKE)\b|बनाओ|बनाना|बना दो|बनादो|बनवा|जोड़ो|जोड़ो|डालो|બનાવો|જોડો/i.test(q);
  const cut=/\b(CUTTING|CUT|CUTT)\b|कटिंग|काटिंग|કટિંગ/i.test(q);
- const work=/\b(WORK\s*ORDER|WORK\s*NO|WORKORDER|WO)\b|वर्क\s*ऑर्डर|वर्क\s*नंबर|વર્ક\s*ઓર્ડર/i.test(q);
+ const work=/\b(WORK\s*ORDER|WORK\s*NO|WORKORDER|WO|ORDER)\b|वर्क\s*[ऑआ]र्डर|वर्क\s*नंबर|वो\s*बनाओ|વર્ક\s*ઓર્ડર/i.test(q);
+ const informational=/\b(STATUS|DETAIL|DETAILS|CHECK|SHOW|SEARCH|FIND|REPORT|PENDING|STOCK|HOW|WHAT|KITNA|KITNE)\b|स्थिति|स्टेटस|दिखाओ|बता[ओय]|कितना|કેટલા/i.test(q);
  const plainCut=/\b(DONE|COMPLETE|COMPLETED)\b|कर दिया|हो गया|डन|पूरी|કર્યું/i.test(q);
- if(cut&&(create||plainCut))return 'cutting';
- if(work&&create)return 'order';
+ if(cut&&(create||plainCut)&&(!informational||explicitCreate))return 'cutting';
+ if(work&&explicitCreate&&!informational)return 'order';
  return '';
 }
 function missingOf(d){
@@ -125,6 +127,13 @@ function updateDraft(){
   input('Measured Used MTR (actual)','usedMtr','number','Must be physically verified. NOT estimated from L×W.');
  }
  box.append(grid);
+ if(d.kind==='order'){
+  const suggest=document.createElement('button');
+  suggest.id='cfmJessiNextWorkNo';suggest.type='button';suggest.className='cfm-jessi-suggest';
+  suggest.textContent='☁ Suggest Next Work No (Cloud checked)';
+  suggest.addEventListener('click',suggestNextNumber);
+  box.append(suggest);
+ }
  const issues=document.createElement('div');issues.className='cfm-jessi-draft-checks';issues.id='cfmJessiDraftChecks';issues.setAttribute('role','status');box.append(issues);
  const confirmation=document.createElement('label');confirmation.className='cfm-jessi-draft-ack';
  const ack=document.createElement('input');ack.id='cfmJessiReviewed';ack.type='checkbox';
@@ -141,6 +150,31 @@ function updateDraft(){
  actions.append(preview,cancel);box.append(actions);
  showIssues();
  box.scrollIntoView({block:'nearest'});
+}
+async function suggestNextNumber(){
+ const button=$('cfmJessiNextWorkNo');
+ if(!draft||draft.kind!=='order'||!button)return;
+ if(draft.value.workNo&&!confirm('Replace the current draft Work No with the next proposed number?'))return;
+ button.disabled=true;button.textContent='Checking Cloud Work Nos…';
+ try{
+  if(typeof cloudFetch!=='function')throw Error('Cloud read is unavailable; cannot suggest a safe Work No.');
+  const remote=await cloudFetch();
+  const payload=remote?.payload;
+  if(!payload||!Array.isArray(payload.pending)||!Array.isArray(payload.cutting))
+   throw Error('Cloud Work Nos are not available. No number suggested.');
+  const local=source();
+  const records=[...arr(payload,'pending'),...arr(payload,'cutting'),...arr(local,'pending'),...arr(local,'cutting')];
+  const nums=records.map(x=>norm(x.workNo||'').match(/^CFM-(\d{1,6})$/)?.[1]).filter(Boolean).map(Number);
+  if(!nums.length)throw Error('Cannot safely determine next Work No from current Cloud data.');
+  const next=Math.max(...nums)+1;
+  if(next>999999)throw Error('Work number limit reached.');
+  if(!draft||draft.kind!=='order')return;
+  draft.value.workNo='CFM-'+next;
+  updateDraft();
+  // Suggested number is NOT RESERVED; recheck Cloud upon opening native form.
+  alert('Suggested CFM-'+next+' from saved Cloud/device Work Nos. This number is not reserved. Final duplicate check runs again before opening ERP Save form.');
+ }catch(err){alert('Jessi: '+String(err.message||err)+'. Work No unchanged.')}
+ finally{if(button.isConnected){button.disabled=false;button.textContent='☁ Suggest Next Work No (Cloud checked)'}}
 }
 function check(d,state){
  const issues=[],c=d.value;
