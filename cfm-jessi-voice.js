@@ -1,4 +1,4 @@
-/* CFM Forge V223 — Jessi Voice Assistant.
+/* CFM Forge V224 — Jessi Voice Assistant.
  * Browser-managed one-shot speech-to-text + browser speech synthesis.
  * No microphone streaming to ERP backend, no auto microphone, no writes.
  * Audio may be processed by the browser/platform speech service.
@@ -12,6 +12,10 @@ const langCodes=["hi-IN","en-IN","gu-IN","mr-IN"];
 const labels={"hi-IN":"Hindi","en-IN":"English (India)","gu-IN":"Gujarati","mr-IN":"Marathi"};
 let recognizer=null,recognizing=false,speakEnabled=true,voiceReplyPending=false;
 let activeUtterance=null,sendQueued=false,utteranceSeq=0,lastSpokenText="";
+let selectedVoiceKey="",voicesReady=false;
+const femaleNameHint=/(?:\bfemale\b|\bwoman\b|\bwomens?\b|\bzira\b|\bheera\b|\bswara\b|\bneerja\b|\bpriya\b|\baditi\b|\bananya\b|\bsamantha\b|\bvictoria\b|\bkaren\b|\bmoira\b|\btessa\b|\bfiona\b|\bsusan\b|\ballison\b|\bava\b|\bserena\b|\bveena\b|\blekha\b|\bmeera\b|\braveena\b|\bjenny\b|\baria\b|\bsonia\b|\bnatasha\b|\barohi\b|\baarohi\b|\bdhwani\b)/i;
+const probableFemale=v=>femaleNameHint.test(String(v?.name||""));
+const voiceKey=v=>String(v?.voiceURI||v?.name||"")+"|"+String(v?.lang||"");
 function info(s,mode){
  const x=$("cfmJessiVoiceState");
  if(x){x.textContent=s;x.dataset.mode=mode||""}
@@ -54,13 +58,62 @@ function pronounceLang(text){
  // Browser-dependent synthesis; use selected language, never auto-send speech to other APIs.
  return langCodes.includes(input)?input:"hi-IN";
 }
+function voiceList(){
+ return (window.speechSynthesis?.getVoices?.()||[]).filter(v=>v&&v.name&&v.lang);
+}
+function sameLanguage(voice,lang){
+ const a=String(voice?.lang||"").toLowerCase(),b=String(lang||"").toLowerCase();
+ return a===b||a.split("-")[0]===b.split("-")[0];
+}
 function getVoice(lang){
- const voices=window.speechSynthesis?.getVoices?.()||[];
- const lc=s=>String(s||"").toLowerCase();
- return voices.find(v=>lc(v.lang)===lc(lang))||
-   voices.find(v=>lc(v.lang).split("-")[0]===lc(lang).split("-")[0])||
-   voices.find(v=>/^en-in$/i.test(v.lang))||
-   voices.find(v=>/^en-/i.test(v.lang))||voices[0]||null;
+ const voices=voiceList();
+ if(selectedVoiceKey){
+  const selected=voices.find(v=>voiceKey(v)===selectedVoiceKey);
+  if(selected)return selected;
+ }
+ const same=voices.filter(v=>sameLanguage(v,lang));
+ const exact=same.filter(v=>String(v.lang).toLowerCase()===String(lang).toLowerCase());
+ // Prefer a recognizable female-named voice of the selected language.
+ // The Web Speech API has no reliable gender metadata, so name matching
+ // is only a preference, not a guarantee.
+ return exact.find(probableFemale)||
+  same.find(probableFemale)||
+  exact.find(v=>v.default)||
+  same.find(v=>v.default)||
+  exact[0]||same[0]||
+  voices.find(v=>/^en-in$/i.test(v.lang)&&probableFemale(v))||
+  voices.find(v=>/^en-/i.test(v.lang)&&probableFemale(v))||
+  voices.find(v=>/^en-in$/i.test(v.lang))||
+  voices.find(v=>/^en-/i.test(v.lang))||voices[0]||null;
+}
+function voiceStatus(lang){
+ const choices=voiceList(),voice=getVoice(lang);
+ const selected=selectedVoiceKey&&voice&&voiceKey(voice)===selectedVoiceKey;
+ if(!choices.length)return "Phone ne abhi voice list load nahi ki. 🎧 Test Voice dabao.";
+ if(!voice)return "Is browser mein koi voice listed nahi hai. Phone Text-to-speech settings check karo.";
+ if(selected)return "Selected voice: "+voice.name+" ("+voice.lang+"). 🎧 Test Voice dabakar suno.";
+ if(probableFemale(voice))return "Female-preferred: "+voice.name+" ("+voice.lang+"). 🎧 Test Voice dabao.";
+ return "Hindi/Gujarati/Marathi female voice confirm nahi hui. Abhi "+voice.name+" ("+voice.lang+") selected hai. 'Jessi Voice' se doosri awaaz choose karo.";
+}
+function fillVoiceSelector(){
+ const select=$("cfmJessiSpeaker");
+ if(!select)return;
+ const previously=selectedVoiceKey,language=pronounceLang(),voices=voiceList();
+ select.replaceChildren();
+ const auto=document.createElement("option");auto.value="";auto.textContent="♀ Auto · Female preferred";select.append(auto);
+ const ordered=voices.slice().sort((a,b)=>{
+  const rank=v=>(sameLanguage(v,language)?0:10)+(probableFemale(v)?0:1);
+  return rank(a)-rank(b)||String(a.lang).localeCompare(String(b.lang))||String(a.name).localeCompare(String(b.name));
+ });
+ for(const voice of ordered){
+  const option=document.createElement("option");
+  option.value=voiceKey(voice);
+  option.textContent=(probableFemale(voice)?"♀ ":"🔊 ")+voice.name+" ("+voice.lang+")";
+  select.append(option);
+ }
+ select.value=previously&&ordered.some(v=>voiceKey(v)===previously)?previously:"";
+ if(previously&&select.value!==previously)selectedVoiceKey="";
+ voicesReady=voices.length>0;
 }
 function speak(text,manual=false){
  const clean=String(text||"").replace(/https?:\/\/\S+/g,"").replace(/[•|*_#]/g," ").trim();
@@ -78,9 +131,13 @@ function speak(text,manual=false){
   const language=pronounceLang(),voice=getVoice(language);
   utterance.lang=voice?.lang||language;
   if(voice)utterance.voice=voice;
-  utterance.rate=0.93;utterance.pitch=1;utterance.volume=1;
-  utterance.onstart=()=>{if(seq!==utteranceSeq)return;info("🔊 Jessi bol rahi hai…","speaking")};
-  utterance.onend=()=>{if(seq!==utteranceSeq)return;activeUtterance=null;info("Jessi ready · Dobara sunne ke liye 🔊 Suno dabao.","ok")};
+  utterance.rate=0.93;
+  // A slightly higher pitch softens generic voices but cannot turn a
+  // male speech engine into a real female voice.
+  utterance.pitch=probableFemale(voice)?1.04:1.14;
+  utterance.volume=1;
+  utterance.onstart=()=>{if(seq!==utteranceSeq)return;info("🔊 Jessi bol rahi hai · "+(voice?.name||"Phone default")+" ("+(voice?.lang||language)+")","speaking")};
+  utterance.onend=()=>{if(seq!==utteranceSeq)return;activeUtterance=null;info("Jessi ready · "+voiceStatus(language),"ok")};
   utterance.onerror=event=>{
    if(seq!==utteranceSeq)return;
    activeUtterance=null;
@@ -198,8 +255,28 @@ function controls(dlg){
   const option=document.createElement("option");option.value=code;option.textContent=labels[code];lang.append(option);
  }
  lang.value="hi-IN";lang.addEventListener("change",()=>{
-  stopVoice();info(labels[lang.value]+" voice selected. Mic dabakar bolo.","ok");
+  stopVoice();fillVoiceSelector();
+  info(labels[lang.value]+" selected · "+voiceStatus(lang.value),"ok");
  });
+ const voiceLabel=document.createElement("label");
+ voiceLabel.className="cfm-jessi-speaker-label";
+ voiceLabel.textContent="Jessi Voice: ";
+ const voiceSelect=document.createElement("select");
+ voiceSelect.id="cfmJessiSpeaker";
+ voiceSelect.setAttribute("aria-label","Choose Jessi speaker voice");
+ voiceLabel.append(voiceSelect);
+ voiceSelect.addEventListener("change",()=>{
+  selectedVoiceKey=voiceSelect.value;
+  cancelPlayback();
+  info(voiceStatus(pronounceLang()),"ok");
+ });
+ const synth=window.speechSynthesis;
+ if(synth?.addEventListener){
+  synth.addEventListener("voiceschanged",()=>{
+   fillVoiceSelector();
+   info(voiceStatus(pronounceLang()),"ok");
+  });
+ }
  const speakSwitch=document.createElement("button");
  speakSwitch.type="button";speakSwitch.id="cfmJessiSpeakToggle";
  speakSwitch.setAttribute("aria-pressed","true");speakSwitch.textContent="🔊 Reply On";
@@ -225,7 +302,8 @@ function controls(dlg){
  const stop=document.createElement("button");stop.type="button";stop.id="cfmJessiStop";stop.textContent="■ Stop";
  stop.setAttribute("aria-label","Stop Jessi voice");stop.addEventListener("click",()=>{stopVoice();info("Jessi voice stopped.","ok")});
  const label=document.createElement("label");label.className="cfm-jessi-lang-label";label.textContent="Voice: ";
- label.append(lang);sourceRow.append(label,speakSwitch,replay,test,stop);
+ label.append(lang);sourceRow.append(label,voiceLabel,speakSwitch,replay,test,stop);
+ fillVoiceSelector();
  const status=document.createElement("div");status.id="cfmJessiVoiceState";status.className="cfm-jessi-status";
  status.setAttribute("role","status");status.setAttribute("aria-live","polite");
  const note=dlg.querySelector(".cfm-ai-note");if(note)note.before(status);
@@ -234,7 +312,7 @@ function controls(dlg){
   mic.disabled=true;mic.title="Speech recognition unavailable; type questions instead";
   info("Mic not supported here. Android Chrome browser try karo, ya type karo.","warn");
  }else if(!canSpeak)info("Mic supported. Spoken reply browser mein unavailable; text answer milega.","warn");
- else info("Jessi ready · Mic dabakar bolo (Hindi, English, Gujarati, Marathi).","ok");
+ else info("Jessi ready · "+voiceStatus(pronounceLang())+" · Mic dabakar bolo.","ok");
  // Typed Ask: one speech attempt only after the answer has been rendered.
  // For microphone Ask, rec.onend is responsible for speaking after mic releases.
  form.addEventListener("submit",()=>{
