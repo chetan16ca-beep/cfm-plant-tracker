@@ -236,7 +236,33 @@ async function cfmAllowCloudReplacement(remote,source){
   if(message!==cfmLastCloudConflict){
     cfmLastCloudConflict=message;
     console.warn(message);
-    alert(message);
+    // V234: never block the entire PC ERP behind repeated JS alert dialogs.
+    // Keep the conflict visible and safe, with a direct recovery action.
+    try{
+      let banner=document.getElementById('cfmCloudConflictNotice');
+      if(!banner){
+        banner=document.createElement('aside');
+        banner.id='cfmCloudConflictNotice';
+        banner.setAttribute('role','status');
+        banner.style.cssText='position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:2147483200;width:min(92vw,640px);box-sizing:border-box;padding:12px 14px;background:#fff7df;color:#74491a;border:1px solid #e2be73;border-radius:11px;box-shadow:0 7px 30px #0004;font:700 12px/1.5 system-ui';
+        const label=document.createElement('div');label.id='cfmCloudConflictLabel';banner.append(label);
+        const act=document.createElement('button');
+        act.type='button';act.textContent='🔧 Fix Work Nos';act.style.cssText='margin:8px 8px 0 0;padding:9px 12px;border:0;border-radius:7px;background:#087a76;color:#fff;font:800 12px system-ui;cursor:pointer';
+        act.addEventListener('click',()=>{if(typeof window.cfmResolveWorkNos==='function')window.cfmResolveWorkNos();else toast('Open the latest CFM ERP to use Work No recovery')});
+        const hide=document.createElement('button');
+        hide.type='button';hide.textContent='Continue Viewing';
+        hide.style.cssText='padding:9px 12px;border:1px solid #c7a96a;border-radius:7px;background:#fff9e9;color:#74491a;font:800 12px system-ui';
+        hide.addEventListener('click',()=>banner.remove());
+        banner.append(act,hide);document.body.append(banner);
+      }
+      const label=document.getElementById('cfmCloudConflictLabel');
+      if(label)label.textContent='⚠️ Local/Cloud orders differ. Data protected; sync paused. Open Fix Work Nos to reconcile. No records deleted.';
+      // On the approved recovery URL, let the recovery tool open itself
+      // instead of placing an extra notice over the recovery dialog.
+      if(/(?:[?&])fixwo=approved(?:&|$)/.test(String(window.parent.location.search))){
+        banner.style.display='none';
+      }
+    }catch(e){console.warn('Could not display sync status banner',e)}
   }
   return false;
 }
