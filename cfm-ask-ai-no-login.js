@@ -291,6 +291,13 @@ async function readCloud(){
  }catch(err){showAlert("Cloud read unavailable: "+(err?.message||"unknown")+". Device data unchanged.","warning")}
  finally{button.disabled=false;button.textContent="Refresh Cloud"}
 }
+function isNewWorkOrderRequest(text){
+ const q=String(text||"").trim().toUpperCase();
+ const work=/\b(?:WORK\s*ORDER|WORKORDER|ORDER|NEW\s*WO)\b|वर्क\s*(?:ऑर्डर|आर्डर|ओर्डर|ऑडर)|ऑर्डर|आर्डर|વર્ક\s*ઓર્ડર/i.test(q);
+ const newWord=/\b(?:NEW|CREATE|MAKE|ADD|BANAO|BANANA|BANANI|BANADO|FRESH)\b|नया|नई|नयी|न्यू|बनाओ|बनाना|बनानी|बनाने|बना दो|નવી|નવું|નવો|ન્યુ|બનાવો/i.test(q);
+ const query=/\b(?:STATUS|PENDING|STOCK|SHOW|SEARCH|DETAIL|DETAILS|CHECK|REPORT|BALANCE)\b|स्थिति|स्टेटस|दिखाओ|बताना|जानकारी/i.test(q);
+ return work&&newWord&&!query;
+}
 function send(){
  if(busy)return;
  const q=$("cfmAiQuestion")?.value.trim()||"";
@@ -299,11 +306,21 @@ function send(){
  // Never block the New Work Order UI because search data was not loaded.
  let command=null;
  try{
-  if(!window.cfmJessiCommand){
-   if(/\b(?:WORK\s*ORDER|ORDER|NEW\s*WO)\b.*\b(?:BANAO|BANADO|CREATE|MAKE|ADD|NEW)\b|वर्क\s*ऑर्डर.*(?:बनाओ|बना)/i.test(q))
-    return showAlert("Jessi Work Order creation module is unavailable. Reload ERP V220 (not V219). No order created.","warning");
+  const newOrderRequested=isNewWorkOrderRequest(q);
+  if(newOrderRequested&&typeof window.cfmJessiNewWorkDraft!=="function"&&!window.cfmJessiCommand){
+   return showAlert("Jessi create module load nahi hua. ERP ka latest V221 link kholkar refresh karo. No order saved.","warning");
   }
   command=window.cfmJessiCommand?.handle?.(q)||null;
+  // Never misroute an explicit New Work Order request to generic record-search,
+  // even if the browser recognized a different Hindi spelling.
+  if(newOrderRequested&&!command?.handled){
+   if(typeof window.cfmJessiNewWorkDraft==="function"){
+    command=window.cfmJessiNewWorkDraft();
+    if(command?.handled)command.reply="Jessi ka NEW WORK ORDER draft khul gaya hai. Work No, Party aur Quantity bharo. Confirmation ke baad existing ERP Work Order form khulega. Abhi Save nahi hua.";
+   }else{
+    return showAlert("Jessi create module missing. Latest ERP V221 reload karo. No order saved.","warning");
+   }
+  }
  }catch(err){return showAlert("Jessi draft error: "+(err?.message||"unknown")+". No data saved.","warning")}
  const s=data();
  if(!command?.handled&&(!s||!core()?.valid(s)))
