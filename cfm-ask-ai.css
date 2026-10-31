@@ -144,3 +144,72 @@
  #cfmAiDialog .cfm-ai-footer span{font-size:10px}
  #cfmAiDialog .cfm-ai-chat .cfm-ai-note{font-size:9px}
 }
+
+
+/* CFM V218 — Jessi Voice controls, mobile-first. */
+#cfmAiDialog .cfm-ai-compose .cfm-jessi-mic{
+ min-width:56px!important;width:56px!important;max-width:56px!important;
+ font-size:24px!important;font-weight:800!important;padding:8px!important;
+ border:1px solid #1aa5aa!important;border-radius:10px!important;
+ background:linear-gradient(135deg,#0e779b,#0c9b88)!important;color:#fff!important;
+ flex:0 0 auto!important;align-self:stretch!important;cursor:pointer!important;
+ transition:transform .15s,background .15s,box-shadow .15s!important
+}
+#cfmAiDialog .cfm-ai-compose .cfm-jessi-mic.listening{
+ background:linear-gradient(135deg,#cc465a,#f06f47)!important;border-color:#cc465a!important;
+ box-shadow:0 0 0 5px #e9515233,0 0 20px #e9515255!important;
+ animation:cfm-jessi-pulse 1.3s ease-in-out infinite!important
+}
+@keyframes cfm-jessi-pulse{
+ 0%,100%{box-shadow:0 0 0 3px #e9515222}50%{box-shadow:0 0 0 8px #e9515244}
+}
+#cfmAiDialog .cfm-ai-compose .cfm-jessi-mic:disabled{
+ opacity:.5!important;cursor:not-allowed!important;filter:grayscale(.6)!important
+}
+#cfmAiDialog .cfm-ai-source-row .cfm-jessi-lang-label{
+ display:flex!important;align-items:center!important;gap:6px!important;font-size:11px!important;
+ font-weight:800!important;color:#255b70!important;white-space:nowrap!important;
+}
+#cfmAiDialog .cfm-ai-source-row #cfmJessiLang{
+ min-height:33px!important;padding:6px 8px!important;border:1px solid #9fcbd4!important;
+ border-radius:6px!important;background:#fff!important;color:#155366!important;
+ font:750 11px "Segoe UI",Arial,sans-serif!important;max-width:162px!important
+}
+#cfmAiDialog .cfm-ai-source-row #cfmJessiSpeakToggle,#cfmAiDialog .cfm-ai-source-row #cfmJessiStop{
+ min-height:33px!important;padding:7px 11px!important;border-radius:7px!important;
+ white-space:nowrap!important;font-size:11px!important;font-weight:850!important;
+ border:1px solid #9ac5cb!important;background:#fff!important;color:#0d6679!important;cursor:pointer!important
+}
+#cfmAiDialog .cfm-ai-source-row #cfmJessiSpeakToggle[aria-pressed="true"]{
+ background:#e5f9ef!important;color:#16704c!important;border-color:#83c5a4!important
+}
+#cfmAiDialog .cfm-ai-source-row #cfmJessiStop{color:#8b4652!important;border-color:#e2b9c1!important}
+#cfmAiDialog .cfm-jessi-status{
+ display:flex!important;align-items:center!important;min-height:36px!important;padding:8px 11px!important;
+ margin:0!important;border:1px solid #b7dce4!important;background:#eff9fb!important;
+ color:#2b6577!important;border-radius:8px!important;font-size:11px!important;font-weight:750!important;
+ line-height:1.45!important;flex:0 0 auto!important;
+}
+#cfmAiDialog .cfm-jessi-status[data-mode="listening"]{
+ background:#fff2f2!important;border-color:#eab9b8!important;color:#a2394b!important
+}
+#cfmAiDialog .cfm-jessi-status[data-mode="speaking"]{
+ background:#e5faf1!important;border-color:#a2d8be!important;color:#12684c!important
+}
+#cfmAiDialog .cfm-jessi-status[data-mode="warn"]{
+ background:#fff8e6!important;border-color:#e3d3a2!important;color:#866019!important
+}
+@media(max-width:620px){
+ #cfmAiDialog .cfm-ai-source-row{justify-content:flex-start!important}
+ #cfmAiDialog .cfm-ai-source-row #cfmAiSource{flex-basis:100%!important}
+ #cfmAiDialog .cfm-ai-source-row .cfm-jessi-lang-label{flex-basis:auto!important}
+ #cfmAiDialog .cfm-ai-source-row #cfmJessiSpeakToggle,#cfmAiDialog .cfm-ai-source-row #cfmJessiStop{padding:7px 8px!important}
+ #cfmAiDialog .cfm-ai-compose{gap:6px!important}
+ #cfmAiDialog .cfm-ai-compose .cfm-jessi-mic{width:44px!important;min-width:44px!important;max-width:44px!important;font-size:21px!important;padding:5px!important}
+ #cfmAiDialog .cfm-ai-compose button#cfmAiSend{min-width:58px!important;font-size:11px!important;padding:8px!important}
+ #cfmAiDialog .cfm-ai-compose textarea{min-height:59px!important}
+ #cfmAiDialog .cfm-jessi-status{font-size:10px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ #cfmAiDialog .cfm-ai-compose .cfm-jessi-mic.listening{animation:none!important}
+}
