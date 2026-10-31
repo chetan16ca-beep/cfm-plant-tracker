@@ -52,15 +52,17 @@ function fields(text){
  return command;
 }
 function classify(text){
+ // SpeechRecognition uses literal Hindi/Gujarati script for phrases such as
+ // "न्यू वर्क ऑर्डर", while typed commands commonly use English letters.
  const q=norm(clean(text));
- const create=/\b(CREATE|ADD|NEW|BANAO|BANA|BANA DO|BANADO|KARO|KARNA|ENTER|ENTRY|SAVE|REGISTER)\b|बनाओ|बनाना|बना दो|जोड़ो|जोड़ो|करो|करना|डालो|डालना|बनवा|बनादो|બનાવો|જોડો|કરો/i.test(q);
- const explicitCreate=/\b(CREATE|ADD|NEW|BANAO|BANA|BANA DO|BANADO|ENTRY|REGISTER|MAKE)\b|बनाओ|बनाना|बना दो|बनादो|बनवा|जोड़ो|जोड़ो|डालो|બનાવો|જોડો/i.test(q);
  const cut=/\b(CUTTING|CUT|CUTT)\b|कटिंग|काटिंग|કટિંગ/i.test(q);
- const work=/\b(WORK\s*ORDER|WORK\s*NO|WORKORDER|WO|ORDER)\b|वर्क\s*[ऑआ]र्डर|वर्क\s*नंबर|वो\s*बनाओ|વર્ક\s*ઓર્ડર/i.test(q);
- const informational=/\b(STATUS|DETAIL|DETAILS|CHECK|SHOW|SEARCH|FIND|REPORT|PENDING|STOCK|HOW|WHAT|KITNA|KITNE)\b|स्थिति|स्टेटस|दिखाओ|बता[ओय]|कितना|કેટલા/i.test(q);
- const plainCut=/\b(DONE|COMPLETE|COMPLETED)\b|कर दिया|हो गया|डन|पूरी|કર્યું/i.test(q);
- if(cut&&(create||plainCut)&&(!informational||explicitCreate))return 'cutting';
- if(work&&explicitCreate&&!informational)return 'order';
+ const work=/\b(?:WORK\s*(?:ORDER|NO|NUMBER)|WORKORDER|WO|ORDER)\b|वर्क\s*(?:ऑर्डर|आर्डर|ओर्डर|ऑडर|नंबर)|वो\s*बनाओ|વર્ક\s*(?:ઓર્ડર|ઓડર)|ऑर्डर|आर्डर|ओर्डर/i.test(q);
+ const informational=/\b(?:STATUS|DETAIL|DETAILS|CHECK|SHOW|SEARCH|FIND|REPORT|PENDING|STOCK|HOW|WHAT|KITNA|KITNE|TRACK|BALANCE)\b|स्थिति|स्टेटस|दिखाओ|बता[ओय]|कितना|कितने|जानकारी|डिटेल|કેટલા/i.test(q);
+ const create=/\b(?:CREATE|ADD|NEW|FRESH|BANAO|BANA|BANA DO|BANADO|BANANA|BANANI|KARO|KARNA|ENTER|ENTRY|SAVE|REGISTER|MAKE)\b|बनाओ|बनाना|बनानी|बनाने|बना दो|नया|नई|नये|न्यू|नयी|जोड़ो|जोड़ो|करो|करना|डालो|डालना|बनवा|बनादो|નવી|નવું|નવો|ન્યુ|બનાવો|જોડો|કરો/i.test(q);
+ const explicitlyNew=/\b(?:CREATE|ADD|NEW|FRESH|BANAO|BANA|BANA DO|BANADO|BANANA|BANANI|ENTRY|REGISTER|MAKE)\b|बनाओ|बनाना|बनानी|बनाने|बना दो|बनादो|बनवा|नया|नई|नये|न्यू|नयी|जोड़ो|जोड़ो|डालो|નવી|નવું|નવો|ન્યુ|બનાવો|જોડો/i.test(q);
+ const completed=/\b(?:DONE|COMPLETE|COMPLETED)\b|कर दिया|हो गया|डन|पूरी|કર્યું/i.test(q);
+ if(cut&&(create||completed)&&(!informational||explicitlyNew))return 'cutting';
+ if(work&&explicitlyNew&&!informational)return 'order';
  return '';
 }
 function missingOf(d){
