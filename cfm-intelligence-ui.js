@@ -89,7 +89,7 @@ function simulation(s){
  field('Existing Work Order or TRIAL','<select id="cfmSimWork">'+optionsWorks(s,true)+'</select>')+
  field('Trial Total Order Qty',textInput('cfmSimQty','25','Quantity','number'))+
  field('Additional Trial Cut Qty',textInput('cfmSimCut','0','New cut Qty','number'))+
- field('Physical SRL (optional)',textInput('cfmSimSrl','','Search existing SRL')+'<datalist id="cfmSimRolls">'+rolls+'</datalist>','Optional — for projected MTR check only')+
+ field('Physical SRL (optional)',textInput('cfmSimSrl','','Search existing SRL').replace('id="cfmSimSrl"','id="cfmSimSrl" list="cfmSimRolls"')+'<datalist id="cfmSimRolls">'+rolls+'</datalist>','Optional — for projected MTR check only')+
  field('Hypothetical Used MTR',textInput('cfmSimMtr','0','Meter','number'), 'Manual assumption; not deducted from actual Stock')+
  '</div><div class="cfm-intel-actions"><button type="button" class="primary" id="cfmSimRun">Run Simulation</button><button type="button" id="cfmSimReset">Reset Trial</button></div>'+
  '<div id="cfmIntelSimulationResult" aria-live="polite"></div></div>';
@@ -193,8 +193,8 @@ function remnants(s){
  b.innerHTML=note('<b>Separate local remnant register.</b> A remnant must be physically measured and checked against the actual SRL width. This DOES NOT increase usable SRL stock, deduct cutting meters or sync to Cloud. Export it for safekeeping.','warn')+
  '<div class="cfm-intel-card"><h3>04 / Physically Verified Leftover Cloth</h3><p>Enter only real, measured offcuts. Units: inches for piece dimensions.</p>'+
  '<div class="cfm-intel-grid">'+
- field('Source Physical SRL',textInput('cfmRemSrl','','Search SRL')+'<datalist id="cfmRemRolls">'+choices+'</datalist>')+
- field('Cloth / Quality',textInput('cfmRemCloth','','Exact SRL cloth quality')+'<datalist id="cfmRemCloths">'+qualityOptions+'</datalist>')+
+ field('Source Physical SRL',textInput('cfmRemSrl','','Search SRL').replace('id="cfmRemSrl"','id="cfmRemSrl" list="cfmRemRolls"')+'<datalist id="cfmRemRolls">'+choices+'</datalist>')+
+ field('Cloth / Quality',textInput('cfmRemCloth','','Exact SRL cloth quality').replace('id="cfmRemCloth"','id="cfmRemCloth" list="cfmRemCloths"')+'<datalist id="cfmRemCloths">'+qualityOptions+'</datalist>')+
  field('Remnant Width (inch)',textInput('cfmRemWidth','','Measured width','number'))+
  field('Remnant Length (inch)',textInput('cfmRemLength','','Measured length','number'))+
  field('Pieces available',textInput('cfmRemQty','1','Quantity','number'))+
@@ -204,7 +204,7 @@ function remnants(s){
  '<div id="cfmRemRollHint"></div><div class="cfm-intel-actions"><button type="button" class="primary" id="cfmRemSave">Add Verified Remnant (Local Only)</button><button type="button" id="cfmRemExport">Export Register JSON</button></div>'+
  '<div id="cfmRemSaveStatus" aria-live="polite"></div></div>'+
  '<div class="cfm-intel-card"><h3>05 / Find Reusable Offcuts</h3><div class="cfm-intel-grid">'+
- field('Required Cloth Quality',textInput('cfmNeedCloth','','Enter exact cloth quality')+'<datalist id="cfmNeedCloths">'+qualityOptions+'</datalist>')+
+ field('Required Cloth Quality',textInput('cfmNeedCloth','','Enter exact cloth quality').replace('id="cfmNeedCloth"','id="cfmNeedCloth" list="cfmNeedCloths"')+'<datalist id="cfmNeedCloths">'+qualityOptions+'</datalist>')+
  field('Piece Width (inch)',textInput('cfmNeedWidth','','Required piece width','number'))+
  field('Piece Length (inch)',textInput('cfmNeedLength','','Required piece length','number'))+
  field('Cut Pieces Required',textInput('cfmNeedQty','1','Required Qty','number'))+
