@@ -1132,7 +1132,11 @@ window.cfmPOExistingOrders=function(party,poNo){
  const normPO=x=>String(x||'').trim().replace(/\s+/g,'').toUpperCase();
  const p=normPO(party),n=normPO(poNo);
  if(!p||!n)return [];
- return (state.pending||[]).filter(x=>normPO(x.party)===p&&normPO(x.poNo)===n).map(x=>({workNo:String(x.workNo||''),itemCode:String(x.itemCode||'')}));
+ return (state.pending||[]).filter(x=>normPO(x.party)===p&&normPO(x.poNo)===n).map(x=>({
+   workNo:String(x.workNo||''),itemCode:String(x.itemCode||''),
+   description:String(x.description||''),orderQty:Number(x.orderQty||0),status:String(x.status||''),
+   orderDate:String(x.orderDate||'')
+ }));
 };
 window.openMultiPendingForm=function(){
   multiPoBaseNo=nextWorkStartNo();
@@ -1166,7 +1170,21 @@ function cfmPOInlineStatus(msg){
   const actions=dialog.querySelector('.dialog-actions');if(actions)actions.before(bar);else dialog.append(bar);
  }
  bar.style.cssText='display:block;position:relative;padding:12px;margin:12px 0;border:2px solid #e6a29a;border-radius:10px;background:#fff3f0;color:#8b2922;font:700 13px/1.5 system-ui';
- bar.textContent='⚠️ PO NOT SAVED — '+String(msg||'Please check Work Order details.');
+ bar.replaceChildren();
+ const label=document.createElement('div');
+ label.textContent='⚠️ PO NOT SAVED — '+String(msg||'Please check Work Order details.');
+ bar.append(label);
+ if(String(msg||'').startsWith('PO already saved for ')){
+   const openExisting=document.createElement('button');
+   openExisting.type='button';
+   openExisting.textContent='🔎 View Existing Work Order in Pending Orders';
+   openExisting.style.cssText='display:block;margin-top:11px;padding:10px 13px;background:#116b95;color:white;border:0;border-radius:8px;font:750 12px system-ui;cursor:pointer';
+   openExisting.addEventListener('click',()=>{
+     try{if(document.getElementById('editDialog')?.open)document.getElementById('editDialog').close()}catch(e){}
+     showView('pending');
+   });
+   bar.append(openExisting);
+ }
 }
 function cfmPOShowSavedReceipt(party,poNo,created){
  const workNos=created.map(x=>String(x.workNo||''));
@@ -1244,7 +1262,14 @@ window.saveMultiPoItems=function(){
     const imported=window.cfmPOImportedDraft;
     if(imported&&String(imported.party||'').trim().toUpperCase()===party.toUpperCase()&&String(imported.poNo||'').trim().toUpperCase()===poNo.toUpperCase()){
       const existing=window.cfmPOExistingOrders(party,poNo);
-      if(existing.length)return fail('Duplicate PO blocked: '+existing.map(x=>x.workNo).slice(0,5).join(', '),document.getElementById('multiPoNo'));
+      if(existing.length){
+        const detail=existing.slice(0,5).map(x=>{
+          const qty=Number.isFinite(x.orderQty)?' · Qty '+x.orderQty:'';
+          const description=String(x.description||'').slice(0,110);
+          return x.workNo+qty+(description?' · '+description:'');
+        }).join(' | ');
+        return fail('PO already saved for '+party+' / '+poNo+' as '+detail+'. This is an EXISTING Work Order, not a new Work No allocation error. Do not re-save. Use View Existing Work Order below.',document.getElementById('multiPoNo'));
+      }
       if(rows.length!==imported.lineCount)return fail('Imported PO items changed. Re-import and verify all lines.',document.getElementById('multiPoItems'));
     }
     const created=[];
