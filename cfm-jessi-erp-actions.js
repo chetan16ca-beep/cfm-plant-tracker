@@ -102,7 +102,7 @@ function updateDraft(){
   input('Cloth Quality (optional)','cloth');
  }else{
   input('Physical Store SRL (complete)','srlNo');
-  input('Cutting Qty (pieces)','qty','number');
+  input('Today Cut Qty (Work Order units)','qty','number','Must not exceed remaining Order Qty. Part-cut quantities are separate.');
   input('Cut Piece Length (inch)','length','number');
   input('Cut Piece Width (inch)','width','number');
   input('Measured Used MTR (actual)','usedMtr','number','Must be physically verified. NOT estimated from L×W.');
@@ -138,6 +138,10 @@ function check(d,state){
   const order=arr(state,'pending').find(r=>norm(r.workNo)===wo);
   if(!order)issues.push('Work No must exist in Pending Order register on this device');
   else if(order.archived||norm(order.status)==='ARCHIVED')issues.push('Work No is archived');
+  else if(qty>0&&number(order.orderQty)>0){
+   const remaining=Math.max(0,number(order.orderQty)-(number(order.cutQty)||0));
+   if(qty>remaining)issues.push('Cutting Qty '+qty+' exceeds uncut order units '+remaining+'. Voice draft will not over-complete Pending.');
+  }
   const sr=norm(c.srlNo),roll=arr(state,'store').find(x=>norm(x.srlNo)===sr);
   if(!sr||!roll)issues.push('Full source SRL must exist in Physical Store — no guessing');
   const length=number(c.length),pieceWidth=number(c.width),meter=number(c.usedMtr);
@@ -201,6 +205,17 @@ async function checkCloud(d){
  }else{
   if(!found)throw Error('Work No '+wo+' missing from Cloud. Sync/verify Work Nos before creating Cutting.');
   if(norm(found.status)==='ARCHIVED'||found.archived)throw Error('Cloud Work No is archived.');
+  const cloudRoll=arr(payload,'store').find(x=>norm(x.srlNo)===norm(c.srlNo));
+  const deviceRoll=arr(source(),'store').find(x=>norm(x.srlNo)===norm(c.srlNo));
+  if(!cloudRoll||!deviceRoll)throw Error('SRL not found in both Cloud and device Store. Cutting blocked.');
+  if(!(number(cloudRoll.width)>0)||!(number(deviceRoll.width)>0)||
+     Math.abs(number(cloudRoll.width)-number(deviceRoll.width))>0.11)
+   throw Error('CLOUD WIDTH MISMATCH for SRL '+c.srlNo+'. Physical width must be reconciled before Cutting.');
+  if(number(found.width)>0&&Math.abs(number(found.width)-number(deviceRoll.width))>0.11)
+   throw Error('Cloud Work Order width disagrees with device physical SRL. Cutting blocked.');
+  const cloudRem=number(found.orderQty)!=null?number(found.orderQty)-(number(found.cutQty)||0):null;
+  if(cloudRem!=null&&number(c.qty)>cloudRem)
+   throw Error('Cloud order remaining Cutting Qty '+Math.max(0,cloudRem)+' is below requested '+c.qty+'. Refresh first.');
   const exists=payload.cutting.some(x=>norm(x.workNo)===wo&&norm(x.srlNo)===norm(c.srlNo)&&
    number(x.cutQty)===number(c.qty)&&number(x.length)===number(c.length)&&number(x.height)===number(c.width));
   if(exists)throw Error('A matching Cutting line already exists in Cloud. Duplicate blocked; review existing entry.');
