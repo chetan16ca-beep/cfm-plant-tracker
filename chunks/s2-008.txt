@@ -464,12 +464,18 @@ function save(doRender=true){
     }else throw e;
   }
   try{safeStorage.setItem(SETTINGS_KEY,JSON.stringify(settings))}catch(e){}
-  if(doRender)renderAll();
+  // A dashboard-only rendering exception must never turn an already
+  // persisted Work Order into "PO NOT SAVED" or prevent Cloud backup.
+  try{if(doRender)renderAll()}
+  catch(renderError){
+    console.error('ERP UI render failed AFTER local save; syncing saved records',renderError);
+    try{toast('Saved locally • Dashboard refresh issue • Cloud sync queued')}catch(_){}
+  }
   queueCloudPush();
   if(changed){
     const notice=nextUpdateNotification||genericUpdateNotification(prev,next);
     nextUpdateNotification=null;
-    showLocalNotification(notice.title,notice.body);
+    try{showLocalNotification(notice.title,notice.body)}catch(e){console.warn('Post-save notification failed',e)}
   }else nextUpdateNotification=null;
 }
 function toast(msg){const t=$('toast');if(!t)return;t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
@@ -571,6 +577,9 @@ function kpi(label,value,sub='',target=''){const iconMap={"Pending Work Orders":
 function renderDashboard(){
   // V181 Dashboard UI only: hide Pending Work Orders, Total Pending Qty and Open Store Balance cards.
   // Underlying pending orders, cutting entries and SRL stock remain untouched.
+  // V228: open must be a real work-order array; window.open is a browser
+  // function, and open.slice() previously threw after an otherwise saved PO.
+  const open=(state.pending||[]).filter(r=>hasOrderQty(r)&&pendingQty(r)>0&&!isArchived(r));
   const todayCut=state.cutting.filter(r=>r.date===todayISO()).reduce((a,r)=>a+num(r.cutQty),0);
   $('kpis').innerHTML=kpi("Today's Cut Qty",fmt(todayCut),'','cutting');
 
