@@ -1260,18 +1260,29 @@ window.saveMultiPoItems=function(){
     multiPoBaseNo=nextWorkStartNo();
     const poNo=String(document.getElementById('multiPoNo')?.value||'').trim(),orderDate=document.getElementById('multiOrderDate')?.value||todayISO(),deliveryDate=document.getElementById('multiDeliveryDate')?.value||'',priority=document.getElementById('multiPriority')?.value||'NORMAL';
     const imported=window.cfmPOImportedDraft;
-    if(imported&&String(imported.party||'').trim().toUpperCase()===party.toUpperCase()&&String(imported.poNo||'').trim().toUpperCase()===poNo.toUpperCase()){
-      const existing=window.cfmPOExistingOrders(party,poNo);
-      if(existing.length){
-        const detail=existing.slice(0,5).map(x=>{
-          const qty=Number.isFinite(x.orderQty)?' · Qty '+x.orderQty:'';
-          const description=String(x.description||'').slice(0,110);
-          return x.workNo+qty+(description?' · '+description:'');
-        }).join(' | ');
-        return fail('PO already saved for '+party+' / '+poNo+' as '+detail+'. This is an EXISTING Work Order, not a new Work No allocation error. Do not re-save. Use View Existing Work Order below.',document.getElementById('multiPoNo'));
-      }
-      if(rows.length!==imported.lineCount)return fail('Imported PO items changed. Re-import and verify all lines.',document.getElementById('multiPoItems'));
+    const importedMatch=!!imported&&String(imported.party||'').trim().toUpperCase()===party.toUpperCase()&&String(imported.poNo||'').trim().toUpperCase()===poNo.toUpperCase();
+    const existing=poNo?window.cfmPOExistingOrders(party,poNo):[];
+    // If an earlier UI render failed *after* localStorage was written, the user
+    // may see "SAVE ERROR" even though the PO exists. Never append another
+    // identical order set during a retry.
+    const normLine=x=>String(x||'').trim().replace(/\s+/g,' ').toUpperCase();
+    const allLinesAlreadyExist=existing.length>0&&rows.every(row=>existing.some(old=>
+      normLine(old.description)===normLine(row.description)&&
+      Number(old.orderQty)===Number(row.orderQty)));
+    if(existing.length&&(importedMatch||allLinesAlreadyExist)){
+      const detail=existing.slice(0,5).map(x=>{
+        const qty=Number.isFinite(x.orderQty)?' · Qty '+x.orderQty:'';
+        const description=String(x.description||'').slice(0,110);
+        return x.workNo+qty+(description?' · '+description:'');
+      }).join(' | ');
+      return fail('PO already saved for '+party+' / '+poNo+' as '+detail+'. Saved order(s) exist. DO NOT re-save. Use View Existing Work Order below.',document.getElementById('multiPoNo'));
     }
+    if(importedMatch&&rows.length!==imported.lineCount)
+      return fail('Imported PO items changed. Re-import and verify all lines.',document.getElementById('multiPoItems'));
+    const issued=new Set((state.pending||[]).map(x=>String(x.workNo||'').trim().toUpperCase()));
+    const proposed=rows.map((_,i)=>'CFM-'+(multiPoBaseNo+i));
+    if(proposed.some(no=>issued.has(no)))
+      return fail('Work No conflict: '+proposed.filter(no=>issued.has(no)).join(', ')+'. Refresh Work Nos before Save. Existing orders remain safe.',document.getElementById('multiPoItems'));
     const created=[];
     rows.forEach((x,i)=>{
       let p=null;try{p=findProductFromFields({description:x.description,eagleCode:x.eagleCode,itemCode:x.itemCode,productPick:x.description})}catch(e){}
