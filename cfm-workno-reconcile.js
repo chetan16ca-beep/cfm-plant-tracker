@@ -277,6 +277,12 @@ async function autoRepairApproved(){
  if(autoAttempted)return;
  autoAttempted=true;
  try{
+  // Approved recovery should never be hidden behind an unrelated restored
+  // Edit Work Order modal. Close the UI only; preserve its saved draft.
+  try{
+   const editing=document.getElementById('editDialog');
+   if(editing?.open)editing.close();
+  }catch(e){console.warn('Could not dismiss old editor',e)}
   if(typeof state==='undefined'||!Array.isArray(state.pending))
    throw Error('ERP has not loaded PC Work Orders');
   if(typeof cloudBusy!=='undefined'&&cloudBusy)
