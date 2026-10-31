@@ -1,0 +1,313 @@
+/* Jessi V219 voice-to-ERP drafts. No direct mutation of live ERP data.
+ * Work Orders open existing Add form after Cloud duplicate check and explicit review.
+ * Cutting opens existing form only after device + Cloud, SRL width, physical meter
+ * and native meter calculation verification. Save guard runs capture phase.
+ */
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const norm=s=>String(s??'').trim().toUpperCase().replace(/\s+/g,' ');
+const arr=(s,k)=>Array.isArray(s?.[k])?s[k]:[];
+const number=v=>v===''||v==null?null:(Number.isFinite(Number(v))?Number(v):null);
+const digits=s=>String(s??'').replace(/[०-९૦-૯]/g,c=>{
+ const a='०१२३४५६७८९',b='૦૧૨૩૪૫૬૭૮૯';return String(Math.max(a.indexOf(c),b.indexOf(c)));
+});
+const clean=s=>digits(s).replace(/सी\s*एफ\s*एम|सीएफएम|સી\s*એફ\s*એમ/gi,'CFM').trim();
+const idFrom=q=>{const m=norm(q).match(/\bCFM[\s-]*(\d{1,6})\b/);return m?'CFM-'+m[1]:''};
+const srlFrom=q=>{const m=norm(q).match(/\bEFPPL[A-Z0-9]*\s*\/\s*\d+\b/);return m?m[0].replace(/\s+/g,''):''};
+const fmt=v=>String(Math.round(v*1000)/1000);
+let draft=null,stamp=0,guardClean=null,preparing=false;
+function source(){
+ try{const s=window.CFMIntelCore?.snapshot?.();
+  return s&&Array.isArray(s.pending)&&Array.isArray(s.store)&&Array.isArray(s.cutting)?s:null;
+ }catch(_){return null}
+}
+function fields(text){
+ const q=clean(text);
+ const qN=norm(q);
+ const qtyMatch=q.match(/(?:\b(?:qty|quantity)\b|क्वांटिटी|कितने|જથ્થો)\s*[:= -]*(\d+(?:\.\d+)?)/i)||
+  q.match(/\b(\d+(?:\.\d+)?)\s*(?:pieces?|pcs?\.?|nos?\.?|numbers?|bags?|पीस|नग|બેગ|પીસ)\b/i)||
+  q.match(/\b(\d+(?:\.\d+)?)\s+(?:cutting|कटिंग|કટિંગ)\b/i);
+ const size=q.match(/(\d+(?:\.\d+)?)\s*(?:x|×|\*|by)\s*(\d+(?:\.\d+)?)/i);
+ const meter=q.match(/(?:actual|verified|measured|used|physical|वास्तविक|असली|मापा)\s*(?:used\s*)?(?:mtr|meter|meters|metre|मीटर|મીટર)?\s*[:= -]*(\d+(?:\.\d+)?)(?:\s*(?:mtr|meter|meters|मीटर|મીટર))?/i)||
+ q.match(/(?:mtr|meter|meters|metre|मीटर|મીટર)\s*[:= -]*(\d+(?:\.\d+)?)/i)||
+ q.match(/\b(\d+(?:\.\d+)?)\s*(?:mtr|meter|meters|metre|मीटर|મીટર)\b/i);
+ const party=q.match(/(?:\bparty\b|पार्टी|પાર્ટી)\s*[:= -]+\s*(.+?)(?=\s+(?:\bqty\b|\bquantity\b|\bpo\b|\b\d+(?:\.\d+)?\s*(?:nos|pcs|pieces|bags)|\bcloth\b|\bdescription\b|\bSRL\b|\bEFPPL)\b|$)/i);
+ const po=q.match(/\bPO\s*(?:NO|NUMBER|#)?\s*[:= -]+\s*([A-Z0-9/._-]+)/i);
+ const cloth=q.match(/(?:\bcloth\b|कपड़ा|कापड|કાપડ|material)\s*[:= -]+\s*([A-Z0-9][A-Z0-9 -]{0,18})/i);
+ const priority=qN.match(/\b(HIGH|URGENT|NORMAL|LOW)\b/);
+ const command={
+  workNo:idFrom(q),srlNo:srlFrom(q),qty:qtyMatch?Number(qtyMatch[1]):null,
+  width:size?Number(size[2]):null,length:size?Number(size[1]):null,
+  usedMtr:meter?Number(meter[1]):null,party:party?party[1].trim():'',
+  po:po?po[1]:'',cloth:cloth?cloth[1].trim():'',priority:priority?priority[1]:'',
+  raw:q
+ };
+ return command;
+}
+function classify(text){
+ const q=norm(clean(text));
+ const create=/\b(CREATE|ADD|NEW|BANAO|BANA|BANA DO|ENTRY|SAVE|REGISTER)\b|बनाओ|बनाना|बना दो|जोड़ो|जोड़ो|करो|बनवा|बनादो|બનાવો|જોડો|કરો/i.test(q);
+ const cut=/\b(CUTTING|CUT|CUTT)\b|कटिंग|काटिंग|કટિંગ/i.test(q);
+ const work=/\b(WORK\s*ORDER|WORK\s*NO|WORKORDER|WO)\b|वर्क\s*ऑर्डर|वर्क\s*नंबर|વર્ક\s*ઓર્ડર/i.test(q);
+ const plainCut=/\b(DONE|COMPLETE|COMPLETED)\b|कर दिया|हो गया|डन|पूरी|કર્યું/i.test(q);
+ if(cut&&(create||plainCut))return 'cutting';
+ if(work&&create)return 'order';
+ return '';
+}
+function speakable(kind,info){
+ if(kind==='order')return 'Work Order ka draft tayyar hai. Review karke form kholo aur Save khud dabao. Koi entry abhi save nahi hui.';
+ return 'Cutting draft ready hai. Actual SRL width aur physically measured meter verify karna zaroori hai. Abhi stock minus nahi hua.';
+}
+function panel(){
+ const dialog=$('cfmAiDialog'),chat=dialog?.querySelector('.cfm-ai-chat');
+ if(!chat)return null;
+ let card=$('cfmJessiDraft');
+ if(!card){
+  card=document.createElement('section');card.id='cfmJessiDraft';card.className='cfm-jessi-draft';
+  const compose=chat.querySelector('#cfmAiQuestionForm');if(compose)compose.before(card);else chat.append(card);
+ }
+ return card;
+}
+function updateDraft(){
+ const box=panel();if(!box||!draft)return;
+ const d=draft,c=d.value;
+ box.replaceChildren();
+ const title=document.createElement('div');title.className='cfm-jessi-draft-title';
+ const h=document.createElement('strong');h.textContent=d.kind==='order'?'Jessi · New Work Order Draft':'Jessi · Cutting Entry Draft';
+ const tag=document.createElement('span');tag.textContent='NOT SAVED';title.append(h,tag);box.append(title);
+ const grid=document.createElement('div');grid.className='cfm-jessi-draft-grid';
+ function input(label,key,type='text',hint=''){
+  const cell=document.createElement('label');cell.className='cfm-jessi-draft-field';
+  const name=document.createElement('span');name.textContent=label;
+  const field=document.createElement('input');field.type=type;field.value=c[key]??'';field.dataset.jessiKey=key;field.autocomplete='off';
+  if(type==='number'){field.min='0';field.step='any';field.inputMode='decimal'}
+  field.addEventListener('input',()=>{c[key]=field.value;stamp++;showIssues()});
+  cell.append(name,field);
+  if(hint){const small=document.createElement('small');small.textContent=hint;cell.append(small)}
+  grid.append(cell);
+ }
+ input('Work No','workNo');
+ if(d.kind==='order'){
+  input('Party / Customer','party');
+  input('Order Quantity (bags)','qty','number');
+  input('PO / Reference','po');
+  input('Product Description','description');
+  input('Cloth Quality (optional)','cloth');
+ }else{
+  input('Physical Store SRL (complete)','srlNo');
+  input('Cutting Qty (pieces)','qty','number');
+  input('Cut Piece Length (inch)','length','number');
+  input('Cut Piece Width (inch)','width','number');
+  input('Measured Used MTR (actual)','usedMtr','number','Must be physically verified. NOT estimated from L×W.');
+ }
+ box.append(grid);
+ const issues=document.createElement('div');issues.className='cfm-jessi-draft-checks';issues.id='cfmJessiDraftChecks';issues.setAttribute('role','status');box.append(issues);
+ const confirmation=document.createElement('label');confirmation.className='cfm-jessi-draft-ack';
+ const ack=document.createElement('input');ack.id='cfmJessiReviewed';ack.type='checkbox';
+ const msg=document.createElement('span');
+ msg.textContent=d.kind==='order'?'I checked Work No, Party, Quantity and PO; I will review ERP form before Save.':
+ 'I checked the source SRL, real physical roll width, piece dimensions and measured used MTR.';
+ confirmation.append(ack,msg);box.append(confirmation);
+ const actions=document.createElement('div');actions.className='cfm-jessi-draft-actions';
+ const preview=document.createElement('button');preview.type='button';preview.className='cfm-jessi-draft-next';
+ preview.textContent=d.kind==='order'?'Verify & Open Work Order Form':'Verify & Open Cutting Form';
+ preview.addEventListener('click',reviewAndOpen);
+ const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancel Draft';
+ cancel.addEventListener('click',()=>{draft=null;box.remove()});
+ actions.append(preview,cancel);box.append(actions);
+ showIssues();
+ box.scrollIntoView({block:'nearest'});
+}
+function check(d,state){
+ const issues=[],c=d.value;
+ const wo=norm(c.workNo);
+ const qty=number(c.qty);
+ if(!/^CFM-\d{1,6}$/.test(wo))issues.push('Work No must be complete, e.g. CFM-725');
+ if(!(qty>0&&Number.isSafeInteger(qty)))issues.push('Valid whole-number Quantity required');
+ if(d.kind==='order'){
+  if(!String(c.party||'').trim())issues.push('Party / Customer required');
+  if(state&&arr(state,'pending').some(r=>norm(r.workNo)===wo))issues.push('Work No already exists on this device — duplicate blocked');
+ }else{
+  const order=arr(state,'pending').find(r=>norm(r.workNo)===wo);
+  if(!order)issues.push('Work No must exist in Pending Order register on this device');
+  else if(order.archived||norm(order.status)==='ARCHIVED')issues.push('Work No is archived');
+  const sr=norm(c.srlNo),roll=arr(state,'store').find(x=>norm(x.srlNo)===sr);
+  if(!sr||!roll)issues.push('Full source SRL must exist in Physical Store — no guessing');
+  const length=number(c.length),pieceWidth=number(c.width),meter=number(c.usedMtr);
+  if(!(length>0&&pieceWidth>0))issues.push('Cut piece L×W dimensions are required (inches)');
+  if(!(meter>0))issues.push('Physically measured Used MTR required; calculated estimates cannot deduct stock');
+  if(roll){
+   const actual=number(roll.width);
+   const planned=number(order?.width);
+   if(!(actual>0))issues.push('Real Store roll width not recorded');
+   if(!(planned>0))issues.push('Work Order planned cloth width not recorded; supervisor must verify');
+   if(actual>0&&planned>0&&Math.abs(actual-planned)>0.11)issues.push('WIDTH MISMATCH: Work Order '+planned+' in vs physical SRL '+actual+' in — blocked');
+   if(actual>0&&pieceWidth>0&&length>0&&Math.min(length,pieceWidth)>actual+0.11)issues.push('Cut piece cannot fit across the physical cloth roll');
+   if(actual>0&&pieceWidth>0&&length>0){
+    const across=Math.floor(actual/pieceWidth),rotated=Math.floor(actual/length);
+    if(across<1&&rotated<1)issues.push('No feasible cutting orientation fits this roll width');
+    else{
+     const usedA=across>0?Math.ceil(qty/across)*length/39.37:Infinity;
+     const usedB=rotated>0?Math.ceil(qty/rotated)*pieceWidth/39.37:Infinity;
+     d.layoutEstimate=Math.min(usedA,usedB);
+    }
+    // Existing native cuttingUsedMtr uses l*h*qty*layer / plannedWidth / 39.37.
+    // The estimate below is NOT a verified material consumption figure.
+    d.nativeEstimate=planned>0&&qty>0?length*pieceWidth*qty/(planned*39.37):null;
+    if(meter>0&&d.nativeEstimate!=null&&Math.abs(meter-d.nativeEstimate)>0.02){
+     issues.push('Native ERP would deduct '+fmt(d.nativeEstimate)+' MTR but physical measured is '+fmt(meter)+' MTR. Automatic stock deduction BLOCKED: use verified register correction instead.');
+    }
+   }
+   if(meter>0&&typeof srlBalance==='function'){
+    try{
+     const live=state&&typeof getStore==='function'?getStore(sr):null;
+     const balance=live?srlBalance(live):null;
+     d.currentBalance=balance;
+     if(!Number.isFinite(balance))issues.push('SRL live meter balance not available');
+     else if(meter>balance+0.0001)issues.push('Physical meter exceeds ERP available balance ('+fmt(balance)+' MTR)');
+    }catch(_){issues.push('Could not verify SRL live meter balance')}
+   }else if(meter>0)issues.push('SRL meter calculation unavailable. Cannot permit stock deduction.');
+  }
+ }
+ return issues;
+}
+function showIssues(){
+ const box=$('cfmJessiDraftChecks');if(!box||!draft)return;
+ const s=source(),issues=check(draft,s);
+ const list=issues.length?issues:['Device checks ready. Final Cloud duplicate + meter check runs before form opens.'];
+ box.replaceChildren();
+ for(const item of list){const p=document.createElement('p');p.textContent=(issues.length?'⚠ ':'✓ ')+item;box.append(p)}
+ if(draft.kind==='cutting'&&draft.layoutEstimate>0){
+  const p=document.createElement('p');p.textContent='Theoretical strip layout: ~'+fmt(draft.layoutEstimate)+' MTR (excludes allowances, not a stock debit).';box.append(p);
+ }
+ box.dataset.mode=issues.length?'warn':'ok';
+}
+async function checkCloud(d){
+ if(typeof cloudFetch!=='function')throw Error('Cloud read unavailable; cannot verify duplicate or stale order.');
+ const remote=await cloudFetch();
+ const payload=remote?.payload;
+ if(!payload||!Array.isArray(payload.pending)||!Array.isArray(payload.cutting))throw Error('Cloud snapshot unavailable');
+ const c=d.value,wo=norm(c.workNo);
+ const found=payload.pending.find(x=>norm(x.workNo)===wo);
+ if(d.kind==='order'){
+  if(found)throw Error('Work No '+wo+' exists in Cloud. New duplicate blocked.');
+ }else{
+  if(!found)throw Error('Work No '+wo+' missing from Cloud. Sync/verify Work Nos before creating Cutting.');
+  if(norm(found.status)==='ARCHIVED'||found.archived)throw Error('Cloud Work No is archived.');
+  const exists=payload.cutting.some(x=>norm(x.workNo)===wo&&norm(x.srlNo)===norm(c.srlNo)&&
+   number(x.cutQty)===number(c.qty)&&number(x.length)===number(c.length)&&number(x.height)===number(c.width));
+  if(exists)throw Error('A matching Cutting line already exists in Cloud. Duplicate blocked; review existing entry.');
+ }
+ return remote.version;
+}
+function enterValue(form,name,value){
+ if(value===undefined||value===null||value==='')return;
+ const x=form?.elements?.namedItem(name);
+ if(!x||typeof x.value==='undefined')return;
+ x.value=String(value);x.dispatchEvent(new Event('input',{bubbles:true}));x.dispatchEvent(new Event('change',{bubbles:true}));
+}
+function applyForm(d){
+ const form=$('editForm');if(!form)throw Error('ERP form not available');
+ const c=d.value;
+ enterValue(form,'workNo',norm(c.workNo));
+ if(d.kind==='order'){
+  enterValue(form,'party',c.party);
+  enterValue(form,'orderQty',c.qty);
+  enterValue(form,'poNo',c.po);
+  if(c.description)enterValue(form,'description',c.description);
+  if(c.cloth)enterValue(form,'cloth',c.cloth);
+ }else{
+  const s=source(),roll=arr(s,'store').find(x=>norm(x.srlNo)===norm(c.srlNo));
+  if(!roll)throw Error('Physical roll vanished; reopen after refresh');
+  enterValue(form,'srlNo',norm(c.srlNo));
+  enterValue(form,'cutQty',c.qty);
+  enterValue(form,'length',c.length);
+  enterValue(form,'height',c.width);
+  enterValue(form,'layer',1);
+  enterValue(form,'plannedWidth',roll.width);
+  enterValue(form,'sizeLine',fmt(number(c.length))+' x '+fmt(number(c.width)));
+  enterValue(form,'remark','Jessi voice draft reviewed. Physical MTR '+fmt(number(c.usedMtr))+' verified before saving. Check roll and calculations.');
+  installCuttingGuard(d);
+ }
+}
+function stopCapture(ev,reason){
+ ev.preventDefault();ev.stopImmediatePropagation();ev.stopPropagation();
+ alert('Jessi safety check: '+reason+'\nNo Cutting saved by this click.');
+}
+function installCuttingGuard(d){
+ if(guardClean){guardClean();guardClean=null}
+ const btn=$('saveFormBtn'),dlg=$('editDialog');
+ if(!btn||!dlg)throw Error('ERP Save control unavailable');
+ const fn=ev=>{
+  const s=source(),f=$('editForm');
+  const temp={...d,value:{
+   workNo:f?.elements?.namedItem('workNo')?.value||'',
+   srlNo:f?.elements?.namedItem('srlNo')?.value||'',
+   qty:f?.elements?.namedItem('cutQty')?.value||'',
+   length:f?.elements?.namedItem('length')?.value||'',
+   width:f?.elements?.namedItem('height')?.value||'',
+   usedMtr:d.value.usedMtr
+  }};
+  const problems=check(temp,s);
+  if(problems.length)return stopCapture(ev,problems.join('; '));
+  if(!confirm('Jessi review: Cutting '+temp.value.qty+' pieces for '+temp.value.workNo+
+   ', SRL '+temp.value.srlNo+', measured '+temp.value.usedMtr+' MTR.\nExisting ERP Save will update Cutting, Pending and SRL consumption. Proceed?')){
+   return stopCapture(ev,'User cancelled Save');
+  }
+ };
+ btn.addEventListener('click',fn,true);
+ const cleanup=()=>{btn.removeEventListener('click',fn,true);dlg.removeEventListener('close',cleanup);guardClean=null};
+ dlg.addEventListener('close',cleanup,{once:true});guardClean=cleanup;
+}
+async function reviewAndOpen(){
+ if(preparing||!draft)return;
+ const d={kind:draft.kind,value:{...draft.value}};
+ const ack=$('cfmJessiReviewed');
+ if(!ack?.checked){alert('First confirm that you personally verified these details.');return}
+ const s=source(),issues=check(d,s);
+ if(issues.length){showIssues();alert('Please correct the highlighted fields before opening ERP form.');return}
+ preparing=true;const b=$('cfmJessiDraft')?.querySelector('.cfm-jessi-draft-next');if(b){b.disabled=true;b.textContent='Checking Cloud…'}
+ try{
+  const version=await checkCloud(d);
+  const c=d.value,wo=norm(c.workNo);
+  // Do not auto-create a new Work No: only use explicitly provided, cloud-checked number.
+  const local=source();
+  const i=d.kind==='cutting'?arr(local,'pending').find(x=>norm(x.workNo)===wo):null;
+  if(d.kind==='cutting'&&!i)throw Error('Source Work Order not present in current device Pending register.');
+  const desc=d.kind==='order'?'Work Order':'Cutting';
+  if(!confirm('Cloud v'+version+' checked. Open existing ERP '+desc+' form with reviewed voice draft for '+wo+'?\nNO DATA SAVED YET. You must inspect every field and press Save yourself.')){
+   return;
+  }
+  const assistant=$('cfmAiDialog');
+  if(assistant?.open)assistant.close();
+  // existing entry form keeps full product master and auto-save rules.
+  if(d.kind==='order'){
+   if(typeof window.openPendingForm!=='function')throw Error('ERP Work Order form unavailable');
+   window.openPendingForm(null);
+  }else{
+   if(typeof window.openCuttingForm!=='function')throw Error('ERP Cutting form unavailable');
+   window.openCuttingForm(null,{workNo:wo,party:i.party||'',description:i.description||'',cloth:i.cloth||'',width:i.width||''});
+  }
+  applyForm(d);
+  const dlg=$('editDialog');if(dlg?.open){
+   const caption=document.createElement('div');caption.className='cfm-jessi-native-note';
+   caption.textContent='Jessi voice draft · Review existing ERP fields. Save is MANUAL'+(d.kind==='cutting'?' and re-validates measured MTR and physical SRL width.':'')+'.';
+   const root=$('formFields');if(root)root.prepend(caption);
+  }
+  draft=null;
+ }catch(err){alert('Jessi: '+(err?.message||'Could not open ERP form')+'. No record was saved automatically.')}
+ finally{preparing=false;if(b&&b.isConnected){b.disabled=false;b.textContent=d.kind==='order'?'Verify & Open Work Order Form':'Verify & Open Cutting Form'}}
+}
+function handle(text){
+ const kind=classify(text);
+ if(!kind)return null;
+ const value=fields(text);
+ if(kind==='order')value.description='';
+ draft={kind,value};stamp++;
+ // Some speech commands omit part details — force explicit entry in preview, no guessing.
+ Promise.resolve().then(updateDraft);
+ return {handled:true,reply:speakable(kind,value),kind};
+}
+window.cfmJessiCommand=Object.freeze({handle,fields,classify,check});
+})();
