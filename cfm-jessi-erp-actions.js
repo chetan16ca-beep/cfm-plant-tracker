@@ -13,7 +13,13 @@ const digits=s=>String(s??'').replace(/[०-९૦-૯]/g,c=>{
  const a='०१२३४५६७८९',b='૦૧૨૩૪૫૬૭૮૯';return String(Math.max(a.indexOf(c),b.indexOf(c)));
 });
 const clean=s=>digits(s).replace(/सी\s*एफ\s*एम|सीएफएम|સી\s*એફ\s*એમ/gi,'CFM').trim();
-const idFrom=q=>{const m=norm(q).match(/\bCFM[\s-]*(\d{1,6})\b/);return m?'CFM-'+m[1]:''};
+const idFrom=q=>{
+ const qn=norm(q);
+ const m=qn.match(/\bCFM[\s-]*(\d{1,6})\b/);
+ if(m)return 'CFM-'+m[1];
+ const w=qn.match(/(?:\bWORK\s*(?:ORDER|NO|NUMBER)\b|वर्क\s*ऑर्डर|વર્ક\s*ઓર્ડર)\s*[:#-]?\s*(\d{1,6})\b/);
+ return w?'CFM-'+w[1]:'';
+};
 const srlFrom=q=>{const m=norm(q).match(/\bEFPPL[A-Z0-9]*\s*\/\s*\d+\b/);return m?m[0].replace(/\s+/g,''):''};
 const fmt=v=>String(Math.round(v*1000)/1000);
 let draft=null,stamp=0,guardClean=null,preparing=false;
@@ -26,7 +32,7 @@ function fields(text){
  const q=clean(text);
  const qN=norm(q);
  const qtyMatch=q.match(/(?:\b(?:qty|quantity)\b|क्वांटिटी|कितने|જથ્થો)\s*[:= -]*(\d+(?:\.\d+)?)/i)||
-  q.match(/\b(\d+(?:\.\d+)?)\s*(?:pieces?|pcs?\.?|nos?\.?|numbers?|bags?|पीस|नग|બેગ|પીસ)\b/i)||
+  q.match(/(?:\b(\d+(?:\.\d+)?)\s*(?:pieces?|pcs?\.?|nos?\.?|numbers?|bags?)\b|(\d+(?:\.\d+)?)\s*(?:पीस|नग|બેગ|પીસ))/i)||
   q.match(/\b(\d+(?:\.\d+)?)\s+(?:cutting|कटिंग|કટિંગ)\b/i);
  const size=q.match(/(\d+(?:\.\d+)?)\s*(?:x|×|\*|by)\s*(\d+(?:\.\d+)?)/i);
  const meter=q.match(/(?:actual|verified|measured|used|physical|वास्तविक|असली|मापा)\s*(?:used\s*)?(?:mtr|meter|meters|metre|मीटर|મીટર)?\s*[:= -]*(\d+(?:\.\d+)?)(?:\s*(?:mtr|meter|meters|मीटर|મીટર))?/i)||
@@ -37,7 +43,7 @@ function fields(text){
  const cloth=q.match(/(?:\bcloth\b|कपड़ा|कापड|કાપડ|material)\s*[:= -]+\s*([A-Z0-9][A-Z0-9 -]{0,18})/i);
  const priority=qN.match(/\b(HIGH|URGENT|NORMAL|LOW)\b/);
  const command={
-  workNo:idFrom(q),srlNo:srlFrom(q),qty:qtyMatch?Number(qtyMatch[1]):null,
+  workNo:idFrom(q),srlNo:srlFrom(q),qty:qtyMatch?Number(qtyMatch[1]||qtyMatch[2]):null,
   width:size?Number(size[2]):null,length:size?Number(size[1]):null,
   usedMtr:meter?Number(meter[1]):null,party:party?party[1].trim():'',
   po:po?po[1]:'',cloth:cloth?cloth[1].trim():'',priority:priority?priority[1]:'',
@@ -47,7 +53,7 @@ function fields(text){
 }
 function classify(text){
  const q=norm(clean(text));
- const create=/\b(CREATE|ADD|NEW|BANAO|BANA|BANA DO|ENTRY|SAVE|REGISTER)\b|बनाओ|बनाना|बना दो|जोड़ो|जोड़ो|करो|बनवा|बनादो|બનાવો|જોડો|કરો/i.test(q);
+ const create=/\b(CREATE|ADD|NEW|BANAO|BANA|BANA DO|BANADO|KARO|KARNA|ENTER|ENTRY|SAVE|REGISTER)\b|बनाओ|बनाना|बना दो|जोड़ो|जोड़ो|करो|करना|डालो|डालना|बनवा|बनादो|બનાવો|જોડો|કરો/i.test(q);
  const cut=/\b(CUTTING|CUT|CUTT)\b|कटिंग|काटिंग|કટિંગ/i.test(q);
  const work=/\b(WORK\s*ORDER|WORK\s*NO|WORKORDER|WO)\b|वर्क\s*ऑर्डर|वर्क\s*नंबर|વર્ક\s*ઓર્ડર/i.test(q);
  const plainCut=/\b(DONE|COMPLETE|COMPLETED)\b|कर दिया|हो गया|डन|पूरी|કર્યું/i.test(q);
