@@ -103,7 +103,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker" allow="microphone; autoplay"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V232</div>
+<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V233</div>
 <script src="./backup-safe.js?v=3"></script>
 <button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
@@ -183,7 +183,7 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261031-v232';
+ const urls=groups.flat(), ver='20261031-v233';
  // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
  // Never clear browser storage or replace Cloud data while recovering from a network failure.
  let nextChunk=0;
@@ -335,7 +335,7 @@ html,body{background:#f4faff!important;color:#13233b!important}
  src=src.replace('</head>','<script defer src="./cfm-command-center.js?v=205"></scr'+'ipt></head>');
  // CFM Forge is the sole ERP interface. Presentation only: do not change plant data.
  // Legacy ?theme=classic links now open the same Forge interface.
- src=src.replace('</head>','<link rel="stylesheet" href="./cfm-sap-theme.css?v=212"><link rel="stylesheet" href="./cfm-forge-theme.css?v=213"><link rel="stylesheet" href="./cfm-intelligence.css?v=215"><script defer src="./cfm-sap-actions.js?v=214"></scr'+'ipt><script defer src="./cfm-sap-function-icons.js?v=208"></scr'+'ipt><script defer src="./cfm-sap-workorder-ui.js?v=212"></scr'+'ipt><script defer src="./cfm-forge-ui.js?v=213"></scr'+'ipt><script defer src="./cfm-intelligence-core.js?v=215"></scr'+'ipt><script defer src="./cfm-intelligence-ui.js?v=215"></scr'+'ipt><link rel="stylesheet" href="./cfm-ask-ai.css?v=226"><script defer src="./cfm-ask-ai-no-login.js?v=221"></scr'+'ipt><script defer src="./cfm-jessi-voice.js?v=226"></scr'+'ipt><script defer src="./cfm-jessi-erp-actions.js?v=222"></scr'+'ipt><script defer src="./cfm-workno-reconcile.js?v=232"></scr'+'ipt></head>');
+ src=src.replace('</head>','<link rel="stylesheet" href="./cfm-sap-theme.css?v=212"><link rel="stylesheet" href="./cfm-forge-theme.css?v=213"><link rel="stylesheet" href="./cfm-intelligence.css?v=215"><script defer src="./cfm-sap-actions.js?v=214"></scr'+'ipt><script defer src="./cfm-sap-function-icons.js?v=208"></scr'+'ipt><script defer src="./cfm-sap-workorder-ui.js?v=212"></scr'+'ipt><script defer src="./cfm-forge-ui.js?v=213"></scr'+'ipt><script defer src="./cfm-intelligence-core.js?v=215"></scr'+'ipt><script defer src="./cfm-intelligence-ui.js?v=215"></scr'+'ipt><link rel="stylesheet" href="./cfm-ask-ai.css?v=226"><script defer src="./cfm-ask-ai-no-login.js?v=221"></scr'+'ipt><script defer src="./cfm-jessi-voice.js?v=226"></scr'+'ipt><script defer src="./cfm-jessi-erp-actions.js?v=222"></scr'+'ipt><script defer src="./cfm-workno-reconcile.js?v=233"></scr'+'ipt></head>');
 
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
