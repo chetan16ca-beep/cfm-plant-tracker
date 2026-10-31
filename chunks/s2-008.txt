@@ -115,6 +115,28 @@ function cfmCloudReplacementRisk(remote){
   };
   const orders=missing('pending','workNo');
   if(orders.length)problems.push(orders.length+' local Work Orders absent from Cloud ('+orders.slice(0,3).join(', ')+')');
+  // V231: matching Work No does NOT mean the same order. The PC can have
+  // CFM-724 YASHO while Cloud has CFM-724 BBELL. Without this check a
+  // startup Cloud refresh could silently overwrite one customer's PO.
+  const serverOrders=new Map((remote.pending||[]).filter(x=>normalize(x?.workNo))
+    .map(x=>[normalize(x.workNo),x]));
+  const conflicts=[];
+  for(const local of state.pending||[]){
+    const no=normalize(local?.workNo),online=serverOrders.get(no);
+    if(!no||!online)continue;
+    const partyMismatch=normalize(local.party)!==normalize(online.party);
+    const poMismatch=normalize(local.poNo)!==normalize(online.poNo);
+    const qtyMismatch=num(local.orderQty)!==num(online.orderQty);
+    const descMismatch=normalize(local.description)!==normalize(online.description);
+    if(partyMismatch||poMismatch||qtyMismatch||descMismatch){
+      conflicts.push(no+': PC '+String(local.party||'?').slice(0,35)+
+       ' / PO '+String(local.poNo||'-').slice(0,35)+
+       ' vs Cloud '+String(online.party||'?').slice(0,35)+
+       ' / PO '+String(online.poNo||'-').slice(0,35));
+    }
+  }
+  if(conflicts.length)problems.push(conflicts.length+' Work No COLLISION / details conflict ('+
+    conflicts.slice(0,3).join('; ')+') — both records protected');
   const rolls=missing('store','srlNo');
   if(rolls.length)problems.push(rolls.length+' local Stock SRLs absent from Cloud');
   for(const part of ['cutting','srlMovement','departmentWork']){
@@ -127,63 +149,70 @@ function cfmCloudReplacementRisk(remote){
 }
 // V205: PC-only false work-number review; NEVER writes Cloud, cutting, stock, or other work orders.
 async function cfmReviewUncreatedLocalWorkNumbers(){
- const ghostNumbers=['CFM-723','CFM-724','CFM-725'],ghostSet=new Set(ghostNumbers);
+ // V231: SAFE, READ-ONLY REVIEW. Previous "uncreated 723-725" control
+ // offered deletion despite these Work Nos actually existing on devices.
+ // Never delete, rename, merge or upload any work order from this action.
  try{
-  if(cloudBusy||cloudDirty)throw Error('Unsynced edits exist. Export backup before any local review.');
-  const row=await cloudFetch();
-  if(!row||!validState(row.payload))throw Error('Cloud data could not be verified; no changes made.');
-  const remoteWorks=new Set((row.payload.pending||[]).map(x=>normalize(x.workNo)));
-  if(ghostNumbers.some(x=>remoteWorks.has(x)))throw Error('Cloud now contains one of these numbers. No local changes made.');
-  const present=(state.pending||[]).filter(x=>ghostSet.has(normalize(x.workNo)));
-  if(!present.length){alert('CFM-723 to 725 are not saved on this PC. No action necessary.');return}
-  const unexpected=(state.pending||[]).map(x=>normalize(x.workNo)).filter(x=>x&&!remoteWorks.has(x)&&!ghostSet.has(x));
-  if(unexpected.length)throw Error('Other PC-only Work Orders detected ('+unexpected.slice(0,5).join(', ')+'). Nothing changed. Export and share PC backup for review.');
-  // Any production/stock/dispatch association prevents dismissing the number.
-  const linked=[];
-  for(const [part,records] of Object.entries(state)){
-   if(part==='pending'||!Array.isArray(records))continue;
-   for(const x of records){
-    if(!x||typeof x!=='object')continue;
-    const json=JSON.stringify(x).toUpperCase();
-    if(ghostNumbers.some(n=>new RegExp(n+'(?!\\d)').test(json))){linked.push(part);break}
-   }
+  const remote=await cloudFetch();
+  if(!remote||!validState(remote.payload))throw Error('Cloud read unavailable; local PC records unchanged');
+  const cloudMap=new Map((remote.payload.pending||[]).filter(r=>normalize(r.workNo))
+    .map(r=>[normalize(r.workNo),r]));
+  const pcMap=new Map((state.pending||[]).filter(r=>normalize(r.workNo))
+    .map(r=>[normalize(r.workNo),r]));
+  const numbers=new Set([...cloudMap.keys(),...pcMap.keys()]);
+  const diffs=[];
+  const identity=r=>normalize(r?.party)+'|'+normalize(r?.poNo)+'|'+num(r?.orderQty)+'|'+normalize(r?.description);
+  for(const no of numbers){
+   const pc=pcMap.get(no),cl=cloudMap.get(no);
+   if(pc&&cl&&identity(pc)===identity(cl))continue;
+   const type=pc&&!cl?'PC ONLY':cl&&!pc?'CLOUD ONLY':'WORK NO COLLISION';
+   diffs.push({no,type,pc,cloud:cl});
   }
-  if(linked.length)throw Error('Linked activity found: '+[...new Set(linked)].join(', ')+'. Nothing changed; manual recovery required.');
-  if(!confirm('CFM-723/724/725 cloud mein nahi hain. PC mein '+present.length+' local-only rows mili hain. Backup download karke sirf in numbers ko PC se dismiss karna hai? Cloud/stock/cutting untouched.'))return;
-  const before=safeStorage.getItem(STORAGE_KEY);
-  if(!before||!validState(JSON.parse(before)))throw Error('Valid local backup not available; no changes made.');
-  try{window.parent.cfmDownloadBackup?.()}catch(e){throw Error('Backup download failed: '+(e.message||e))}
-  await window.parent.cfmSaveBackup?.();
-  if(!confirm('Confirm: original CFM PC Data JSON file Downloads mein save hai? YES = sirf uncreated 723-725 PC rows remove. NO = cancel.'))return;
-  const original=state.pending;
-  const trimmed=original.filter(x=>!ghostSet.has(normalize(x.workNo)));
-  try{
-   state.pending=trimmed;
-   const next=JSON.stringify(state);
-   safeStorage.setItem(STORAGE_KEY,next);
-   if(safeStorage.getItem(STORAGE_KEY)!==next)throw Error('Unable to verify local save');
-  }catch(e){
-   state.pending=original;
-   try{safeStorage.setItem(STORAGE_KEY,before)}catch(_){}
-   throw Error('Could not store revised PC snapshot: '+(e.message||e));
+  diffs.sort((a,b)=>a.no.localeCompare(b.no,undefined,{numeric:true}));
+  document.getElementById('cfmConflictReviewDialog')?.remove();
+  const dialog=document.createElement('dialog');dialog.id='cfmConflictReviewDialog';
+  dialog.style.cssText='box-sizing:border-box;width:min(94vw,800px);max-height:88dvh;overflow:auto;padding:18px;border:1px solid #adcddd;border-radius:15px;background:#fff;color:#19415c;box-shadow:0 15px 60px #0007;font:13px/1.5 system-ui';
+  const title=document.createElement('h3');title.style.cssText='margin:0 0 10px;font-size:18px';
+  title.textContent='PC ↔ Cloud Work Order Conflict Review (READ ONLY)';
+  dialog.append(title);
+  const summary=document.createElement('p');
+  summary.textContent='Cloud version '+String(remote.version||'?')+
+   ' • PC '+pcMap.size+' Work Nos • Cloud '+cloudMap.size+
+   ' Work Nos • Differences '+diffs.length+'. No data will be changed.';
+  dialog.append(summary);
+  const scroll=document.createElement('div');scroll.style.cssText='max-height:45dvh;overflow:auto;border-top:1px solid #c9d9e0;border-bottom:1px solid #c9d9e0';
+  for(const d of diffs.slice(0,100)){
+   const box=document.createElement('div');box.style.cssText='padding:10px 4px;border-bottom:1px solid #e4edf0';
+   const heading=document.createElement('strong');heading.textContent=d.no+' — '+d.type;
+   const pc=document.createElement('div');pc.textContent='PC: '+(d.pc?(String(d.pc.party||'?')+' • PO '+(d.pc.poNo||'-')+' • Qty '+d.pc.orderQty):'NOT PRESENT');
+   const cloud=document.createElement('div');cloud.textContent='Cloud: '+(d.cloud?(String(d.cloud.party||'?')+' • PO '+(d.cloud.poNo||'-')+' • Qty '+d.cloud.orderQty):'NOT PRESENT');
+   box.append(heading,pc,cloud);scroll.append(box);
   }
-  cloudReady=false;cloudDirty=false;
-  renderAll();
-  // Only auto-resume if EVERYTHING in the operational arrays is byte-for-byte identical.
-  // Otherwise keep both datasets isolated until a human compares them.
-  const exact=['pending','store','cutting','departmentWork','srlMovement'].every(part=>
-   JSON.stringify(state[part]||[])===JSON.stringify(row.payload[part]||[]));
-  if(exact){
-   await cloudInit();
-   alert('CFM-723/724/725 local-only entries dismissed with backup. Original Cloud and stock safe. '+(cloudReady?'Sync restored.':'Other data conflict remains.'));
-  }else{
-   setCloudBadge('⚠️ Local-only numbers reviewed • data comparison pending','amber');
-   alert('CFM-723/724/725 PC-only rows dismissed and backup kept. Other PC/Cloud differences remain; sync is paused to protect Cutting and Stock. Share the backup for full reconciliation.');
-  }
- }catch(e){
-  console.warn('CFM local-only review safely stopped',e);
-  alert('Nothing removed: '+(e.message||e));
- }
+  if(diffs.length>100){const note=document.createElement('p');note.textContent='Showing first 100 differences. Export backups for complete review.';scroll.append(note)}
+  if(!diffs.length){const p=document.createElement('p');p.textContent='No Work Order identity differences detected. Stock/Cutting sync still requires separate verification.';scroll.append(p)}
+  dialog.append(scroll);
+  const warning=document.createElement('p');warning.textContent='Do not press Force Sync, delete, or renumber any Work Order until both backups are reconciled.';
+  warning.style.cssText='font-weight:800;color:#9c3d27';dialog.append(warning);
+  const actions=document.createElement('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:8px';
+  const addButton=(label,callback)=>{
+   const btn=document.createElement('button');btn.type='button';btn.textContent=label;
+   btn.style.cssText='padding:10px 13px;border:1px solid #aac6d4;border-radius:8px;background:#e9f5fa;color:#125270;font:800 12px system-ui';
+   btn.addEventListener('click',callback);actions.append(btn);
+  };
+  addButton('⬇ Backup PC Data',()=>{try{window.parent.cfmDownloadBackup?.()}catch(e){alert('PC backup download failed: '+e.message)}});
+  addButton('⬇ Backup Cloud Snapshot',()=>{
+   try{
+    const blob=new Blob([JSON.stringify({version:remote.version,updated_at:remote.updated_at,payload:remote.payload},null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='CFM-cloud-review-'+String(remote.version||'unknown')+'.json';
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+   }catch(e){alert('Cloud backup failed: '+e.message)}
+  });
+  addButton('Close — No Changes',()=>dialog.close());
+  dialog.append(actions);document.body.append(dialog);
+  try{dialog.showModal()}catch(e){dialog.style.display='block'}
+ }catch(e){console.warn('CFM conflict review stopped',e);alert('Conflict review unavailable: '+(e.message||e)+'. Nothing changed.')}
 }
 window.cfmReviewUncreatedLocalWorkNumbers=cfmReviewUncreatedLocalWorkNumbers;
 function cfmOfferLocalOnlyWorkReview(){
@@ -191,15 +220,15 @@ function cfmOfferLocalOnlyWorkReview(){
  if(!parent||document.getElementById('cfmGhost723Review'))return;
  const button=document.createElement('button');
  button.id='cfmGhost723Review';button.type='button';
- button.textContent='Review uncreated 723–725';
- button.title='Backup first. Review PC-only work numbers; Cloud records unchanged.';
+ button.textContent='Review PC / Cloud Work No Conflicts';
+ button.title='READ ONLY: See conflicting Work Nos and download separate backups; no data changes.';
  button.style.cssText='font:700 12px system-ui;background:#fff9ed;color:#865018;border:1px solid #dbb67a;padding:10px;border-radius:10px;cursor:pointer';
  button.addEventListener('click',cfmReviewUncreatedLocalWorkNumbers);
  parent.appendChild(button);
 }
 async function cfmAllowCloudReplacement(remote,source){
   const problems=cfmCloudReplacementRisk(remote);
-  if(problems.some(x=>/CFM-723|CFM-724|CFM-725/.test(x)))cfmOfferLocalOnlyWorkReview();
+  if(problems.some(x=>/CFM-723|CFM-724|CFM-725|COLLISION/.test(x)))cfmOfferLocalOnlyWorkReview();
   if(!problems.length)return true;
   try{await window.parent.cfmSaveBackup?.()}catch(_){}
   const message='CFM DATA PROTECTED: '+problems.join('; ')+'. '+source+' cannot replace PC/mobile records. Export this device backup before recovery.';
