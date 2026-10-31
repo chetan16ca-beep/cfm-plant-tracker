@@ -84,6 +84,28 @@ function close(){if(dialog?.open)dialog.close();dialog?.remove();dialog=null;cur
 function buildUI(cloudRow,proposal){
  dialog?.remove();bpc=false;bcloud=false;
  dialog=el('dialog',null,'cfm-wo-fix-dialog');dialog.id='cfmWoFixDialog';
+ const style=el('style');
+ style.textContent=`
+ #cfmWoFixDialog{box-sizing:border-box;width:min(96vw,720px);max-height:90dvh;overflow:auto;padding:20px;border:1px solid #a1cfd4;border-radius:18px;background:#fff;color:#183e50;box-shadow:0 20px 65px #001a2b80;font:13px/1.55 system-ui}
+ #cfmWoFixDialog::backdrop{background:#001a2b99}
+ #cfmWoFixDialog h2{font-size:21px;line-height:1.25;color:#075b75;margin:0 0 10px}
+ #cfmWoFixDialog p{margin:7px 0 12px}
+ #cfmWoFixDialog .cfm-wo-fix-row{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;background:#f1f9fc;border:1px solid #d2e7ec;padding:11px 12px;border-radius:9px;margin:8px 0}
+ #cfmWoFixDialog .cfm-wo-fix-row strong{min-width:140px;color:#126d7f}
+ #cfmWoFixDialog .cfm-wo-fix-row span{flex:1 1 260px}
+ #cfmWoFixDialog .cfm-wo-fix-alert{background:#fff5db;color:#865519;border:1px solid #e6ca8e;padding:12px;border-radius:9px;font-weight:800}
+ #cfmWoFixDialog .cfm-wo-fix-actions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}
+ #cfmWoFixDialog button{font:800 12px system-ui;border-radius:8px;padding:11px 14px;border:1px solid #77aec2;background:#eff9ff;color:#125977;cursor:pointer}
+ #cfmWoFixDialog .cfm-wo-fix-apply{background:#0a8275;color:#fff;border-color:#076e61}
+ #cfmWoFixDialog button:disabled{opacity:.6;cursor:wait}
+ #cfmWoFixDialog .cfm-wo-fix-ack{display:flex;align-items:center;gap:9px;margin:12px 0;font-weight:800;background:#edf8f5;padding:12px;border-radius:9px}
+ #cfmWoFixDialog .cfm-wo-fix-ack input{width:20px;height:20px;accent-color:#0d8b7c}
+ #cfmWoFixDialog .cfm-wo-fix-status{border:1px solid #bfdbe1;border-radius:9px;background:#f0f9fb;padding:12px;font-weight:800;white-space:pre-wrap}
+ #cfmWoFixDialog .cfm-wo-fix-status[data-kind="error"]{background:#fff1ee;border-color:#e4a79c;color:#932f21}
+ #cfmWoFixDialog .cfm-wo-fix-status[data-kind="success"]{background:#e9f8ed;border-color:#a4d8b1;color:#21613a}
+ @media(max-width:540px){#cfmWoFixDialog{padding:14px}#cfmWoFixDialog .cfm-wo-fix-row strong{min-width:100%}}
+ `;
+ dialog.append(style);
  const title=el('h2','Fix Work Order Numbers — PC + Cloud');
  dialog.append(title,el('p','YASHO ke PC orders aur BBELL ka Cloud order dono bachenge. Kisi Stock, Cutting ya doosre order ko touch nahi kiya jayega.'));
  const badge=el('p','READ BEFORE APPLY: Full PC and Cloud backups compulsory. The proposal is not saved until you explicitly approve.','cfm-wo-fix-alert');dialog.append(badge);
@@ -132,6 +154,7 @@ async function execute(ack){
  try{
   if(typeof cloudBusy!=='undefined'&&cloudBusy)throw Error('Cloud operation busy');
   if(typeof cloudDirty!=='undefined'&&cloudDirty)throw Error('New unsynced local edits detected');
+  const mutationAtStart=typeof localMutationSeq!=='undefined'?localMutationSeq:0;
   const originalState=json(state),remote=await cloudFetch();
   if(!remote||Number(remote.version)!==Number(current.remote.version))
    throw Error('Cloud version changed since preview. Nothing written. Close and review again.');
@@ -172,6 +195,8 @@ async function execute(ack){
     throw Error('YASHO order Cloud verification failed for '+item.next+'. PC unchanged. Reopen recovery.');
   }
   // Cloud is verified. Apply PC-only rename, preserving all operational arrays.
+  if(typeof localMutationSeq!=='undefined'&&localMutationSeq!==mutationAtStart)
+    throw Error('PC records changed during Cloud update; Cloud is verified but PC remains unchanged. Reopen Fix Work Nos to resume.');
   const replacement=json(originalState);
   for(const item of currentPlan){
    const old=named(replacement.pending,item.old);
