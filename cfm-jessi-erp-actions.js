@@ -249,6 +249,13 @@ function applyForm(d){
   enterValue(form,'plannedWidth',roll.width);
   enterValue(form,'sizeLine',fmt(number(c.length))+' x '+fmt(number(c.width)));
   enterValue(form,'remark','Jessi voice draft reviewed. Physical MTR '+fmt(number(c.usedMtr))+' verified before saving. Check roll and calculations.');
+  // Native Cutting defaults to "Save & Next Cutting". Disable that ONLY for Jessi
+  // drafts: the automatically reopened next form would not be a verified voice draft.
+  try{
+   if(typeof dialogResumeMeta!=='undefined'&&dialogResumeMeta?.type==='cutting')
+    dialogResumeMeta={...dialogResumeMeta,i:'jessi-verified-only'};
+  }catch(_){}
+  const saveButton=$('saveFormBtn');if(saveButton)saveButton.textContent='Save Verified Cutting';
   installCuttingGuard(d);
  }
 }
