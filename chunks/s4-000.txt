@@ -404,10 +404,41 @@ function showPoDraftRecoveryNotice(snap){
   document.body.append(banner);
  }catch(e){console.warn('Nonblocking PO recovery notice failed',e)}
 }
-function restoreUiDialogSnapshot(snap){
+// V235 - a saved form draft must never trap the entire ERP in a modal
+// on startup. User can resume the preserved draft intentionally.
+function cfmManualResumeDraftNotice(snap){
+ try{
+  const params=new URL(window.parent.location.href).searchParams;
+  // Approved Work No recovery takes priority; avoid covering its modal.
+  if(params.get('fixwo')==='approved')return;
+  const old=document.getElementById('cfmManualDraftNotice');if(old)old.remove();
+  const meta=snap?.meta||{};
+  const banner=document.createElement('aside');
+  banner.id='cfmManualDraftNotice';banner.setAttribute('role','status');
+  banner.style.cssText='position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);left:50%;transform:translateX(-50%);width:min(94vw,580px);box-sizing:border-box;z-index:2147483050;background:#f5fbff;color:#164867;border:1px solid #9bc5dc;border-radius:12px;padding:12px;box-shadow:0 8px 28px #17364750;font:700 12px/1.5 system-ui';
+  const title=document.createElement('div');title.textContent='📝 Previous '+String(meta.type||'ERP')+' form draft safely saved';title.style.fontWeight='900';
+  const msg=document.createElement('div');msg.style.cssText='margin:4px 0 9px';msg.textContent='ERP is ready to use. Your previous form is NOT auto-opened. Resume it only when required.';
+  const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+  const resume=document.createElement('button');resume.type='button';resume.textContent='Resume Saved Form';
+  resume.style.cssText='background:#136d91;color:white;border:0;border-radius:7px;padding:9px 12px;font:800 12px system-ui';
+  resume.addEventListener('click',()=>{
+   banner.remove();
+   restoreUiDialogSnapshot(snap,true);
+  });
+  const dismiss=document.createElement('button');dismiss.type='button';dismiss.textContent='Continue ERP (keep draft)';
+  dismiss.style.cssText='background:#fff;color:#235773;border:1px solid #9bc5dc;border-radius:7px;padding:9px 12px;font:800 12px system-ui';
+  dismiss.addEventListener('click',()=>banner.remove());
+  actions.append(resume,dismiss);banner.append(title,msg,actions);document.body.append(banner);
+ }catch(e){console.warn('Saved form notice unavailable',e)}
+}
+function restoreUiDialogSnapshot(snap,manual=false){
   if(!snap?.meta)return;
   if(Date.now()-Number(snap.at||0)>12*60*60*1000){safeStorage.removeItem(UI_DIALOG_KEY);return}
   const m=snap.meta;
+  if(!manual){
+    cfmManualResumeDraftNotice(snap);
+    return;
+  }
   try{
     if(m.type==='pending'){
       let i=null;
@@ -418,11 +449,8 @@ function restoreUiDialogSnapshot(snap){
       }
       openPendingForm(i);
     }else if(m.type==='multiPending'){
-      // The previous auto-restore trapped operators in the same old PO modal
-      // after every upgrade/reload. Leave the draft safely stored; show an
-      // optional nonblocking recovery action instead.
-      showPoDraftRecoveryNotice(snap);
-      return;
+      // Manual Resume only, after explicit operator click.
+      openMultiPendingForm();
     }else if(m.type==='store'){
       let i=null;
       if(m.i!==null&&m.i!==undefined){
