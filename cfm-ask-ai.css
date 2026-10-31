@@ -108,3 +108,39 @@
  #cfmAiDialog .cfm-ai-compose button{min-width:75px;padding:9px}
  #cfmAiDialog .cfm-ai-footer{padding:9px 10px}
 }
+
+
+/* V217 no-login chat mode; no login form displayed. */
+#cfmAiDialog .cfm-ai-source-row{
+ display:flex;flex-wrap:wrap;align-items:center;gap:8px;flex:0 0 auto;
+ margin:0 0 2px;padding:9px 10px;border:1px solid #c9e1e5;
+ background:#eaf6f8;border-radius:8px
+}
+#cfmAiDialog .cfm-ai-source-row span{
+ flex:1 1 120px;color:#235d70;font:800 11px/1.4 "Segoe UI",Arial,sans-serif
+}
+#cfmAiDialog .cfm-ai-source-row button{
+ flex:0 0 auto;min-height:33px;padding:7px 12px;border:1px solid #9acbd2;
+ background:#fff;color:#0e6e83;border-radius:6px;
+ font:800 11px/1.2 "Segoe UI",Arial,sans-serif;cursor:pointer
+}
+#cfmAiDialog .cfm-ai-source-row button:hover{background:#def6f4}
+#cfmAiDialog .cfm-ai-source-row button:disabled{opacity:.6;cursor:wait}
+#cfmAiDialog .cfm-ai-footer button{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ white-space:nowrap!important
+}
+#cfmAiDialog .cfm-ai-header .cfm-ai-badge[data-mode=online]{
+ background:#13634e!important;border-color:#53caaa!important;color:#e1ffef!important;
+ font-size:9px!important;white-space:nowrap
+}
+#cfmAiDialog .cfm-ai-chat .cfm-ai-note{
+ background:#f1f9fa;border:1px solid #cfe5e7;border-radius:7px;
+ padding:9px 11px;margin:0!important;flex:0 0 auto
+}
+@media(max-width:620px){
+ #cfmAiDialog .cfm-ai-source-row{padding:8px;gap:6px}
+ #cfmAiDialog .cfm-ai-source-row button{font-size:10px;padding:7px 9px}
+ #cfmAiDialog .cfm-ai-footer span{font-size:10px}
+ #cfmAiDialog .cfm-ai-chat .cfm-ai-note{font-size:9px}
+}
