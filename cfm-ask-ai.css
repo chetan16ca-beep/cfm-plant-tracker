@@ -294,3 +294,75 @@
 @media(max-width:380px){
  #cfmAiDialog .cfm-jessi-draft-grid{grid-template-columns:1fr!important}
 }
+
+
+/* CFM V220 Jessi always-visible floating launch icon on every ERP page. */
+#cfmJessiFloat{
+ position:fixed!important;
+ right:clamp(10px,2.6vw,22px)!important;
+ bottom:calc(env(safe-area-inset-bottom,0px) + 82px)!important;
+ z-index:999998!important;
+ display:flex!important;
+ flex-direction:column!important;
+ align-items:center!important;
+ justify-content:center!important;
+ gap:3px!important;
+ min-width:76px!important;min-height:83px!important;
+ padding:8px 10px 7px!important;
+ border:2px solid #7feada!important;
+ border-radius:23px!important;
+ background:linear-gradient(155deg,#073649 5%,#126a80 56%,#0c9b87 100%)!important;
+ box-shadow:0 9px 27px #063c5b59,0 0 0 3px #d9fff833!important;
+ color:#fff!important;
+ cursor:pointer!important;
+ -webkit-tap-highlight-color:transparent!important;
+ touch-action:manipulation!important;
+ transition:transform .15s,box-shadow .15s!important;
+ line-height:1!important;
+}
+#cfmJessiFloat[hidden]{display:none!important}
+#cfmJessiFloat:hover,#cfmJessiFloat:focus-visible{
+ transform:translateY(-2px) scale(1.04)!important;
+ outline:2px solid #a4e9e2!important;
+ outline-offset:2px!important;
+ box-shadow:0 13px 30px #074b6788,0 0 0 4px #d9fff83d!important
+}
+#cfmJessiFloat .cfm-jessi-float-avatar{
+ width:42px!important;height:42px!important;
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ position:relative!important;
+ border-radius:50%!important;
+ background:radial-gradient(circle at 25% 15%,#a4fff6,#26c9b2 65%,#109682 100%)!important;
+ border:1px solid #bbfff9!important;
+ color:#07394c!important;
+ box-shadow:inset 0 2px 5px #ffffff60,0 2px 8px #0003!important
+}
+#cfmJessiFloat .cfm-jessi-float-star{
+ font-size:27px!important;line-height:1!important;font-weight:900!important
+}
+#cfmJessiFloat .cfm-jessi-float-mic{
+ position:absolute!important;right:-7px!important;bottom:-4px!important;
+ background:#fff!important;color:#0b5363!important;border:1px solid #4db6a9!important;
+ border-radius:50%!important;
+ width:24px!important;height:24px!important;
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ font-size:15px!important;line-height:1!important
+}
+#cfmJessiFloat .cfm-jessi-float-name{
+ display:block!important;color:#fff!important;
+ font:900 13px/1.15 "Segoe UI",Arial,sans-serif!important;
+ letter-spacing:.01em!important;text-shadow:0 1px 2px #09304390!important
+}
+@media(max-width:620px){
+ #cfmJessiFloat{
+  right:10px!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 87px)!important;
+  min-width:69px!important;min-height:77px!important;
+  border-radius:20px!important;padding:7px 8px!important
+ }
+ #cfmJessiFloat .cfm-jessi-float-avatar{width:38px!important;height:38px!important}
+ #cfmJessiFloat .cfm-jessi-float-name{font-size:12px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ #cfmJessiFloat{transition:none!important}
+}
