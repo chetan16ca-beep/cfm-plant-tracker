@@ -278,6 +278,21 @@ function installCuttingGuard(d){
    usedMtr:d.value.usedMtr
   }};
   const problems=check(temp,s);
+  const reviewed=d.value;
+  if(norm(temp.value.workNo)!==norm(reviewed.workNo)||
+     norm(temp.value.srlNo)!==norm(reviewed.srlNo)||
+     number(temp.value.qty)!==number(reviewed.qty)||
+     number(temp.value.length)!==number(reviewed.length)||
+     number(temp.value.width)!==number(reviewed.width))
+   problems.push('Voice-reviewed Cutting fields changed. Cancel and create a fresh Jessi draft.');
+  const roll=arr(s,'store').find(x=>norm(x.srlNo)===norm(reviewed.srlNo));
+  const planned=number(f?.elements?.namedItem('plannedWidth')?.value);
+  const layer=number(f?.elements?.namedItem('layer')?.value);
+  const wastage=norm(f?.elements?.namedItem('wastage')?.value||'NO');
+  if(!roll||planned===null||Math.abs(planned-number(roll.width))>0.11)
+   problems.push('Cutting Form Width changed or physical SRL width missing. Save blocked.');
+  if(layer!==1)problems.push('Layer must be 1 in this verified voice entry. Recheck measured meter.');
+  if(wastage!=='NO')problems.push('Wastage entry cannot be submitted from a standard Jessi Cutting draft.');
   if(problems.length)return stopCapture(ev,problems.join('; '));
   if(!confirm('Jessi review: Cutting '+temp.value.qty+' pieces for '+temp.value.workNo+
    ', SRL '+temp.value.srlNo+', measured '+temp.value.usedMtr+' MTR.\nExisting ERP Save will update Cutting, Pending and SRL consumption. Proceed?')){
