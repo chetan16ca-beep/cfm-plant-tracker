@@ -1089,7 +1089,60 @@ function matchMultiProduct(row){
 }
 function multiClothFamily(v){let s=normalize(v).replace(/[^A-Z0-9]+/g,' ').trim();if(/^333( |$)/.test(s))return '333';return s}
 function multiClothFamily(v){let s=normalize(v).replace(/[^A-Z0-9]+/g,' ').trim();if(/^333(\s|$)/.test(s))return '333';return s}
-function multiActiveSrl(row){const cl=String(row.querySelector('.multi-cloth')?.value||'').trim(),wd=String(row.querySelector('.multi-width')?.value||'').trim(),box=row.querySelector('.multi-srl-list'),sel=row.querySelector('.multi-srl');if(!box||!sel)return;const reqW=num(wd),fam=multiClothFamily(cl);const rr=(state.store||[]).filter(x=>{const sx=String(x.srlNo||'').trim(),cq=String(x.quality||x.cloth||x.description||'').trim(),ww=num(x.width),bb=typeof srlBalance==='function'?num(srlBalance(x)):num(x.openingMtr);return sx&&bb>0&&!['CLOSED','ZERO','BLOCKED'].includes(normalize(x.status))&&(!cl||multiClothFamily(cq)===fam)&&(!reqW||ww>=reqW)}).sort((a,b)=>num(a.width)-num(b.width));box.innerHTML=rr.length?rr.map(x=>'<b>'+esc(x.srlNo)+'</b> — '+esc(String(x.quality||x.cloth||x.description||'-'))+' • '+fmt(x.width)+'″ • '+fmt(typeof srlBalance==='function'?srlBalance(x):x.openingMtr)+' MTR').join('<br>'):'No matching ACTIVE SRL';sel.innerHTML=rr.map(x=>'<option value="'+esc(x.srlNo)+'">'+esc(x.srlNo)+' — '+esc(String(x.quality||x.cloth||x.description||'-'))+' — '+fmt(x.width)+'″ — '+fmt(typeof srlBalance==='function'?srlBalance(x):x.openingMtr)+' MTR</option>').join('')}
+// V229: avoid evaluating the entire store (and derived cutting meters)
+// on each keystroke. Only evaluate matching rolls after cloth + width entered.
+// This is a read-only UI cache. The actual Store/physical meter calculation
+// remains unchanged, and no stock is reserved or deducted here.
+let multiSrlBalanceCache=new Map();
+function multiActiveSrl(row){
+ const cl=String(row.querySelector('.multi-cloth')?.value||'').trim(),
+       wd=String(row.querySelector('.multi-width')?.value||'').trim(),
+       box=row.querySelector('.multi-srl-list'),
+       sel=row.querySelector('.multi-srl');
+ if(!box||!sel)return;
+ const reqW=num(wd);
+ if(!cl||!(reqW>0)){
+  if(box.dataset.filterKey!=='missing'){
+   box.textContent='Cloth Quality + Roll Width enter karo, tab matching OPEN SRL dikhenge.';
+   sel.replaceChildren();
+   box.dataset.filterKey='missing';
+  }
+  return;
+ }
+ const fam=multiClothFamily(cl),key=fam+'|'+reqW;
+ if(box.dataset.filterKey===key)return;
+ box.dataset.filterKey=key;
+ const previously=new Set([...sel.selectedOptions].map(o=>o.value));
+ // Filter the cheap attributes BEFORE calling srlBalance on each roll.
+ const matching=(state.store||[]).filter(x=>{
+  const sx=String(x.srlNo||'').trim(),cq=String(x.quality||x.cloth||x.description||'').trim(),
+        ww=num(x.width);
+  return sx&&ww>=reqW&&multiClothFamily(cq)===fam&&
+    !['CLOSED','ZERO','BLOCKED'].includes(normalize(x.status));
+ }).sort((a,b)=>num(a.width)-num(b.width));
+ const live=[];
+ for(const x of matching){
+  const serial=String(x.srlNo||'');
+  let balance=multiSrlBalanceCache.get(serial);
+  if(balance===undefined){
+   balance=typeof srlBalance==='function'?num(srlBalance(x)):num(x.openingMtr);
+   multiSrlBalanceCache.set(serial,balance);
+  }
+  if(balance>0)live.push({x,balance});
+ }
+ // Avoid hundreds of formatted DOM nodes on mobile. Users can narrow the
+ // criteria if there are too many similar rolls.
+ const limit=150,display=live.slice(0,limit);
+ const label=o=>esc(o.x.srlNo)+' — '+esc(String(o.x.quality||o.x.cloth||o.x.description||'-'))+
+                ' — '+fmt(o.x.width)+'″ — '+fmt(o.balance)+' MTR';
+ box.textContent=live.length
+  ?'Matching OPEN SRL: '+live.length+
+   (live.length>limit?' · First '+limit+' shown; narrow cloth/width for more.':'')+
+   ' · Select below (multiple allowed).'
+  :'No matching ACTIVE SRL for this cloth and width.';
+ sel.innerHTML=display.map(o=>'<option value="'+esc(o.x.srlNo)+'"'+
+   (previously.has(o.x.srlNo)?' selected':'')+'>'+label(o)+'</option>').join('');
+}
 function bindMultiPoRow(row){
   if(!row)return;
   const inp=row.querySelector('.multi-item-product'),cl=row.querySelector('.multi-cloth'),wd=row.querySelector('.multi-width'),ec=row.querySelector('.multi-eagle');
@@ -1106,7 +1159,14 @@ function bindMultiPoRow(row){
     inp.addEventListener('blur',()=>{if(inp.value){matchMultiProduct(row);liveCode();multiActiveSrl(row)}});
   }
   row.querySelector('.multi-item-code')?.addEventListener('change',()=>{liveCode();multiActiveSrl(row)});
-  cl?.addEventListener('input',()=>multiActiveSrl(row));wd?.addEventListener('input',()=>multiActiveSrl(row));multiActiveSrl(row);
+  // Debounced on mobile: typing each digit must not rebuild SRL options.
+  let srlTimer=0;
+  const scheduleSrl=()=>{clearTimeout(srlTimer);srlTimer=setTimeout(()=>multiActiveSrl(row),180)};
+  cl?.addEventListener('input',scheduleSrl);
+  wd?.addEventListener('input',scheduleSrl);
+  cl?.addEventListener('change',()=>multiActiveSrl(row));
+  wd?.addEventListener('change',()=>multiActiveSrl(row));
+  multiActiveSrl(row);
 }
 function multiPoRowsData(){
   return [...document.querySelectorAll('#multiPoItems .multi-po-item-row')].map(row=>({
@@ -1139,6 +1199,7 @@ window.cfmPOExistingOrders=function(party,poNo){
  }));
 };
 window.openMultiPendingForm=function(){
+  multiSrlBalanceCache=new Map();
   multiPoBaseNo=nextWorkStartNo();
   const parties=customerPartyOptions();
   const html=`<div class="multi-po-shell">
@@ -1295,7 +1356,9 @@ window.saveMultiPoItems=function(){
     try{saveCustomParty(party)}catch(e){}
     const workRange=created.length===1?created[0].workNo:(created[0].workNo+' – '+created[created.length-1].workNo);
     try{setNextUpdateNotification('🔔 New PO Added',party+' • '+created.length+' item • '+workRange)}catch(e){}
-    try{save()}catch(e){console.error('PO save persistence error',e);return fail('SAVE ERROR: '+(e?.message||'storage error'),document.getElementById('saveFormBtn'))}
+    // Persist and queue Cloud sync now; heavy full-app rendering should not
+    // block Save receipt or falsely look like a stalled button on Android.
+    try{save(false)}catch(e){console.error('PO save persistence error',e);return fail('SAVE ERROR: '+(e?.message||'storage error'),document.getElementById('saveFormBtn'))}
     // save() queues Cloud asynchronously; verify the local-storage copy before saying "Saved".
     let stored=null;
     try{stored=JSON.parse(safeStorage.getItem(STORAGE_KEY)||'null')}catch(e){console.warn('PO saved record readback failed',e)}
@@ -1307,6 +1370,9 @@ window.saveMultiPoItems=function(){
     if(imported&&String(imported.poNo||'').trim().toUpperCase()===poNo.toUpperCase())window.cfmPOImportedDraft=null;
     toast(created.length+' PO items locally saved • '+workRange);
     cfmPOShowSavedReceipt(party,poNo,created);
+    // Update visible lists after receipt opens; keep saved records even if
+    // another optional dashboard widget has a rendering exception.
+    setTimeout(()=>{try{renderAll()}catch(e){console.error('Post-PO refresh issue',e)}},400);
     return true;
   }catch(e){console.error('PO SAVE FATAL',e);toast('SAVE ERROR: '+(e?.message||String(e)));return false}
 };
