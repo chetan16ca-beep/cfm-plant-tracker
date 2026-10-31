@@ -8,7 +8,7 @@
 const key=x=>String(x??'').trim().replace(/\s+/g,' ').toUpperCase();
 const json=x=>JSON.parse(JSON.stringify(x));
 const el=(tag,txt,klass)=>{const x=document.createElement(tag);if(txt!=null)x.textContent=txt;if(klass)x.className=klass;return x};
-const srcWorks=['CFM-724','CFM-725'], expectedParty='YASHO INDS',expectedPO='4100008668';
+const srcWorks=['CFM-723','CFM-724','CFM-725'], expectedParty='YASHO INDS',expectedPO='4100008668';
 let dialog=null,current=null,bpc=false,bcloud=false,busy=false;
 const ident=r=>[key(r.party),key(r.poNo),Number(r.orderQty)||0,key(r.description)].join('|');
 function isYasho(r){return key(r?.party)===expectedParty&&key(r?.poNo)===expectedPO}
@@ -16,7 +16,7 @@ function named(arr,no){return (arr||[]).find(x=>key(x.workNo)===no)}
 function uniqueWorkNos(arr){const vals=(arr||[]).map(r=>key(r?.workNo)).filter(Boolean);return new Set(vals).size===vals.length}
 function forbiddenLinks(local){
  const findings=[];
- const pattern=/(?:^|[^A-Z0-9])CFM-(?:724|725)(?!\d)/i;
+ const pattern=/(?:^|[^A-Z0-9])CFM-(?:723|724|725)(?!\d)/i;
  for(const [section,records] of Object.entries(local)){
   if(section==='pending'||!Array.isArray(records))continue;
   const hits=records.filter(r=>r&&typeof r==='object'&&pattern.test(JSON.stringify(r)));
@@ -29,12 +29,14 @@ function plan(local,cloud){
  if(!uniqueWorkNos(local.pending)||!uniqueWorkNos(cloud.pending))throw Error('Duplicate Work Nos detected within PC or Cloud. Manual data review needed.');
  const oldRows=srcWorks.map(no=>named(local.pending,no));
  if(oldRows.some((r,i)=>!r||!isYasho(r)||Number(r.orderQty)!==10))
-  throw Error('Expected YASHO INDS CFM-724/725 (PO 4100008668, Qty 10 each) not found on this device. No records changed.');
+  throw Error('Expected YASHO INDS CFM-723/724/725 (PO 4100008668, Qty 10 each) not found on this PC. No records changed.');
  const linked=forbiddenLinks(local);
  if(linked.length)throw Error('Linked Cutting / Store / production data found: '+linked.join(', ')+'. Do not renumber automatically; first reconcile linked records using both backups.');
+ const cloud723=named(cloud.pending,'CFM-723');
  const cloud724=named(cloud.pending,'CFM-724');
- if(!cloud724||key(cloud724.party)!=='BBELL'||key(cloud724.poNo)!=='BIL262700362')
-  throw Error('Expected BBELL Cloud CFM-724 not found or differs. Cloud changed; stop and review.');
+ if(!cloud723||key(cloud723.party)!=='BBELL'||key(cloud723.poNo)!=='BIL262700365'||
+    !cloud724||key(cloud724.party)!=='BBELL'||key(cloud724.poNo)!=='BIL262700362')
+  throw Error('Expected BBELL Cloud CFM-723/724 changed. No Work Nos altered.');
  const allUsed=new Set([...local.pending,...cloud.pending].map(x=>key(x.workNo)));
  const recovery=new Map();
  for(const old of oldRows){
@@ -42,7 +44,7 @@ function plan(local,cloud){
   if(same.length>1)throw Error('Cloud has multiple matching YASHO orders: '+old.workNo+'. Manual review required.');
   if(same.length===1){
     const target=key(same[0].workNo);
-    if(target==='CFM-724'||srcWorks.includes(target)||named(local.pending,target))
+    if(srcWorks.includes(target)||named(local.pending,target))
       throw Error('Existing Cloud YASHO number '+target+' is not safe to reuse.');
     recovery.set(key(old.workNo),target);
   }
@@ -54,7 +56,7 @@ function plan(local,cloud){
   if(!fresh){while(allUsed.has('CFM-'+next))next++;fresh='CFM-'+next++;allUsed.add(fresh)}
   return {old:oldNo,next:fresh,original:old,alreadyCloud:recovery.has(oldNo)};
  });
- if(proposals[0].next===proposals[1].next)throw Error('Two YASHO lines share a proposed new Work No.');
+ if(new Set(proposals.map(x=>x.next)).size!==proposals.length)throw Error('YASHO lines share a proposed new Work No.');
  const usedCloud=new Set(cloud.pending.map(r=>key(r.workNo)));
  for(const row of proposals){
   const cl= named(cloud.pending,row.next);
@@ -109,7 +111,7 @@ function buildUI(cloudRow,proposal){
  const title=el('h2','Fix Work Order Numbers — PC + Cloud');
  dialog.append(title,el('p','YASHO ke PC orders aur BBELL ka Cloud order dono bachenge. Kisi Stock, Cutting ya doosre order ko touch nahi kiya jayega.'));
  const badge=el('p','READ BEFORE APPLY: Full PC and Cloud backups compulsory. The proposal is not saved until you explicitly approve.','cfm-wo-fix-alert');dialog.append(badge);
- dialog.append(line('Cloud protected','CFM-724 → BBELL • BIL262700362 • Qty 4 (unchanged)'));
+ dialog.append(line('Cloud protected','CFM-723/724 → BBELL • Both Cloud orders unchanged'));
  for(const p of proposal)dialog.append(line('PC • '+p.old,p.original.party+' • '+p.original.poNo+' • Qty '+p.original.orderQty+' → '+p.next+(p.alreadyCloud?' (already in Cloud; recover PC number)':'')));
  const p=el('p','Cloud version '+cloudRow.version+'. Target numbers are rechecked immediately before Save. If someone else updated the Cloud, this operation stops and asks you to review again.');dialog.append(p);
  const actions=el('div',null,'cfm-wo-fix-actions');
@@ -149,7 +151,7 @@ async function execute(ack,approvedLink=false){
  if(!bpc||!bcloud||!ack){setStatus('Verified PC and Cloud backups are REQUIRED before any Work No can change.','error');return}
  // A separate explicit ?fixwo=approved URL is itself the operator's approval.
  // Ordinary actions continue to require an in-app confirmation.
- const ok=approvedLink||confirm('FINAL CONFIRMATION: Save only YASHO INDS Work Nos '+current.proposal.map(p=>p.old+' → '+p.next).join(', ')+'. Keep BBELL CFM-724 unchanged, and do not touch stock/cutting?');
+ const ok=approvedLink||confirm('FINAL CONFIRMATION: Save only YASHO INDS Work Nos '+current.proposal.map(p=>p.old+' → '+p.next).join(', ')+'. Keep BBELL CFM-723/724 unchanged, and do not touch stock/cutting?');
  if(!ok)return;
  setBusy(true);
  let wroteCloud=false;
@@ -188,9 +190,11 @@ async function execute(ack,approvedLink=false){
   }
   const check=await cloudFetch();
   if(!check||!Array.isArray(check.payload?.pending))throw Error('Cloud verification failed. PC unchanged. Reopen Fix Work Nos to resume.');
-  const originalBBELL=named(remote.payload.pending,'CFM-724');
-  if(ident(named(check.payload.pending,'CFM-724')||{})!==ident(originalBBELL))
-   throw Error('BBELL record verification failed; PC unchanged.');
+  for(const no of ['CFM-723','CFM-724']){
+   const originalBBELL=named(remote.payload.pending,no);
+   if(ident(named(check.payload.pending,no)||{})!==ident(originalBBELL))
+    throw Error('BBELL '+no+' verification failed; PC unchanged.');
+  }
   for(const item of currentPlan){
    const saved=named(check.payload.pending,item.next);
    if(!saved||ident(saved)!==ident(item.original))
@@ -205,10 +209,15 @@ async function execute(ack,approvedLink=false){
    if(!old||ident(old)!==ident(item.original))throw Error('PC order changed while syncing. Stop without altering local data.');
    old.workNo=item.next;
   }
-  for(const saved of check.payload.pending){
-   const exists=named(replacement.pending,key(saved.workNo));
+  // Recover the two BBELL numbers vacated by the renumbered YASHO rows.
+  // Never bulk-import other Cloud orders into the PC: unrelated device
+  // conflicts must be handled separately and must not block this fix.
+  for(const no of ['CFM-723','CFM-724']){
+   const saved=named(check.payload.pending,no);
+   if(!saved)throw Error('Cloud BBELL '+no+' unavailable during recovery');
+   const exists=named(replacement.pending,no);
    if(!exists)replacement.pending.push(json(saved));
-   else if(ident(exists)!==ident(saved))throw Error('Another PC order conflicts with '+saved.workNo+'. Cloud changes safely retained; PC backup unchanged.');
+   else if(ident(exists)!==ident(saved))throw Error('Local '+no+' is still occupied by a different order; PC untouched.');
   }
   if(!uniqueWorkNos(replacement.pending))throw Error('Merged PC Work Nos are not unique. No local data changed.');
   const localJson=JSON.stringify(replacement),prev=safeStorage.getItem(STORAGE_KEY);
@@ -223,7 +232,7 @@ async function execute(ack,approvedLink=false){
   try{renderAll()}catch(e){console.error('ERP render after reconciliation',e)}
   try{setCloudBadge('⚠️ Work Nos reconciled • Stock/Cutting sync paused for review','amber')}catch(_){}
   const receipt='YASHO Work Orders safely renumbered on PC and Cloud: '+currentPlan.map(p=>p.old+' → '+p.next).join(', ')+
-    '. BBELL CFM-724 unchanged. Stock and Cutting were NOT modified. Full PC/Cloud sync remains paused until other data differences are verified.';
+    '. BBELL CFM-723/724 unchanged. Stock and Cutting were NOT modified. Full PC/Cloud sync remains paused until other data differences are verified.';
   setStatus(receipt,'success');
   for(const btn of dialog.querySelectorAll('button'))btn.disabled=true;
   const done=el('button','Close & View Pending Orders');done.type='button';done.addEventListener('click',()=>{
