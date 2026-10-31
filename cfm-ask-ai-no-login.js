@@ -62,7 +62,7 @@ function dialog(){
  '<header class="cfm-ai-header"><span class="cfm-ai-headmark">✦</span><div class="cfm-ai-titles"><small>CFM FORGE / JESSI VOICE</small><h2>Jessi Voice Assistant</h2><p>Bolo aur suno · Work Orders · Stock</p></div><span id="cfmAiBadge" class="cfm-ai-badge" data-mode="online">NO LOGIN</span><button type="button" id="cfmAiExit" aria-label="Close">×</button></header>',
  '<div id="cfmAiFeedback" class="cfm-ai-feedback" role="status" aria-live="polite" hidden></div>',
  '<div class="cfm-ai-main" id="cfmAiMain"><div class="cfm-ai-chat">',
- '<div class="cfm-ai-prompts"><button type="button" data-prompt="Jessi work order banao">＋ New Work Order</button><button type="button" data-prompt="CFM-722 ka work status batao">Work Status</button>',
+ '<div class="cfm-ai-prompts"><button type="button" id="cfmJessiNewWorkButton" data-jessi-new-order="1">＋ New Work Order</button><button type="button" data-prompt="CFM-722 ka work status batao">Work Status</button>',
  '<button type="button" data-prompt="333 ANT cloth ke SRL stock details">Cloth Stock</button>',
  '<button type="button" data-prompt="Abhi kitne pending Work Orders hain?">Pending Orders</button>',
  '<button type="button" data-prompt="Plant summary batao">Plant Summary</button></div>',
@@ -80,6 +80,20 @@ function dialog(){
  $("cfmAiQuestionForm").addEventListener("submit",event=>{event.preventDefault();send()});
  $("cfmAiQuestion").addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();send()}});
  for(const b of d.querySelectorAll("[data-prompt]"))b.addEventListener("click",()=>{$("cfmAiQuestion").value=b.dataset.prompt;send()});
+ const newButton=$("cfmJessiNewWorkButton");
+ newButton?.addEventListener("click",()=>{
+  try{
+   const fn=window.cfmJessiNewWorkDraft;
+   if(typeof fn!=="function"){
+    showAlert("Jessi draft module is not loaded. Reload the ERP V220 page and try again.","warning");
+    return;
+   }
+   const result=fn();
+   showAlert(result?.error?result.reply:"Jessi ka Work Order draft neeche khul gaya hai. Work No, Party, Quantity bharo aur Verify & Open Form dabao.",result?.error?"warning":"ok");
+   const pane=$("cfmJessiDraft");
+   if(!pane)showAlert("Draft panel nahi khula. Open the latest V220 page and refresh. No data saved.","warning");
+  }catch(err){showAlert("Jessi draft error: "+(err?.message||"unknown")+". No data saved.","warning")}
+ });
  $("cfmAiReadCloud").addEventListener("click",readCloud);
  $("cfmAiUseDevice").addEventListener("click",()=>{source="device";sourceChanged();$("cfmAiUseDevice").hidden=true;showAlert("Reading device records only. No sync or overwrite.","ok")});
  render();
@@ -256,14 +270,23 @@ function send(){
  if(q.length<2)return showAlert("Enter at least two letters, Work No or SRL.","warning");
  // Voice-to-ERP drafts are guided even while the Cloud/device snapshot is loading.
  // Never block the New Work Order UI because search data was not loaded.
- const command=window.cfmJessiCommand?.handle?.(q);
+ let command=null;
+ try{
+  if(!window.cfmJessiCommand){
+   if(/\b(?:WORK\s*ORDER|ORDER|NEW\s*WO)\b.*\b(?:BANAO|BANADO|CREATE|MAKE|ADD|NEW)\b|वर्क\s*ऑर्डर.*(?:बनाओ|बना)/i.test(q))
+    return showAlert("Jessi Work Order creation module is unavailable. Reload ERP V220 (not V219). No order created.","warning");
+  }
+  command=window.cfmJessiCommand?.handle?.(q)||null;
+ }catch(err){return showAlert("Jessi draft error: "+(err?.message||"unknown")+". No data saved.","warning")}
  const s=data();
  if(!command?.handled&&(!s||!core()?.valid(s)))
   return showAlert("ERP records are still loading. Open Dashboard once and retry.","warning");
  const message=command?.handled?command.reply:answer(q,s);
  chat.push({role:"user",text:q},{role:"assistant",text:message,source:command?.handled?"Jessi draft · Not saved":dataLabel()});
  chat=chat.slice(-max);
- $("cfmAiQuestion").value="";showAlert("");render();
+ $("cfmAiQuestion").value="";
+ showAlert(command?.error?message:command?.draftShown?"Work Order/Cutting draft prepared below — NOT SAVED. Review fields and press Verify & Open Form.":"",command?.error?"warning":"ok");
+ render();
 }
 function init(){
  newLauncher();
