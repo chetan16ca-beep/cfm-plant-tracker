@@ -1,6 +1,6 @@
 // CFM PWA: network-first for live ERP UI; offline fallback only.
 // No IndexedDB, localStorage, Supabase order/stock changes.
-const CACHE='cfm-plant-ui-20261031-v234-three-wo-recovery';
+const CACHE='cfm-plant-ui-20261031-v235-no-stuck-form';
 const BASE=self.registration.scope;
 const SHELL=[BASE+'index.html',BASE+'manifest.json',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
 
