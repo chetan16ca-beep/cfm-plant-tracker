@@ -1,4 +1,4 @@
-/* CFM Forge V218 — Jessi Voice Assistant.
+/* CFM Forge V223 — Jessi Voice Assistant.
  * Browser-managed one-shot speech-to-text + browser speech synthesis.
  * No microphone streaming to ERP backend, no auto microphone, no writes.
  * Audio may be processed by the browser/platform speech service.
@@ -10,8 +10,8 @@ const Recognizer=window.SpeechRecognition||window.webkitSpeechRecognition||null;
 const canSpeak=!!window.speechSynthesis&&typeof window.SpeechSynthesisUtterance==="function";
 const langCodes=["hi-IN","en-IN","gu-IN","mr-IN"];
 const labels={"hi-IN":"Hindi","en-IN":"English (India)","gu-IN":"Gujarati","mr-IN":"Marathi"};
-let recognizer=null,recognizing=false,speakEnabled=true,voiceReplyPending=false,setupDone=false;
-let message="";let activeUtterance=null,sendQueued=false;
+let recognizer=null,recognizing=false,speakEnabled=true,voiceReplyPending=false;
+let activeUtterance=null,sendQueued=false,utteranceSeq=0,lastSpokenText="";
 function info(s,mode){
  const x=$("cfmJessiVoiceState");
  if(x){x.textContent=s;x.dataset.mode=mode||""}
@@ -36,17 +36,18 @@ function speechText(original){
  for(const [pat,replacement] of words)q=q.replace(pat,replacement);
  return q.trim();
 }
-function stopVoice(){
- voiceReplyPending=false;
- if(recognizer){
-  try{recognizer.abort()}catch(_){}
- }
- recognizing=false;
- recognizer=null;
- const mic=$("cfmJessiMic");
- if(mic){mic.classList.remove("listening");mic.setAttribute("aria-pressed","false")}
+function cancelPlayback(){
+ ++utteranceSeq;
  try{window.speechSynthesis?.cancel()}catch(_){}
  activeUtterance=null;
+}
+function stopVoice(){
+ voiceReplyPending=false;
+ if(recognizer){try{recognizer.abort()}catch(_){}}
+ recognizing=false;recognizer=null;
+ const mic=$("cfmJessiMic");
+ if(mic){mic.classList.remove("listening");mic.setAttribute("aria-pressed","false")}
+ cancelPlayback();
 }
 function pronounceLang(text){
  const input=$("cfmJessiLang")?.value||"hi-IN";
@@ -55,27 +56,47 @@ function pronounceLang(text){
 }
 function getVoice(lang){
  const voices=window.speechSynthesis?.getVoices?.()||[];
- const target=lang.toLowerCase();
- return voices.find(v=>v.lang.toLowerCase()===target)||
-  voices.find(v=>v.lang.toLowerCase().split("-")[0]===target.split("-")[0])||null;
+ const lc=s=>String(s||"").toLowerCase();
+ return voices.find(v=>lc(v.lang)===lc(lang))||
+   voices.find(v=>lc(v.lang).split("-")[0]===lc(lang).split("-")[0])||
+   voices.find(v=>/^en-in$/i.test(v.lang))||
+   voices.find(v=>/^en-/i.test(v.lang))||voices[0]||null;
 }
-function speak(text){
- if(!speakEnabled||!canSpeak)return;
+function speak(text,manual=false){
  const clean=String(text||"").replace(/https?:\/\/\S+/g,"").replace(/[•|*_#]/g," ").trim();
- if(!clean)return;
+ if(!clean)return false;
+ lastSpokenText=clean;
+ if(!manual&&!speakEnabled)return false;
+ if(!canSpeak){info("Is browser mein voice output available nahi hai. Chrome browser mein kholkar try karo.","warn");return false}
+ const synth=window.speechSynthesis;
+ const seq=++utteranceSeq;
  try{
-  window.speechSynthesis.cancel();
-  const voiceText=clean.length>1300?clean.slice(0,1280)+"... Baaki detail screen par dekho.":clean;
-  const utterance=new SpeechSynthesisUtterance(voiceText);
-  const language=pronounceLang();
-  utterance.lang=language;utterance.rate=0.96;utterance.pitch=1;utterance.volume=1;
-  const voice=getVoice(language);if(voice)utterance.voice=voice;
-  utterance.onerror=()=>{info("Voice playback nahi ho paya. Answer screen par hai.","warn");activeUtterance=null};
-  utterance.onend=()=>{activeUtterance=null;info("Jessi ready · Mic se poochho","ok")};
+  // Ignore 'interrupted' errors from the previous utterance cancelled on purpose.
+  synth.cancel();
+  const excerpt=clean.length>650?clean.slice(0,640)+"... Baaki detail screen par hai.":clean;
+  const utterance=new SpeechSynthesisUtterance(excerpt);
+  const language=pronounceLang(),voice=getVoice(language);
+  utterance.lang=voice?.lang||language;
+  if(voice)utterance.voice=voice;
+  utterance.rate=0.93;utterance.pitch=1;utterance.volume=1;
+  utterance.onstart=()=>{if(seq!==utteranceSeq)return;info("🔊 Jessi bol rahi hai…","speaking")};
+  utterance.onend=()=>{if(seq!==utteranceSeq)return;activeUtterance=null;info("Jessi ready · Dobara sunne ke liye 🔊 Suno dabao.","ok")};
+  utterance.onerror=event=>{
+   if(seq!==utteranceSeq)return;
+   activeUtterance=null;
+   const code=String(event?.error||"unknown");
+   if(["interrupted","canceled","cancelled"].includes(code))return;
+   info("Voice error: "+code+". 🔊 Suno dabao; Chrome mein na chale toh phone Text-to-speech settings check karo.","warn");
+  };
   activeUtterance=utterance;
-  window.speechSynthesis.speak(utterance);
-  info("Jessi bol rahi hai…","speaking");
- }catch(e){info("Browser speech output unavailable. Text answer shown.","warn")}
+  if(synth.paused)try{synth.resume()}catch(_){}
+  synth.speak(utterance);
+  info("Jessi voice start ho rahi hai…","speaking");
+  return true;
+ }catch(err){
+  if(seq===utteranceSeq)info("Voice start nahi hui ("+String(err?.message||"browser blocked")+"). 🔊 Suno dabao ya Chrome mein kholkar try karo.","warn");
+  return false;
+ }
 }
 function lastAssistant(){
  const items=[...document.querySelectorAll("#cfmAiMessages .cfm-ai-message.assistant .cfm-ai-answer")];
@@ -89,17 +110,13 @@ function submitVoice(){
   if(typeof form.requestSubmit==="function")form.requestSubmit();
   else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
  }catch(e){
-  info("Voice recognized. Ask button dabakar question bhejo.","warn");
+  info("Voice recognized but form submit failed. Ask dabakar question bhejo.","warn");
   voiceReplyPending=false;sendQueued=false;return;
  }
- // Existing Jessi record engine replies synchronously, but Cloud may be fetched first.
- Promise.resolve().then(()=>{
-  sendQueued=false;
-  if(!voiceReplyPending)return;
-  voiceReplyPending=false;
-  const result=lastAssistant();
-  if(result)speak(result);
- });
+ // Important: do NOT start speech while the microphone recognition is still active.
+ // The recognition onend event releases audio focus before Jessi speaks.
+ lastSpokenText=lastAssistant();
+ Promise.resolve().then(()=>{sendQueued=false});
 }
 function startVoice(){
  const dlg=$("cfmAiDialog");
@@ -110,7 +127,7 @@ function startVoice(){
   return;
  }
  // Only start on user click; never background listen.
- try{window.speechSynthesis?.cancel()}catch(_){}
+ cancelPlayback();
  try{
   const rec=new Recognizer();
   recognizer=rec;
@@ -146,6 +163,16 @@ function startVoice(){
    recognizing=false;recognizer=null;
    const mic=$("cfmJessiMic");
    if(mic){mic.classList.remove("listening");mic.setAttribute("aria-pressed","false")}
+   if(voiceReplyPending){
+    voiceReplyPending=false;
+    // Reading the finished message after recognition ends avoids Android audio-focus collisions.
+    Promise.resolve().then(()=>{
+     const reply=lastAssistant();
+     if(!reply)return info("Question suna, lekin jawab screen par nahi aaya.","warn");
+     if(speakEnabled)speak(reply);
+     else info("Jawab screen par hai. Sunne ke liye 🔊 Suno dabao.","ok");
+    });
+   }
   };
   rec.start();
  }catch(e){
@@ -182,12 +209,23 @@ function controls(dlg){
   speakSwitch.textContent=speakEnabled?"🔊 Reply On":"🔇 Reply Off";
   speakSwitch.setAttribute("aria-pressed",String(speakEnabled));
   speakSwitch.setAttribute("aria-label",speakEnabled?"Turn Jessi spoken replies off":"Turn Jessi spoken replies on");
-  if(!speakEnabled)try{window.speechSynthesis?.cancel()}catch(_){}
+  if(!speakEnabled)cancelPlayback();
+  info(speakEnabled?"Auto voice reply ON. Jawab repeat karne ke liye 🔊 Suno.":"Auto voice reply OFF. Manual 🔊 Suno phir bhi chalega.","ok");
  });
+ const replay=document.createElement("button");replay.type="button";replay.id="cfmJessiReplay";
+ replay.textContent="🔊 Suno";replay.setAttribute("aria-label","Play Jessi last answer");
+ replay.addEventListener("click",()=>{
+  const answer=lastAssistant()||lastSpokenText;
+  if(answer)speak(answer,true);
+  else info("Pehle Jessi se sawaal poochho ya 🎧 Test Voice dabao.","warn");
+ });
+ const test=document.createElement("button");test.type="button";test.id="cfmJessiTestVoice";
+ test.textContent="🎧 Test Voice";test.setAttribute("aria-label","Test Jessi voice on this device");
+ test.addEventListener("click",()=>speak("Namaste. Main Jessi hoon. Voice assistant ki awaaz test ho rahi hai.",true));
  const stop=document.createElement("button");stop.type="button";stop.id="cfmJessiStop";stop.textContent="■ Stop";
  stop.setAttribute("aria-label","Stop Jessi voice");stop.addEventListener("click",()=>{stopVoice();info("Jessi voice stopped.","ok")});
  const label=document.createElement("label");label.className="cfm-jessi-lang-label";label.textContent="Voice: ";
- label.append(lang);sourceRow.append(label,speakSwitch,stop);
+ label.append(lang);sourceRow.append(label,speakSwitch,replay,test,stop);
  const status=document.createElement("div");status.id="cfmJessiVoiceState";status.className="cfm-jessi-status";
  status.setAttribute("role","status");status.setAttribute("aria-live","polite");
  const note=dlg.querySelector(".cfm-ai-note");if(note)note.before(status);
@@ -197,11 +235,17 @@ function controls(dlg){
   info("Mic not supported here. Android Chrome browser try karo, ya type karo.","warn");
  }else if(!canSpeak)info("Mic supported. Spoken reply browser mein unavailable; text answer milega.","warn");
  else info("Jessi ready · Mic dabakar bolo (Hindi, English, Gujarati, Marathi).","ok");
- // Reply readout for typed questions too when speaker is enabled.
+ // Typed Ask: one speech attempt only after the answer has been rendered.
+ // For microphone Ask, rec.onend is responsible for speaking after mic releases.
  form.addEventListener("submit",()=>{
   if(sendQueued)return;
-  Promise.resolve().then(()=>{if(!dlg.open||!speakEnabled)return;
-   const result=lastAssistant();if(result)speak(result)});
+  const before=document.querySelectorAll("#cfmAiMessages .cfm-ai-message.assistant .cfm-ai-answer").length;
+  Promise.resolve().then(()=>{
+   if(!dlg.open)return;
+   const after=document.querySelectorAll("#cfmAiMessages .cfm-ai-message.assistant .cfm-ai-answer").length;
+   if(after<=before)return;
+   const reply=lastAssistant();if(reply){lastSpokenText=reply;if(speakEnabled)speak(reply)}
+  });
  });
  dlg.addEventListener("close",stopVoice);
  dlg.addEventListener("cancel",stopVoice);
