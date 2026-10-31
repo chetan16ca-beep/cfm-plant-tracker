@@ -61,8 +61,14 @@ function classify(text){
  const create=/\b(?:CREATE|ADD|NEW|FRESH|BANAO|BANA|BANA DO|BANADO|BANANA|BANANI|KARO|KARNA|ENTER|ENTRY|SAVE|REGISTER|MAKE)\b|बनाओ|बनाना|बनानी|बनाने|बना दो|नया|नई|नये|न्यू|नयी|जोड़ो|जोड़ो|करो|करना|डालो|डालना|बनवा|बनादो|નવી|નવું|નવો|ન્યુ|બનાવો|જોડો|કરો/i.test(q);
  const explicitlyNew=/\b(?:CREATE|ADD|NEW|FRESH|BANAO|BANA|BANA DO|BANADO|BANANA|BANANI|ENTRY|REGISTER|MAKE)\b|बनाओ|बनाना|बनानी|बनाने|बना दो|बनादो|बनवा|नया|नई|नये|न्यू|नयी|जोड़ो|जोड़ो|डालो|નવી|નવું|નવો|ન્યુ|બનાવો|જોડો/i.test(q);
  const completed=/\b(?:DONE|COMPLETE|COMPLETED)\b|कर दिया|हो गया|डन|पूरी|કર્યું/i.test(q);
- if(cut&&(create||completed)&&(!informational||explicitlyNew))return 'cutting';
- if(work&&explicitlyNew&&!informational)return 'order';
+ // Android Hindi speech recognition frequently turns banao into "bnao",
+ // "bano", "बना", or transcribes ऑर्डर as ओडर.
+ // Bare "work order" in the Jessi assistant opens a draft; informational
+ // requests such as work order status must continue as read-only lookups.
+ const speechCreate=/\b(?:BNAO|BNA\s*DO|BANA\s*DO|BANA|BANO|BNA|BANAUN|BANAYE|BANANA|BANAUNGI)\b|बना|बनाऊं|बनाएं|बनाई|बनवाना|बनवा|બના/i.test(q);
+ const heardOrder=/\b(?:WORK|WORLD|VARK|VORK|WERK)\s*(?:ORDER|ORDAR|ODAR|ODDER)\b|वर्क\s*(?:ओडर|ऑडर|अॉर्डर|ओर्डर|आर्डर|ऑर्डर)|वक\s*ऑर्डर|कार्य\s*आदेश/i.test(q);
+ if(cut&&(create||completed||speechCreate)&&(!informational||explicitlyNew))return 'cutting';
+ if((work||heardOrder)&&!cut&&!informational&&(explicitlyNew||speechCreate||/^\s*(?:JESSI[, ]+)?(?:NEW\s*)?(?:WORK\s*ORDER|WORLD\s*ORDER|वर्क\s*ऑर्डर|वर्क\s*ओडर)\s*$/.test(q)))return 'order';
  return '';
 }
 function missingOf(d){
