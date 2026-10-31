@@ -62,7 +62,7 @@ function dialog(){
  '<header class="cfm-ai-header"><span class="cfm-ai-headmark">✦</span><div class="cfm-ai-titles"><small>CFM FORGE / JESSI VOICE</small><h2>Jessi Voice Assistant</h2><p>Bolo aur suno · Work Orders · Stock</p></div><span id="cfmAiBadge" class="cfm-ai-badge" data-mode="online">NO LOGIN</span><button type="button" id="cfmAiExit" aria-label="Close">×</button></header>',
  '<div id="cfmAiFeedback" class="cfm-ai-feedback" role="status" aria-live="polite" hidden></div>',
  '<div class="cfm-ai-main" id="cfmAiMain"><div class="cfm-ai-chat">',
- '<div class="cfm-ai-prompts"><button type="button" data-prompt="CFM-722 ka work status batao">Work Status</button>',
+ '<div class="cfm-ai-prompts"><button type="button" data-prompt="Jessi work order banao">＋ New Work Order</button><button type="button" data-prompt="CFM-722 ka work status batao">Work Status</button>',
  '<button type="button" data-prompt="333 ANT cloth ke SRL stock details">Cloth Stock</button>',
  '<button type="button" data-prompt="Abhi kitne pending Work Orders hain?">Pending Orders</button>',
  '<button type="button" data-prompt="Plant summary batao">Plant Summary</button></div>',
@@ -254,9 +254,12 @@ function send(){
  if(busy)return;
  const q=$("cfmAiQuestion")?.value.trim()||"";
  if(q.length<2)return showAlert("Enter at least two letters, Work No or SRL.","warning");
- const s=data();
- if(!s||!core()?.valid(s))return showAlert("ERP records are still loading. Open Dashboard once and retry.","warning");
+ // Voice-to-ERP drafts are guided even while the Cloud/device snapshot is loading.
+ // Never block the New Work Order UI because search data was not loaded.
  const command=window.cfmJessiCommand?.handle?.(q);
+ const s=data();
+ if(!command?.handled&&(!s||!core()?.valid(s)))
+  return showAlert("ERP records are still loading. Open Dashboard once and retry.","warning");
  const message=command?.handled?command.reply:answer(q,s);
  chat.push({role:"user",text:q},{role:"assistant",text:message,source:command?.handled?"Jessi draft · Not saved":dataLabel()});
  chat=chat.slice(-max);
