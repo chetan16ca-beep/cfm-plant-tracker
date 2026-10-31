@@ -256,8 +256,9 @@ function send(){
  if(q.length<2)return showAlert("Enter at least two letters, Work No or SRL.","warning");
  const s=data();
  if(!s||!core()?.valid(s))return showAlert("ERP records are still loading. Open Dashboard once and retry.","warning");
- const message=answer(q,s);
- chat.push({role:"user",text:q},{role:"assistant",text:message,source:dataLabel()});
+ const command=window.cfmJessiCommand?.handle?.(q);
+ const message=command?.handled?command.reply:answer(q,s);
+ chat.push({role:"user",text:q},{role:"assistant",text:message,source:command?.handled?"Jessi draft · Not saved":dataLabel()});
  chat=chat.slice(-max);
  $("cfmAiQuestion").value="";showAlert("");render();
 }
