@@ -356,6 +356,54 @@ function applyUiDialogDraft(snap){
   }catch(e){}
   window.captureUiDialogState?.();
 }
+// V230: Multi-item PO drafts should NOT automatically reopen as modal dialogs
+// on every refresh. Keep the locally saved draft intact, but let the operator
+// choose Resume only when needed. Already-saved POs are linked to Pending Orders.
+function showPoDraftRecoveryNotice(snap){
+ if(!snap?.meta||snap.meta.type!=='multiPending')return;
+ try{
+  const id='cfmPoDraftRecover';
+  const prior=document.getElementById(id);if(prior)prior.remove();
+  const fields=snap.fields||{};
+  const party=String(fields.multiParty||'').trim();
+  const po=String(fields.multiPoNo||'').trim();
+  const normal=s=>String(s||'').trim().replace(/\s+/g,'').toUpperCase();
+  const existing=party&&po?(state.pending||[]).filter(r=>
+    normal(r.party)===normal(party)&&normal(r.poNo)===normal(po)):[];
+  const banner=document.createElement('section');
+  banner.id=id;
+  banner.setAttribute('role','status');
+  banner.style.cssText='position:fixed;z-index:2147483200;bottom:calc(env(safe-area-inset-bottom,0px) + 15px);left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(96vw,560px);max-height:38dvh;overflow:auto;padding:12px 14px;border:1px solid #89bed4;border-left:5px solid #0c94a0;border-radius:12px;background:#f5fbff;color:#17475a;box-shadow:0 8px 30px #082e4360;font:600 12px/1.5 system-ui';
+  const title=document.createElement('div');title.style.cssText='font-weight:900;font-size:13px;margin-bottom:4px';
+  title.textContent=existing.length?'✓ Existing PO already in Pending Orders':'PO Draft Available (not auto-opened)';
+  const detail=document.createElement('p');detail.style.cssText='margin:5px 0 10px;overflow-wrap:anywhere';
+  detail.textContent=(party||'Party not entered')+' • '+(po||'PO not entered')+
+    (existing.length?' • Work Nos: '+existing.slice(0,6).map(r=>r.workNo).join(', ')+'. Avoid saving again.':
+      ' • Your unfinished draft remains on this device. Resume only when you want to continue.');
+  banner.append(title,detail);
+  const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+  const primary=document.createElement('button');primary.type='button';
+  primary.style.cssText='padding:9px 12px;border:0;border-radius:7px;background:#137d96;color:white;font:800 12px system-ui;cursor:pointer';
+  if(existing.length){
+   primary.textContent='View Pending Orders';
+   primary.addEventListener('click',()=>{banner.remove();try{showView('pending')}catch(e){console.warn(e)}});
+  }else{
+   primary.textContent='Resume PO Draft';
+   primary.addEventListener('click',()=>{
+    banner.remove();
+    try{openMultiPendingForm();setTimeout(()=>applyUiDialogDraft(snap),120)}
+    catch(e){console.warn('PO draft resume failed',e);toast('PO draft could not be resumed.')}
+   });
+  }
+  const dismiss=document.createElement('button');dismiss.type='button';
+  dismiss.textContent='Dismiss (keep draft)';
+  dismiss.style.cssText='padding:9px 12px;border:1px solid #a9cad6;border-radius:7px;background:#fff;color:#28556c;font:700 12px system-ui';
+  dismiss.addEventListener('click',()=>banner.remove());
+  actions.append(primary,dismiss);
+  banner.append(actions);
+  document.body.append(banner);
+ }catch(e){console.warn('Nonblocking PO recovery notice failed',e)}
+}
 function restoreUiDialogSnapshot(snap){
   if(!snap?.meta)return;
   if(Date.now()-Number(snap.at||0)>12*60*60*1000){safeStorage.removeItem(UI_DIALOG_KEY);return}
@@ -370,7 +418,11 @@ function restoreUiDialogSnapshot(snap){
       }
       openPendingForm(i);
     }else if(m.type==='multiPending'){
-      openMultiPendingForm();
+      // The previous auto-restore trapped operators in the same old PO modal
+      // after every upgrade/reload. Leave the draft safely stored; show an
+      // optional nonblocking recovery action instead.
+      showPoDraftRecoveryNotice(snap);
+      return;
     }else if(m.type==='store'){
       let i=null;
       if(m.i!==null&&m.i!==undefined){
