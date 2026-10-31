@@ -149,7 +149,7 @@ function updateDraft(){
  cancel.addEventListener('click',()=>{draft=null;box.remove()});
  actions.append(preview,cancel);box.append(actions);
  showIssues();
- box.scrollIntoView({block:'nearest'});
+ try{box.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(_){}
 }
 async function suggestNextNumber(){
  const button=$('cfmJessiNextWorkNo');
@@ -415,17 +415,38 @@ function followup(text){
  }
  if(!changed.length)return null;
  stamp++;
- Promise.resolve().then(updateDraft);
+ try{updateDraft()}catch(err){console.error('Jessi follow-up draft UI failed',err)}
  return {handled:true,reply:'Jessi ne '+changed.join(', ')+' draft mein add kiya. '+speakable(draft.kind,c),kind:draft.kind};
+}
+function showDraft(kind,info){
+ if(kind!=='order'&&kind!=='cutting')return null;
+ const value=info||fields('');
+ if(kind==='order'&&!Object.prototype.hasOwnProperty.call(value,'description'))value.description='';
+ draft={kind,value};stamp++;
+ // Render synchronously while the Jessi dialog exists: do not depend on
+ // a deferred microtask that might be delayed by browser speech activity.
+ try{updateDraft()}catch(err){
+  console.error('Jessi draft UI failed',err);
+  return {handled:true,kind,reply:'Jessi draft screen could not open: '+String(err?.message||err)+'. Try refreshing V220. No data was saved.',error:true};
+ }
+ const box=$('cfmJessiDraft');
+ if(!box){
+  return {handled:true,kind,reply:'Draft module loaded but panel missing. Reopen Jessi and refresh V220. No data saved.',error:true};
+ }
+ return {handled:true,kind,reply:speakable(kind,value),draftShown:true};
 }
 function handle(text){
  const kind=classify(text);
  if(!kind)return followup(text);
  const value=fields(text);
  if(kind==='order')value.description='';
- draft={kind,value};stamp++;
- Promise.resolve().then(updateDraft);
- return {handled:true,reply:speakable(kind,value),kind};
+ return showDraft(kind,value);
 }
-window.cfmJessiCommand=Object.freeze({handle,fields,classify,check});
+window.cfmJessiNewWorkDraft=function(){
+ return showDraft('order',{workNo:'',party:'',qty:null,po:'',description:'',cloth:'',srlNo:'',length:null,width:null,usedMtr:null});
+};
+window.cfmJessiNewCuttingDraft=function(){
+ return showDraft('cutting',{workNo:'',party:'',qty:null,po:'',description:'',cloth:'',srlNo:'',length:null,width:null,usedMtr:null});
+};
+window.cfmJessiCommand=Object.freeze({handle,fields,classify,check,showDraft});
 })();
