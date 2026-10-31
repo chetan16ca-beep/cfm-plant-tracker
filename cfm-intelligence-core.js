@@ -101,13 +101,27 @@ function spec(text){
  const anti=/\b(?:NON[\s-]*ANTI[\s-]*STATIC|NON[\s-]*ANTISTATIC|WITHOUT\s+ANTISTATIC)\b/i.test(input)?'NON ANTISTATIC':
    /\bANTI[\s-]*STATIC\b/i.test(input)?'ANTISTATIC':'';
  const description=line(/(?:item\s*description|product\s*description|description|material\s*description)\s*[:=\-]+\s*([^\n\r]{4,230})/i);
- const cloth=line(/(?:cloth\s*(?:code|quality)|fabric\s*(?:code|type)|material\s*code)\s*[:=\-\s]+\s*([A-Z0-9][A-Z0-9\s-]{1,35})/i);
+ const cloth=line(/(?:cloth\s*(?:code|quality)|fabric\s*(?:code|type)|material\s*code)\s*[:=\-\s]+\s*([A-Z0-9][A-Z0-9 \t-]{1,35})/i);
  return {qty:qty?Number(qty):null,po,date,width:width?Number(width):null,micron:micron?Number(micron):null,anti,description,cloth};
 }
 function existingSpec(o){
  const t=[o.description,o.description2,o.cloth].filter(Boolean).join(' ');
  const x=spec(t);
  return {qty:o.orderQty===''?null:num(o.orderQty),po:clean(o.poNo),date:clean(o.deliveryDate),width:o.width===''?null:num(o.width),micron:x.micron,anti:x.anti,description:clean(o.description),cloth:clean(o.cloth)};
+}
+function comparisonDate(v){
+ const z=clean(v);
+ const parts=z.split(/[-/.]/);
+ if(parts.length!==3)return norm(z);
+ let y,m,d;
+ if(parts[0].length===4){[y,m,d]=parts}
+ else if(parts[2].length===4){[d,m,y]=parts} // Indian PO format DD/MM/YYYY.
+ else return norm(z);
+ const mon=Number(m),day=Number(d);
+ if(!/^\d{4}$/.test(y)||mon<1||mon>12||day<1||day>31)return norm(z);
+ const dt=new Date(Date.UTC(Number(y),mon-1,day));
+ if(dt.getUTCFullYear()!==Number(y)||dt.getUTCMonth()!==mon-1||dt.getUTCDate()!==day)return norm(z);
+ return y+'-'+String(mon).padStart(2,'0')+'-'+String(day).padStart(2,'0');
 }
 function compare(o,raw){
  if(!o)return {error:'Select an existing Work Order'};
@@ -118,7 +132,8 @@ function compare(o,raw){
    const old=a[key],fresh=b[key];
    if(fresh===''||fresh===null||fresh===undefined)return {key,label,old,fresh:'Not detected',status:'unverified'};
    if(old===''||old===null||old===undefined)return {key,label,old:old??'Not recorded',fresh,status:'added'};
-   return {key,label,old,fresh,status:norm(old)===norm(fresh)?'same':'changed'};
+   const equivalent=key==='date' ? comparisonDate(old)===comparisonDate(fresh) : norm(old)===norm(fresh);
+   return {key,label,old,fresh,status:equivalent?'same':'changed'};
  });
  return {old:a,newer:b,rows,changes:rows.filter(x=>x.status==='changed'||x.status==='added').length,unchecked:rows.filter(x=>x.status==='unverified').length};
 }
