@@ -754,7 +754,11 @@ $('saveFormBtn').addEventListener('click',()=>{
     if(ok!==false){
       const nextCutting=dialogResumeMeta?.type==='cutting' && dialogResumeMeta?.i==null;
       const priorCutting=nextCutting?{...obj}:null;
-      $('editDialog').close();try{renderAll()}catch(e){}
+      const wasMultiPO=dialogResumeMeta?.type==='multiPending';
+      $('editDialog').close();
+      // saveMultiPoItems already persisted and scheduled its own UI update.
+      // Avoid a synchronous full ERP render in the Save click handler.
+      if(!wasMultiPO)try{renderAll()}catch(e){console.error('Save screen refresh failed',e)}
       if(nextCutting){
         const reopenNext=()=>{
           try{
