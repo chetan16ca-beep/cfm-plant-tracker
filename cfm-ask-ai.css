@@ -366,3 +366,28 @@
 @media(prefers-reduced-motion:reduce){
  #cfmJessiFloat{transition:none!important}
 }
+
+
+/* Jessi V223: direct tap-to-play and voice diagnostics for mobile browsers. */
+#cfmAiDialog .cfm-ai-source-row #cfmJessiReplay,
+#cfmAiDialog .cfm-ai-source-row #cfmJessiTestVoice{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ min-height:36px!important;padding:8px 11px!important;white-space:nowrap!important;
+ font:850 11px/1.2 "Segoe UI",Arial,sans-serif!important;
+ border:1px solid #7fc1b2!important;border-radius:7px!important;
+ background:#e6f8f2!important;color:#106951!important;cursor:pointer!important
+}
+#cfmAiDialog .cfm-ai-source-row #cfmJessiReplay{
+ background:linear-gradient(120deg,#09587b,#0c9288)!important;
+ color:#fff!important;border-color:#0b8d91!important
+}
+#cfmAiDialog .cfm-ai-source-row #cfmJessiReplay:focus-visible,
+#cfmAiDialog .cfm-ai-source-row #cfmJessiTestVoice:focus-visible{
+ outline:2px solid #48abaf!important;outline-offset:2px!important
+}
+@media(max-width:620px){
+ #cfmAiDialog .cfm-ai-source-row #cfmJessiReplay,
+ #cfmAiDialog .cfm-ai-source-row #cfmJessiTestVoice{
+  padding:8px 9px!important;font-size:11px!important;min-height:38px!important
+ }
+}
