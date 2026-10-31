@@ -61,9 +61,26 @@ function classify(text){
  if(work&&create)return 'order';
  return '';
 }
+function missingOf(d){
+ const c=d.value, missing=[];
+ if(!/^CFM-\d{1,6}$/.test(norm(c.workNo)))missing.push('Work No');
+ if(!Number.isSafeInteger(number(c.qty))||!(number(c.qty)>0))missing.push('Quantity');
+ if(d.kind==='order'){
+  if(!String(c.party||'').trim())missing.push('Party');
+ }else{
+  if(!String(c.srlNo||'').trim())missing.push('SRL');
+  if(!(number(c.length)>0)||!(number(c.width)>0))missing.push('Cutting size L×W');
+  if(!(number(c.usedMtr)>0))missing.push('Measured MTR');
+ }
+ return missing;
+}
 function speakable(kind,info){
- if(kind==='order')return 'Work Order ka draft tayyar hai. Review karke form kholo aur Save khud dabao. Koi entry abhi save nahi hui.';
- return 'Cutting draft ready hai. Actual SRL width aur physically measured meter verify karna zaroori hai. Abhi stock minus nahi hua.';
+ const remaining=missingOf({kind,value:info});
+ if(remaining.length)
+  return 'Jessi ready hai. '+(kind==='order'?'Work Order':'Cutting Entry')+
+   ' banane ke liye '+remaining.join(', ')+' batao. Ek-ek karke bhi bol sakte ho. Draft neeche khul gaya hai. Save abhi nahi hua.';
+ return (kind==='order'?'Work Order':'Cutting')+
+  ' draft ready hai. Neeche details check karo, confirmation select karo, phir Verify aur Open Form dabao. Final Save aapko karna hoga.';
 }
 function panel(){
  const dialog=$('cfmAiDialog'),chat=dialog?.querySelector('.cfm-ai-chat');
@@ -342,13 +359,37 @@ async function reviewAndOpen(){
  }catch(err){alert('Jessi: '+(err?.message||'Could not open ERP form')+'. No record was saved automatically.')}
  finally{preparing=false;if(b&&b.isConnected){b.disabled=false;b.textContent=d.kind==='order'?'Verify & Open Work Order Form':'Verify & Open Cutting Form'}}
 }
+function followup(text){
+ if(!draft)return null;
+ const q=clean(text),u=norm(q);
+ // Never steal normal informational questions from the ERP record assistant.
+ if(/\b(STATUS|DETAIL|DETAILS|SEARCH|FIND|SHOW|STOCK|PENDING|BALANCE|REPORT|SUMMARY)\b|स्थिति|दिखाओ|स्टॉक|પેન્ડિંગ/.test(u))return null;
+ const extracted=fields(q),c=draft.value,changed=[];
+ for(const key of ['workNo','party','po','cloth','srlNo','priority']){
+  if(extracted[key]&&String(extracted[key]).trim()){c[key]=extracted[key];changed.push(key)}
+ }
+ for(const key of ['qty','length','width','usedMtr']){
+  if(Number.isFinite(extracted[key])&&extracted[key]>0){c[key]=extracted[key];changed.push(key)}
+ }
+ if(!changed.length){
+  const val=q.trim();
+  const m=val.match(/^(?:work\s*(?:order|no|number)|number|वर्क\s*ऑर्डर)?\s*#?\s*(\d{1,6})$/i);
+  if(m&&(!c.workNo||!/^CFM-\d+$/.test(norm(c.workNo)))){c.workNo='CFM-'+m[1];changed.push('workNo')}
+  const names=[...new Set(arr(source(),'pending').map(x=>String(x.party||'').trim()).filter(Boolean))];
+  const matched=names.find(x=>norm(x)===norm(val));
+  if(!changed.length&&matched&&draft.kind==='order'){c.party=matched;changed.push('party')}
+ }
+ if(!changed.length)return null;
+ stamp++;
+ Promise.resolve().then(updateDraft);
+ return {handled:true,reply:'Jessi ne '+changed.join(', ')+' draft mein add kiya. '+speakable(draft.kind,c),kind:draft.kind};
+}
 function handle(text){
  const kind=classify(text);
- if(!kind)return null;
+ if(!kind)return followup(text);
  const value=fields(text);
  if(kind==='order')value.description='';
  draft={kind,value};stamp++;
- // Some speech commands omit part details — force explicit entry in preview, no guessing.
  Promise.resolve().then(updateDraft);
  return {handled:true,reply:speakable(kind,value),kind};
 }
