@@ -103,7 +103,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker" allow="microphone; autoplay"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V224</div>
+<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V225</div>
 <script src="./backup-safe.js?v=3"></script>
 <button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
@@ -399,75 +399,6 @@ form.addEventListener('submit',ev=>{ev.preventDefault();const wo=form.elements.w
 document.getElementById('cfmLabelExport').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({app:'CFM Label Register',version:1,rows:get()},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='CFM-Label-Issued.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)});
 document.getElementById('cfmLabelImportButton').addEventListener('click',()=>document.getElementById('cfmLabelImportFile').click());
 document.getElementById('cfmLabelImportFile').addEventListener('change',async ev=>{const file=ev.target.files[0];if(!file)return;try{const p=JSON.parse(await file.text());if(p.app!=='CFM Label Register'||!Array.isArray(p.rows))throw Error('Invalid backup file');const a=get(),ids=new Set(a.map(x=>[x.wo,x.qty,x.to,x.date,x.createdAt].join('|')));let n=0;for(const x of p.rows){if(!x||typeof x.wo!=='string'||!Number.isInteger(Number(x.qty))||Number(x.qty)<1)continue;const id=[x.wo,x.qty,x.to,x.date,x.createdAt].join('|');if(!ids.has(id)){a.push(x);ids.add(id);n++}}if(n&&confirm('Import '+n+' new label records?')){localStorage.setItem(key,JSON.stringify(a));draw()}else if(!n)alert('No new label records')}catch(e){alert('Import error: '+e.message)}ev.target.value=''});
-})();
-</script>
-
-<!-- CFM meter verification reminder: display-only, does not modify ERP inventory -->
-<style id="cfm-meter-pending-style">
-#cfmMeterPendingBtn{position:fixed;left:12px;top:calc(env(safe-area-inset-top,0px) + 10px);z-index:999998;background:#fff3d6;color:#754600;border:1px solid #e6b85e;border-radius:12px;padding:9px 12px;font:700 12px system-ui;box-shadow:0 3px 12px #0002;cursor:pointer}
-#cfmMeterPendingPanel{position:fixed;z-index:999999;inset:8% 5%;max-width:600px;margin:auto;overflow:auto;background:#fff;color:#182433;border:1px solid #d8e2ea;border-radius:16px;padding:18px;box-shadow:0 10px 50px #0006;font:14px system-ui}
-#cfmMeterPendingPanel[hidden]{display:none!important}
-#cfmMeterPendingPanel table{border-collapse:collapse;width:100%;font-size:13px}#cfmMeterPendingPanel td,#cfmMeterPendingPanel th{padding:9px;border-bottom:1px solid #e6edf2;text-align:left}#cfmMeterPendingPanel button{padding:8px 12px;border:1px solid #abc9e2;border-radius:8px;background:#eef7ff;cursor:pointer}
-</style>
-<button id="cfmMeterPendingBtn" type="button">⏳ Cutting MTR Pending · Loading</button>
-<section id="cfmMeterPendingPanel" hidden role="dialog" aria-label="Meter Verification Pending">
-<button id="cfmMeterPendingClose" type="button" style="float:right">✕ Close</button>
-<h2 style="margin-top:2px">⏳ Cutting MTR Pending — Live</h2>
-<p style="font-size:13px;color:#395468">Every row below is a saved Cutting photo entry whose cloth MTR has <b>not</b> been deducted. Search by Work No, Party or SRL. This is read-only.</p>
-<input id="cfmCuttingPendingSearch" type="search" placeholder="Search Work No / Party / SRL…" aria-label="Find pending cutting" style="box-sizing:border-box;width:100%;padding:11px;border-radius:9px;border:1px solid #b4cfe0;margin:3px 0 12px"/>
-<div id="cfmCuttingPendingLive" aria-live="polite">Opening live Cutting records…</div>
-<h3 style="margin:20px 0 6px">Separate reminder — 12 unmatched physical SRLs (27 Oct)</h3>
-<p>These OPEN serials are listed on physical register pages 03/04 but were not matched in the current Cloud Store records. <b>Physical meter must be checked.</b> This is a reminder only; no stock, cutting, or work-order data is changed.</p>
-<table><thead><tr><th>OPEN SRL</th><th>Photo Page</th><th>Action</th></tr></thead><tbody>
-<tr><td>CFM/11 (0011)</td><td>03</td><td>Check physical meter / serial format</td></tr>
-<tr><td>0035</td><td>03</td><td>Check physical meter</td></tr>
-<tr><td>0047</td><td>03</td><td>Check physical meter</td></tr>
-<tr><td>0059</td><td>03</td><td>Check physical meter</td></tr>
-<tr><td>CFM/108 (0108)</td><td>03</td><td>Check physical meter / serial format</td></tr>
-<tr><td>0130</td><td>03</td><td>Check physical meter</td></tr>
-<tr><td>CFM/131 (0131)</td><td>03</td><td>Check physical meter / serial format</td></tr>
-<tr><td>0248</td><td>03</td><td>Check physical meter</td></tr>
-<tr><td>0256</td><td>03</td><td>Check physical meter</td></tr>
-<tr><td>0072</td><td>04</td><td>Check physical meter</td></tr>
-<tr><td>0112</td><td>04</td><td>Check physical meter</td></tr>
-<tr><td>0551</td><td>04</td><td>Check physical meter / serial format</td></tr>
-</tbody></table><p style="font-size:12px;color:#596d7d">Verified against Cloud Store on 27 Oct 2026. Missing from this list does not prove deletion from the ERP. No automatic additions or deletions.</p>
-</section>
-<script>
-(function(){
-'use strict';
-const b=document.getElementById('cfmMeterPendingBtn'),p=document.getElementById('cfmMeterPendingPanel');
-const box=document.getElementById('cfmCuttingPendingLive'),search=document.getElementById('cfmCuttingPendingSearch');
-const safe=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'}[c]));
-function readRows(){
- try{
-   const w=document.getElementById('app')?.contentWindow;
-   const rows=w?.cfmGetPendingCuttingRows?.();
-   return Array.isArray(rows)?rows:null;
- }catch(_){return null}
-}
-function refresh(){
- const all=readRows();
- if(!all){b.textContent='⏳ Cutting MTR Pending · Loading';if(!p.hidden)box.textContent='ERP is still opening or syncing. Reopen this panel after the ERP loads.';return}
- b.textContent='⏳ Cutting MTR Pending · '+all.length;
- if(p.hidden)return;
- const needle=search.value.trim().toLowerCase();
- const rows=all.filter(r=>[r.workNo,r.party,r.srlNo,r.cloth,r.part,r.reason].some(s=>String(s||'').toLowerCase().includes(needle)));
- const orders=new Set(all.map(r=>r.workNo));
- let markup='<p style="font-weight:700;color:#7b4e09;margin:5px 0 12px">'+all.length+' pending Cutting lines · '+orders.size+' Work Orders · '+rows.length+' shown</p>';
- if(!rows.length)markup+='<p>No matching pending cutting lines.</p>';
- else markup+='<div style="overflow-x:auto"><table style="min-width:540px"><thead><tr><th>Work / Party</th><th>SRL</th><th>Cut Details</th><th>Reason Pending</th></tr></thead><tbody>'+
-   rows.map(r=>'<tr><td><b>'+safe(r.workNo)+'</b><div style="font-size:11px;color:#567">'+safe(r.party)+'</div></td><td>'+safe(r.srlNo||'Not entered')+
-   '<div style="font-size:11px;color:#567">'+safe(r.cloth)+'</div></td><td>'+safe(r.part)+' · '+safe(r.size)+'<div>Qty '+safe(r.qty)+
-   (r.clothWidth?' · Roll '+safe(r.clothWidth)+'″':'')+'</div></td><td>'+safe(r.reason)+'</td></tr>').join('')+'</tbody></table></div>';
- box.innerHTML=markup;
-}
-b.addEventListener('click',()=>{p.hidden=false;refresh();search.focus()});
-document.getElementById('cfmMeterPendingClose').addEventListener('click',()=>p.hidden=true);
-search.addEventListener('input',refresh);
-document.getElementById('app').addEventListener('load',()=>{setTimeout(refresh,1000);setTimeout(refresh,4500)});
-setInterval(refresh,15000);
-refresh();
 })();
 </script>
 
