@@ -298,3 +298,61 @@
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
   }
 }
+
+
+/* V250 addendum: Forge workspace and intelligence tiles were the largest PC viewport users. */
+@media screen and (min-width:1050px){
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus > #cfmSapWorkspace{
+    margin:0 0 6px!important;padding:0!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus:not(.cfm-pc-dashboard-expanded) #cfmSapWorkspace .sap-intro,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus:not(.cfm-pc-dashboard-expanded) #cfmSapWorkspace .cfm-forge-ribbon,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus:not(.cfm-pc-dashboard-expanded) #cfmSapWorkspace .sap-tile-grid,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus:not(.cfm-pc-dashboard-expanded) #cfmSapWorkspace .sap-workspace-note,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus:not(.cfm-pc-dashboard-expanded) #cfmSapWorkspace #cfmIntelLauncher,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus:not(.cfm-pc-dashboard-expanded) #cfmSapWorkspace .sap-section-title:not(:has(.sap-cloud-verify)){
+    display:none!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmSapWorkspace .sap-section-title:has(.sap-cloud-verify){
+    display:flex!important;align-items:center!important;justify-content:space-between!important;
+    font-size:12px!important;line-height:1.2!important;margin:0 0 5px!important;padding:0 0 0 8px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmSapWorkspace .sap-section-title:before{
+    top:0!important;bottom:0!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmSapWorkspace .sap-cloud-verify{
+    min-height:27px!important;padding:4px 8px!important;font-size:10px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmSapWorkspace .sap-cloud-status{
+    font-size:10px!important;padding:4px 8px!important;line-height:1.3!important;
+    margin:0 0 6px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmSapWorkspace .sap-metrics{
+    display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    gap:6px!important;margin:0 0 6px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmSapWorkspace .sap-metric{
+    min-height:55px!important;padding:7px 9px!important;margin:0!important;
+    border-radius:8px!important;border-top-width:2px!important;box-shadow:none!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmSapWorkspace .sap-metric span{
+    font-size:10px!important;line-height:1.2!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmSapWorkspace .sap-metric strong{
+    display:block!important;font-size:20px!important;line-height:1.1!important;
+    margin:3px 0 0!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmSapWorkspace .sap-metric small{
+    display:none!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmCommandLaunch203{
+    width:auto!important;min-height:29px!important;padding:5px 10px!important;
+    margin:0 0 6px!important;border:1px solid #aacfe1!important;
+    border-radius:7px!important;font-size:11px!important;box-shadow:none!important;
+  }
+}
+@media screen and (min-width:1050px) and (max-width:1199px){
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmSapWorkspace .sap-metrics{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
