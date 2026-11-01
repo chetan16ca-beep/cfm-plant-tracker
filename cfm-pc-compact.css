@@ -181,3 +181,120 @@
 @media screen and (max-width:1049px){
  /* Existing phone/tablet interface remains untouched. */
 }
+
+
+/* V250 — dashboard focus on PC: remove duplicate visual noise, NOT records or actions.
+   More Tools reopens original panels and module buttons; phone UI is untouched. */
+@media screen and (min-width:1050px){
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus{
+    --cfm-dash-gap:7px;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus > .section-head{
+    display:flex!important;align-items:center!important;gap:8px!important;
+    min-height:47px!important;padding:6px 10px!important;margin:0 0 7px!important;
+    border-radius:9px!important;flex-wrap:wrap!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus > .section-head h2{
+    font-size:18px!important;margin:0!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus > .section-head p{
+    display:none!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus > .section-head > button{
+    min-height:29px!important;padding:5px 9px!important;font-size:11px!important;
+  }
+  body.cfm-forge #view-dashboard .cfm-pc-more-toggle{
+    background:#ecf7fb!important;color:#155a7c!important;border:1px solid #b5d5e5!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus > .cfm-mobile-sync-actions{
+    display:flex!important;min-height:0!important;margin:0 0 6px!important;padding:0!important;
+    justify-content:flex-end!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-mobile-sync-widget{
+    min-height:29px!important;padding:3px 9px!important;border-radius:7px!important;
+    gap:5px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-mobile-sync-icons{font-size:14px!important}
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-mobile-sync-copy strong{font-size:10px!important}
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-mobile-sync-copy small{font-size:9px!important}
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-mobile-sync-refresh{font-size:13px!important}
+
+  /* Sidebar already contains New Order / Store / Reports / Settings. */
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .photo-quick-actions{
+    display:none!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .command-hero{
+    padding:9px 12px!important;min-height:0!important;margin:0 0 7px!important;
+    display:flex!important;flex-direction:row!important;align-items:center!important;
+    justify-content:space-between!important;gap:12px!important;border-radius:9px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .command-eyebrow,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .command-hero p,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .command-tags{display:none!important}
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .command-hero h3{
+    font-size:18px!important;line-height:1.3!important;margin:0!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-main-actions{
+    display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:6px!important;margin:0 0 8px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-main-action,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-cutting-print-primary{
+    grid-column:auto!important;min-height:48px!important;padding:7px 9px!important;
+    border-radius:8px!important;gap:7px!important;box-shadow:none!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-main-action .cfm-ma-icon{
+    font-size:19px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-main-action strong,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-cutting-print-primary strong{
+    font-size:11.5px!important;line-height:1.25!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-main-action small,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-main-action .cfm-ma-arrow{
+    display:none!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmPhotoStockPanel{
+    margin:0 0 8px!important;padding:9px 11px!important;border-radius:9px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmPhotoStockPanel h3{
+    font-size:14px!important;margin:0 0 3px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmPhotoStockPanel p{
+    font-size:10.5px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmPhotoStockPanel #cfmPhotoStockSummary{
+    font-size:11.5px!important;line-height:1.35!important;margin-top:5px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus #cfmPhysicalStockDashboard{
+    margin:5px 0!important;padding:9px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus > .panel:has(#dashPending){
+    padding:9px 10px!important;margin:0 0 7px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus > .panel:has(#dashPending) .section-head{
+    padding:0!important;margin:0 0 5px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus > .panel:has(#dashPending) h3{
+    font-size:14px!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus > .panel:has(#dashPending) .section-head p{
+    display:none!important;
+  }
+  /* Optional heavy blocks stay accessible using More Tools (not removed). */
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus:not(.cfm-pc-dashboard-expanded) > .exec-group,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus:not(.cfm-pc-dashboard-expanded) > .legacy-full-panel,
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus:not(.cfm-pc-dashboard-expanded) > .panel:has(#dashWorkerSummary),
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus:not(.cfm-pc-dashboard-expanded) > .panel:has(#dashPlanning),
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus:not(.cfm-pc-dashboard-expanded) > .panel:has(#dashCutting){
+    display:none!important;
+  }
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus.cfm-pc-dashboard-expanded > .exec-group{
+    margin-top:12px!important;
+  }
+}
+@media screen and (min-width:1050px) and (max-width:1199px){
+  body.cfm-forge #view-dashboard.cfm-pc-dashboard-focus .cfm-main-actions{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
