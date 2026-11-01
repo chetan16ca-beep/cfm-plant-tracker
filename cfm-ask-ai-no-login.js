@@ -70,7 +70,7 @@ function hideOuterShell(){
  try{
   const doc=window.parent.document;
   hiddenParents=[];
-  for(const id of ["cfmMeterPendingBtn","cfmEmergencyExport","cfmUpdateVersion"]){
+  for(const id of ["cfmMeterPendingBtn","cfmEmergencyExport","cfmUpdateVersion","cfmResolveWoButton"]){
    const x=doc.getElementById(id);
    if(x){hiddenParents.push([x,x.style.display]);x.style.setProperty("display","none","important")}
   }
@@ -95,9 +95,9 @@ function dialog(){
  '<div class="cfm-ai-source-row"><span id="cfmAiSource">This device (saved records)</span><button type="button" id="cfmAiReadCloud">Read Cloud</button><button type="button" id="cfmAiUseDevice" hidden>Use Device</button></div>',
  '<div id="cfmAiMessages" class="cfm-ai-messages" aria-live="polite"></div>',
  '<form class="cfm-ai-compose" id="cfmAiQuestionForm"><textarea id="cfmAiQuestion" maxlength="800" rows="2" placeholder="Example: CFM-677 mein kaunsa SRL use hua?"></textarea><button id="cfmAiSend" type="submit">Ask</button></form>',
- '<p class="cfm-ai-note">Jessi is a no-login, rule-based ERP record voice assistant (not connected to OpenAI). Voice input/output depend on browser support. She cannot change any ERP data.</p>',
+ '<p class="cfm-ai-note">Jessi is a no-login, rule-based ERP record voice assistant (not connected to OpenAI). Voice input/output depend on browser support. She can prepare a Work Order draft for your review, but cannot directly save or change ERP data.</p>',
  '</div></div>',
- '<footer class="cfm-ai-footer"><span>Read-only. No Work Order, Cutting or Stock edits.</span><button type="button" id="cfmAiReset">Clear Chat</button></footer>'
+ '<footer class="cfm-ai-footer"><span>Read-only answers. New Work Order drafts need your review and Save in ERP; no automatic stock edits.</span><button type="button" id="cfmAiReset">Clear Chat</button></footer>'
  ].join("");
  document.body.append(d);
  $("cfmAiExit").addEventListener("click",()=>d.close());
