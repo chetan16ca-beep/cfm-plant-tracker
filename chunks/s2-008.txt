@@ -585,25 +585,34 @@ function cuttingUsedMtr(r){
 }
 function srlNewUsedMtr(srlNo){return state.cutting.filter(r=>normalize(r.srlNo)===normalize(srlNo)&&!r.wastage&&(r._autoPendingLinked===true||r._trackSrl===true)).reduce((a,r)=>a+cuttingUsedMtr(r),0)}
 function srlUsedMtr(srlNo){const st=state.store.find(x=>normalize(x.srlNo)===normalize(srlNo));if(st&&st.excelLiveBalanceMtr!==''&&st.excelLiveBalanceMtr!=null){return Math.max(0,num(st.openingMtr)-num(st.excelLiveBalanceMtr))+srlNewUsedMtr(srlNo)}return state.cutting.filter(r=>normalize(r.srlNo)===normalize(srlNo)&&!r.wastage).reduce((a,r)=>a+cuttingUsedMtr(r),0)}
+// V247: A single source of truth powers Dashboard, Physical SRL Tracker,
+// Store, Cutting, Width Report and Stock Summary. Historical cutting before
+// the 27-Oct physical count must not be deducted from that count a second time.
+function physicalStockRows(){
+  const store=Array.isArray(state.store)?state.store:[];
+  const reconciled=store.some(r=>r._physicalReconStatus);
+  return reconciled?store.filter(r=>['COUNTED','ESTIMATED','METER_PENDING'].includes(r._physicalReconStatus)):store;
+}
+function physicalStockPostCountUsed(r){
+  if(!r||!['COUNTED','ESTIMATED','METER_PENDING'].includes(r._physicalReconStatus))return srlUsedMtr(r?.srlNo);
+  const cutDate=String(r._physicalCountDate||r._physicalEstimateBaselineDate||'2026-10-27');
+  const srl=normalize(r.srlNo);
+  return (state.cutting||[]).filter(x=>normalize(x.srlNo)===srl&&!x.wastage&&String(x.date||x.cutDate||'')>cutDate)
+    .reduce((sum,x)=>sum+cuttingUsedMtr(x),0);
+}
+function physicalStockBaseline(r){
+  if(r?._physicalReconStatus==='COUNTED')return num(r._physicalCountMtr??r.openingMtr);
+  if(r?._physicalReconStatus==='ESTIMATED')return num(r._physicalEstimateMtr??r.openingMtr);
+  if(r?._physicalReconStatus==='METER_PENDING'||r?._physicalReconStatus==='NOT_PHYSICAL')return 0;
+  return num(r?.openingMtr);
+}
 function srlBalance(r){
-  // V246: operator-authorized, explicitly ESTIMATED 27-Oct physical meter for
-  // rolls without measured meters. Only subtract cutting after the baseline.
-  // Never treat these provisional numbers as physical measurements.
-  if(r?._physicalReconStatus==='ESTIMATED' && Number.isFinite(Number(r._physicalEstimateMtr)) && Number(r._physicalEstimateMtr)>0){
-    const usedAfterCount=(state.cutting||[]).filter(x=>normalize(x.srlNo)===normalize(r.srlNo)&&!x.wastage&&String(x.date||x.cutDate||'')>'2026-10-27').reduce((sum,x)=>sum+cuttingUsedMtr(x),0);
-    return Math.max(0,Number(r._physicalEstimateMtr)-usedAfterCount);
-  }
-  const id=String(r.srlNo||'').split('/').pop().replace(/^0+/,'');
-  const photos=(window.CFM_PHYSICAL_20261027?.rows||[]);
-  const matches=photos.filter(x=>String(x.srl).replace(/^0+/,'')===id);
-  // V242: User chose ERP Store SRL width when the physical sheet width differs.
-  // A unique 27-Oct meter reading belongs to the same SRL regardless of the
-  // old photo's width label. Duplicate/unknown readings remain excluded.
-  // The actual Cutting meter calculation uses ERP Store width (above).
-  if(matches.length===1&&matches[0].meters!==null&&Number.isFinite(Number(matches[0].meters))&&num(r.width)>0){
-    const usedAfterCount=(state.cutting||[]).filter(x=>normalize(x.srlNo)===normalize(r.srlNo)&&!x.wastage&&String(x.date||x.cutDate||'')>'2026-10-27').reduce((sum,x)=>sum+cuttingUsedMtr(x),0);
-    return Math.max(0,Number(matches[0].meters)-usedAfterCount);
-  }
+  if(!r)return 0;
+  // Physical reconciliation is authoritative, even on devices holding old Excel data.
+  if(r._physicalReconStatus==='NOT_PHYSICAL'||r._physicalReconStatus==='METER_PENDING')return 0;
+  if(r._physicalReconStatus==='COUNTED'||r._physicalReconStatus==='ESTIMATED')
+    return Math.max(0,physicalStockBaseline(r)-physicalStockPostCountUsed(r));
+  // Legacy records before physical reconciliation: fallback retained for recovery only.
   if(r.excelLiveBalanceMtr!==''&&r.excelLiveBalanceMtr!=null)return Math.max(0,num(r.excelLiveBalanceMtr)-srlNewUsedMtr(r.srlNo));
   return Math.max(0,num(r.openingMtr)-srlUsedMtr(r.srlNo));
 }
@@ -650,6 +659,70 @@ window.showView=function(name){
 document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 
 function kpi(label,value,sub='',target=''){const iconMap={"Pending Work Orders":"📋","Total Pending Qty":"🧮","Today's Cut Qty":"✂️","Open Store Balance":"📦","Action Required":"⚡","Bill Pending":"🧾","Challan Pending":"🚚","Docs Done":"✅","Total Work":"📊"}; const ico=iconMap[label]||"📌";const click=target?` onclick="showView('${target}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){showView('${target}')}"`:'';return `<div class="kpi ${target?'clickable':''}"${click}><div class="num">${esc(value)}</div><div class="label">${esc(label)}${sub?`<br>${esc(sub)}`:''}</div><div class="kpi-icon">${ico}</div></div>`}
+
+/* V247 Physical Stock Command Center. Read-only Cloud-derived material ledger. */
+let physicalDashboardQuery='';
+function physicalStockSummary(){
+  const rows=physicalStockRows();
+  const measured=rows.filter(r=>r._physicalReconStatus==='COUNTED');
+  const estimated=rows.filter(r=>r._physicalReconStatus==='ESTIMATED');
+  const real=measured.reduce((a,r)=>a+srlBalance(r),0);
+  const provisional=estimated.reduce((a,r)=>a+srlBalance(r),0);
+  const used=rows.reduce((a,r)=>a+physicalStockPostCountUsed(r),0);
+  return {rows,measured,estimated,real,provisional,total:real+provisional,used,
+    excluded:(state.store||[]).filter(r=>r._physicalReconStatus==='NOT_PHYSICAL').length};
+}
+window.cfmPhysicalStockSearch=function(v){
+  physicalDashboardQuery=String(v||'');
+  const box=$('cfmPhysicalStockResults');if(!box)return;
+  const q=normalize(physicalDashboardQuery);
+  const rows=physicalStockRows().filter(r=>!q||normalize([r.srlNo,r.quality,r.description,r.width].join(' ')).includes(q))
+     .sort((a,b)=>String(a.srlNo||'').localeCompare(String(b.srlNo||''),undefined,{numeric:true}));
+  const result=rows.slice(0,14).map(r=>{
+    const isEstimated=r._physicalReconStatus==='ESTIMATED';
+    const bal=srlBalance(r);
+    const label=isEstimated?'ESTIMATED':'MEASURED';
+    const css=isEstimated?'color:#7f560e;background:#fff4d6':'color:#175d39;background:#e7f8eb';
+    const used=physicalStockPostCountUsed(r);
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #e6edf2;padding:9px 0;flex-wrap:wrap">'+
+      '<div><b style="color:#154b78">'+esc(r.srlNo||'')+'</b><div style="font-size:11px;color:#506c80">'+esc(r.quality||'')+' • ERP Width '+fmt(r.width)+'″ • Cut used '+fmt(used)+' MTR</div></div>'+
+      '<div style="text-align:right"><b style="font-size:16px;color:#153c61">'+fmt(bal)+' MTR</b><div style="font-size:10px;padding:2px 6px;border-radius:6px;'+css+'">'+label+'</div></div></div>';
+  }).join('');
+  box.innerHTML=(result||'<div style="padding:12px">No matching physical SRL found</div>')+
+    (rows.length>14?'<div style="font-size:11px;color:#536d7d;margin:8px 0">Showing 14 of '+rows.length+' • Open Store for full list</div>':'');
+};
+function renderPhysicalStockDashboard(){
+  const dashboard=$('view-dashboard');if(!dashboard)return;
+  let panel=$('cfmPhysicalStockDashboard');
+  if(!panel){
+    panel=document.createElement('section');panel.id='cfmPhysicalStockDashboard';
+    panel.setAttribute('aria-label','Live Physical Stock, connected to Store and Cutting');
+    panel.style.cssText='margin:14px 0;padding:16px;border:1px solid #a8d6ef;border-left:5px solid #0b80c4;border-radius:15px;background:#f8fcff;box-shadow:0 5px 18px rgba(20,100,150,.10)';
+    const hero=dashboard.querySelector('.command-hero');
+    if(hero)hero.insertAdjacentElement('afterend',panel);else dashboard.prepend(panel);
+  }
+  const d=physicalStockSummary(),card=(label,value,bg)=>'<div style="background:'+bg+';border:1px solid #dbe8f0;border-radius:12px;padding:10px"><div style="font-size:11px;font-weight:700;color:#516d82">'+label+'</div><b style="font-size:clamp(18px,2.1vw,25px);color:#133d5b">'+value+'</b></div>';
+  panel.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><div><h3 style="margin:0;color:#154d77;font-size:18px">📦 LIVE PHYSICAL STOCK</h3><div style="font-size:12px;color:#527086">27-Oct baseline → cutting minus → current available • same as Store/Tracker</div></div>'+
+    '<button type="button" class="btn btn-sm btn-primary" onclick="manualCloudSync()">↻ Sync Cloud</button></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px;margin:13px 0">'+
+      card('TOTAL AVAILABLE',fmt(d.total)+' MTR','#e7f3ff')+
+      card('MEASURED STOCK',fmt(d.real)+' MTR','#effaf2')+
+      card('ESTIMATED STOCK',fmt(d.provisional)+' MTR','#fff9e9')+
+      card('PHYSICAL SRL',d.rows.length+' Rolls','#ffffff')+
+      card('CUTTING USED SINCE 27 OCT',fmt(d.used)+' MTR','#ffffff')+
+    '</div>'+
+    '<div style="font-size:12px;color:#526c80;margin:0 0 9px">'+d.measured.length+' measured + '+d.estimated.length+' user-estimated SRL • '+d.excluded+' old ERP SRL excluded from available stock. <b>Estimated MTR is not a physical measurement.</b></div>'+
+    '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px">'+
+      '<button class="btn btn-sm" type="button" onclick="showView(\'store\')">Full Physical Store</button>'+
+      '<button class="btn btn-sm" type="button" onclick="showView(\'srltracker\')">SRL Tracker</button>'+
+      '<button class="btn btn-sm" type="button" onclick="showView(\'stocksummary\')">Stock Summary</button>'+
+      '<button class="btn btn-sm" type="button" onclick="showView(\'cutting\')">Cutting</button></div>'+
+    '<label style="display:block;font-weight:700;color:#28516a;font-size:12px;margin:0 0 6px" for="cfmPhysicalStockFind">Search live SRL / Cloth / Width</label>'+
+    '<input id="cfmPhysicalStockFind" type="search" value="'+esc(physicalDashboardQuery)+'" placeholder="e.g. EFPPL03/0350, 333 ANT, 52" oninput="cfmPhysicalStockSearch(this.value)" style="width:100%;padding:10px;border:1px solid #bad7e7;border-radius:10px;background:#fff;box-sizing:border-box" />'+
+    '<div id="cfmPhysicalStockResults" style="max-height:260px;overflow-y:auto;margin-top:6px" aria-live="polite"></div>';
+  window.cfmPhysicalStockSearch(physicalDashboardQuery);
+}
+
 function renderDashboard(){
   // V181 Dashboard UI only: hide Pending Work Orders, Total Pending Qty and Open Store Balance cards.
   // Underlying pending orders, cutting entries and SRL stock remain untouched.
@@ -658,6 +731,7 @@ function renderDashboard(){
   const open=(state.pending||[]).filter(r=>hasOrderQty(r)&&pendingQty(r)>0&&!isArchived(r));
   const todayCut=state.cutting.filter(r=>r.date===todayISO()).reduce((a,r)=>a+num(r.cutQty),0);
   $('kpis').innerHTML=kpi("Today's Cut Qty",fmt(todayCut),'','cutting');
+  try{renderPhysicalStockDashboard()}catch(e){console.warn('Physical Stock dashboard failed',e)}
 
   const legacyData=loadExcelMirrorData?.();
   if($('dashLegacyAudit')&&legacyData){
