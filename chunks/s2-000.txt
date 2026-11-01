@@ -359,7 +359,7 @@
       <div class="panel">
         <div class="filters"><label style="font-weight:700">Print Date <input id="printDate" type="date" /></label></div>
         <div class="action-grid">
-          <button class="action-card" onclick="printDailyCuttingPlan()"><b>Daily Plant Cutting Plan</b><span>Excel-style • 5 works per page • 3 cutting rows</span></button>
+          <button class="action-card" onclick="printDailyCuttingPlan()"><b>Daily Plant Cutting Plan</b><span>NEW format • 4 works per A4 • 5 red-pen cutting rows</span></button>
           <button class="action-card" onclick="showView('deptwork')"><b>Daily Department Work Report</b><span>Person-wise • Given / Done / Pending • paper-style print</span></button>
           <button class="action-card" onclick="printTodayCutting()"><b>Daily Cutting Register</b><span>Selected date cutting entries</span></button>
           <button class="action-card" onclick="printOpenStock()"><b>OPEN SRL / Stock Print</b><span>Like Excel OPEN sheet • landscape</span></button>
