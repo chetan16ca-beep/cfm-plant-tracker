@@ -577,7 +577,9 @@ function cuttingUsedMtr(r){
   if(r._redPenVerified===true && Number.isFinite(Number(r._redPenUsedMtr)) && Number(r._redPenUsedMtr)>=0)return Number(r._redPenUsedMtr);
   const q=num(r.cutQty), l=num(r.length), h=num(r.height), layer=Math.max(1,num(r.layer)||1);
   const s=getStore(r.srlNo);
-  const width=num(r.plannedWidth)||num(s?.width);
+  // V242: Operator confirmed ERP Store SRL roll width is authoritative.
+  // Planned width describes the Work Order, not the cloth roll.
+  const width=num(s?.width)||num(r.plannedWidth);
   if(!(q>0&&l>0&&h>0&&width>0)) return 0;
   return (l*h*q*layer/width/39.37);
 }
@@ -587,9 +589,11 @@ function srlBalance(r){
   const id=String(r.srlNo||'').split('/').pop().replace(/^0+/,'');
   const photos=(window.CFM_PHYSICAL_20261027?.rows||[]);
   const matches=photos.filter(x=>String(x.srl).replace(/^0+/,'')===id);
-  // Use a verified, unique meter reading as the active opening for this SRL.
-  // Unknown or duplicate readings continue using the existing balance.
-  if(matches.length===1&&matches[0].meters!==null&&Number.isFinite(Number(matches[0].meters))&&Math.abs(Number(matches[0].width)-num(r.width))<0.11){
+  // V242: User chose ERP Store SRL width when the physical sheet width differs.
+  // A unique 27-Oct meter reading belongs to the same SRL regardless of the
+  // old photo's width label. Duplicate/unknown readings remain excluded.
+  // The actual Cutting meter calculation uses ERP Store width (above).
+  if(matches.length===1&&matches[0].meters!==null&&Number.isFinite(Number(matches[0].meters))&&num(r.width)>0){
     const usedAfterCount=(state.cutting||[]).filter(x=>normalize(x.srlNo)===normalize(r.srlNo)&&!x.wastage&&String(x.date||x.cutDate||'')>'2026-10-27').reduce((sum,x)=>sum+cuttingUsedMtr(x),0);
     return Math.max(0,Number(matches[0].meters)-usedAfterCount);
   }
