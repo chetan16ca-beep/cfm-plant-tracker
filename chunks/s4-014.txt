@@ -952,7 +952,7 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
     button('Select Visible',()=>{const q=search.value.trim().toLowerCase();open.forEach((r,i)=>{if(!q||String(r.workNo||'').toLowerCase().includes(q)||String(r.party||'').toLowerCase().includes(q))selected.add(i)});draw()});
     button('Clear',()=>{selected.clear();draw()});
     button('Cancel',()=>overlay.remove());
-    button('Print Selected',()=>{const rows=open.filter((r,i)=>selected.has(i));if(!rows.length)return alert('Tick at least one order');const pages=[];for(let i=0;i<rows.length;i+=5){const chunk=rows.slice(i,i+5);pages.push('<div class="page"><div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">DAILY PLANT CUTTING PLAN — SELECTED ORDERS ONLY</div><div class="meta"><span>PAGE '+(Math.floor(i/5)+1)+'</span><span>DATE: '+esc(dateDisplay(date))+'</span></div></div>'+chunk.map((r,j)=>window.dailyWorkBlock(r,i+j+1,date)).join('')+'</div>')}openPrintWindow('Daily Plant Cutting Plan',pages.join(''));overlay.remove()},true);
+    button('Print Selected',()=>{const rows=open.filter((r,i)=>selected.has(i));if(!rows.length)return alert('Tick at least one order');const pages=[];for(let i=0;i<rows.length;i+=4){const chunk=rows.slice(i,i+4);pages.push('<div class="page"><div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">DAILY PLANT CUTTING PLAN — NEW 4 WORK / 5 RED-PEN LINES</div><div class="meta"><span>PAGE '+(Math.floor(i/4)+1)+'</span><span>DATE: '+esc(dateDisplay(date))+'</span></div></div>'+chunk.map((r,j)=>window.dailyWorkBlock(r,i+j+1,date)).join('')+'</div>')}openPrintWindow('Daily Plant Cutting Plan',window.cfmApprovedCutStyleV237+pages.join(''));overlay.remove()},true);
     panel.append(title,search,counter,list,bar);overlay.append(panel);document.body.append(overlay);draw();
   };
 })();
@@ -1088,5 +1088,70 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
    panel.append(title,search,count,list,bar);layer.append(panel);document.body.append(layer);draw();
  };
  add();setTimeout(add,800);
+})();
+</script>
+
+<script id="cfm-approved-new-daily-cutting-v237">
+(function(){
+ 'use strict';
+ // Approved Oct 27 new paper register. Rendering ONLY. No database or stock writes.
+ const H=v=>String(v==null?'':v).replace(/[&<>"']/g,function(x){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]});
+ const N=v=>String(v==null?'':v).trim().toUpperCase();
+ const Q=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
+ const F=v=>Number.isInteger(Q(v))?String(Q(v)):Q(v).toFixed(2);
+ window.cfmApprovedCutStyleV237='<style>'+
+ '@page{size:A4 portrait;margin:6mm}body{padding:0!important;margin:0!important;font-family:Arial,sans-serif!important}'+
+ '.page{break-after:page;page-break-after:always}.page:last-child{break-after:auto;page-break-after:auto}'+
+ '.head{height:17mm;margin-bottom:2mm;padding-bottom:1mm}.head h1{font-size:14px}.head .sub{font-size:11px}.head .meta{font-size:9px}'+
+ '.cfm-new-cut-work{height:63mm;max-height:63mm;margin:0 0 2.4mm;border:1.2px solid #333;overflow:hidden;break-inside:avoid;page-break-inside:avoid;font-size:9px}'+
+ '.cfm-new-cut-work .new-row{min-height:7mm;display:grid;grid-template-columns:18% 1fr 21%;align-items:center;gap:2mm;padding:1mm 2mm;background:#eaf3fa;border-bottom:1px solid #888;font-size:10px}'+
+ '.cfm-new-cut-work .new-info{display:grid;grid-template-columns:1.7fr 1fr .7fr;border-bottom:1px solid #aaa;min-height:8mm}'+
+ '.cfm-new-cut-work .new-info>span{padding:1mm 2mm;border-right:1px solid #aaa;overflow-wrap:anywhere;max-height:9mm;overflow:hidden}'+
+ '.cfm-new-cut-work .new-summary{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #aaa;min-height:6.5mm}'+
+ '.cfm-new-cut-work .new-summary span{padding:1mm 2mm;border-right:1px solid #aaa;display:flex;justify-content:space-between;align-items:center}'+
+ '.cfm-new-cut-work .new-summary span:last-child{background:#eff6e9}'+
+ '.cfm-new-cut-work .new-measure{padding:1mm 2mm;border-bottom:1px solid #888;height:6mm;white-space:nowrap;overflow:hidden}'+
+ '.cfm-new-cut-work table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8px}'+
+ '.cfm-new-cut-work th,.cfm-new-cut-work td{border:1px solid #888;text-align:center;padding:1px}'+
+ '.cfm-new-cut-work th{height:5mm;background:#eee}.cfm-new-cut-work td{height:6mm}'+
+ '.cfm-new-cut-work .red-pen{font-weight:700;font-size:8px;float:right}'+
+ '</style>';
+ window.dailyWorkBlock=function(r,n,date){
+   const cutRows=Array.from({length:5},(_,i)=>'<tr><td>'+(i+1)+'</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+   const todayCut=(Array.isArray(state.cutting)?state.cutting:[]).filter(x=>N(x.workNo)===N(r.workNo)&&String(x.date||'').slice(0,10)===date)
+      .reduce((sum,x)=>sum+Math.max(0,Q(x.cutQty)),0);
+   const previous=Math.max(0,Q(r.cutQty)-todayCut);
+   const measurement=typeof measurementInfo==='function'?measurementInfo(r).text:'';
+   const pending=typeof pendingQty==='function'?pendingQty(r):0;
+   return '<div class="cfm-new-cut-work">'+
+    '<div class="new-row"><b>WORK '+n+' • '+H(r.workNo||'-')+'</b><b>'+H(r.party||'-')+'</b><b style="text-align:right">ORDER QTY: '+F(r.orderQty)+'</b></div>'+
+    '<div class="new-info"><span><b>PRODUCT / ITEM:</b> '+H(r.description||r.description2||'-')+'</span>'+
+    '<span><b>CLOTH:</b> '+H(r.cloth||'-')+'</span>'+
+    '<span><b>WO WIDTH:</b> '+H(r.width||'-')+' in</span></div>'+
+    '<div class="new-summary"><span>ORDER <b>'+F(r.orderQty)+'</b></span>'+
+    '<span>PREVIOUS CUT <b>'+F(previous)+'</b></span>'+
+    '<span>TODAY CUT <b>'+F(todayCut)+'</b></span>'+
+    '<span>PENDING <b>'+F(pending)+'</b></span></div>'+
+    '<div class="new-measure"><b>PRODUCT CODE:</b> '+H(r.eagleCode||r.itemCode||'-')+
+    ' &nbsp; <b>MEASUREMENT:</b> '+H(measurement||'-')+
+    '<span class="red-pen">RED PEN ONLY • ROLL WIDTH: ______ in</span></div>'+
+    '<table><colgroup><col style="width:6%"><col style="width:21%"><col style="width:14%"><col style="width:14%"><col style="width:11%"><col style="width:11%"><col style="width:23%"></colgroup>'+
+    '<thead><tr><th>NO.</th><th>SERIAL / SRL NO.</th><th>LENGTH (INCH)</th><th>WIDTH (INCH)</th><th>CUT QTY</th><th>USED MTR</th><th>CUTTING BY / REMARK</th></tr></thead>'+
+    '<tbody>'+cutRows+'</tbody></table></div>';
+ };
+ function addDashPrint(){
+   const dash=document.getElementById('view-dashboard');
+   if(!dash||document.getElementById('cfmV237CutPrint'))return;
+   const b=document.createElement('button');b.id='cfmV237CutPrint';b.type='button';
+   b.textContent='🖨 Daily Cutting Plan — NEW A4 4×5';
+   b.style.cssText='background:#1674c9;color:#fff;font-weight:750;padding:10px 13px;border:0;border-radius:9px;margin:8px 6px;cursor:pointer';
+   b.addEventListener('click',()=>window.printDailyCuttingPlan());
+   const anchor=dash.querySelector('.section-head,.command-hero');
+   if(anchor)anchor.insertAdjacentElement('afterend',b);else dash.prepend(b);
+ }
+ setTimeout(addDashPrint,200);
+ document.addEventListener('click',function(e){
+  if(e.target.closest?.('[data-view="dashboard"],[onclick*="dashboard"]'))setTimeout(addDashPrint,120);
+ },true);
 })();
 </script>
