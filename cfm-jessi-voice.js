@@ -1,4 +1,4 @@
-/* CFM Forge V226 — Jessi Voice Assistant.
+/* CFM Forge V240 — Jessi Voice Assistant.
  * Browser-managed one-shot speech-to-text + browser speech synthesis.
  * No microphone streaming to ERP backend, no auto microphone, no writes.
  * Audio may be processed by the browser/platform speech service.
@@ -13,7 +13,11 @@ const labels={"hi-IN":"Hindi","en-IN":"English (India)","gu-IN":"Gujarati","mr-I
 let recognizer=null,recognizing=false,speakEnabled=true,voiceReplyPending=false;
 let activeUtterance=null,sendQueued=false,utteranceSeq=0,lastSpokenText="";
 let selectedVoiceKey="",voicesReady=false,femaleOnly=true;
-const FEMALE_ONLY_HELP="Phone/browser mein confirmed female-name voice nahi mili. Jessi male voice mein nahi bolegi. Android Settings → Text-to-speech output → available female voice install/choose karo, ya Jessi Voice list mein female voice dekho.";
+// Gender is not exposed by Web Speech voices; user audition is the only safe way
+// to approve an unnamed voice while keeping Female Only enabled.
+let approvedFemaleVoiceKey="",lastAuditionKey="";
+const PHONE_DEFAULT_KEY="__phone_default__";
+const FEMALE_ONLY_HELP="Female Only ON: browser voice ka gender nahi batata. Pehle 🎧 Test Voice dabao. Agar female awaaz sunai de, ♀ Confirm Female dabao. Sound na aaye to is link ko phone ke Chrome browser mein kholo; Android Text-to-speech settings mein voice check karo.";
 const femaleNameHint=/(?:\bfemale\b|\bwoman\b|\bwomens?\b|\bzira\b|\bheera\b|\bswara\b|\bneerja\b|\bpriya\b|\baditi\b|\bananya\b|\bsamantha\b|\bvictoria\b|\bkaren\b|\bmoira\b|\btessa\b|\bfiona\b|\bsusan\b|\ballison\b|\bava\b|\bserena\b|\bveena\b|\blekha\b|\bmeera\b|\braveena\b|\bjenny\b|\baria\b|\bsonia\b|\bnatasha\b|\barohi\b|\baarohi\b|\bdhwani\b)/i;
 const probableFemale=v=>femaleNameHint.test(String(v?.name||""));
 const voiceKey=v=>String(v?.voiceURI||v?.name||"")+"|"+String(v?.lang||"");
@@ -69,7 +73,7 @@ function sameLanguage(voice,lang){
 function pickVoice(lang){
  const voices=voiceList();
  const explicitlyChosen=selectedVoiceKey?voices.find(v=>voiceKey(v)===selectedVoiceKey):null;
- if(explicitlyChosen&&(!femaleOnly||probableFemale(explicitlyChosen)))return explicitlyChosen;
+ if(explicitlyChosen&&(!femaleOnly||probableFemale(explicitlyChosen)||approvedFemaleVoiceKey===voiceKey(explicitlyChosen)))return explicitlyChosen;
  const same=voices.filter(v=>sameLanguage(v,lang));
  const exact=same.filter(v=>String(v.lang).toLowerCase()===String(lang).toLowerCase());
  // Female-only is the default. Do NOT quietly fall back to the phone's male
@@ -80,7 +84,13 @@ function pickVoice(lang){
    voices.find(v=>/^en-in$/i.test(v.lang)&&probableFemale(v))||
    voices.find(v=>/^en-/i.test(v.lang)&&probableFemale(v))||
    voices.find(probableFemale);
- if(candidate||femaleOnly)return candidate||null;
+ if(candidate||femaleOnly){
+  if(approvedFemaleVoiceKey&&approvedFemaleVoiceKey!==PHONE_DEFAULT_KEY){
+   const approved=voices.find(v=>voiceKey(v)===approvedFemaleVoiceKey);
+   if(approved)return approved;
+  }
+  return candidate||null;
+ }
  return explicitlyChosen||exact.find(v=>v.default)||same.find(v=>v.default)||
    exact[0]||same[0]||voices.find(v=>/^en-in$/i.test(v.lang))||
    voices.find(v=>/^en-/i.test(v.lang))||voices[0]||null;
@@ -88,10 +98,15 @@ function pickVoice(lang){
 function getVoice(lang){return pickVoice(lang)}
 function voiceStatus(lang){
  const voices=voiceList(),voice=getVoice(lang);
- if(!voices.length)return femaleOnly
-  ?"Phone ki voice list abhi loading hai. Female Voice Only ON. "+FEMALE_ONLY_HELP
-  :"Phone ne abhi voice list load nahi ki. 🎧 Test Voice dabao.";
- if(!voice)return FEMALE_ONLY_HELP;
+ if(!voices.length){
+  if(femaleOnly&&approvedFemaleVoiceKey===PHONE_DEFAULT_KEY)return "Phone default voice (aapne sunkar female confirm kiya). Browser iski gender guarantee nahi deta. 🎧 Test Voice se verify kar sakte hain.";
+  return femaleOnly?"Browser ne voice names nahi diye. "+FEMALE_ONLY_HELP:"Browser voice list empty hai. 🎧 Test Voice se system voice try karo, ya full Chrome mein kholo.";
+ }
+ if(!voice){
+  if(femaleOnly&&approvedFemaleVoiceKey===PHONE_DEFAULT_KEY)return "Phone default voice (user-confirmed female). Browser voice ki gender verify nahi kar sakta.";
+  return FEMALE_ONLY_HELP;
+ }
+ if(femaleOnly&&approvedFemaleVoiceKey===voiceKey(voice))return "♀ User-confirmed voice: "+voice.name+" ("+voice.lang+"). Test Voice se aapne isey approve kiya.";
  const chosen=selectedVoiceKey&&voiceKey(voice)===selectedVoiceKey;
  const fallback=!sameLanguage(voice,lang);
  const name=voice.name+" ("+voice.lang+")";
@@ -122,14 +137,17 @@ function fillVoiceSelector(){
  if(previously&&select.value!==previously)selectedVoiceKey="";
  voicesReady=voices.length>0;
 }
-function speak(text,manual=false){
+function speak(text,manual=false,audition=false){
  const clean=String(text||"").replace(/https?:\/\/\S+/g,"").replace(/[•|*_#]/g," ").trim();
  if(!clean)return false;
  lastSpokenText=clean;
  if(!manual&&!speakEnabled)return false;
  if(!canSpeak){info("Is browser mein voice output available nahi hai. Chrome browser mein kholkar try karo.","warn");return false}
- const language=pronounceLang(),voice=getVoice(language);
- if(femaleOnly&&!voice){
+ const language=pronounceLang();
+ const available=voiceList();
+ const chosenForTest=available.find(v=>voiceKey(v)===selectedVoiceKey);
+ const voice=audition?(chosenForTest||getVoice(language)||available.find(v=>sameLanguage(v,language))||available.find(v=>v.default)||available[0]||null):getVoice(language);
+ if(femaleOnly&&!voice&&!audition&&approvedFemaleVoiceKey!==PHONE_DEFAULT_KEY){
   cancelPlayback();
   info(FEMALE_ONLY_HELP,"warn");
   return false;
@@ -148,7 +166,13 @@ function speak(text,manual=false){
   // male speech engine into a real female voice.
   utterance.pitch=1.03;
   utterance.volume=1;
-  utterance.onstart=()=>{if(seq!==utteranceSeq)return;info("🔊 Jessi bol rahi hai · "+(voice?.name||"Phone default")+" ("+(voice?.lang||language)+")","speaking")};
+  utterance.onstart=()=>{
+   if(seq!==utteranceSeq)return;
+   if(audition){
+    lastAuditionKey=voice?voiceKey(voice):PHONE_DEFAULT_KEY;
+    info("🎧 Test voice chal rahi hai: "+(voice?.name||"Phone default")+" — gender browser se verify nahi hota. Female awaaz sunne par hi ♀ Confirm Female dabao.","speaking");
+   }else info("🔊 Jessi bol rahi hai · "+(voice?.name||"Phone default")+" ("+(voice?.lang||language)+")","speaking");
+  };
   utterance.onend=()=>{if(seq!==utteranceSeq)return;activeUtterance=null;info("Jessi ready · "+voiceStatus(language),"ok")};
   utterance.onerror=event=>{
    if(seq!==utteranceSeq)return;
@@ -279,16 +303,12 @@ function controls(dlg){
  voiceLabel.append(voiceSelect);
  voiceSelect.addEventListener("change",()=>{
   const candidate=voiceList().find(v=>voiceKey(v)===voiceSelect.value);
-  if(femaleOnly&&candidate&&!probableFemale(candidate)){
-   selectedVoiceKey="";
-   voiceSelect.value="";
-   cancelPlayback();
-   info("♀ Female Only ON: "+candidate.name+" ka female voice hona confirm nahi hai. "+FEMALE_ONLY_HELP,"warn");
-   return;
-  }
   selectedVoiceKey=voiceSelect.value;
+  lastAuditionKey="";
   cancelPlayback();
-  info(voiceStatus(pronounceLang()),"ok");
+  if(femaleOnly&&candidate&&!probableFemale(candidate)&&approvedFemaleVoiceKey!==voiceKey(candidate)){
+   info("Selected: "+candidate.name+". Female status unknown. 🎧 Test Voice se suno; female ho to ♀ Confirm Female dabao.","warn");
+  }else info(voiceStatus(pronounceLang()),"ok");
  });
  const synth=window.speechSynthesis;
  if(synth?.addEventListener){
@@ -308,7 +328,7 @@ function controls(dlg){
   femaleMode.setAttribute("aria-pressed",String(femaleOnly));
   if(femaleOnly){
    const chosen=voiceList().find(v=>voiceKey(v)===selectedVoiceKey);
-   if(chosen&&!probableFemale(chosen))selectedVoiceKey="";
+   if(chosen&&!probableFemale(chosen)&&approvedFemaleVoiceKey!==voiceKey(chosen))lastAuditionKey="";
   }
   cancelPlayback();
   fillVoiceSelector();
@@ -335,16 +355,36 @@ function controls(dlg){
  });
  const test=document.createElement("button");test.type="button";test.id="cfmJessiTestVoice";
  test.textContent="🎧 Test Voice";test.setAttribute("aria-label","Test Jessi voice on this device");
- test.addEventListener("click",()=>speak("Namaste. Main Jessi hoon. Voice assistant ki awaaz test ho rahi hai.",true));
+ test.addEventListener("click",()=>{
+  lastAuditionKey="";
+  speak("Namaste. Main Jessi hoon. Yeh meri awaaz ka test hai. Agar aapko female voice sunai de tabhi confirm karein.",true,true);
+ });
+ const confirmFemale=document.createElement("button");
+ confirmFemale.type="button";confirmFemale.id="cfmJessiConfirmFemale";
+ confirmFemale.textContent="♀ Confirm Female";
+ confirmFemale.setAttribute("aria-label","I heard the test voice and confirm it is female");
+ confirmFemale.addEventListener("click",()=>{
+  if(!lastAuditionKey){info("Pehle 🎧 Test Voice suno. Awaaz nahi aayi to Chrome mein link kholo; female voice confirm mat karo.","warn");return;}
+  approvedFemaleVoiceKey=lastAuditionKey;
+  if(lastAuditionKey!==PHONE_DEFAULT_KEY)selectedVoiceKey=lastAuditionKey;
+  femaleOnly=true;
+  femaleMode.textContent="♀ Female Only · ON";femaleMode.setAttribute("aria-pressed","true");
+  fillVoiceSelector();cancelPlayback();
+  info("♀ Aapne test sun kar female voice confirm ki. Jessi isi voice ko use karegi. Browser gender verify nahi karta; agar awaz badle to dobara Test karein.","ok");
+ });
  const stop=document.createElement("button");stop.type="button";stop.id="cfmJessiStop";stop.textContent="■ Stop";
  stop.setAttribute("aria-label","Stop Jessi voice");stop.addEventListener("click",()=>{stopVoice();info("Jessi voice stopped.","ok")});
  const label=document.createElement("label");label.className="cfm-jessi-lang-label";label.textContent="Voice: ";
- label.append(lang);sourceRow.append(label,voiceLabel,femaleMode,speakSwitch,replay,test,stop);
+ label.append(lang);sourceRow.append(label,voiceLabel,femaleMode,speakSwitch,replay,test,confirmFemale,stop);
  fillVoiceSelector();
  const status=document.createElement("div");status.id="cfmJessiVoiceState";status.className="cfm-jessi-status";
  status.setAttribute("role","status");status.setAttribute("aria-live","polite");
  const note=dlg.querySelector(".cfm-ai-note");if(note)note.before(status);
  else form.after(status);
+ const browserHelp=document.createElement("small");browserHelp.id="cfmJessiBrowserHelp";
+ browserHelp.textContent="Mic ya awaaz na chale? ChatGPT/in-app browser se bahar, phone ke Chrome mein ERP link open karo. Female Only ON mein default male voice auto-play nahi hogi.";
+ browserHelp.style.cssText="display:block;padding:7px 12px;font-size:11px;line-height:1.4;color:#38657a;background:#eff8fd;border-radius:8px;margin:5px 0";
+ status.after(browserHelp);
  if(!Recognizer){
   mic.disabled=true;mic.title="Speech recognition unavailable; type questions instead";
   info("Mic not supported here. Android Chrome browser try karo, ya type karo.","warn");
