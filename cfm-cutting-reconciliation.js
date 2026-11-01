@@ -40,7 +40,7 @@ function elem(t,value){
 function render(){
  const node=$("cfmCutAudit");
  if(!node)return;
- const data=records();node.replaceChildren();
+ const action=node.querySelector("#cfmCutAuditRefresh");const data=records();node.replaceChildren();if(action)node.append(action);
  if(!data){node.append(elem("p","Cutting data not ready on this device. Load ERP and try Refresh Audit."));return;}
  const c=data.counters;
  const heading=elem("h3","Cutting Photo Reconciliation");heading.style.cssText="font-size:16px;margin:0 0 4px";
