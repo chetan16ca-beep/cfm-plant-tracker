@@ -1,4 +1,4 @@
-/* CFM V241 — read-only cutting photo reconciliation.
+/* CFM V242 — read-only cutting photo reconciliation. ERP SRL width authoritative.
    Zero mutations to orders, cutting, stock, localStorage or Supabase. */
 (function(){
 "use strict";
@@ -22,15 +22,17 @@ function records(){
        (r._trackSrl===true||r._trackSrl==="true") && meter!=="" &&
        Number.isFinite(Number(meter)) && Number(meter)>0 && !!store;
    const status=pending?"STOCK METER PENDING":posted?"MTR POSTED / ESTIMATED":"OLD PHOTO ENTRY / REVIEW";
-   const widthMismatch=!!store && Number(r.plannedWidth)>0 && Number(store.width)>0 &&
-      Math.abs(Number(r.plannedWidth)-Number(store.width))>.1;
+   // Work Order/planned width and the old physical sheet width are not roll-width masters.
+   // Warn only if a cut part physically cannot fit the ERP SRL roll width in either orientation.
+   const rollWidth=Number(store?.width)||0;
+   const pieceTooWide=rollWidth>0 && Number(r.length)>rollWidth && Number(r.height)>rollWidth;
    return {workNo:text(r.workNo),srl:srl||"NOT RECORDED",status,missingStore:!store,photoVerified:r._redPenVerified===true,
-    widthMismatch,qty:numeric(r.cutQty),storeWidth:store?.width,workWidth:r.plannedWidth,usedMtr:meter};
+    pieceTooWide,qty:numeric(r.cutQty),storeWidth:store?.width,workWidth:r.plannedWidth,usedMtr:meter};
   });
   const countOf=type=>results.filter(x=>x.status===type).length;
   const counters={photo:photos.length,posted:countOf("MTR POSTED / ESTIMATED"),
     pending:countOf("STOCK METER PENDING"),old:countOf("OLD PHOTO ENTRY / REVIEW"),
-    missing:results.filter(x=>x.missingStore).length,misWidth:results.filter(x=>x.widthMismatch).length};
+    missing:results.filter(x=>x.missingStore).length,oversizedParts:results.filter(x=>x.pieceTooWide).length};
   return {counters,rows:results};
  }catch(err){console.warn("CFM reconciliation read only",err);return null;}
 }
@@ -46,7 +48,7 @@ function render(){
  const heading=elem("h3","Cutting Photo Reconciliation");heading.style.cssText="font-size:16px;margin:0 0 4px";
  const summary=elem("p",c.photo+" Photo Cutting records | "+c.posted+" recorded MTR (some estimated) | "+c.pending+" stock-meter pending | "+c.old+" old records for review | "+c.missing+" missing Store SRL");
  summary.style.cssText="font-size:12px;line-height:1.5;margin:5px 0";
- const notice=elem("p","READ ONLY: Cutting saved ≠ Stock verified. Missing SRL / width mismatch / insufficient balance must be resolved before any meter deduction. These numbers reflect the currently loaded ERP device state; confirm Cloud Sync before relying on them.");
+ const notice=elem("p","READ ONLY: ERP Store SRL width is authoritative for cloth-roll meters. Differences from old physical-photo or Work Order width are not stock-master errors. Missing SRL, oversized cut pieces and unknown meters still require verification. Device records only; confirm Cloud Sync.");
  notice.style.cssText="font-size:11px;color:#6a4a22;background:#fff7e5;padding:8px;border-radius:8px;margin:6px 0";
  node.append(heading,summary,notice);
  const categories=[
@@ -65,7 +67,7 @@ function render(){
   ["Work No","SRL","Cut Qty","Stock Check"].forEach(s=>{const th=elem("th",s);th.style.cssText="text-align:left;padding:5px;border-bottom:1px solid #aac1ce";top.append(th)});head.append(top);table.append(head);
   const body=elem("tbody");let shown=0;
   subset.forEach(x=>{
-   const tr=elem("tr");let reason=x.missingStore?"MISSING SRL in Store":(x.widthMismatch?"WIDTH MISMATCH "+x.workWidth+" / "+x.storeWidth:"");
+   const tr=elem("tr");let reason=x.missingStore?"MISSING SRL in Store":(x.pieceTooWide?"CUT PIECE EXCEEDS ERP ROLL "+x.storeWidth+" in; joining/layout check":"");
    if(!reason&&cat.key==="STOCK METER PENDING")reason="Meter not cleared";
    if(!reason&&cat.key==="MTR POSTED / ESTIMATED")reason=x.usedMtr+" MTR recorded";
    if(!reason)reason="Old photo; check source";
