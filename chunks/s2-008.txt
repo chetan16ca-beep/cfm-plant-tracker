@@ -669,7 +669,9 @@ function physicalStockSummary(){
   const real=measured.reduce((a,r)=>a+srlBalance(r),0);
   const provisional=estimated.reduce((a,r)=>a+srlBalance(r),0);
   const used=rows.reduce((a,r)=>a+physicalStockPostCountUsed(r),0);
-  return {rows,measured,estimated,real,provisional,total:real+provisional,used,
+  const short=rows.filter(r=>physicalStockPostCountUsed(r)>physicalStockBaseline(r)+0.001);
+  const shortage=short.reduce((a,r)=>a+Math.max(0,physicalStockPostCountUsed(r)-physicalStockBaseline(r)),0);
+  return {rows,measured,estimated,real,provisional,total:real+provisional,used,short,shortage,
     excluded:(state.store||[]).filter(r=>r._physicalReconStatus==='NOT_PHYSICAL').length};
 }
 window.cfmPhysicalStockSearch=function(v){
@@ -681,9 +683,10 @@ window.cfmPhysicalStockSearch=function(v){
   const result=rows.slice(0,14).map(r=>{
     const isEstimated=r._physicalReconStatus==='ESTIMATED';
     const bal=srlBalance(r);
-    const label=isEstimated?'ESTIMATED':'MEASURED';
-    const css=isEstimated?'color:#7f560e;background:#fff4d6':'color:#175d39;background:#e7f8eb';
     const used=physicalStockPostCountUsed(r);
+    const shortage=Math.max(0,used-physicalStockBaseline(r));
+    const label=shortage>0.001?'SHORTAGE '+fmt(shortage)+' MTR':(isEstimated?'ESTIMATED':'MEASURED');
+    const css=shortage>0.001?'color:#8d1725;background:#ffe9eb':isEstimated?'color:#7f560e;background:#fff4d6':'color:#175d39;background:#e7f8eb';
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #e6edf2;padding:9px 0;flex-wrap:wrap">'+
       '<div><b style="color:#154b78">'+esc(r.srlNo||'')+'</b><div style="font-size:11px;color:#506c80">'+esc(r.quality||'')+' • ERP Width '+fmt(r.width)+'″ • Cut used '+fmt(used)+' MTR</div></div>'+
       '<div style="text-align:right"><b style="font-size:16px;color:#153c61">'+fmt(bal)+' MTR</b><div style="font-size:10px;padding:2px 6px;border-radius:6px;'+css+'">'+label+'</div></div></div>';
@@ -710,8 +713,10 @@ function renderPhysicalStockDashboard(){
       card('ESTIMATED STOCK',fmt(d.provisional)+' MTR','#fff9e9')+
       card('PHYSICAL SRL',d.rows.length+' Rolls','#ffffff')+
       card('CUTTING USED SINCE 27 OCT',fmt(d.used)+' MTR','#ffffff')+
+      (d.short.length?card('SRL SHORTAGE',fmt(d.shortage)+' MTR • '+d.short.length+' SRL','#ffecef'):'')+
     '</div>'+
     '<div style="font-size:12px;color:#526c80;margin:0 0 9px">'+d.measured.length+' measured + '+d.estimated.length+' user-estimated SRL • '+d.excluded+' old ERP SRL excluded from available stock. <b>Estimated MTR is not a physical measurement.</b></div>'+
+    (d.short.length?'<div style="margin:8px 0 12px;padding:9px;color:#9b2633;background:#fff0f2;border:1px solid #edb2b8;border-radius:8px"><b>⚠️ Cutting exceeds estimated stock:</b> '+d.short.map(r=>esc(r.srlNo)+' • '+fmt(physicalStockPostCountUsed(r)-physicalStockBaseline(r))+' MTR').join(', ')+'. Balance capped at zero; verify physical meter before any new deduction.</div>':'')+
     '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px">'+
       '<button class="btn btn-sm" type="button" onclick="showView(\'store\')">Full Physical Store</button>'+
       '<button class="btn btn-sm" type="button" onclick="showView(\'srltracker\')">SRL Tracker</button>'+
