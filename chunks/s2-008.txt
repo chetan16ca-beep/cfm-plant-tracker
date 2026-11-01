@@ -600,7 +600,16 @@ function srlBalance(r){
   if(r.excelLiveBalanceMtr!==''&&r.excelLiveBalanceMtr!=null)return Math.max(0,num(r.excelLiveBalanceMtr)-srlNewUsedMtr(r.srlNo));
   return Math.max(0,num(r.openingMtr)-srlUsedMtr(r.srlNo));
 }
-function storeStatus(r){if(r.openingMtr!=='' && srlBalance(r)<=0)return 'CLOSED';return r.excelTrackerStatus||r.status||'READY'}
+function storeStatus(r){
+  // V245: Display the user's physical-stock audit status distinctly from numeric zero.
+  // Missing physical roll = unavailable; counted roll = open only if its net MTR > 0.
+  // An existing physical roll with no reading needs verification, not a false CLOSED label.
+  if(r?._physicalReconStatus==='NOT_PHYSICAL')return 'NOT PHYSICAL';
+  if(r?._physicalReconStatus==='METER_PENDING')return 'MTR PENDING';
+  if(r?._physicalReconStatus==='COUNTED')return srlBalance(r)>0?'OPEN':'CLOSED';
+  if(r.openingMtr!=='' && srlBalance(r)<=0)return 'CLOSED';
+  return r.excelTrackerStatus||r.status||'READY';
+}
 function applyPendingDelta(workNo,delta){
   if(!workNo || !Number.isFinite(Number(delta))) return;
   const p=getPending(workNo); if(!p)return;
