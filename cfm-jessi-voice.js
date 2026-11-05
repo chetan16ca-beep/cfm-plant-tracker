@@ -1,4 +1,4 @@
-/* CFM Forge V240 — Jessi Voice Assistant.
+/* CFM Forge V241 — Jessi Voice Assistant (Hindi / English only).
  * Browser-managed one-shot speech-to-text + browser speech synthesis.
  * No microphone streaming to ERP backend, no auto microphone, no writes.
  * Audio may be processed by the browser/platform speech service.
@@ -8,8 +8,8 @@
 const $=id=>document.getElementById(id);
 const Recognizer=window.SpeechRecognition||window.webkitSpeechRecognition||null;
 const canSpeak=!!window.speechSynthesis&&typeof window.SpeechSynthesisUtterance==="function";
-const langCodes=["hi-IN","en-IN","gu-IN","mr-IN"];
-const labels={"hi-IN":"Hindi","en-IN":"English (India)","gu-IN":"Gujarati","mr-IN":"Marathi"};
+const langCodes=["hi-IN","en-IN"];
+const labels={"hi-IN":"Hindi","en-IN":"English (India)"};
 let recognizer=null,recognizing=false,speakEnabled=true,voiceReplyPending=false;
 let activeUtterance=null,sendQueued=false,utteranceSeq=0,lastSpokenText="";
 let selectedVoiceKey="",voicesReady=false,femaleOnly=true;
@@ -64,7 +64,7 @@ function pronounceLang(text){
  return langCodes.includes(input)?input:"hi-IN";
 }
 function voiceList(){
- return (window.speechSynthesis?.getVoices?.()||[]).filter(v=>v&&v.name&&v.lang);
+ return (window.speechSynthesis?.getVoices?.()||[]).filter(v=>v&&v.name&&v.lang&&langCodes.some(lang=>sameLanguage(v,lang)));
 }
 function sameLanguage(voice,lang){
  const a=String(voice?.lang||"").toLowerCase(),b=String(lang||"").toLowerCase();
@@ -73,27 +73,22 @@ function sameLanguage(voice,lang){
 function pickVoice(lang){
  const voices=voiceList();
  const explicitlyChosen=selectedVoiceKey?voices.find(v=>voiceKey(v)===selectedVoiceKey):null;
- if(explicitlyChosen&&(!femaleOnly||probableFemale(explicitlyChosen)||approvedFemaleVoiceKey===voiceKey(explicitlyChosen)))return explicitlyChosen;
+ if(explicitlyChosen&&sameLanguage(explicitlyChosen,lang)&&(!femaleOnly||probableFemale(explicitlyChosen)||approvedFemaleVoiceKey===voiceKey(explicitlyChosen)))return explicitlyChosen;
  const same=voices.filter(v=>sameLanguage(v,lang));
  const exact=same.filter(v=>String(v.lang).toLowerCase()===String(lang).toLowerCase());
  // Female-only is the default. Do NOT quietly fall back to the phone's male
  // default when the selected language has no recognizable female voice.
  // A female English voice may mispronounce Hindi words; tell the user.
- const candidate=exact.find(probableFemale)||
-   same.find(probableFemale)||
-   voices.find(v=>/^en-in$/i.test(v.lang)&&probableFemale(v))||
-   voices.find(v=>/^en-/i.test(v.lang)&&probableFemale(v))||
-   voices.find(probableFemale);
+ const candidate=exact.find(probableFemale)||same.find(probableFemale);
  if(candidate||femaleOnly){
   if(approvedFemaleVoiceKey&&approvedFemaleVoiceKey!==PHONE_DEFAULT_KEY){
    const approved=voices.find(v=>voiceKey(v)===approvedFemaleVoiceKey);
-   if(approved)return approved;
+   if(approved&&sameLanguage(approved,lang))return approved;
   }
   return candidate||null;
  }
- return explicitlyChosen||exact.find(v=>v.default)||same.find(v=>v.default)||
-   exact[0]||same[0]||voices.find(v=>/^en-in$/i.test(v.lang))||
-   voices.find(v=>/^en-/i.test(v.lang))||voices[0]||null;
+ return (explicitlyChosen&&sameLanguage(explicitlyChosen,lang)?explicitlyChosen:null)||
+   exact.find(v=>v.default)||same.find(v=>v.default)||exact[0]||same[0]||null;
 }
 function getVoice(lang){return pickVoice(lang)}
 function voiceStatus(lang){
@@ -120,7 +115,7 @@ function voiceStatus(lang){
 function fillVoiceSelector(){
  const select=$("cfmJessiSpeaker");
  if(!select)return;
- const previously=selectedVoiceKey,language=pronounceLang(),voices=voiceList();
+ const previously=selectedVoiceKey,language=pronounceLang(),voices=voiceList().filter(v=>sameLanguage(v,language));
  select.replaceChildren();
  const auto=document.createElement("option");auto.value="";auto.textContent="♀ Auto · Female Only (when ON)";select.append(auto);
  const ordered=voices.slice().sort((a,b)=>{
@@ -145,8 +140,8 @@ function speak(text,manual=false,audition=false){
  if(!canSpeak){info("Is browser mein voice output available nahi hai. Chrome browser mein kholkar try karo.","warn");return false}
  const language=pronounceLang();
  const available=voiceList();
- const chosenForTest=available.find(v=>voiceKey(v)===selectedVoiceKey);
- const voice=audition?(chosenForTest||getVoice(language)||available.find(v=>sameLanguage(v,language))||available.find(v=>v.default)||available[0]||null):getVoice(language);
+ const chosenForTest=available.find(v=>voiceKey(v)===selectedVoiceKey&&sameLanguage(v,language));
+ const voice=audition?(chosenForTest||getVoice(language)||available.find(v=>sameLanguage(v,language))||null):getVoice(language);
  if(femaleOnly&&!voice&&!audition&&approvedFemaleVoiceKey!==PHONE_DEFAULT_KEY){
   cancelPlayback();
   info(FEMALE_ONLY_HELP,"warn");
@@ -291,6 +286,7 @@ function controls(dlg){
   const option=document.createElement("option");option.value=code;option.textContent=labels[code];lang.append(option);
  }
  lang.value="hi-IN";lang.addEventListener("change",()=>{
+  selectedVoiceKey="";
   stopVoice();fillVoiceSelector();
   info(labels[lang.value]+" selected · "+voiceStatus(lang.value),"ok");
  });
@@ -302,8 +298,8 @@ function controls(dlg){
  voiceSelect.setAttribute("aria-label","Choose Jessi speaker voice");
  voiceLabel.append(voiceSelect);
  voiceSelect.addEventListener("change",()=>{
-  const candidate=voiceList().find(v=>voiceKey(v)===voiceSelect.value);
-  selectedVoiceKey=voiceSelect.value;
+  const candidate=voiceList().find(v=>voiceKey(v)===voiceSelect.value&&sameLanguage(v,pronounceLang()));
+  selectedVoiceKey=candidate?voiceKey(candidate):"";
   lastAuditionKey="";
   cancelPlayback();
   if(femaleOnly&&candidate&&!probableFemale(candidate)&&approvedFemaleVoiceKey!==voiceKey(candidate)){
