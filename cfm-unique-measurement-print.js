@@ -1,4 +1,4 @@
-/* CFM V257 - Complete and compact Product-wise Measurement Master Print
+/* CFM V258 - Non-CF complete, 20-page-target Measurement Master Print
    All available fields and measurement versions are preserved.
    Deduplicate only identical rows belonging to the SAME product and SAME full measurement set.
    Read-only: no master, pending-order, stock or cloud writes.
@@ -252,18 +252,132 @@
    'Blank fields are marked Not recorded. The original ERP master is unchanged.</p>'+
    '</body></html>';
  }
- function selectedRows(filtered){
-  const rows=getRecords();
-  if(!filtered)return rows;
-  const search=clean($('measurementSearch')?.value).toLowerCase();
-  return search?rows.filter(r=>JSON.stringify(r).toLowerCase().includes(search)):rows;
+
+ // V258: exclude CF/CFB family ONLY from print, not from the ERP master.
+ function nonCFRecord(r){
+  const c=norm(r?.category),d=norm(r?.description);
+  return c!=='CFB' && !/\bCF\s*(?:BAG|BG|48|36|60|24)\b|CENTRIFUGAL/.test(d);
  }
- function doPrint(filtered,format='compact'){
+ function removeEmbeddedCFParts(value){
+  const parts=text(value).split(/\s+\|\s+/);
+  return parts.filter(v=>!/\bCF\s*(?:BAG|BG|48|36|60|24)\b/i.test(v)).join(' | ');
+ }
+ function copyWithoutCFParts(r){
+  const cleanCopy={...r};
+  for(const [k] of measurementFields)cleanCopy[k]=removeEmbeddedCFParts(r?.[k]);
+  return cleanCopy;
+ }
+ // Print 499-ish non-CF source records as a 2-column, if needed 3-column,
+ // paginated job. Nothing gets truncated; overflow produces extra pages,
+ // rather than omitting measurements or clipping a dimension.
+ function paperSaverReportHTML(summary){
+  const records=[];
+  summary.list.forEach((p,productIndex)=>{
+   const title=joined(p.names),code=joined(p.codes),party=joined(p.parties);
+   [...p.variants.values()].forEach((v,vi)=>{
+    const mm=v.measurements||{},prev=clean(mm.previousMeasurement),
+      m1=clean(mm.measurement1),m2=clean(mm.measurement2),
+      m3=clean(mm.measurement3),final=clean(mm.finalMeasurement);
+    const placeholder=s=>norm(s)==='NEW PRODUCT - NO PREVIOUS MEASUREMENT';
+    const same=m1&&final&&norm(m1)===norm(final);
+    const part=[];
+    if(prev&&!placeholder(prev))part.push('<b>Previous:</b> '+esc(prev));
+    if(same)part.push('<b>Cutting (M1 = Final):</b> '+esc(final));
+    else {
+      if(m1)part.push('<b>M1:</b> '+esc(m1));
+      if(final)part.push('<b>Final:</b> '+esc(final));
+    }
+    if(m2)part.push('<b>M2:</b> '+esc(m2));
+    if(m3)part.push('<b>M3:</b> '+esc(m3));
+    if(!part.length)part.push('<span class="empty">Measurement not recorded</span>');
+    const refs=[
+      ['Cloth',joined(v.cloths)],['Width',joined(v.widths)],
+      ['Category',joined(p.categories)],['Size',joined(p.sizes)],
+      ['Micron',joined(p.microns)],['Work',joined(v.works)]
+    ].filter(([,val])=>val!=='—').map(([name,val])=>
+      '<span><b>'+name+':</b> '+val+'</span>').join(' · ');
+    const row='<article class="entry"><div class="e-head"><b>'+title+'</b>'+
+      '<span class="e-code">'+code+
+      (p.variants.size>1?' · Set '+(vi+1)+'/'+p.variants.size:'')+
+      '</span></div>'+
+      (party!=='—'?'<div class="party">'+party+'</div>':'')+
+      '<div class="dimensions">'+part.join(' <span class="part-sep">|</span> ')+'</div>'+
+      (refs?'<div class="refs">'+refs+'</div>':'')+
+      '</article>';
+    records.push(row);
+   });
+  });
+  const report='<div id="unpaginated" hidden>'+records.join('')+'</div>'+
+    '<div id="print-pages"></div><div id="measure" aria-hidden="true"></div>';
+  const date=new Date().toLocaleDateString('en-IN');
+  const html='<!doctype html><html><head><meta charset="utf-8">'+
+   '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+   '<title>CFM Non-CF Measurement Master • 20 Page Print</title>'+
+   '<style>@page{size:A4 landscape;margin:5mm 7mm}'+
+   ':root{--print-font:10.8px}*{box-sizing:border-box}body{margin:0;color:#1c303a;font:11px Arial,sans-serif}'+
+   '.controls{position:sticky;top:0;background:#e9f4fa;padding:10px 14px;border-bottom:1px solid #adc9d8;z-index:8;display:flex;align-items:center;gap:14px;flex-wrap:wrap}'+
+   '.controls button{background:#166c9d;color:white;border:0;border-radius:6px;padding:9px 14px;font-weight:800;cursor:pointer}'+
+   '.controls .warn{color:#9b3b19;font-weight:800}'+
+   '.sheet{width:283mm;height:190mm;break-after:page;page-break-after:always;margin:0 auto 7mm;overflow:visible}'+
+   '.sheet-head{height:5mm;font-size:10px;line-height:5mm;font-weight:800;border-bottom:1px solid #9db7c6;display:flex;justify-content:space-between}'+
+   '.columns{height:185mm;display:grid;column-gap:3mm;align-items:start}'+
+   '.columns.two{grid-template-columns:repeat(2,minmax(0,1fr))}'+
+   '.columns.three{grid-template-columns:repeat(3,minmax(0,1fr))}'+
+   '.column{height:185mm;overflow:visible;min-width:0}'+
+   '.entry{font-size:var(--print-font);line-height:1.18;padding:2px 3px 3px;margin:0 0 2px;border-bottom:1px solid #cad5db;overflow-wrap:anywhere;word-break:normal;break-inside:avoid;page-break-inside:avoid}'+
+   '.e-head{display:flex;flex-wrap:wrap;gap:3px 6px;align-items:baseline}.e-head b{font-size:1.03em;line-height:1.12;white-space:normal}'+
+   '.e-code{font-size:.91em;color:#34596c;white-space:normal}.party{font-size:.9em;color:#445a68;line-height:1.12}'+
+   '.dimensions{white-space:pre-wrap;font-weight:600;margin:2px 0 1px;line-height:1.22}'+
+   '.dimensions b{font-weight:800}.part-sep{color:#9baab2;padding:0 2px}'+
+   '.refs{font-size:.87em;color:#425766;line-height:1.16;white-space:pre-wrap}'+
+   '.empty{color:#806673;font-style:italic}.status{font-size:12px}'+
+   '#measure{position:absolute;visibility:hidden;top:-100000px;left:-100000px;pointer-events:none}'+
+   '@media print{.controls{display:none!important}.sheet{margin:0;break-after:page;page-break-after:always}'+
+   '.sheet:last-child{break-after:auto;page-break-after:auto}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'+
+   '</style></head><body>'+
+   '<div class="controls"><b>CFM Non-CF Measurement Master</b><span class="status" id="layout-status">Preparing complete print…</span>'+
+   '<button id="print-now" onclick="window.print()" disabled>Print / Save PDF</button></div>'+
+   '<div id="dataset" data-items="'+records.length+'" hidden></div>'+
+   report+
+   '<script>(function(){'+
+   'const source=Array.from(document.querySelectorAll("#unpaginated .entry"));'+
+   'const host=document.getElementById("print-pages"),probe=document.getElementById("measure");'+
+   'const status=document.getElementById("layout-status"),printer=document.getElementById("print-now");'+
+   'const layouts=[{cols:2,font:10.8},{cols:3,font:10.8},{cols:3,font:10.3},{cols:3,font:9.9}];'+
+   'function lay(opt){document.documentElement.style.setProperty("--print-font",opt.font+"px");'+
+   'host.replaceChildren();probe.style.width=((283-(opt.cols-1)*3)/opt.cols)+"mm";'+
+   'let count=0,sheet=null,columns=[],ix=0,used=0,cap=0;'+
+   'function nextPage(){sheet=document.createElement("section");sheet.className="sheet";'+
+   'const head=document.createElement("div");head.className="sheet-head";'+
+   'head.innerHTML="<span>EAGLE FILTRATION — Non-CF Measurement Master</span><span>'+esc(date)+' · Page "+(count+1)+"</span>";'+
+   'const grid=document.createElement("div");grid.className="columns "+(opt.cols===2?"two":"three");'+
+   'columns=[];for(let i=0;i<opt.cols;i++){const col=document.createElement("div");col.className="column";grid.append(col);columns.push(col)}'+
+   'sheet.append(head,grid);host.append(sheet);count++;ix=0;used=0;cap=columns[0].clientHeight;}'+
+   'nextPage();for(const item of source){probe.replaceChildren(item.cloneNode(true));const h=probe.firstElementChild.getBoundingClientRect().height;'+
+   'if(used+h+1>cap&&used>0){ix++;used=0;if(ix>=columns.length)nextPage();}'+
+   'columns[ix].append(item.cloneNode(true));used+=h;}return count;}'+
+   'let pages=0;let which=layouts[layouts.length-1];'+
+   'for(const cfg of layouts){pages=lay(cfg);which=cfg;if(pages<=20)break;}'+
+   'status.textContent=source.length+" complete non-CF measurement sets · "+pages+" A4 pages · "+which.cols+" columns · "+which.font+"px";'+
+   'if(pages>20){status.className="status warn";status.textContent+=" · More than 20 pages needed to avoid cutting data";}'+
+   'printer.disabled=false;window.__CFM_PRINT_INFO={rows:source.length,pages,columns:which.cols,font:which.font};'+
+   '})();<\/script></body></html>';
+  return html;
+ }
+ function selectedRows(filtered){
+  // Category CFB covers CF BAG 24/36/48/60 and related centrifugal filter bags.
+  // Do not alter, remove or hide the source master in the normal ERP screens.
+  const rows=getRecords().filter(nonCFRecord);
+  const search=filtered?clean($('measurementSearch')?.value).toLowerCase():'';
+  return (search?rows.filter(r=>JSON.stringify(r).toLowerCase().includes(search)):rows)
+    .map(copyWithoutCFParts);
+ }
+ function doPrint(filtered,format='paper'){
   const summary=fullSummary(selectedRows(filtered));
   if(!summary.products){alert('No Measurement Master product found. Clear search or load master data.');return false;}
   const viewer=window.open('','_blank');
   if(!viewer){alert('Print preview blocked. Allow ERP pop-ups and retry.');return false;}
-  viewer.document.open();viewer.document.write(format==='detailed'?reportHTML(summary):compactReportHTML(summary));viewer.document.close();viewer.focus();
+  viewer.document.open();viewer.document.write(format==='detailed'?reportHTML(summary):(format==='compact'?compactReportHTML(summary):paperSaverReportHTML(summary)));viewer.document.close();viewer.focus();
   return true;
  }
  function updateSummary(){
@@ -285,13 +399,13 @@
   heading.textContent='🖨 Complete Measurements Master — Every Product';
   heading.style.cssText='display:block;font-size:15px;margin-bottom:6px';pane.append(heading);
   const info=document.createElement('p');
-  info.textContent='Compact A4 Landscape: kam pages, clear table. Har product ki Previous, Measurement 1, 2, 3, Final aur alag cutting patterns poore rahenge.';
+  info.textContent='20-page target: CF Bag (CFB) products excluded only from PRINT. All other cutting dimensions remain complete. M1 = Final prints once where identical; different values print separately.';
   info.style.cssText='margin:4px 0 8px';pane.append(info);
   const count=document.createElement('div');count.id='cfmFullMeasurementStats';
   count.style.cssText='font-weight:800;margin:7px 0;color:#16638d';count.setAttribute('role','status');
   pane.append(count);
   const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
-  [['🖨 Print All — Compact A4',false,'compact'],['🖨 Search Results — Compact A4',true,'compact'],['Print Detailed (All)',false,'detailed']].forEach(([name,filtered,format])=>{
+  [['🖨 Print Non-CF — 20 Page Target',false,'paper'],['🖨 Search Non-CF — Paper Saver',true,'paper'],['Compact Non-CF',false,'compact'],['Detailed Non-CF',false,'detailed']].forEach(([name,filtered,format])=>{
     const b=document.createElement('button');b.type='button';b.className='btn btn-primary';
     b.textContent=name;b.style.cssText='min-height:40px;font-size:12px';
     b.addEventListener('click',()=>doPrint(filtered,format));actions.append(b);
@@ -302,7 +416,7 @@
   $('measurementSearch')?.addEventListener('input',updateSummary);
   updateSummary();
  }
- window.CFM_FULL_MEASUREMENTS={fullSummary,reportHTML,compactReportHTML,doPrint,updateSummary};
+ window.CFM_FULL_MEASUREMENTS={fullSummary,reportHTML,compactReportHTML,paperSaverReportHTML,nonCFRecord,removeEmbeddedCFParts,selectedRows,doPrint,updateSummary};
  function init(){try{mount()}catch(e){console.warn('CFM full measurements',e)}}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
  setTimeout(init,1200);
