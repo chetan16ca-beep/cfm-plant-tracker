@@ -1,4 +1,4 @@
-/* CFM V256 - Complete Product-wise Measurement Master Print
+/* CFM V257 - Complete and compact Product-wise Measurement Master Print
    All available fields and measurement versions are preserved.
    Deduplicate only identical rows belonging to the SAME product and SAME full measurement set.
    Read-only: no master, pending-order, stock or cloud writes.
@@ -175,18 +175,95 @@
    'Missing details are shown as Not recorded, not invented. Source master data is unchanged. '+
    'Verify physical pattern before cutting.</p></body></html>';
  }
+
+ // Paper saver: single continuous table, no large product cards or blank spacers.
+ // It prints EVERY distinct measurement variant and keeps all five original fields.
+ function compactReportHTML(summary){
+  const date=new Date().toLocaleDateString('en-IN');
+  const refs=(pairs)=>pairs.map(([label,content])=>
+    '<span class="ref"><b>'+esc(label)+':</b> '+content+'</span>'
+  ).join('<span class="sep"> | </span>');
+  const rows=summary.list.map((p,idx)=>{
+   const headline='<tr class="product-title"><td colspan="7"><strong>'+(idx+1)+'. '+joined(p.names)+'</strong>'+
+    '<span class="tag">Eagle '+joined(p.codes)+'</span>'+
+    '<span class="tag">Party '+joined(p.parties)+'</span>'+
+    '<span class="tag">'+p.variants.size+' cutting set(s)</span>'+
+    '<div class="more">'+refs([
+      ['Category',joined(p.categories)],['Size',joined(p.sizes)],
+      ['Type',joined(p.types)],['Micron',joined(p.microns)],
+      ['Original Name',joined(p.oldNames)],
+      ['Work Nos',joined(p.works)],['Source Sheets',joined(p.sources)],
+      ['Mapping Key',joined(p.sourceIds)]
+    ])+'</div></td></tr>';
+   const entries=[...p.variants.values()].map((v,i)=>{
+    const cells=measurementFields.map(([k])=>'<td class="measure">'+filled(v.measurements[k])+'</td>').join('');
+    const details=refs([
+      ['Cloth',joined(v.cloths)],['Width',joined(v.widths)],
+      ['Status',joined(v.statuses)],['Work Nos',joined(v.works)],
+      ['Source',joined(v.sources)],['Master Note',joined(v.references)]
+    ]);
+    return '<tr class="cutting-row"><td class="set">'+(i+1)+
+      (v.count>1?'<small>×'+v.count+'</small>':'')+'</td>'+
+      cells+'<td class="spec">'+details+'</td></tr>';
+   }).join('');
+   return headline+entries;
+  }).join('');
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+   '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+   '<title>CFM Complete Measurements — Compact A4 Print</title>'+
+   '<style>'+
+   '@page{size:A4 landscape;margin:6mm 7mm}*{box-sizing:border-box}'+
+   'body{margin:0;color:#18262f;font:10px/1.25 Arial,Helvetica,sans-serif}'+
+   '.toolbar{padding:10px 12px;margin-bottom:9px;background:#eff7fb;display:flex;justify-content:space-between;align-items:center;gap:12px}'+
+   '.toolbar button{padding:9px 14px;border:0;border-radius:6px;background:#176a9e;color:#fff;font-weight:800;cursor:pointer}'+
+   'h1{font-size:15px;margin:0 0 3px}.summary{margin:0 0 7px;font-size:10px;color:#40596a}'+
+   'table{table-layout:fixed;border-collapse:collapse;width:100%;font:10px/1.27 Arial,Helvetica,sans-serif}'+
+   'thead{display:table-header-group}th,td{border:1px solid #b6c5ce;padding:3px 4px;text-align:left;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}'+
+   'th{background:#e7eff4;font-weight:800;font-size:10px}'+
+   'th:nth-child(1){width:4%}th:nth-child(2){width:16%}th:nth-child(3){width:14%}th:nth-child(4){width:14%}'+
+   'th:nth-child(5){width:14%}th:nth-child(6){width:17%}th:nth-child(7){width:21%}'+
+   '.product-title td{background:#f3f7f9;padding:4px 5px;border-top:1.4px solid #839cad;page-break-after:avoid;break-after:avoid}'+
+   '.product-title strong{font-size:10.7px;margin-right:9px}.tag{margin-right:9px;font-weight:600}'+
+   '.more{margin-top:2px;font-size:9px;color:#465b66}'+
+   '.ref{display:inline;white-space:pre-wrap}.ref b{font-weight:700}.sep{color:#a3abb0;padding:0 3px}'+
+   '.set{text-align:center;font-weight:800;white-space:normal}.set small{display:block;font-weight:400;color:#687783}'+
+   '.measure{font-size:10px;font-weight:600}.spec{font-size:9px;color:#2f4757}'+
+   '.cutting-row{break-inside:avoid;page-break-inside:avoid}'+
+   '.empty{color:#826e73;font-weight:400;font-style:italic}'+
+   '.foot{font-size:9px;color:#536471;margin-top:7px}'+
+   '@media print{.toolbar{display:none!important}'+
+   'body{-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+   'thead{display:table-header-group}'+
+   '.product-title{break-after:avoid;page-break-after:avoid}'+
+   '}'+
+   '</style></head><body>'+
+   '<div class="toolbar"><b>CFM Complete Measurements — Compact, Less Paper</b>'+
+   '<button type="button" onclick="window.print()">Print / Save as PDF</button></div>'+
+   '<h1>EAGLE FILTRATION — Cutting Measurement Master</h1>'+
+   '<p class="summary"><b>Compact A4 landscape</b> · '+esc(date)+
+   ' · '+summary.products+' products · '+summary.uniqueVariants+' complete cutting sets · '+
+   summary.duplicates+' exact duplicates grouped · '+summary.incomplete+' incomplete source rows included</p>'+
+   '<table><thead><tr><th>Set</th><th>Previous Measurement</th><th>Measurement 1</th>'+
+   '<th>Measurement 2</th><th>Measurement 3</th><th>Final Measurement</th>'+
+   '<th>Cloth / Width / References</th></tr></thead><tbody>'+
+   (rows||'<tr><td colspan="7">No measurement master records.</td></tr>')+
+   '</tbody></table><p class="foot">Full values printed without truncation. Every distinct set per product is retained. '+
+   'Only exact duplicate product + complete measurement records are grouped. '+
+   'Blank fields are marked Not recorded. The original ERP master is unchanged.</p>'+
+   '</body></html>';
+ }
  function selectedRows(filtered){
   const rows=getRecords();
   if(!filtered)return rows;
   const search=clean($('measurementSearch')?.value).toLowerCase();
   return search?rows.filter(r=>JSON.stringify(r).toLowerCase().includes(search)):rows;
  }
- function doPrint(filtered){
+ function doPrint(filtered,format='compact'){
   const summary=fullSummary(selectedRows(filtered));
   if(!summary.products){alert('No Measurement Master product found. Clear search or load master data.');return false;}
   const viewer=window.open('','_blank');
   if(!viewer){alert('Print preview blocked. Allow ERP pop-ups and retry.');return false;}
-  viewer.document.open();viewer.document.write(reportHTML(summary));viewer.document.close();viewer.focus();
+  viewer.document.open();viewer.document.write(format==='detailed'?reportHTML(summary):compactReportHTML(summary));viewer.document.close();viewer.focus();
   return true;
  }
  function updateSummary(){
@@ -208,16 +285,16 @@
   heading.textContent='🖨 Complete Measurements Master — Every Product';
   heading.style.cssText='display:block;font-size:15px;margin-bottom:6px';pane.append(heading);
   const info=document.createElement('p');
-  info.textContent='No half measurements. Each product prints Previous, Measurement 1, 2, 3 and Final completely. Different patterns never disappear; only exact duplicates are grouped.';
+  info.textContent='Compact A4 Landscape: kam pages, clear table. Har product ki Previous, Measurement 1, 2, 3, Final aur alag cutting patterns poore rahenge.';
   info.style.cssText='margin:4px 0 8px';pane.append(info);
   const count=document.createElement('div');count.id='cfmFullMeasurementStats';
   count.style.cssText='font-weight:800;margin:7px 0;color:#16638d';count.setAttribute('role','status');
   pane.append(count);
   const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
-  [['🖨 Print All Complete Measurements',false],['🖨 Print Matching Products',true]].forEach(([name,filtered])=>{
+  [['🖨 Print All — Compact A4',false,'compact'],['🖨 Search Results — Compact A4',true,'compact'],['Print Detailed (All)',false,'detailed']].forEach(([name,filtered,format])=>{
     const b=document.createElement('button');b.type='button';b.className='btn btn-primary';
     b.textContent=name;b.style.cssText='min-height:40px;font-size:12px';
-    b.addEventListener('click',()=>doPrint(filtered));actions.append(b);
+    b.addEventListener('click',()=>doPrint(filtered,format));actions.append(b);
   });
   pane.append(actions);
   const marker=page.querySelector('.filters')||page.querySelector('.section-head');
@@ -225,7 +302,7 @@
   $('measurementSearch')?.addEventListener('input',updateSummary);
   updateSummary();
  }
- window.CFM_FULL_MEASUREMENTS={fullSummary,reportHTML,doPrint,updateSummary};
+ window.CFM_FULL_MEASUREMENTS={fullSummary,reportHTML,compactReportHTML,doPrint,updateSummary};
  function init(){try{mount()}catch(e){console.warn('CFM full measurements',e)}}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
  setTimeout(init,1200);
