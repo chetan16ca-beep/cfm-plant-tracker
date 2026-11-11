@@ -148,7 +148,7 @@
    '.product-heading .counts{white-space:nowrap}'+
    '.product-details{padding:7px 9px;display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;overflow-wrap:anywhere}'+
    '.product-details span,.variant-details span{white-space:pre-wrap;overflow-wrap:anywhere}'+
-   '.variant{padding:5px 9px 9px;border-top:1px solid #bed3dd;break-inside:avoid;page-break-inside:avoid}'+
+   '.variant{padding:5px 9px 9px;border-top:1px solid #bed3dd;break-inside:auto;page-break-inside:auto}'+
    '.variant-heading{font-weight:800;color:#185b7d;margin-bottom:5px}'+
    'table.measurements{width:100%;border-collapse:collapse;table-layout:fixed}'+
    'table.measurements th,table.measurements td{border:1px solid #bdd0da;vertical-align:top;padding:5px;overflow-wrap:anywhere;width:20%}'+
