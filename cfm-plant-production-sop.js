@@ -270,8 +270,133 @@
         (remark.value?.trim() ? '\n' : '') +
         'SOP verified by: ' + sup + ' | ' + new Date().toLocaleString('en-IN');
   }
+  // Legacy Batch Report has its own direct save paths. Route them through the same SOP.
+  const BATCH_STAGES = ['CUTTING','STITCHING','THREAD CUTTING','GUN / FINISHING','FINAL CHECKING','PACKING'];
+  function setupBatchSop() {
+    const add = $('batchAddOne');
+    if (!add || $('cfmBatchSopApproval')) return;
+    const box = document.createElement('section');
+    box.id = 'cfmBatchSopApproval';
+    box.style.cssText = 'grid-column:1/-1;border:1px solid #a8ccd3;border-radius:9px;background:#f5fcff;margin:9px 0;padding:10px;font:13px/1.5 system-ui';
+    const label = document.createElement('label');
+    label.textContent = 'Supervisor Name *';
+    const input = document.createElement('input');
+    input.id = 'cfmBatchSopSupervisor';input.type = 'text';input.maxLength = 90;
+    input.style.cssText = 'display:block;max-width:350px;width:100%;padding:8px;margin:4px 0 9px;box-sizing:border-box';
+    label.append(input);box.append(label);
+    const checkedLabel = document.createElement('label');
+    checkedLabel.style.cssText = 'display:flex;gap:8px;font-weight:700';
+    const check = document.createElement('input');check.type = 'checkbox';check.id = 'cfmBatchSopChecked';
+    const span = document.createElement('span');
+    span.textContent = 'I checked production quantity, previous handover and actual work.';
+    checkedLabel.append(check,span);box.append(checkedLabel);
+    add.parentElement?.insertBefore(box,add);
+    add.textContent = '✓ Save Verified Stage';
+    const legacy = $('batchSaveAll');
+    if (legacy) legacy.title = 'Old unverified draft save is disabled. Use Save Verified Stage.';
+  }
+  function batchWork() {
+    return (String($('dialogTitle')?.textContent || '').match(/CFM-\d+/i) || [])[0] || '';
+  }
+  function postBatchStage(work, process, person, qty, supervisor, remark) {
+    const s = getState();
+    const wo = s && matchOrder(s,work);
+    if (!wo) return 'Work Order not found in ERP.';
+    const stage = canonicalStage(process);
+    if (!stage && !/FINAL CHECK|QUALITY/i.test(process))
+      return 'Choose a production stage.';
+    if (!person.trim()) return 'Worker Name is mandatory.';
+    if (!supervisor.trim()) return 'Supervisor Name is mandatory.';
+    if (!Number.isSafeInteger(Number(qty)) || !(Number(qty)>0))
+      return 'Completed Qty must be a positive whole number.';
+    const form = {elements:{namedItem:(k)=>({value:({
+      workNo:work, process, person, supervisor, doneQty:qty, newPerson:''
+    })[k] || ''})}};
+    const issue = checkDepartment(form,s);
+    if (issue) return issue;
+    if (/FINAL CHECK|QUALITY/i.test(process) &&
+        stageDone(s,work,'GUN') < Number(qty))
+      return 'Quality Checking cannot exceed Gun Finish handover quantity.';
+    if (typeof save !== 'function') return 'ERP Save is not ready; refresh before posting.';
+    const date = typeof todayISO === 'function' ? todayISO() : new Date().toISOString().slice(0,10);
+    const baseRemark = String(remark || '').trim();
+    const stamped = (baseRemark ? baseRemark + '\n' : '') +
+      'SOP verified by: ' + supervisor.trim() + ' | ' + new Date().toLocaleString('en-IN');
+    const rec = {
+      workNo:work,party:wo.party||'',description:wo.description||'',description2:wo.description2||'',
+      workDescription:baseRemark||wo.description||'',person:person.trim(),process,
+      department:process,givenQty:number(wo.orderQty),orderQty:number(wo.orderQty),
+      doneQty:Number(qty),pendingQty:Math.max(0,number(wo.orderQty)-Number(qty)),
+      checklist:true,date,remark:stamped,supervisor:supervisor.trim(),
+      updatedAt:new Date().toISOString(),
+      updatedBy:typeof deviceLabel === 'function' ? deviceLabel() : 'CFM SOP'
+    };
+    if (!Array.isArray(s.departmentWork)) s.departmentWork = [];
+    s.departmentWork.push(rec);
+    try { save(); } catch (e) {
+      s.departmentWork.pop();
+      return 'Could not save verified stage: ' + String(e?.message || e);
+    }
+    try { typeof toast === 'function' && toast(process + ' • ' + Number(qty) + ' pcs verified and saved'); } catch (_) {}
+    setTimeout(() => {
+      try { if (typeof window.cfmSafeBatchOpen === 'function') window.cfmSafeBatchOpen(work); }
+      catch (e) { console.warn('Batch report refresh',e); }
+    },160);
+    return '';
+  }
+  function bindBatchSop() {
+    if (!document.__cfmBatchSopBound) {
+      document.__cfmBatchSopBound = true;
+      document.addEventListener('click',(e)=>{
+        const button = e.target?.closest?.('#batchAddOne,#batchSaveAll');
+        if (!button) return;
+        // Capture before the legacy draft/save listeners; do not allow an unapproved write.
+        e.preventDefault();e.stopImmediatePropagation();
+        setupBatchSop();
+        if (button.id === 'batchSaveAll') {
+          alert('SOP HOLD: Old draft Save All is disabled. Use Save Verified Stage, one department at a time.');
+          return;
+        }
+        const work = batchWork();
+        const stage = $('batchStageOne')?.value || '';
+        const person = String($('batchPersonOne')?.value || '').trim();
+        const qty = Number($('batchDoneOne')?.value || 0);
+        const supervisor = String($('cfmBatchSopSupervisor')?.value || '').trim();
+        const remark = String($('batchRemarkOne')?.value || '').trim();
+        if (!$('cfmBatchSopChecked')?.checked) {
+          alert('SOP HOLD: Supervisor must verify work and tick the Batch approval.');
+          return;
+        }
+        if ($('batchDraftList')?.children.length) {
+          alert('SOP HOLD: Old unsaved drafts exist. Close the Batch Report and reopen; do not save them without checking.');
+          return;
+        }
+        const issue = postBatchStage(work,stage,person,qty,supervisor,remark);
+        if (issue) alert('SOP HOLD: ' + issue);
+      },true);
+    }
+    if (typeof window.cfmBatchRowSave === 'function' && !window.cfmBatchRowSave.__cfmSop) {
+      const guarded = function(work,tr,i) {
+        const stage = BATCH_STAGES[i];
+        if (!stage || !tr) return false;
+        const person = String(tr.querySelector('.batch-person')?.value || '').trim();
+        const qty = Number(tr.querySelector('.batch-done')?.value || 0);
+        const remark = String(tr.querySelector('.batch-remark')?.value || '').trim();
+        const supervisor = window.prompt('CFM SOP: Supervisor Name for ' + stage + ' (' + work + ')');
+        if (!supervisor) return false;
+        if (!window.confirm('I verified previous stage, real quantity and this worker entry. Continue?')) return false;
+        const issue = postBatchStage(work,stage,person,qty,supervisor,remark);
+        if (issue) { alert('SOP HOLD: ' + issue); return false; }
+        return true;
+      };
+      guarded.__cfmSop=true;
+      window.cfmBatchRowSave=guarded;
+    }
+  }
   function attach() {
     wrapForms();
+    bindBatchSop();
+    setupBatchSop();
     const button = $('saveFormBtn');
     if (!button || button.dataset.cfmSopBound === '1') return;
     button.dataset.cfmSopBound = '1';
@@ -300,6 +425,7 @@
     if (dlg && fields) {
       let observedKind = '';
       const render = () => {
+        setupBatchSop();
         if (!dlg.open) { observedKind = ''; return; }
         const kind = formKind($('editForm'));
         if (kind && (observedKind !== kind || !fields.querySelector('[data-sop-signoff]'))) {
