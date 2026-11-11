@@ -372,12 +372,47 @@
   return (search?rows.filter(r=>JSON.stringify(r).toLowerCase().includes(search)):rows)
     .map(copyWithoutCFParts);
  }
+ // V263: Show existing historical CFM-333 cutting reference if Rain C Basket
+ // was never entered into the Measurement Master. Does NOT create any new entry.
+ function rainCHistoricalNotice(){
+  const master=getRecords();
+  const alreadyInMaster=master.some(r=>{
+    const all=norm([r?.party,r?.description,r?.oldProductName].join(' '));
+    return /\bRAIN\s*(?:C|CHEM)\b/.test(all)&&all.includes('BASKET');
+  });
+  if(alreadyInMaster)return '';
+  let cutting=[];
+  try{cutting=typeof state!=='undefined'&&Array.isArray(state.cutting)?state.cutting:[];}catch(_){}
+  const source=cutting.filter(r=>norm(r?.workNo)==='CFM-333' &&
+    Number(r?.length)>0&&Number(r?.height)>0);
+  if(!source.length)return '';
+  const unique=new Map();
+  for(const row of source){
+    const size=Number(row.length)+' × '+Number(row.height);
+    if(!unique.has(size))unique.set(size,{size,qty:Number(row.cutQty)||0,date:row.date||''});
+  }
+  const values=[...unique.values()];
+  const items=values.map(x=>'<span style="display:inline-block;margin:2px 12px 2px 0"><b>'+esc(x.size)+
+    ' in</b> <small>(Cut Qty '+esc(x.qty)+')</small></span>').join('');
+  return '<section class="cfm-historical-note" style="margin:7px 0;padding:8px 10px;border:1px solid #e0c596;border-left:4px solid #aa7524;background:#fffbf1;color:#3a3021;font-size:10px;break-inside:avoid">'+
+    '<b>RAIN C — Basket Filter Double Layer | CFM-333 | Historical Cutting Reference Only</b>'+
+    '<div>'+items+'</div>'+
+    '<div>20-Jul-2026 source Cutting Register • <b>Not in Measurement Master</b> • Party alias “Rain Chem” to be verified • '+
+    '<b>HOLD: sizes / SRL must be physically confirmed before production.</b> No new entry created.</div></section>';
+ }
  function doPrint(filtered,format='paper'){
   const summary=fullSummary(selectedRows(filtered));
   if(!summary.products){alert('No Measurement Master product found. Clear search or load master data.');return false;}
   const viewer=window.open('','_blank');
   if(!viewer){alert('Print preview blocked. Allow ERP pop-ups and retry.');return false;}
-  viewer.document.open();viewer.document.write(format==='detailed'?reportHTML(summary):(format==='compact'?compactReportHTML(summary):paperSaverReportHTML(summary)));viewer.document.close();viewer.focus();
+  let html=format==='detailed'?reportHTML(summary):(format==='compact'?compactReportHTML(summary):paperSaverReportHTML(summary));
+  const notice=rainCHistoricalNotice();
+  if(notice){
+    if(format==='compact')html=html.replace('<table><thead>',notice+'<table><thead>');
+    else if(format==='detailed')html=html.replace('<div class="stats">',notice+'<div class="stats">');
+    else html=html.replace('<div id="print-pages"></div>',notice+'<div id="print-pages"></div>');
+  }
+  viewer.document.open();viewer.document.write(html);viewer.document.close();viewer.focus();
   return true;
  }
  function updateSummary(){
@@ -416,7 +451,7 @@
   $('measurementSearch')?.addEventListener('input',updateSummary);
   updateSummary();
  }
- window.CFM_FULL_MEASUREMENTS={fullSummary,reportHTML,compactReportHTML,paperSaverReportHTML,nonCFRecord,removeEmbeddedCFParts,selectedRows,doPrint,updateSummary};
+ window.CFM_FULL_MEASUREMENTS={fullSummary,reportHTML,compactReportHTML,paperSaverReportHTML,nonCFRecord,removeEmbeddedCFParts,selectedRows,doPrint,updateSummary,rainCHistoricalNotice};
  function init(){try{mount()}catch(e){console.warn('CFM full measurements',e)}}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
  setTimeout(init,1200);
