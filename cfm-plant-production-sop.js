@@ -46,7 +46,7 @@
         r._stockDeductionBlocked === true || r._redPenPendingStock === true ||
         r._photoReviewPending === true) return false;
     const photo = /PHOTO|RED PEN/i.test(String(r.entryType || ''));
-    if (photo && r._redPenVerified !== true && r._stockUsageEstimated !== false) return false;
+    if (photo && String(r.date || '') >= SOP_DATE && r._redPenVerified !== true) return false;
     return number(r.cutQty) > 0 && number(r.length) > 0 && number(r.height) > 0 &&
       !!matchRoll(s, r.srlNo);
   });
