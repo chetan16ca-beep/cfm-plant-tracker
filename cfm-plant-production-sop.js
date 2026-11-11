@@ -62,6 +62,27 @@
       wrapped.__cfmSop = true;
       window.openCuttingForm = wrapped;
     }
+    if (typeof window.markWorkDone === 'function' && !window.markWorkDone.__cfmSop) {
+      const previous = window.markWorkDone;
+      const guarded = function (i) {
+        const s = getState();
+        const wo = s && arr(s.pending)[i];
+        if (!wo) { display('Work Order not found. Refresh ERP before closing production.'); return false; }
+        const qty = number(wo.orderQty);
+        const packed = stageDone(s, wo.workNo, 'PACKING');
+        if (!(qty > 0) || packed + 0.001 < qty) {
+          const msg = 'Work Done blocked for ' + wo.workNo +
+            ': Packing supervisor handover ' + packed +
+            ' / required ' + qty + ' pcs. Enter verified Packing before Work Done.';
+          display(msg);
+          alert('SOP HOLD: ' + msg);
+          return false;
+        }
+        return previous.apply(this, arguments);
+      };
+      guarded.__cfmSop = true;
+      window.markWorkDone = guarded;
+    }
     if (typeof window.openDeptWorkForm === 'function' && !window.openDeptWorkForm.__cfmSop) {
       const previous = window.openDeptWorkForm;
       const wrapped = function (i) {
