@@ -114,7 +114,8 @@ async function importExcel(file){
  rows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});}
  catch(e){msg('Excel reading failed: '+(e?.message||e));return false}
  if(!rows.length||rows.length>900){msg('No valid editable rows found or too many rows.');return false}
- const initial=base(),now=live(),pending={},rejected=[],touched=0;
+ const initial=base(),now=live(),pending={},rejected=[];
+ let touched=0;
  for(let ri=0;ri<rows.length;ri++){
    const row=rows[ri],rowMap=T(row['ERP Row Map (DO NOT EDIT)']).trim();
    if(!rowMap){rejected.push('Row '+(ri+2)+': missing ERP Row Map');continue}
