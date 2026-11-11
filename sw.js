@@ -1,8 +1,8 @@
 // CFM PWA: network-first for live ERP UI; offline fallback only.
 // No IndexedDB, localStorage, Supabase order/stock changes.
-const CACHE='cfm-plant-ui-20261101-v250-pc-dashboard-focus';
+const CACHE='cfm-plant-ui-20261111-v251-plant-sop';
 const BASE=self.registration.scope;
-const SHELL=[BASE+'index.html',BASE+'manifest.json',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
+const SHELL=[BASE+'index.html',BASE+'manifest.json',BASE+'cfm-plant-production-sop.js',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(async cache=>{
