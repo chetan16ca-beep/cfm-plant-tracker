@@ -1,174 +1,232 @@
-/* CFM V254 - Unique Measurement Master Print.
-   Read-only grouping; never deletes original measurement records or writes ERP/Cloud. */
-(function () {
-  'use strict';
-  const $ = (id) => document.getElementById(id);
-  const norm = (value) => String(value == null ? '' : value).normalize('NFKC')
-    .replace(/\s+/g, ' ').trim().toUpperCase();
-  const isPlaceholder = (value) => {
-    const s = norm(value);
-    return !s || s === '-' || s === 'N/A' || s === 'NA' ||
-      s.includes('MEASUREMENT REQUIRED') || s.includes('NO PREVIOUS MEASUREMENT') ||
-      s === 'PENDING' || s === 'NOT AVAILABLE' || s === 'NOT GIVEN' ||
-      s === 'TBD' || s === 'NEW PRODUCT';
+/* CFM V256 - Complete Product-wise Measurement Master Print
+   All available fields and measurement versions are preserved.
+   Deduplicate only identical rows belonging to the SAME product and SAME full measurement set.
+   Read-only: no master, pending-order, stock or cloud writes.
+*/
+(function(){
+ 'use strict';
+ const $=id=>document.getElementById(id);
+ const norm=v=>String(v==null?'':v).normalize('NFKC').replace(/\s+/g,' ').trim().toUpperCase();
+ const text=v=>String(v==null?'':v);
+ const esc=v=>text(v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ const measurementFields=[
+  ['previousMeasurement','Previous Measurement'],
+  ['measurement1','Measurement 1'],
+  ['measurement2','Measurement 2'],
+  ['measurement3','Measurement 3'],
+  ['finalMeasurement','Final Measurement']
+ ];
+ const getRecords=()=>{
+  try{return typeof state!=='undefined'&&Array.isArray(state.measurements)?state.measurements:[];}
+  catch(_){return [];}
+ };
+ const clean=v=>text(v).trim();
+ function productIdentity(r,position){
+  // Code alone is unsafe: historic ERP codes sometimes cover multiple product descriptions.
+  // Names alone are unsafe: different parties and sizes may use the same wording.
+  const fields=['eagleCode','description','oldProductName','party','category','size','type','micron'];
+  const values=fields.map(k=>norm(r?.[k]));
+  return values.some(Boolean)?JSON.stringify(values):JSON.stringify(['UNIDENTIFIED',position]);
+ }
+ function variantIdentity(r){
+  // The entire pattern matters, not only its final dimensions.
+  // A different layer, part list, cloth or roll width must remain a distinct variant.
+  return JSON.stringify([
+   ...measurementFields.map(([field])=>norm(r?.[field])),
+   norm(r?.standardCloth),norm(r?.stdWidth)
+  ]);
+ }
+ function listAdd(set,value){
+  const v=clean(value);
+  if(v)set.add(v);
+ }
+ function fullSummary(input){
+  const records=Array.isArray(input)?input:[];
+  const byProduct=new Map();
+  let blanks=0;
+  records.forEach((r,index)=>{
+   if(!r||typeof r!=='object')return;
+   const id=productIdentity(r,index);
+   if(!byProduct.has(id)){
+    byProduct.set(id,{
+     codes:new Set(),names:new Set(),oldNames:new Set(),parties:new Set(),
+     categories:new Set(),sizes:new Set(),types:new Set(),microns:new Set(),
+     works:new Set(),sources:new Set(),sourceIds:new Set(),variants:new Map(),masterRows:0
+    });
+   }
+   const p=byProduct.get(id);p.masterRows++;
+   [['eagleCode','codes'],['description','names'],['oldProductName','oldNames'],
+    ['party','parties'],['category','categories'],['size','sizes'],['type','types'],
+    ['micron','microns'],['workNo','works'],['source','sources'],['mappingKey','sourceIds']]
+    .forEach(([key,which])=>listAdd(p[which],r[key]));
+   const vKey=variantIdentity(r);
+   if(!p.variants.has(vKey)){
+    p.variants.set(vKey,{
+     measurements:Object.fromEntries(measurementFields.map(([name])=>[name,clean(r[name])])),
+     cloths:new Set(),widths:new Set(),statuses:new Set(),references:new Set(),
+     works:new Set(),sources:new Set(),notes:new Set(),count:0
+    });
+   }
+   const variant=p.variants.get(vKey);
+   variant.count++;
+   listAdd(variant.cloths,r.standardCloth);
+   listAdd(variant.widths,r.stdWidth);
+   listAdd(variant.statuses,r.status);
+   listAdd(variant.references,r.duplicate);
+   listAdd(variant.works,r.workNo);
+   listAdd(variant.sources,r.source);
+   const hasValid=measurementFields.some(([key])=>{
+    const v=norm(r[key]);return v&&!v.includes('MEASUREMENT REQUIRED')&&!v.includes('NO PREVIOUS MEASUREMENT');
+   });
+   if(!hasValid)blanks++;
+  });
+  const products=[...byProduct.values()].sort((a,b)=>{
+   const label=p=>[...p.names][0]||[...p.oldNames][0]||[...p.codes][0]||'';
+   return label(a).localeCompare(label(b),undefined,{numeric:true,sensitivity:'base'});
+  });
+  const uniqueVariants=products.reduce((sum,p)=>sum+p.variants.size,0);
+  const validRecords=products.reduce((sum,p)=>sum+p.masterRows,0);
+  return {
+   rows:records.length,products:products.length,uniqueVariants,
+   duplicates:Math.max(0,validRecords-uniqueVariants),incomplete:blanks,
+   list:products
   };
-  const bestMeasurement = (r) => {
-    const options = [r?.finalMeasurement, r?.measurement3, r?.measurement2,
-      r?.measurement1, r?.previousMeasurement];
-    return String(options.find(v=>!isPlaceholder(v)) || '').trim();
-  };
-  const specKey = (v) => norm(v)
-    .replace(/(\d)\s*[×xX*]\s*(\d)/g,'$1 X $2')
-    .replace(/\s*([:;,|])\s*/g,'$1 ')
-    .replace(/\s+/g,' ').trim();
-  const encode = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,x=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[x]));
-  const stateRows = () => {
-    try { return typeof state !== 'undefined' && Array.isArray(state.measurements)
-      ? state.measurements : []; } catch (_) { return []; }
-  };
-  function summarize(input, productWise = false) {
-    const records = Array.isArray(input) ? input : [];
-    const groups = new Map();
-    let excluded=0, valid=0;
-    for (const r of records) {
-      const measurement=bestMeasurement(r);
-      if (!measurement) { excluded++;continue; }
-      valid++;
-      const identity = productWise
-        ? norm(r?.description || r?.oldProductName || r?.eagleCode || r?.party || 'UNKNOWN') + '|'
-          + specKey(measurement)
-        : specKey(measurement);
-      if (!groups.has(identity)) groups.set(identity,{
-        measurement, occurrences:0, codes:new Set(), parties:new Set(),
-        products:new Set(), workNos:new Set(), cloths:new Set(), widths:new Set()
-      });
-      const g=groups.get(identity);g.occurrences++;
-      if (r?.eagleCode) g.codes.add(String(r.eagleCode).trim());
-      if (r?.party) g.parties.add(String(r.party).trim());
-      if (r?.description) g.products.add(String(r.description).trim());
-      if (r?.workNo) g.workNos.add(String(r.workNo).trim());
-      if (r?.standardCloth) g.cloths.add(String(r.standardCloth).trim());
-      if (r?.stdWidth) g.widths.add(String(r.stdWidth).trim());
-    }
-    const list=[...groups.values()].sort((a,b)=>a.measurement.localeCompare(b.measurement,undefined,{
-      numeric:true,sensitivity:'base'
-    }));
-    return {
-      rows:records.length, valid, excluded, unique:list.length,
-      duplicates:valid-list.length, list, productWise
-    };
-  }
-  function getCurrent(filtered) {
-    const rows=stateRows();
-    if (!filtered) return rows;
-    const search=String($('measurementSearch')?.value || '').trim().toLowerCase();
-    return search?rows.filter(r=>JSON.stringify(r).toLowerCase().includes(search)):rows;
-  }
-  function refsFrom(set, max) {
-    const items=[...set];
-    return items.slice(0,max).map(encode).join(', ')+
-      (items.length>max?' (+'+(items.length-max)+' more)':'');
-  }
-  function getReportHtml(summary) {
-    const today = new Date().toLocaleDateString('en-IN');
-    const mode = summary.productWise?'Product-wise Unique':'Unique Measurement Specifications';
-    const rows=summary.list.map((g,i)=> {
-      const codes=refsFrom(g.codes,9);
-      const products=refsFrom(g.products,3);
-      const works=refsFrom(g.workNos,8);
-      const cloth=refsFrom(g.cloths,5);
-      return '<tr><td class="num">'+(i+1)+'</td>'+
-        '<td class="meas">'+encode(g.measurement)+'</td>'+
-        '<td><strong>'+ (codes||'—') +'</strong>'+
-        (products?'<div>'+products+'</div>':'')+
-        (works?'<small>WO: '+works+'</small>':'')+
-        (cloth?'<small>Cloth: '+cloth+'</small>':'')+
-        '</td><td class="num">'+g.occurrences+'</td></tr>';
-    }).join('');
-    return '<!doctype html><html lang="en"><head><meta charset="utf-8">'+
-      '<meta name="viewport" content="width=device-width,initial-scale=1">'+
-      '<title>CFM '+encode(mode)+' Print</title>'+
-      '<style>@page{size:A4 landscape;margin:11mm}*{box-sizing:border-box}body{font:11px/1.4 Arial,sans-serif;color:#182333;margin:0}h1{font-size:17px;margin:0 0 4px}'+
-      '.sub{color:#47647a;margin:0 0 7px}.stats{font-size:11px;padding:7px 0;margin:4px 0 10px;border-top:1px solid #cedae2;border-bottom:1px solid #cedae2}'+
-      'table{border-collapse:collapse;width:100%;table-layout:fixed}th,td{border:1px solid #bac9d4;padding:6px 7px;vertical-align:top;overflow-wrap:anywhere}th{background:#e8f3fa;text-align:left}'+
-      'th:nth-child(1),td:nth-child(1){width:5%}th:nth-child(2),td:nth-child(2){width:35%}th:nth-child(3),td:nth-child(3){width:52%}th:nth-child(4),td:nth-child(4){width:8%}'+
-      '.meas{font-weight:700;font-size:12px;white-space:pre-wrap}.num{text-align:center;white-space:nowrap}small{display:block;color:#567;line-height:1.35;margin-top:3px}'+
-      'tr{break-inside:avoid;page-break-inside:avoid}thead{display:table-header-group}.note{font-size:10px;margin-top:8px;color:#567}'+
-      '.toolbar{display:flex;justify-content:space-between;align-items:center;padding:9px;margin:0 0 12px;background:#edf5fc}button{padding:8px 13px;background:#176fb4;border:0;color:white;border-radius:6px;font-weight:700}'+
-      '@media print{.toolbar{display:none!important}}</style></head><body>'+
-      '<div class="toolbar"><b>Preview • '+summary.unique+' unique entries</b><button onclick="window.print()">🖨 Print / Save as PDF</button></div>'+
-      '<h1>EAGLE FILTRATION — CFM Cutting Measurement Master</h1>'+
-      '<p class="sub">'+encode(mode)+' • '+encode(today)+' • A4 Landscape</p>'+
-      '<div class="stats"><b>Total records:</b> '+summary.rows+
-      ' &nbsp; | &nbsp; <b>Valid measurements:</b> '+summary.valid+
-      ' &nbsp; | &nbsp; <b>Unique print rows:</b> '+summary.unique+
-      ' &nbsp; | &nbsp; <b>Duplicates grouped:</b> '+summary.duplicates+
-      ' &nbsp; | &nbsp; <b>Blank / Pending excluded:</b> '+summary.excluded+'</div>'+
-      '<table><thead><tr><th>Sr</th><th>Measurement / Cutting Details</th><th>Eagle Code / Product Reference</th><th>Master Rows</th></tr></thead>'+
-      '<tbody>'+ (rows||'<tr><td colspan="4">No verified measurements to print.</td></tr>') +
-      '</tbody></table><p class="note">Repeated identical measurement text is grouped; original ERP master is unchanged. '+ 
-      'Different product references can share one measurement; verify product, pattern and cloth before production. '+ 
-      'This is a read-only report, not a manufacturing approval.</p>'+
-      '</body></html>';
-  }
-  function selectedMode() { return $('cfmUniquePerProduct')?.checked === true; }
-  function draw() {
-    const root=$('cfmUniqueMeasurementTools');
-    if (!root) return;
-    const filtered=getCurrent(true);
-    const a=summarize(filtered,selectedMode());
-    const line=$('cfmUniqueStats');
-    if (line) line.textContent=
-      filtered.length+' Master Rows | '+a.unique+' Unique Measurements | '+
-      a.duplicates+' Duplicates Grouped | '+a.excluded+' Blank/Pending Excluded'+
-      (($('measurementSearch')?.value||'').trim()?' | Search filter ON':'');
-    return a;
-  }
-  function print(filtered=true) {
-    const summary=summarize(getCurrent(filtered),selectedMode());
-    if (!summary.unique) { alert('No valid measurements found for printing. Check Measurement Master or clear Search.');return false; }
-    const w=window.open('','_blank');
-    if (!w) { alert('Print preview blocked. Allow pop-ups for the CFM ERP and retry.');return false; }
-    w.document.open();w.document.write(getReportHtml(summary));w.document.close();
-    w.focus();
-    return true;
-  }
-  function mount() {
-    const page=$('view-measurements');
-    if (!page || $('cfmUniqueMeasurementTools')) return;
-    const bar=document.createElement('section');
-    bar.id='cfmUniqueMeasurementTools';
-    bar.style.cssText='margin:12px 2px;padding:12px;background:#f0faff;border:1px solid #b8daee;border-radius:11px;color:#153c58;font:13px/1.5 system-ui';
-    const title=document.createElement('strong');title.textContent='🖨 Unique Measurements — Print Without Duplicates';
-    title.style.cssText='display:block;font-size:15px;margin-bottom:5px';bar.append(title);
-    const explanation=document.createElement('p');
-    explanation.style.cssText='margin:2px 0 9px';
-    explanation.textContent='Same measurement prints once; all original master entries remain unchanged. The current Search filter is respected.';
-    bar.append(explanation);
-    const label=document.createElement('label');label.style.cssText='display:flex;gap:7px;align-items:center;margin:5px 0 9px;font-weight:700';
-    const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.id='cfmUniquePerProduct';
-    checkbox.addEventListener('change',draw);
-    label.append(checkbox,document.createTextNode('Product-wise grouping (keep same measurement separate for different products)'));
-    bar.append(label);
-    const stats=document.createElement('p');stats.id='cfmUniqueStats';stats.setAttribute('role','status');
-    stats.style.cssText='font-weight:800;color:#175e85;margin:7px 0';bar.append(stats);
-    const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
-    for(const [labelText,filtered] of [['🖨 Print Unique (Search Results)',true],['🖨 Print All Unique',false]]) {
-      const btn=document.createElement('button');btn.type='button';btn.textContent=labelText;
-      btn.className='btn btn-primary';btn.style.cssText='font-size:12px;min-height:38px';
-      btn.addEventListener('click',()=>print(filtered));actions.append(btn);
-    }
-    bar.append(actions);
-    const search=$('measurementSearch');
-    if (search) search.addEventListener('input',draw);
-    const anchor=page.querySelector('.filters')||page.querySelector('.section-head');
-    if(anchor)anchor.insertAdjacentElement('afterend',bar);else page.prepend(bar);
-    draw();
-  }
-  window.CFM_UNIQUE_MEASUREMENTS={summarize,bestMeasurement,specKey,print,draw};
-  function ready(){try{mount()}catch(e){console.warn('Unique Measurement Print',e)}}
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
-  setTimeout(ready,1200);
+ }
+ function joined(set){
+  const all=[...(set||[])].map(esc);
+  return all.length?all.join(' • '):'—';
+ }
+ function filled(value){
+  return clean(value)?esc(value):'<span class="empty">Not recorded</span>';
+ }
+ function reportHTML(summary){
+  const now=new Date().toLocaleDateString('en-IN');
+  const cards=summary.list.map((p,index)=>{
+   const variants=[...p.variants.values()].map((v,vi)=>{
+    const dimensions=measurementFields.map(([key])=>
+      '<td><div class="meas-text">'+filled(v.measurements[key])+'</div></td>'
+    ).join('');
+    const refs=[
+      ['Cloth',joined(v.cloths)],['Width (inch)',joined(v.widths)],
+      ['Status',joined(v.statuses)],['Work Nos',joined(v.works)],
+      ['Source Records',joined(v.sources)],
+      ['Old Master Remark',joined(v.references)]
+    ].map(([k,value])=>'<span><b>'+esc(k)+':</b> '+value+'</span>').join('');
+    return '<section class="variant"><div class="variant-heading">Measurement Set '+(vi+1)+
+      (p.variants.size>1?' of '+p.variants.size:'')+
+      (v.count>1?' · '+v.count+' identical master entries grouped':'')+'</div>'+
+      '<table class="measurements"><thead><tr>'+
+      measurementFields.map(([,label])=>'<th>'+esc(label)+'</th>').join('')+
+      '</tr></thead><tbody><tr>'+dimensions+'</tr></tbody></table>'+
+      '<div class="variant-details">'+refs+'</div></section>';
+   }).join('');
+   const details=[
+    ['Eagle Code',joined(p.codes)],['Party',joined(p.parties)],
+    ['Category',joined(p.categories)],['Size',joined(p.sizes)],
+    ['Type',joined(p.types)],['Micron',joined(p.microns)],
+    ['Original Product Name',joined(p.oldNames)],
+    ['All Work Nos',joined(p.works)],
+    ['All Source Sheets',joined(p.sources)],
+    ['Mapping Key',joined(p.sourceIds)]
+   ].map(([k,value])=>'<span><b>'+esc(k)+':</b> '+value+'</span>').join('');
+   return '<article class="product"><div class="product-heading">'+
+     '<span class="sr">'+(index+1)+'.</span><div class="name">'+joined(p.names)+
+     '</div><span class="counts">'+p.variants.size+' measurement set(s) · '+p.masterRows+' master row(s)</span></div>'+
+     '<div class="product-details">'+details+'</div>'+variants+'</article>';
+  }).join('');
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+   '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+   '<title>CFM Complete Measurements - Every Product</title>'+
+   '<style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{margin:0;color:#202b34;font:10.5px/1.4 Arial,Helvetica,sans-serif}'+
+   'h1{font-size:17px;margin:0 0 4px}.sub{color:#526473;margin:0 0 8px}.counts,.meta{font-size:10px;color:#385367}'+
+   '.toolbar{padding:12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;background:#f1f8fc;border:1px solid #c5dce9}'+
+   '.toolbar button{background:#176a9e;color:white;border:0;border-radius:7px;padding:9px 13px;font-weight:800;cursor:pointer}'+
+   '.stats{border-top:1px solid #b7cddc;border-bottom:1px solid #b7cddc;padding:8px 0;margin:7px 0 13px;font-size:10.5px}'+
+   '.product{margin:0 0 13px;border:1px solid #aec9d6;border-radius:6px;break-inside:auto;page-break-inside:auto}'+
+   '.product-heading{display:flex;gap:10px;align-items:flex-start;padding:7px 9px;background:#e8f2f7;break-after:avoid;page-break-after:avoid}'+
+   '.product-heading .sr{font-weight:800}.product-heading .name{font-weight:800;font-size:12px;flex:1;white-space:pre-wrap;overflow-wrap:anywhere}'+
+   '.product-heading .counts{white-space:nowrap}'+
+   '.product-details{padding:7px 9px;display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;overflow-wrap:anywhere}'+
+   '.product-details span,.variant-details span{white-space:pre-wrap;overflow-wrap:anywhere}'+
+   '.variant{padding:5px 9px 9px;border-top:1px solid #bed3dd;break-inside:avoid;page-break-inside:avoid}'+
+   '.variant-heading{font-weight:800;color:#185b7d;margin-bottom:5px}'+
+   'table.measurements{width:100%;border-collapse:collapse;table-layout:fixed}'+
+   'table.measurements th,table.measurements td{border:1px solid #bdd0da;vertical-align:top;padding:5px;overflow-wrap:anywhere;width:20%}'+
+   'table.measurements th{background:#f5fafc;font-size:10px;text-align:left}'+
+   '.meas-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:10.5px;font-weight:600}'+
+   '.empty{font-weight:400;color:#9a6471;font-style:italic}'+
+   '.variant-details{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;margin-top:6px;font-size:9.5px;color:#415565}'+
+   '.foot{font-size:9.5px;color:#536d7e;margin:12px 0}'+
+   '@media print{.toolbar{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+   '.product-heading,.variant-heading{break-inside:avoid}}'+
+   '</style></head><body>'+
+   '<div class="toolbar"><b>Complete Measurement Master: '+summary.products+' products</b>'+
+   '<button onclick="window.print()">Print / Save as PDF</button></div>'+
+   '<h1>EAGLE FILTRATION — Complete Product Measurement Master</h1>'+
+   '<p class="sub">Every product · All 5 measurement fields · No cutting pattern omitted · '+esc(now)+'</p>'+
+   '<div class="stats"><b>Master rows:</b> '+summary.rows+
+   ' &nbsp; | &nbsp; <b>Products:</b> '+summary.products+
+   ' &nbsp; | &nbsp; <b>Different measurement sets:</b> '+summary.uniqueVariants+
+   ' &nbsp; | &nbsp; <b>Exact duplicate rows grouped:</b> '+summary.duplicates+
+   ' &nbsp; | &nbsp; <b>Rows without actual measurements (included):</b> '+summary.incomplete+'</div>'+
+   (cards||'<p>No measurement master records found. Check ERP master import.</p>')+
+   '<p class="foot">All available measurement fields, product codes, cloth, width and source references printed in full. '+
+   'Only identical product + identical complete measurement sets are grouped; different measurements remain separate. '+
+   'Missing details are shown as Not recorded, not invented. Source master data is unchanged. '+
+   'Verify physical pattern before cutting.</p></body></html>';
+ }
+ function selectedRows(filtered){
+  const rows=getRecords();
+  if(!filtered)return rows;
+  const search=clean($('measurementSearch')?.value).toLowerCase();
+  return search?rows.filter(r=>JSON.stringify(r).toLowerCase().includes(search)):rows;
+ }
+ function doPrint(filtered){
+  const summary=fullSummary(selectedRows(filtered));
+  if(!summary.products){alert('No Measurement Master product found. Clear search or load master data.');return false;}
+  const viewer=window.open('','_blank');
+  if(!viewer){alert('Print preview blocked. Allow ERP pop-ups and retry.');return false;}
+  viewer.document.open();viewer.document.write(reportHTML(summary));viewer.document.close();viewer.focus();
+  return true;
+ }
+ function updateSummary(){
+  const stat=$('cfmFullMeasurementStats');
+  if(!stat)return;
+  const s=fullSummary(selectedRows(true));
+  stat.textContent=s.rows+' source rows · '+s.products+' products · '+
+    s.uniqueVariants+' complete measurement sets · '+s.duplicates+
+    ' exact duplicates grouped · '+s.incomplete+' incomplete entries included'+
+    (clean($('measurementSearch')?.value)?' · Search active':'');
+ }
+ function mount(){
+  const page=$('view-measurements');
+  if(!page || $('cfmUniqueMeasurementTools'))return;
+  const pane=document.createElement('section');
+  pane.id='cfmUniqueMeasurementTools';
+  pane.style.cssText='margin:12px 2px;padding:13px;border:1px solid #b4d5e6;border-radius:11px;background:#f0f9ff;color:#17445f;font:13px/1.5 system-ui';
+  const heading=document.createElement('strong');
+  heading.textContent='🖨 Complete Measurements Master — Every Product';
+  heading.style.cssText='display:block;font-size:15px;margin-bottom:6px';pane.append(heading);
+  const info=document.createElement('p');
+  info.textContent='No half measurements. Each product prints Previous, Measurement 1, 2, 3 and Final completely. Different patterns never disappear; only exact duplicates are grouped.';
+  info.style.cssText='margin:4px 0 8px';pane.append(info);
+  const count=document.createElement('div');count.id='cfmFullMeasurementStats';
+  count.style.cssText='font-weight:800;margin:7px 0;color:#16638d';count.setAttribute('role','status');
+  pane.append(count);
+  const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+  [['🖨 Print All Complete Measurements',false],['🖨 Print Matching Products',true]].forEach(([name,filtered])=>{
+    const b=document.createElement('button');b.type='button';b.className='btn btn-primary';
+    b.textContent=name;b.style.cssText='min-height:40px;font-size:12px';
+    b.addEventListener('click',()=>doPrint(filtered));actions.append(b);
+  });
+  pane.append(actions);
+  const marker=page.querySelector('.filters')||page.querySelector('.section-head');
+  if(marker)marker.insertAdjacentElement('afterend',pane);else page.prepend(pane);
+  $('measurementSearch')?.addEventListener('input',updateSummary);
+  updateSummary();
+ }
+ window.CFM_FULL_MEASUREMENTS={fullSummary,reportHTML,doPrint,updateSummary};
+ function init(){try{mount()}catch(e){console.warn('CFM full measurements',e)}}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+ setTimeout(init,1200);
 })();
