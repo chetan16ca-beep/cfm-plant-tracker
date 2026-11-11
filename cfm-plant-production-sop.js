@@ -1,4 +1,4 @@
-/* CFM Plant Production SOP V251 - 11 Nov 2026
+/* CFM Plant Production SOP V253 - 11 Nov 2026
    Adds operator-side approval and production handover guards.
    Does not mutate historic records, auto-deduct meters, or write to Cloud by itself.
    The existing ERP Save & Cloud Sync remain the only persistence mechanism. */
@@ -18,6 +18,7 @@
   };
   const canonicalStage = (v) => {
     const p = norm(v);
+    if (p.includes('FINAL CHECK') || p === 'QC' || p.includes('QUALITY')) return 'FINAL CHECKING';
     if (p.includes('THREAD')) return 'THREAD CUTTING';
     if (p.includes('STITCH')) return 'STITCHING';
     if (p.includes('GUN') || p.includes('FINISH')) return 'GUN';
@@ -25,7 +26,7 @@
     if (p.includes('CUT')) return 'CUTTING';
     return '';
   };
-  const STAGES = ['CUTTING', 'STITCHING', 'THREAD CUTTING', 'GUN', 'PACKING'];
+  const STAGES = ['CUTTING', 'STITCHING', 'THREAD CUTTING', 'GUN', 'FINAL CHECKING', 'PACKING'];
   const matchOrder = (s, work) => arr(s?.pending).find((r) => norm(r.workNo) === norm(work));
   const matchRoll = (s, entered) => {
     const value = norm(entered);
@@ -176,6 +177,8 @@
       return 'Cut part exceeds the real Store SRL roll width (' + width + ' inch).';
     const expected = length * height * qty * layer / width / 39.37;
     const old = Number.isInteger(cuttingEditIndex) ? arr(s.cutting)[cuttingEditIndex] : null;
+    if (old && /PHOTO|RED PEN/i.test(String(old.entryType || '')))
+      return 'Old photo cutting requires supervised photo-reconciliation, not direct edit; prevents duplicate SRL consumption.';
     const priorMeter = old && norm(old.srlNo) === norm(roll.srlNo) &&
       (!roll._physicalCountDate || String(old.date || '') > String(roll._physicalCountDate))
       ? (typeof cuttingUsedMtr === 'function' ? number(cuttingUsedMtr(old)) : 0) : 0;
@@ -209,7 +212,10 @@
         return 'No verified Cutting entry / SRL recorded for this Work Order. Do not hand over to Stitching.';
       return '';
     }
-    const prev = STAGES[STAGES.indexOf(stage) - 1];
+    // Final Checking is an optional recorded handover. Once recorded it becomes
+    // mandatory for Packing, otherwise Packing follows Gun Finish directly.
+    const anyQC = stageDone(s, work, 'FINAL CHECKING') > 0;
+    const prev = stage === 'PACKING' && !anyQC ? 'GUN' : STAGES[STAGES.indexOf(stage) - 1];
     const predecessorQty = stageDone(s, work, prev, exclude);
     if (already + done > predecessorQty + 0.001)
       return stage + ' cannot exceed ' + prev + ' handover. Available ' +
@@ -314,9 +320,6 @@
     })[k] || ''})}};
     const issue = checkDepartment(form,s);
     if (issue) return issue;
-    if (/FINAL CHECK|QUALITY/i.test(process) &&
-        stageDone(s,work,'GUN') < Number(qty))
-      return 'Quality Checking cannot exceed Gun Finish handover quantity.';
     if (typeof save !== 'function') return 'ERP Save is not ready; refresh before posting.';
     const date = typeof todayISO === 'function' ? todayISO() : new Date().toISOString().slice(0,10);
     const baseRemark = String(remark || '').trim();
@@ -482,6 +485,6 @@
     attach(); dashboard();
     setInterval(() => { try { attach(); dashboard(); } catch(e) { console.warn('CFM SOP status',e); } }, 12000);
   }
-  window.CFM_PLANT_SOP = {version:'251',effectiveDate:SOP_DATE,validate:(kind,obj) => check(kind, obj, getState())};
+  window.CFM_PLANT_SOP = {version:'253',effectiveDate:SOP_DATE,validate:(kind,obj) => check(kind, obj, getState())};
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
 })();
