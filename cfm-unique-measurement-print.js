@@ -1,4 +1,4 @@
-/* CFM V258 - Non-CF complete, 20-page-target Measurement Master Print
+/* CFM V260 - Compact Non-CF button uses optimized 20–25 page A4 register
    All available fields and measurement versions are preserved.
    Deduplicate only identical rows belonging to the SAME product and SAME full measurement set.
    Read-only: no master, pending-order, stock or cloud writes.
@@ -312,7 +312,7 @@
   const date=new Date().toLocaleDateString('en-IN');
   const html='<!doctype html><html><head><meta charset="utf-8">'+
    '<meta name="viewport" content="width=device-width,initial-scale=1">'+
-   '<title>CFM Non-CF Measurement Master • 20 Page Print</title>'+
+   '<title>CFM Non-CF Measurement Master • 20–25 Page Target</title>'+
    '<style>@page{size:A4 landscape;margin:5mm 7mm}'+
    ':root{--print-font:10.8px}*{box-sizing:border-box}body{margin:0;color:#1c303a;font:11px Arial,sans-serif}'+
    '.controls{position:sticky;top:0;background:#e9f4fa;padding:10px 14px;border-bottom:1px solid #adc9d8;z-index:8;display:flex;align-items:center;gap:14px;flex-wrap:wrap}'+
@@ -357,9 +357,9 @@
    'if(used+h+1>cap&&used>0){ix++;used=0;if(ix>=columns.length)nextPage();}'+
    'columns[ix].append(item.cloneNode(true));used+=h;}return count;}'+
    'let pages=0;let which=layouts[layouts.length-1];'+
-   'for(const cfg of layouts){pages=lay(cfg);which=cfg;if(pages<=20)break;}'+
+   'for(const cfg of layouts){pages=lay(cfg);which=cfg;if(pages<=25)break;}'+
    'status.textContent=source.length+" complete non-CF measurement sets · "+pages+" A4 pages · "+which.cols+" columns · "+which.font+"px";'+
-   'if(pages>20){status.className="status warn";status.textContent+=" · More than 20 pages needed to avoid cutting data";}'+
+   'if(pages>25){status.className="status warn";status.textContent+=" · More than 25 pages needed to avoid cutting data";}'+
    'printer.disabled=false;window.__CFM_PRINT_INFO={rows:source.length,pages,columns:which.cols,font:which.font};'+
    '})();<\/script></body></html>';
   return html;
@@ -377,7 +377,7 @@
   if(!summary.products){alert('No Measurement Master product found. Clear search or load master data.');return false;}
   const viewer=window.open('','_blank');
   if(!viewer){alert('Print preview blocked. Allow ERP pop-ups and retry.');return false;}
-  viewer.document.open();viewer.document.write(format==='detailed'?reportHTML(summary):(format==='compact'?compactReportHTML(summary):paperSaverReportHTML(summary)));viewer.document.close();viewer.focus();
+  viewer.document.open();viewer.document.write(format==='detailed'?reportHTML(summary):paperSaverReportHTML(summary));viewer.document.close();viewer.focus();
   return true;
  }
  function updateSummary(){
@@ -399,13 +399,13 @@
   heading.textContent='🖨 Complete Measurements Master — Every Product';
   heading.style.cssText='display:block;font-size:15px;margin-bottom:6px';pane.append(heading);
   const info=document.createElement('p');
-  info.textContent='20-page target: CF Bag (CFB) products excluded only from PRINT. All other cutting dimensions remain complete. M1 = Final prints once where identical; different values print separately.';
+  info.textContent='Compact Non-CF: 20–25 page target in easy-to-read A4 layout. CF Bags excluded from print. All other cutting sizes are included, with duplicate M1 / Final values shown once.';
   info.style.cssText='margin:4px 0 8px';pane.append(info);
   const count=document.createElement('div');count.id='cfmFullMeasurementStats';
   count.style.cssText='font-weight:800;margin:7px 0;color:#16638d';count.setAttribute('role','status');
   pane.append(count);
   const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
-  [['🖨 Print Non-CF — 20 Page Target',false,'paper'],['🖨 Search Non-CF — Paper Saver',true,'paper'],['Compact Non-CF',false,'compact'],['Detailed Non-CF',false,'detailed']].forEach(([name,filtered,format])=>{
+  [['🖨 Compact Non-CF — 20–25 Pages',false,'paper'],['🖨 Search Non-CF — Compact',true,'paper'],['Detailed Non-CF (All)',false,'detailed']].forEach(([name,filtered,format])=>{
     const b=document.createElement('button');b.type='button';b.className='btn btn-primary';
     b.textContent=name;b.style.cssText='min-height:40px;font-size:12px';
     b.addEventListener('click',()=>doPrint(filtered,format));actions.append(b);
