@@ -17,6 +17,27 @@
 .missing-bills{background:#fff8e9;border:1px solid #efcf8f;border-radius:12px;padding:16px;margin:16px 0 19px}
 .missing-bills strong{display:block;color:#865918}.missing-bills p{font-size:13px;color:#745d38;line-height:1.5}
 @media(max-width:520px){.eagle-catalog{grid-template-columns:repeat(2,minmax(0,1fr))}.eagle-panel{padding:12px}.eagle-chip strong{font-size:12px}}
+
+.compare-chooser{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;background:white;border:1px solid var(--border);border-radius:15px;padding:14px}
+.compare-chooser select{width:100%;min-width:0;padding:12px 9px;border:1px solid #dce5f1;border-radius:9px;background:white;font-size:12px;text-overflow:ellipsis}
+.compare-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.compare-summary>div{background:white;border:1px solid var(--border);border-radius:12px;padding:13px;text-align:center;min-width:0}
+.compare-summary strong{display:block;font-size:22px;color:#163d71}.compare-summary span{display:block;font-size:11px;color:var(--muted)}
+.compare-list{display:grid;gap:12px}
+.compare-card{background:white;border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shadow)}
+.compare-head{padding:12px 14px;background:#eaf2fe;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.compare-head strong{font-size:14px;color:#16477d;overflow-wrap:anywhere}.compare-head span{font-size:12px;color:#365776;white-space:nowrap}
+.compare-sides{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.compare-side{padding:13px;min-width:0}.compare-side+.compare-side{border-left:1px solid var(--border)}
+.compare-party{font-size:11px;font-weight:800;color:#44617f;min-height:28px;overflow-wrap:anywhere}
+.compare-price{font-size:21px;font-weight:900;letter-spacing:-.5px;color:#0c4b84;margin:9px 0}
+.compare-price.missing{color:#98a6b7}
+.compare-unit{font-size:11px;color:#657992;font-weight:700}
+.compare-sub{font-size:11px;color:#64748b;overflow-wrap:anywhere;line-height:1.5;margin:3px 0}
+.compare-review{display:inline-block;color:#a65d08;background:#fff3df;padding:4px 7px;font-size:10px;border-radius:6px}
+.compare-difference{border-top:1px solid var(--border);padding:10px 13px;font-size:11px;font-weight:750;color:#3d5d7c;background:#fbfcff}
+@media(min-width:900px){.compare-chooser{grid-template-columns:repeat(4,minmax(0,1fr))}.compare-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:390px){.compare-side{padding:9px}.compare-party{font-size:10px}.compare-price{font-size:18px}.compare-head strong{font-size:12px}.compare-summary>div{padding:9px}.compare-summary strong{font-size:19px}}
 </style></head><body>
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3z M9 20v-7h6v7"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></symbol><symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-7M3 4v5h5M12 7v5l4 2"/></symbol><symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h.01M15 7h.01M9 12h.01M15 12h.01M10 21v-5h4v5"/></symbol><symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5zM3 12l9 5 9-5M3 17l9 5 9-5"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol><symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6M17 2v6M3 10h18"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></symbol><symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 21V9m-5 5 5-5 5 5M4 7V3h16v4"/></symbol></svg>
 <div class="app">
@@ -65,7 +86,7 @@ function consolidate(arr){
 let raw;
 try{const x=JSON.parse(localStorage.getItem(STORE));const y=JSON.parse(localStorage.getItem(LEGACY));raw=Array.isArray(x)?x:Array.isArray(y)?y:initial;}catch{raw=initial;}
 let entries=consolidate(raw).rows;
-let state={page:'home',q:'',vendor:'',unit:'',sort:'recent',compareEagle:'',compareWidth:'',compareUnit:''};
+let state={page:'home',q:'',vendor:'',unit:'',sort:'recent',compareEagle:'',compareVendorA:'',compareVendorB:'',compareMode:'all'};
 let pendingInstall=null,toastTimer=null;
 function persist(){try{localStorage.setItem(STORE,JSON.stringify(entries));return true;}catch(e){alert('Data is not saved. Browser storage blocked/full. Use Backup if possible.');return false;}}
 function latest(data){let m=new Map();for(const r of data){let k=productKey(r),o=m.get(k);if(!o||newestFirst(r,o)<0)m.set(k,r);}return [...m.values()];}
@@ -123,33 +144,89 @@ ${filterToolbar()}<div class="sectiontop"><h2>${list.length} ${showHistory?'bill
 }
 
 function renderCompare(){
- const allCodes=[...new Set([...EAGLE_CODES,...customEagleCodes,...entries.map(r=>eagleOf(r)).filter(Boolean)])];
- const vendorCount=code=>new Set(entries.filter(r=>norm(eagleOf(r))===norm(code)).map(r=>norm(r.vendor))).size;
- if(!allCodes.includes(state.compareEagle))state.compareEagle=[...allCodes].sort((a,b)=>vendorCount(b)-vendorCount(a))[0]||'';
- const relevant=entries.filter(r=>norm(eagleOf(r))===norm(state.compareEagle));
- const widths=[...new Set(relevant.filter(r=>r.width!==''&&Number(r.width)>0).map(r=>String(Number(r.width))))].sort((a,b)=>Number(a)-Number(b));
- if(!widths.includes(state.compareWidth))state.compareWidth=widths[0]||'';
- const widthRows=relevant.filter(r=>r.width!==''&&String(Number(r.width))===state.compareWidth);
- const units=[...new Set(widthRows.map(r=>r.unit))].sort();
- if(!units.includes(state.compareUnit))state.compareUnit=units.includes('MTR')?'MTR':units[0]||'';
- const matching=widthRows.filter(r=>r.unit===state.compareUnit).sort(newestFirst);
- const byVendor=new Map();
- for(const r of matching){const k=norm(r.vendor);if(!byVendor.has(k))byVendor.set(k,r);}
- const vendorRates=[...byVendor.values()].sort((a,b)=>a.rate-b.rate||a.vendor.localeCompare(b.vendor));
- const min=vendorRates[0],max=vendorRates[vendorRates.length-1];
- const unmatched=latest(entries).filter(r=>!eagleOf(r)).length;
- const top=min?'<div class="statgrid"><div class="statbox"><h3>'+vendorRates.length+'</h3><small>Comparable vendors</small></div><div class="statbox"><h3>₹'+fmtMoney(min.rate)+'</h3><small>Lowest bill rate / '+escapeHTML(unitText(min.unit))+'</small></div><div class="statbox"><h3>₹'+fmtMoney(max.rate-min.rate)+'</h3><small>Gap vs highest vendor / '+escapeHTML(unitText(min.unit))+'</small></div><div class="statbox"><h3>'+unmatched+'</h3><small>Unmapped latest products</small></div></div>':'<p class="notice">Is Eagle code aur width ke liye koi matched bill rate nahi mila. Code mapping ke liye History mein bill edit karein.</p>';
- const rows=vendorRates.map((r,i)=>'<tr><td><b>'+escapeHTML(r.vendor)+'</b>'+(i===0?' <span class="latestbadge">LOWEST</span>':'')+'</td><td style="white-space:nowrap"><b>₹'+fmtMoney(r.rate)+'</b> / '+escapeHTML(r.unit)+'</td><td>'+escapeHTML(fmtDate(r.date))+'</td><td>'+escapeHTML(r.invoice||'—')+'</td><td>'+(i===0?'—':'₹'+fmtMoney(r.rate-min.rate)+' higher')+'</td><td>'+(!norm(r.status).startsWith('VERIFIED')?'Verify bill':'Verified')+'</td></tr>').join('');
- const table=vendorRates.length?'<div style="overflow:auto;background:#fff;border:1px solid var(--border);border-radius:14px"><table style="border-collapse:collapse;width:100%;font-size:12px;min-width:680px;text-align:left"><thead><tr style="background:#eaf2fe"><th>Vendor</th><th>Latest Rate</th><th>Bill Date</th><th>Invoice</th><th>Difference</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'';
- return '<div class="pageheading"><div><h1>Compare Vendor Rates</h1><p>Same EFPPL cloth, identical width &amp; unit, latest dated bill for every vendor</p></div></div>'+
- '<div class="toolbar"><label class="field" style="flex:2 1 180px">Eagle Cloth Code<select id="compareEagle">'+allCodes.map(c=>'<option value="'+escapeHTML(c)+'" '+(c===state.compareEagle?'selected':'')+'>'+escapeHTML(c)+' ('+vendorCount(c)+' vendor)</option>').join('')+'</select></label>'+
- '<label class="field" style="flex:1 1 110px">Width (inch)<select id="compareWidth">'+widths.map(w=>'<option value="'+escapeHTML(w)+'" '+(w===state.compareWidth?'selected':'')+'>'+escapeHTML(w)+'″</option>').join('')+'</select></label>'+
- '<label class="field" style="flex:1 1 110px">Unit<select id="compareUnit">'+units.map(u=>'<option value="'+escapeHTML(u)+'" '+(u===state.compareUnit?'selected':'')+'>'+escapeHTML(u)+'</option>').join('')+'</select></label></div>'+
- top+
- '<div class="sectiontop"><h2>Latest bill rate per vendor</h2><small>'+vendorRates.length+' comparable</small></div>'+table+
- (vendorRates.length===1?'<p class="notice">Abhi sirf ek vendor ka match hai. Dusre vendor ko compare karne ke liye same Eagle code + width + unit ka bill mapping zaroori hai.</p>':'')+
- '<p class="info" style="margin:15px 0">Rates ₹ mein, GST ke bina. Sirf same Eagle code, width aur unit ko compare kiya gaya hai; alag widths/units mix nahi hain. Rate ka source har vendor ka latest dated bill hai. Unverified bill ko confirm karna zaroori hai.</p>'+
- '<button type="button" class="secondary" data-nav-history>History / Map Unmatched Bills ('+unmatched+')</button>';
+ const vendors=vendorsList();
+ const aKnown=vendors.some(v=>norm(v)===norm(state.compareVendorA));
+ const bKnown=vendors.some(v=>norm(v)===norm(state.compareVendorB));
+ if(!aKnown)state.compareVendorA=vendors[0]||'';
+ if(!bKnown||norm(state.compareVendorA)===norm(state.compareVendorB))state.compareVendorB=vendors.find(v=>norm(v)!==norm(state.compareVendorA))||'';
+ const a=state.compareVendorA,b=state.compareVendorB;
+ const cleanCode=raw=>{
+   const k=normalizedClothCode(raw);
+   if(!k)return '';
+   return EAGLE_CODES.find(x=>normalizedClothCode(x)===k||normalizedClothCode(EAGLE_CODE_ALIASES[x])===k)||String(raw).trim();
+ };
+ const allCodes=[...new Set([...EAGLE_CODES,...customEagleCodes,...entries.map(r=>cleanCode(eagleOf(r))).filter(Boolean)])];
+ if(!allCodes.includes(state.compareEagle))state.compareEagle='';
+ if(!['all','both'].includes(state.compareMode))state.compareMode='all';
+ const byKey=new Map();
+ for(const r of entries){
+   if(!a||!b||norm(a)===norm(b))break;
+   const side=norm(r.vendor)===norm(a)?'a':norm(r.vendor)===norm(b)?'b':'';
+   if(!side)continue;
+   const code=cleanCode(eagleOf(r));
+   if(!code)continue;
+   const width=r.width===''?'':String(Number(r.width));
+   const key=norm(code)+'¦'+width+'¦'+r.unit;
+   if(!byKey.has(key))byKey.set(key,{code,width,unit:r.unit,a:null,b:null});
+   const item=byKey.get(key);
+   if(!item[side]||newestFirst(r,item[side])<0)item[side]=r;
+ }
+ for(const code of allCodes){
+   if(![...byKey.values()].some(item=>norm(item.code)===norm(code))){
+     byKey.set(norm(code)+'¦¦',{code,width:'',unit:'',a:null,b:null,empty:true});
+   }
+ }
+ const order=new Map(allCodes.map((x,i)=>[norm(x),i]));
+ let items=[...byKey.values()].sort((x,y)=>(order.get(norm(x.code))??999)-(order.get(norm(y.code))??999)
+           ||(Number(x.width)||0)-(Number(y.width)||0)||x.unit.localeCompare(y.unit));
+ if(state.compareEagle)items=items.filter(item=>norm(item.code)===norm(state.compareEagle));
+ const bothRows=items.filter(item=>item.a&&item.b&&item.width).length;
+ const countMapped=items.filter(item=>item.a||item.b).length;
+ if(state.compareMode==='both')items=items.filter(item=>item.a&&item.b&&item.width);
+ const option=(val,label,sel)=>`<option value="${escapeHTML(val)}" ${sel?'selected':''}>${escapeHTML(label)}</option>`;
+ const optionVendor=(current)=>vendors.map(v=>option(v,v,norm(v)===norm(current))).join('');
+ const unitFmt=unit=>unit==='MTR'?'/m':unit==='SQM'?'/sqm':unit==='NOS'?'/pc':'';
+ const boxRate=(record,side)=>{
+   if(!record)return `<div class="compare-price missing">—</div><div class="compare-sub">No matched bill</div>`;
+   const verify=!norm(record.status).startsWith('VERIFIED');
+   return `<div class="compare-price">₹${fmtMoney(record.rate)} <span class="compare-unit">${unitFmt(record.unit)}</span></div>
+     <div class="compare-sub">Vendor code: ${escapeHTML(record.code||record.quality||'—')}</div>
+     <div class="compare-sub">${escapeHTML(fmtDate(record.date))} · Bill: ${escapeHTML(record.invoice||'—')}</div>
+     ${verify?'<span class="compare-review">Verify bill</span>':''}`;
+ };
+ const cards=items.map(item=>{
+   const hasBoth=!!(item.a&&item.b&&item.width&&item.unit);
+   const verified=hasBoth&&[item.a,item.b].every(r=>norm(r.status).startsWith('VERIFIED'));
+   const delta=hasBoth?Math.abs(item.a.rate-item.b.rate):null;
+   const winner=hasBoth?(item.a.rate===item.b.rate?'Both rates equal':item.a.rate<item.b.rate?'Party A lower':'Party B lower'):'Comparison pending';
+   const flag=hasBoth&&!verified?' · Verify bill before quotation':'';
+   return `<article class="compare-card">
+     <div class="compare-head"><strong>${escapeHTML(item.code)}</strong><span>${item.width?escapeHTML(item.width)+'″':'Width —'}${item.unit?' · '+escapeHTML(item.unit):''}</span></div>
+     <div class="compare-sides">
+       <div class="compare-side"><div class="compare-party">A · ${escapeHTML(a||'Select Party A')}</div>${boxRate(item.a,'a')}</div>
+       <div class="compare-side"><div class="compare-party">B · ${escapeHTML(b||'Select Party B')}</div>${boxRate(item.b,'b')}</div>
+     </div>
+     <div class="compare-difference">${hasBoth?`Difference ₹${fmtMoney(delta)} / ${escapeHTML(item.unit)} · ${winner}${flag}`:item.empty?'No vendor code mapping yet':'Missing same cloth, width and unit in one party'}</div>
+   </article>`;
+ }).join('');
+ const unmapped=latest(entries).filter(r=>!eagleOf(r)).length;
+ const validParties=vendors.length>=2&&a&&b&&norm(a)!==norm(b);
+ return `<div class="pageheading"><div><h1>Compare 2 Vendors</h1><p>Cloth code-wise, party A and party B purchase rates side by side</p></div></div>
+ <div class="compare-chooser">
+   <label class="field">Party A<select id="compareVendorA">${optionVendor(a)}</select></label>
+   <label class="field">Party B<select id="compareVendorB">${optionVendor(b)}</select></label>
+   <label class="field">Eagle Cloth Code<select id="compareEagle">${option('','All Eagle Codes',!state.compareEagle)}${allCodes.map(c=>option(c,c,norm(state.compareEagle)===norm(c))).join('')}</select></label>
+   <label class="field">View<select id="compareMode">${option('all','All codes & rates',state.compareMode==='all')}${option('both','Both parties with rates',state.compareMode==='both')}</select></label>
+ </div>
+ ${!validParties?'<p class="notice">Comparison ke liye 2 alag parties ki bill entries chahiye. Add Rate mein vendor bills save karein.</p>':`
+ <div class="compare-summary">
+ <div><strong>${countMapped}</strong><span>Code + width rate rows</span></div>
+ <div><strong>${bothRows}</strong><span>Both parties matched</span></div>
+ <div><strong>${unmapped}</strong><span>Unmapped latest rates</span></div></div>
+ <div class="sectiontop"><div><h2>${items.length} code-wise comparisons</h2><small>Invoice-date latest rate for each selected vendor</small></div></div>
+ <div class="compare-list">${cards||'<div class="notice">No matched rows for these filters. Select All codes, or map Eagle codes in History.</div>'}</div>`}
+ <p class="info" style="margin:16px 0">Same Eagle Code + identical width + same unit hi compare hota hai. Har vendor ka latest invoice-date rate liya gaya hai, GST excluded. Unverified/missing-width entries ko final price comparison na maanein. Old bills History mein safe hain.</p>
+ <button type="button" class="secondary" data-nav-history>History / Assign Eagle Code (${unmapped} unmapped)</button>`;
 }
 
 function renderVendors(){const vs=vendorsList();let current=latest(entries);return `<div class="pageheading"><div><h1>Vendor Directory</h1><p>Browse cloth rates by supplier</p></div><button class="primary" data-add>${icon('plus')}Add Rate</button></div>
@@ -171,7 +248,7 @@ function registerEvents(){
  document.querySelectorAll('[data-add]').forEach(el=>el.onclick=()=>openForm());
  document.querySelectorAll('[data-compare]').forEach(el=>el.onclick=()=>jump('compare'));
  document.querySelectorAll('[data-nav-history]').forEach(el=>el.onclick=()=>jump('history'));
- for(const [id,key] of [['compareEagle','compareEagle'],['compareWidth','compareWidth'],['compareUnit','compareUnit']]){const el=$(id);if(el)el.onchange=e=>{state[key]=e.target.value;if(key==='compareEagle'){state.compareWidth='';state.compareUnit='';}if(key==='compareWidth')state.compareUnit='';render();};}
+ for(const [id,key] of [['compareVendorA','compareVendorA'],['compareVendorB','compareVendorB'],['compareEagle','compareEagle'],['compareMode','compareMode']]){const el=$(id);if(el)el.onchange=e=>{state[key]=e.target.value;if(key==='compareVendorA'&&norm(state.compareVendorA)===norm(state.compareVendorB))state.compareVendorB=vendorsList().find(v=>norm(v)!==norm(state.compareVendorA))||'';if(key==='compareVendorB'&&norm(state.compareVendorA)===norm(state.compareVendorB))state.compareVendorA=vendorsList().find(v=>norm(v)!==norm(state.compareVendorB))||'';render();};}
  document.querySelectorAll('[data-open-rates]').forEach(el=>el.onclick=()=>jump('rates'));
  document.querySelectorAll('[data-edit]').forEach(el=>el.onclick=()=>{const r=entries.find(x=>x.id===el.dataset.edit);if(r)openForm(r)});
  document.querySelectorAll('[data-delete]').forEach(el=>el.onclick=()=>deleteEntry(el.dataset.delete));
