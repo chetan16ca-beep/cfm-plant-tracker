@@ -143,6 +143,15 @@ ${filterToolbar()}<div class="sectiontop"><h2>${list.length} ${showHistory?'bill
 <div class="cardgrid">${list.length?list.map(r=>rateCard(r,currIds.has(r.id))).join(''):notFound()}</div>`;
 }
 
+function compareWidthGroup(raw){
+ // Width groups apply ONLY to vendor comparison. Original invoice widths stay unchanged.
+ if(raw===''||raw===null||raw===undefined)return {key:'',label:'Width —'};
+ const w=Number(raw);
+ if(!Number.isFinite(w)||w<=0)return {key:'',label:'Width —'};
+ if(w>=51&&w<=53)return {key:'51-53',label:'51–53″ group'};
+ if(w>=80&&w<=82)return {key:'80-82',label:'80–82″ group'};
+ return {key:String(w),label:w+'″'};
+}
 function renderCompare(){
  const vendors=vendorsList();
  const aKnown=vendors.some(v=>norm(v)===norm(state.compareVendorA));
@@ -165,9 +174,10 @@ function renderCompare(){
    if(!side)continue;
    const code=cleanCode(eagleOf(r));
    if(!code)continue;
-   const width=r.width===''?'':String(Number(r.width));
+   const widthGroup=compareWidthGroup(r.width);
+   const width=widthGroup.key;
    const key=norm(code)+'¦'+width+'¦'+r.unit;
-   if(!byKey.has(key))byKey.set(key,{code,width,unit:r.unit,a:null,b:null});
+   if(!byKey.has(key))byKey.set(key,{code,width,widthLabel:widthGroup.label,unit:r.unit,a:null,b:null});
    const item=byKey.get(key);
    if(!item[side]||newestFirst(r,item[side])<0)item[side]=r;
  }
@@ -190,6 +200,7 @@ function renderCompare(){
    if(!record)return `<div class="compare-price missing">—</div><div class="compare-sub">No matched bill</div>`;
    const verify=!norm(record.status).startsWith('VERIFIED');
    return `<div class="compare-price">₹${fmtMoney(record.rate)} <span class="compare-unit">${unitFmt(record.unit)}</span></div>
+     <div class="compare-sub">Actual width: ${record.width===''?'—':escapeHTML(record.width)+'″'}</div>
      <div class="compare-sub">Vendor code: ${escapeHTML(record.code||record.quality||'—')}</div>
      <div class="compare-sub">${escapeHTML(fmtDate(record.date))} · Bill: ${escapeHTML(record.invoice||'—')}</div>
      ${verify?'<span class="compare-review">Verify bill</span>':''}`;
@@ -197,16 +208,18 @@ function renderCompare(){
  const cards=items.map(item=>{
    const hasBoth=!!(item.a&&item.b&&item.width&&item.unit);
    const verified=hasBoth&&[item.a,item.b].every(r=>norm(r.status).startsWith('VERIFIED'));
+   const differentWidths=hasBoth&&Number(item.a.width)!==Number(item.b.width);
    const delta=hasBoth?Math.abs(item.a.rate-item.b.rate):null;
    const winner=hasBoth?(item.a.rate===item.b.rate?'Both rates equal':item.a.rate<item.b.rate?'Party A lower':'Party B lower'):'Comparison pending';
    const flag=hasBoth&&!verified?' · Verify bill before quotation':'';
+   const widthFlag=differentWidths?' · Actual widths differ: '+item.a.width+'″ vs '+item.b.width+'″ (indicative comparison only)':'';
    return `<article class="compare-card">
-     <div class="compare-head"><strong>${escapeHTML(item.code)}</strong><span>${item.width?escapeHTML(item.width)+'″':'Width —'}${item.unit?' · '+escapeHTML(item.unit):''}</span></div>
+     <div class="compare-head"><strong>${escapeHTML(item.code)}</strong><span>${escapeHTML(item.widthLabel||'Width —')}${item.unit?' · '+escapeHTML(item.unit):''}</span></div>
      <div class="compare-sides">
        <div class="compare-side"><div class="compare-party">A · ${escapeHTML(a||'Select Party A')}</div>${boxRate(item.a,'a')}</div>
        <div class="compare-side"><div class="compare-party">B · ${escapeHTML(b||'Select Party B')}</div>${boxRate(item.b,'b')}</div>
      </div>
-     <div class="compare-difference">${hasBoth?`Difference ₹${fmtMoney(delta)} / ${escapeHTML(item.unit)} · ${winner}${flag}`:item.empty?'No vendor code mapping yet':'Missing same cloth, width and unit in one party'}</div>
+     <div class="compare-difference">${hasBoth?`Difference ₹${fmtMoney(delta)} / ${escapeHTML(item.unit)} · ${winner}${widthFlag}${flag}`:item.empty?'No vendor code mapping yet':'Missing same cloth, width group and unit in one party'}</div>
    </article>`;
  }).join('');
  const unmapped=latest(entries).filter(r=>!eagleOf(r)).length;
@@ -220,12 +233,12 @@ function renderCompare(){
  </div>
  ${!validParties?'<p class="notice">Comparison ke liye 2 alag parties ki bill entries chahiye. Add Rate mein vendor bills save karein.</p>':`
  <div class="compare-summary">
- <div><strong>${countMapped}</strong><span>Code + width rate rows</span></div>
+ <div><strong>${countMapped}</strong><span>Code + width-group rate rows</span></div>
  <div><strong>${bothRows}</strong><span>Both parties matched</span></div>
  <div><strong>${unmapped}</strong><span>Unmapped latest rates</span></div></div>
  <div class="sectiontop"><div><h2>${items.length} code-wise comparisons</h2><small>Invoice-date latest rate for each selected vendor</small></div></div>
  <div class="compare-list">${cards||'<div class="notice">No matched rows for these filters. Select All codes, or map Eagle codes in History.</div>'}</div>`}
- <p class="info" style="margin:16px 0">Same Eagle Code + identical width + same unit hi compare hota hai. Har vendor ka latest invoice-date rate liya gaya hai, GST excluded. Unverified/missing-width entries ko final price comparison na maanein. Old bills History mein safe hain.</p>
+ <p class="info" style="margin:16px 0">Width grouping: 51/52/53″ ek category; 80/81/82″ ek category. Baaki widths exact match hoti hain. Same Eagle Code + width group + unit par har vendor ka latest invoice-date rate dikhta hai (GST excluded). Har bill ki original width bhi dikhegi; different actual widths ka rate comparison indicative hai, direct identical-width quotation nahi. Unverified/missing-width entries ko final rate na maanein. Old bills History mein safe hain.</p>
  <button type="button" class="secondary" data-nav-history>History / Assign Eagle Code (${unmapped} unmapped)</button>`;
 }
 
