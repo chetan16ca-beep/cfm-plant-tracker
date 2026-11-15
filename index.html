@@ -103,7 +103,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker" allow="microphone; autoplay"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V268</div>
+<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V269</div>
 <script src="./backup-safe.js?v=3"></script>
 <button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261115-v268',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261115-v269',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -183,7 +183,7 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261115-v268';
+ const urls=groups.flat(), ver='20261115-v269';
  // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
  // Never clear browser storage or replace Cloud data while recovering from a network failure.
  let nextChunk=0;
@@ -546,11 +546,18 @@ window.addEventListener('message',function(event){
   d.body.appendChild(panel);
   const b=d.createElement('button');b.id='cfmDispatchOpenV264';b.textContent='✓ Dispatch Done / History';b.type='button';b.style.cssText='position:fixed;right:12px;bottom:90px;z-index:2147483500;background:#1269a0;color:#fff;border:0;border-radius:10px;padding:11px 13px;font:700 13px system-ui;box-shadow:0 3px 10px #0004';d.body.appendChild(b);
   let tab='pending';const $=id=>d.getElementById(id);
-  function draw(){
-   const q=$('cfmDispatchSearch').value.toLowerCase(),items=w.state.pending.filter(x=>isDone(x)===(tab==='history')&&[key(x),x.party,x.description].join(' ').toLowerCase().includes(q));
+  async function draw(){
+   const q=$('cfmDispatchSearch').value.toLowerCase();
+   let source=w.state.pending, cloudError='';
+   try{
+     const remote=await w.eval('cloudFetch()');
+     if(remote&&Array.isArray(remote.payload?.pending)){source=remote.payload.pending;panel.dataset.cloudVersion=String(remote.version);panel.dataset.cloudReady='yes'}
+     else throw Error('Invalid Cloud response');
+   }catch(e){cloudError=String(e.message||e);panel.dataset.cloudReady='no'}
+   const items=source.filter(x=>isDone(x)===(tab==='history')&&[key(x),x.party,x.description].join(' ').toLowerCase().includes(q));
    const rows=$('cfmDispatchRows');rows.replaceChildren();
    items.forEach(x=>{const label=d.createElement('label');label.style.cssText='display:flex;align-items:center;gap:10px;padding:9px;border-bottom:1px solid #e5e5e5';const check=d.createElement('input');check.type='checkbox';check.className='cfmDispatchCheck';check.value=key(x);label.appendChild(check);const span=d.createElement('span');span.textContent=key(x)+' • '+String(x.party||'')+' • Qty '+String(x.orderQty??x.qty??'');label.appendChild(span);rows.appendChild(label)});
-   $('cfmDispatchApply').textContent=tab==='history'?'Restore to Pending':'Dispatch Done → History';$('cfmDispatchMessage').textContent=items.length+' orders';
+   $('cfmDispatchApply').textContent=tab==='history'?'Restore to Pending':'Dispatch Done → History';$('cfmDispatchMessage').textContent=items.length+' orders'+(cloudError?' • Cloud unavailable (read-only)':' • Live Cloud');
   }
   b.onclick=()=>{panel.hidden=false;draw()};$('cfmDispatchClose').onclick=()=>panel.hidden=true;
   $('cfmDispatchSearch').oninput=draw;
@@ -559,9 +566,11 @@ window.addEventListener('message',function(event){
   $('cfmDispatchSelectAll').onclick=()=>rowsCheck(true);
   function rowsCheck(v){panel.querySelectorAll('.cfmDispatchCheck').forEach(x=>x.checked=v)}
   $('cfmDispatchApply').onclick=()=>{
+   if(panel.dataset.cloudReady!=='yes')return w.alert('Cloud unavailable. No dispatch changes allowed.');
    const ids=[...panel.querySelectorAll('.cfmDispatchCheck:checked')].map(x=>x.value);
    if(!ids.length)return w.alert('Select Work Orders first.');
    const matches=w.state.pending.filter(x=>ids.includes(key(x))&&isDone(x)===(tab==='history'));
+   if(Number(panel.dataset.cloudVersion)!==Number(w.eval('cloudVersion')))return w.alert('Cloud has newer records. Use ERP Cloud Sync first, then reopen Dispatch History. No changes made.');
    if(matches.length!==ids.length)return w.alert('Work Orders changed. Refresh and retry.');
    if(!w.confirm((tab==='pending'?'Mark DISPATCH DONE':'Restore to PENDING')+' for '+matches.length+' Work Orders? This does not change stock.'))return;
    const ts=new Date().toISOString();
