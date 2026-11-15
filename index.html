@@ -103,7 +103,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker" allow="microphone; autoplay"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V266</div>
+<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V267</div>
 <script src="./backup-safe.js?v=3"></script>
 <button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
@@ -566,7 +566,7 @@ window.addEventListener('message',function(event){
    if(!w.confirm((tab==='pending'?'Mark DISPATCH DONE':'Restore to PENDING')+' for '+matches.length+' Work Orders? This does not change stock.'))return;
    const ts=new Date().toISOString();
    matches.forEach(x=>{if(tab==='pending'){x.status='DISPATCHED';x.dispatchDoneAt=ts;x.dispatchBatchReportStatus='PENDING_REVIEW'}else{x.status='PENDING';x.restoredAt=ts}});
-   try{w.save();if(typeof w.render==='function')w.render();draw();w.alert(matches.length+' Work Orders updated. Cloud sync may take a moment.')}catch(e){w.alert('Save failed: '+e.message)}
+   try{w.save();if(typeof w.render==='function')w.render();draw();w.alert(matches.length+' Work Orders changed on this device. IMPORTANT: Verify Cloud sync and History after refresh. If they reappear in Pending, Cloud did not save; do not repeat dispatch.')}catch(e){w.alert('Save failed: '+e.message)}
   };
  }
  const outer=document.createElement('button');outer.id='cfmDispatchOuterV265';outer.type='button';outer.textContent='✓ Dispatch Done / History';outer.style.cssText='position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom, 0px) + 72px);z-index:2147483647;background:#1269a0;color:#fff;border:0;border-radius:10px;padding:12px 14px;font:700 13px system-ui;box-shadow:0 3px 12px #0005';document.body.appendChild(outer);
