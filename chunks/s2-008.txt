@@ -550,6 +550,7 @@ function syncDerivedState(){
   if(!Array.isArray(state.customPersons))state.customPersons=[];
   state.pending.forEach(r=>{
     const s=normalize(r.status);
+    if(normalize(r.status)==='DISPATCHED'||r.dispatchDoneAt&&normalize(r.status)!=='PENDING'){r.status='DISPATCHED';r.planDate='';return;}
     if(isArchived(r)){r.archived=true;r.status='ARCHIVED';r.planDate='';return;}
     if(!['HOLD','ON HOLD','BLOCKED'].includes(s))r.status=!hasOrderQty(r)?'QTY REQUIRED':(pendingQty(r)<=0?'COMPLETED':'PENDING');
   });
@@ -777,7 +778,7 @@ function pendingCard(r,compact=false){
 }
 function renderPending(){
   const q=($('pendingSearch').value||'').toLowerCase(),mode=$('pendingStatus').value;
-  let rows=state.pending.filter(r=>JSON.stringify(r).toLowerCase().includes(q));
+  let rows=state.pending.filter(r=>normalize(r.status)!=='DISPATCHED'&&JSON.stringify(r).toLowerCase().includes(q));
   if(mode==='OPEN')rows=rows.filter(orderOpen);
   if(mode==='CUTENTRY')rows=rows.filter(r=>!isArchived(r)&&isCutEntryPending(r));
   if(mode==='ALL')rows=rows.filter(r=>!isArchived(r));
