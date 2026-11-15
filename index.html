@@ -103,7 +103,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker" allow="microphone; autoplay"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V270</div>
+<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V271</div>
 <script src="./backup-safe.js?v=3"></script>
 <button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261115-v270',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261115-v271',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -183,7 +183,7 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261115-v270';
+ const urls=groups.flat(), ver='20261115-v271';
  // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
  // Never clear browser storage or replace Cloud data while recovering from a network failure.
  let nextChunk=0;
@@ -592,6 +592,15 @@ const get=()=>{const w=frame.contentWindow;if(!w)return null;if(!w.state){try{co
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function draw(){const rows=document.getElementById('cfmAllRowsV266');rows.textContent='Loading live Cloud pending orders…';let data,source='Live Cloud';try{const w=frame.contentWindow;const remote=await w.eval('cloudFetch()');if(!remote||!Array.isArray(remote.payload?.pending))throw Error('Invalid Cloud data');data=remote.payload.pending}catch(e){rows.textContent='Cloud unavailable: '+String(e.message||e)+'. No stale Pending list shown. Retry after Cloud sync.';document.getElementById('cfmAllCountV266').textContent='Pending Work Orders — Cloud unavailable';return}const q=document.getElementById('cfmAllSearchV266').value.toLowerCase();const pending=data.filter(x=>String(x.status||'PENDING').toUpperCase()!=='DISPATCHED'&&String(x.status||'').toUpperCase()!=='ARCHIVED'&&!x.archived);const shown=pending.filter(x=>[x.workNo,x.party,x.description,x.item].join(' ').toLowerCase().includes(q)).sort((a,b)=>(Number(String(b.workNo||'').match(/\\d+$/)?.[0]||0)-Number(String(a.workNo||'').match(/\\d+$/)?.[0]||0)));document.getElementById('cfmAllCountV266').textContent='Live Pending: '+pending.length+' | Showing: '+shown.length;rows.innerHTML=shown.map(x=>'<div style="border-bottom:1px solid #dce7ef;padding:11px 3px"><b>'+esc(x.workNo)+'</b> • '+esc(x.party)+'<div style="font-size:12px;margin-top:3px">'+esc(x.description||x.item)+'</div><div style="font-size:12px;color:#51677b">Order '+esc(x.orderQty??x.qty)+' • Cut '+esc(x.cutQty??0)+' • '+esc(x.status||'PENDING')+'</div></div>').join('')||'No matching work orders';}
 button.onclick=()=>{panel.hidden=false;draw()};document.getElementById('cfmAllCloseV266').onclick=()=>panel.hidden=true;document.getElementById('cfmAllSearchV266').oninput=draw;
+})();
+</script>
+<style id="cfm-v271-hide-extra-controls">
+#cfmAllOrdersV266,#cfmResolveWoButton{display:none!important}
+</style>
+<script id="cfm-v271-hide-jessi">
+(function(){
+function hide(){try{const d=document.getElementById('app')?.contentWindow?.document;if(!d)return;for(const el of d.querySelectorAll('[id*="jessi" i],[class*="jessi" i]')){if(el.closest('script,style'))continue;el.style.setProperty('display','none','important')}}catch(e){}}
+document.getElementById('app')?.addEventListener('load',hide);setInterval(hide,1800);
 })();
 </script>
 </body></html>
