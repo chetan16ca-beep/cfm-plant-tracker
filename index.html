@@ -702,4 +702,73 @@ function install(){try{const d=frame.contentWindow.document;if(!d?.body)return;l
 frame.addEventListener('load',install);setInterval(install,1800);install();
 })();
 </script>
+
+<script id="cfm-v306-saved-batch-review-print">
+(function(){
+  const panel=document.getElementById('cfmResultPanel');
+  const select=document.getElementById('cfmResultSelect');
+  const frame=document.getElementById('app');
+  if(!panel||!select||!frame)return;
+  const button=document.createElement('button');
+  button.id='cfmBatchSavedPrint306';
+  button.type='button';
+  button.textContent='📋 View / Print Saved Batch Report';
+  button.style.cssText='display:block;margin:9px 0;padding:11px 14px;background:#165b82;color:white;border:0;border-radius:9px;font:700 13px system-ui;cursor:pointer';
+  select.insertAdjacentElement('afterend',button);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const qty=s=>{const v=Number(s);return Number.isFinite(v)&&v>0?v:0};
+  function workNo(){
+    const typed=(document.getElementById('cfmResultSearch')?.value||'').trim().toUpperCase();
+    const opt=select.selectedOptions[0]?.textContent||'';
+    const value=/^CFM-\d+$/.test(typed)?typed:/^\d+$/.test(typed)?'CFM-'+typed:'';
+    return value||(opt.match(/CFM-\d+/i)||[])[0]||'';
+  }
+  function build(wo,payload){
+    const saved=(payload.reconstructedBatchReports||[]).find(x=>String(x.workNo).toUpperCase()===wo);
+    const order=(payload.pending||[]).find(x=>String(x.workNo).toUpperCase()===wo);
+    if(!saved||!order)throw Error('This Work Order does not have a saved reconstructed Batch Report.');
+    const rows=(payload.reconstructedPersonWork||[]).filter(x=>String(x.workNo).toUpperCase()===wo)
+      .slice().sort((a,b)=>Number(a.day||0)-Number(b.day||0)||String(a.process||'').localeCompare(String(b.process||'')));
+    const daily=(payload.departmentWork||[]).filter(x=>String(x.workNo).toUpperCase()===wo);
+    const stages=['Cutting','Stitching','FBD Stitching','Thread Cutting','Gun Finishing','Packing'];
+    const more=[...new Set(rows.concat(daily).map(x=>String(x.process||x.department||'').trim()).filter(Boolean))].filter(x=>!stages.some(y=>y.toLowerCase()===x.toLowerCase()));
+    const stageRows=stages.concat(more).map(stage=>{
+      const r=rows.filter(x=>String(x.process||'').toLowerCase()===stage.toLowerCase());
+      const d=daily.filter(x=>String(x.process||x.department||'').toLowerCase()===stage.toLowerCase());
+      const estimated=r.filter(x=>!x.isHelper).reduce((n,x)=>n+qty(x.doneQty),0);
+      const entered=d.reduce((n,x)=>n+qty(x.doneQty),0);
+      return '<tr><td><b>'+esc(stage)+'</b></td><td>'+r.length+'</td><td>'+esc(estimated)+'</td><td>'+d.length+'</td><td>'+esc(entered)+'</td><td>Review required</td></tr>';
+    }).join('');
+    const detail=rows.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.day||'-')+'</td><td>'+esc(x.date||'Not recorded')+'</td><td>'+esc(x.process||'-')+'</td><td>'+esc(x.subDepartment||'-')+'</td><td>'+esc(x.person||'-')+'</td><td>'+esc(x.isHelper?'Helper / shared':qty(x.doneQty))+'</td><td>Estimated • not verified</td></tr>').join('');
+    const label='RECONSTRUCTED • PENDING PHYSICAL VERIFICATION';
+    const styles='@page{size:A4 landscape;margin:11mm}body{font:11px Arial,sans-serif;color:#182b38;margin:18px}h1{font-size:18px;margin:4px 0;color:#155c50}h2{font-size:13px;margin:15px 0 6px}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #155c50;padding-bottom:8px}.flag{border:2px solid #af7222;color:#8e5316;padding:9px;font-weight:bold;margin:9px 0}.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}.meta div{padding:7px;border:1px solid #d6e0e5;border-radius:5px}.meta b{display:block;margin-top:4px}table{width:100%;border-collapse:collapse;font-size:10px}th{background:#155c50;color:white;text-align:left}td,th{padding:6px;border:1px solid #d6e0e5}tr{break-inside:avoid}thead{display:table-header-group}.note{border-top:1px solid #b8c6cd;margin-top:12px;padding-top:8px;font-size:10px}.sign{display:flex;justify-content:space-around;margin-top:35px}.sign span{border-top:1px solid #333;width:24%;padding-top:5px;text-align:center}@media print{.actions{display:none}}';
+    return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(wo)+' Batch Review</title><style>'+styles+'</style></head><body>'+
+    '<div class="actions"><button onclick="window.print()" style="padding:10px 18px;background:#155c50;color:white;border:0;border-radius:7px">🖨 Print A4</button></div>'+
+    '<div class="top"><div><h1>EAGLE FILTRATION PRODUCT PVT. LTD.</h1><div>CFM • Work Production Batch Report</div></div><b>REVIEW COPY</b></div>'+
+    '<div class="flag">'+label+' • No automatic confirmation of workers, dates or actual finished quantities</div>'+
+    '<div class="meta"><div>WORK NO<b>'+esc(wo)+'</b></div><div>PARTY<b>'+esc(order.party||saved.party||'-')+'</b></div><div>ORDER QTY<b>'+esc(order.orderQty||saved.orderQty||'-')+'</b></div><div>ERP STATUS<b>'+esc(order.status||'-')+'</b></div><div style="grid-column:span 3">PRODUCT / DESCRIPTION<b>'+esc(order.description||saved.description||'-')+'</b></div><div>Cutting date (if recorded)<b>'+esc(saved.cuttingDate||'Not recorded')+'</b></div></div>'+
+    '<h2>Stage-wise Batch Summary</h2><table><thead><tr><th>Department / Stage</th><th>Reconstructed Lines</th><th>Estimated Allocated Qty</th><th>ERP Daily Entries</th><th>ERP-entered Qty</th><th>Verification</th></tr></thead><tbody>'+stageRows+'</tbody></table>'+
+    '<h2>Saved Daily Person Work • Reconstructed Detail ('+rows.length+' entries)</h2><table><thead><tr><th>#</th><th>Day</th><th>Date</th><th>Department</th><th>Sub-Department</th><th>Person</th><th>Estimated Qty</th><th>Status</th></tr></thead><tbody>'+detail+'</tbody></table>'+
+    '<div class="note">Source: saved reconstructedBatchReports and reconstructedPersonWork in CFM Cloud; ERP-entered Daily Person Work is shown separately. Blank dates remain unassigned. Estimated helper/shared quantities are not additional production. This is NOT an actual attendance, wage, dispatch-proof or confirmed production report.</div>'+
+    '<div class="sign"><span>Prepared By</span><span>Physically Checked By</span><span>Approved By</span></div></body></html>';
+  }
+  button.addEventListener('click',async()=>{
+    const wo=workNo();
+    if(!wo){alert('Select a Work Order first.');return}
+    const win=window.open('','_blank');
+    if(!win){alert('Allow popups to view / print Batch Report');return}
+    win.document.write('<p style="font:16px Arial;padding:25px">Loading saved review report for '+esc(wo)+'…</p>');
+    button.disabled=true;
+    try{
+      const cloud=await frame.contentWindow.eval('cloudFetch()');
+      if(!cloud||!cloud.payload)throw Error('Cloud records are unavailable.');
+      const html=build(wo,cloud.payload);
+      win.document.open();win.document.write(html);win.document.close();
+    }catch(e){
+      win.document.open();win.document.write('<p style="font:15px Arial;padding:25px">Batch report not available: '+esc(e.message||e)+'</p>');win.document.close();
+    }finally{button.disabled=false}
+  });
+})();
+</script>
+
 </body></html>
