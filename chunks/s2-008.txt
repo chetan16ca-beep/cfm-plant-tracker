@@ -806,46 +806,55 @@ async function cfmPendingVerifyCloud(){
 }
 window.cfmPendingVerifyCloud=cfmPendingVerifyCloud;
 function renderPending(){
-  // Completed, dispatched and archived orders always remain stored, never erased.
+  // V316: Cloud-first Pending view. Never present an unverified local dispatch
+  // status as an actionable pending work order. No Cloud/stock writes here.
   const q=($('pendingSearch')?.value||'').toLowerCase();
   const filter=$('pendingStatus');
   if(filter){
     filter.value='OPEN';
     Array.from(filter.options||[]).forEach(o=>{if(o.value!=='OPEN')o.hidden=true});
     filter.disabled=true;
-    filter.title='Pending work only — completed and dispatched are retained in Cloud / History';
+    filter.title='Pending work only — completed and dispatched are retained in History';
   }
   const localRows=(state.pending||[]).filter(r=>orderOpen(r)&&JSON.stringify(r).toLowerCase().includes(q));
   localRows.sort((a,b)=>String(b.workNo||'').localeCompare(String(a.workNo||''),undefined,{numeric:true}));
-  let result=localRows.map(r=>pendingCard(r)).join('')||'<div class="empty">No pending work orders</div>';
-  const mismatch=cfmPendingCloudRows!==null&&
-    cfmPendingListSignature(cfmPendingCloudRows)!==cfmPendingListSignature(state.pending||[]);
-  if(mismatch){
-    if(!cloudDirty){
-      // No actions on remote-only rows: local indices may target another work order.
+  let result='';
+  if(cfmPendingCloudRows===null){
+    // The first load must not briefly show wrong local orders like CFM-656.
+    result='<div class="notice" style="background:#edf6fd;border-left:4px solid #1674c9;padding:12px;border-radius:9px">'+
+      (cfmPendingCloudError?
+       '<b>⚠ Cloud not verified.</b> Local Work Orders are preserved; reopen ERP when online to verify Pending and History.':
+       '<b>☁ Verifying live Pending Orders…</b> Local data is protected. Wrong or dispatched Work Orders are not shown until verified.')+
+      '</div>';
+  }else{
+    const mismatch=cfmPendingListSignature(cfmPendingCloudRows)!==cfmPendingListSignature(state.pending||[]);
+    if(mismatch){
+      // Even when local Cloud sync is dirty, never show stale actionable orders.
+      // The Cloud list is read-only; unsynced local data is retained for recovery.
       const cloudRows=cfmPendingCloudOnly(cfmPendingCloudRows).filter(r=>JSON.stringify(r).toLowerCase().includes(q));
       cloudRows.sort((a,b)=>String(b.workNo||'').localeCompare(String(a.workNo||''),undefined,{numeric:true}));
       const alert='<div class="notice" style="background:#fff6dc;border-left:4px solid #d59e2c;color:#795619;padding:12px;border-radius:8px;margin-bottom:12px">'+
-        '<b>☁ LIVE CLOUD PENDING • READ-ONLY</b><div>Local ERP data differs. Showing current Cloud Pending orders to prevent wrong dispatch/duplication. Do not create or edit Work Orders until safe sync is verified.</div></div>';
+        '<b>☁ LIVE CLOUD PENDING • READ-ONLY</b><div>'+
+        (cloudDirty?'Unsynced local changes are preserved. ':'Local ERP differs from current Cloud. ')+
+        'Only confirmed Cloud Pending orders are shown. Do not repeat dispatch or create duplicate orders before safe sync.</div>'+
+        (cfmPendingCloudError?'<small>Cloud recheck failed; last verified Cloud snapshot shown.</small>':'')+
+        '</div>';
       result=alert+(cloudRows.map(r=>{
         const bal=Math.max(0,num(r.orderQty)-num(r.cutQty));
         return '<article class="data-card" style="border:1px solid #c7d9e6;border-left:4px solid #1674c9;padding:12px;margin-bottom:10px">'+
-         '<b class="work">'+esc(r.workNo||'-')+'</b> • '+esc(r.party||'-')+
-         '<div class="desc" style="margin:7px 0">'+esc(r.description||'-')+'</div>'+
-         '<div>Order '+fmt(r.orderQty)+' • Cut '+fmt(r.cutQty||0)+' • <b>Pending '+fmt(bal)+'</b></div>'+
-         '<small>Live Cloud • read-only until safe sync</small></article>';
-       }).join('')||'<div class="empty">No live Cloud pending work orders</div>');
+          '<b class="work">'+esc(r.workNo||'-')+'</b> • '+esc(r.party||'-')+
+          '<div class="desc" style="margin:7px 0">'+esc(r.description||'-')+'</div>'+
+          '<div>Order '+fmt(r.orderQty)+' • Cut '+fmt(r.cutQty||0)+' • <b>Pending '+fmt(bal)+'</b></div>'+
+          '<small>Live Cloud • read-only until safe sync</small></article>';
+      }).join('')||'<div class="empty">No live Cloud pending work orders</div>');
     }else{
-      result='<div class="notice" style="background:#fff3d6;padding:10px;border-left:4px solid #c99d32"><b>⚠ Local unsynced changes.</b> Cloud differs; local data has been preserved. Avoid dispatching or creating orders until sync is reconciled.</div>'+result;
+      result=(cfmPendingCloudError?'<div class="notice" style="background:#fff3d6;padding:10px">⚠ Cloud recheck unavailable. Last verified Pending snapshot matched local orders.</div>':'')+
+        (localRows.map(r=>pendingCard(r)).join('')||'<div class="empty">No pending work orders</div>');
     }
-  }else if(cfmPendingCloudError){
-    result='<div class="notice" style="background:#fff3d6;padding:10px;border-left:4px solid #c99d32">⚠ Offline / Cloud not verified. Pending below is only this device’s local view.</div>'+result;
   }
   $('pendingList').innerHTML=result;
-  // Limited periodic read-only check. Avoid observers, repeated fetches and data writes.
   if(Date.now()-cfmPendingLastChecked>60000&&!cfmPendingChecking&&!document.hidden){
-    cfmPendingLastChecked=Date.now();
-    setTimeout(cfmPendingVerifyCloud,50);
+    cfmPendingLastChecked=Date.now();setTimeout(cfmPendingVerifyCloud,50);
   }
 }
 
