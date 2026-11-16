@@ -72,7 +72,22 @@ window.openPendingForm=function(i=null){
     save(false);
     toast(wasArchived?'Archived order updated':'Order saved locally • Cloud sync queued')
   },{type:'pending',i,workNo:r.workNo||''});
-  setTimeout(bindPendingAutoFields,0);
+  setTimeout(()=>{
+    bindPendingAutoFields();
+    const select=$('editForm')?.elements?.namedItem('actualProductType');
+    if(i!=null&&select){
+      select.addEventListener('change',()=>{
+        const value=String(select.value||'').trim();
+        if(!value)return;
+        const record=state.pending[i];
+        if(!record||normalize(record.workNo)!==normalize(r.workNo)){toast('Work order changed • Reopen and retry');return;}
+        record.actualProductType=value;
+        stampRecord(record);
+        try{save(false);toast('Product Type auto-saved • Cloud sync queued')}
+        catch(e){console.error('Product Type auto-save failed',e);toast('Auto-save error: '+(e?.message||'retry'))}
+      });
+    }
+  },0);
 }
 
 window.openStoreForm=function(i=null){
