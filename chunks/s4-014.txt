@@ -1163,6 +1163,15 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
  if(typeof previous!=='function')return;
  const H=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
  function getParts(r){
+  const selected=String(r.actualProductType||'').trim().toUpperCase();
+  if(selected){
+   if(selected==='CF BAG')return ['Collar','Bottom','Filter','Dome / Patta','Rope'];
+   if(selected==='FBD')return ['Dia','Finger','Topla'];
+   if(selected==='RNF')return ['Dia','Collar','Filter'];
+   if(selected==='SNF')return ['Bottom','Filter','Kona'];
+   if(selected==='MICRONIZER JET MILL')return ['1st Layer','2nd Layer','3rd Layer','Rope / Pipe'];
+   if(selected==='OTHER')return [];
+  }
   const s=[r.description,r.description2,r.item,r.product,r.productName,r.eagleCode].filter(Boolean).join(' ').toUpperCase();
   if(/FBD|FINGER\s*BAG/.test(s))return ['Dia','Finger','Topla'];
   if(/MICRONI[ZS]ER|JET\s*MILL/.test(s))return ['1st Layer','2nd Layer','3rd Layer','Rope / Pipe'];
