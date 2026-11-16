@@ -205,7 +205,7 @@ const TEAM_BY_SOP={
   MR:['Chetan','Lala'],
   SRL:['Chetan','Lala'],
   DSP:['Lala'],
-  MCL:['Bhavna','Radha','Sangita'],
+  MCL:[], // machine operator chosen based on machine name, not housekeeping team
   PCL:['Bhavna','Radha','Sangita'],
   RCL:['Bhavna','Radha','Sangita'],
   ECL:[], // authorised electrician name must be recorded, not inferred.
@@ -501,7 +501,7 @@ function openPanel(preset){
  '<p style="margin:5px 0;color:#567">Numbered operator checklist • Cloud save via existing ERP. No automatic stock or cutting edit.</p>'+
  '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:9px">'+
  '<label>SOP<select id="cfmSopCode318" style="width:100%;padding:8px">'+options+'</select></label>'+
- '<label>Work No.<input id="cfmSopWork318" placeholder="CFM-753" style="width:100%;padding:8px;box-sizing:border-box"></label>'+
+ '<label id="cfmSopWorkSearchWrap328">Find Work Order<input id="cfmSopWorkSearch328" placeholder="Search number / party" autocomplete="off" style="width:100%;padding:8px;box-sizing:border-box"></label>'+'<label>Work No. *<select id="cfmSopWork318" style="width:100%;padding:8px;box-sizing:border-box"><option value="">Select Work Order</option></select></label>'+
  '<label>Full SRL<input id="cfmSopSrl318" placeholder="EFPPL03/0234" style="width:100%;padding:8px;box-sizing:border-box"></label>'+
  '<label>Inward No.<input id="cfmSopInward318" placeholder="INW-..." style="width:100%;padding:8px;box-sizing:border-box"></label>'+
  '<label>Machine / Area<input id="cfmSopArea318" placeholder="Cutting 1 / Packing Room" style="width:100%;padding:8px;box-sizing:border-box"></label>'+
@@ -523,10 +523,42 @@ function openPanel(preset){
  const field=id=>$(id)?.value?.trim()||'';
  const setMsg=s=>{$('cfmSopMsg318').textContent=s};
 
+
+ const machineRoster=(area)=>{
+  const a=norm(area);
+  // Never guess the responsible person: only offer the team of the named machine.
+  if(/THREAD\\s*CUT|THREAD\\s*TRIM/.test(a))return TEAM_BY_SOP.THR;
+  if(/GUN|FINISH/.test(a))return TEAM_BY_SOP.GUN;
+  if(/STITCH|SEW/.test(a))return TEAM_BY_SOP.STI;
+  if(/CUT|CNC/.test(a))return TEAM_BY_SOP.CUT;
+  if(/PACK|SEAL|LABEL/.test(a))return TEAM_BY_SOP.PKG;
+  return []; // unknown machine: require actual operator name, not false roster.
+ };
+ const populateWorkDropdown=(query='',wanted='')=>{
+  const select=$('cfmSopWork318');if(!select)return;
+  const remembered=wanted||select.value;
+  const list=arr(getState()?.pending)
+   .filter(row=>/^CFM-\\d+$/i.test(String(row?.workNo||'')))
+   .filter(row=>{
+     const s=[row.workNo,row.party,row.description].join(' ').toUpperCase();
+     return !query||s.includes(String(query).trim().toUpperCase())||norm(row.workNo)===norm(remembered);
+   })
+   .sort((a,b)=>Number(String(b.workNo).match(/\\d+$/)?.[0]||0)-Number(String(a.workNo).match(/\\d+$/)?.[0]||0));
+  const unique=new Set();
+  select.replaceChildren();
+  const none=document.createElement('option');none.value='';none.textContent='Select Work Order';select.append(none);
+  for(const row of list){
+    if(unique.has(norm(row.workNo)))continue;unique.add(norm(row.workNo));
+    const opt=document.createElement('option');opt.value=row.workNo;
+    opt.textContent=row.workNo+' • '+String(row.party||'').slice(0,48)+' • '+String(row.status||'');
+    select.append(opt);
+  }
+  select.value=unique.has(norm(remembered))?remembered:'';
+ };
  const populateOperatorDropdown=(code)=>{
   const select=$('cfmSopOperator318'),extra=$('cfmSopOperatorOther327'),wrap=$('cfmSopOtherPersonWrap327');
   if(!select||!extra||!wrap)return;
-  const names=TEAM_BY_SOP[code]||[];
+  const names=code==='MCL'?machineRoster(field('cfmSopArea318')):(TEAM_BY_SOP[code]||[]);
   const old=select.value;
   select.replaceChildren();
   const option=(value,label)=>{
@@ -536,7 +568,7 @@ function openPanel(preset){
   option('','Select person');
   names.forEach(name=>option(name,name));
   if(!names.length){
-   option('__MANUAL__',code==='ECL'?'Authorized electrician — enter name':'Enter responsible person name');
+   option('__MANUAL__',code==='ECL'?'Authorized electrician — enter name':code==='MCL'?'Machine operator — enter actual name':'Enter responsible person name');
    select.value='__MANUAL__';
   }else if(names.includes(old))select.value=old;
   else select.value='';
@@ -544,7 +576,7 @@ function openPanel(preset){
    const manual=select.value==='__MANUAL__';
    wrap.style.display=manual?'':'none';
    extra.required=manual;
-   extra.placeholder=code==='ECL'?'Authorized electrician full name':'Actual person full name';
+   extra.placeholder=code==='ECL'?'Authorized electrician full name':code==='MCL'?'Person operating this machine':'Actual person full name';
    if(!manual)extra.value='';
   };
   select.onchange=toggle;
@@ -558,6 +590,7 @@ function openPanel(preset){
    if(control)control.disabled=!visible;
   }
   const area=$('cfmSopArea318'),areaLabel=area?.closest('label');
+  const workSearch=$('cfmSopWorkSearchWrap328');if(workSearch)workSearch.style.display=usesField(cat.code,'work')?'':'none';
   if(areaLabel){
    const areaTitle={MCL:'Machine *',PCL:'Plant / Floor Area *',ECL:'Electrical Machine / Panel *',RCL:'Packing Room / Area *'}[cat.code]||'Machine / Area *';
    if(areaLabel.firstChild?.nodeType===3)areaLabel.firstChild.nodeValue=areaTitle;
@@ -588,7 +621,11 @@ function openPanel(preset){
   populateOperatorDropdown(cat.code);
   setMsg('');
  };
- $('cfmSopWork318').value=preset||'';
+ populateWorkDropdown('',preset||'');
+ $('cfmSopWorkSearch328').addEventListener('input',e=>populateWorkDropdown(e.target.value));
+ $('cfmSopArea318').addEventListener('input',()=>{
+   if(field('cfmSopCode318')==='MCL')populateOperatorDropdown('MCL');
+ });
  if(preset&&srlsFor(preset).length===1)$('cfmSopSrl318').value=srlsFor(preset)[0];
  $('cfmSopPrintDate322').value=sopTodayDate();
  $('cfmSopCode318').addEventListener('change',render);render();
@@ -608,6 +645,7 @@ function openPanel(preset){
   const st=getState();
   if(!st||typeof save!=='function'){setMsg('ERP Save not ready');return}
   if(!operator||!supervisor||!$('cfmSopApproved318').checked){setMsg('Operator, supervisor and verification tick are mandatory.');return}
+  if(cat.code==='MCL'&&!field('cfmSopArea318')){setMsg('Select / enter machine first, then choose its actual operator.');return}
   if(isMaterial(cat.code)&&!srlNo&&!(cat.code==='MR'&&inwardNo)){setMsg('Full SRL required (or Inward No for receipt before SRL allotment).');return}
   if(isClean(cat.code)&&!area){setMsg('Machine / Area is required for cleaning log.');return}
   if(!isMaterial(cat.code)&&!isClean(cat.code)&&(!/^CFM-\d+$/i.test(workNo)||!arr(st.pending).some(r=>norm(r.workNo)===norm(workNo)))){setMsg('Select an existing Work No. for production checklist.');return}
