@@ -78,7 +78,7 @@ function dailyWorkBlock(r,n,date){
 }
 window.printDailyCuttingPlan=function(){
   const date=$('printDate')?.value||todayISO();
-  const open=state.pending.filter(r=>pendingQty(r)>0).slice().sort(workSort);
+  const open=state.pending.filter(r=>pendingQty(r)>0&&!['DISPATCHED','ARCHIVED','COMPLETED'].includes(String(r.status||'PENDING').toUpperCase())&&!r.archived).slice().sort(workSort);
   if(!open.length)return toast('No open pending work');
   const existing=document.getElementById('cfmCutPlanSelector');if(existing)existing.remove();
   const overlay=document.createElement('div');overlay.id='cfmCutPlanSelector';
@@ -120,7 +120,7 @@ window.printDocsPending=function(){
 
 
 window.printPlanningReport=function(){
-  const d=planningDateValue(),rows=state.pending.filter(r=>pendingQty(r)>0&&String(r.planDate||'')===d).slice().sort(workSort);if(!rows.length)return toast('No work selected for planning date');
+  const d=planningDateValue(),rows=state.pending.filter(r=>pendingQty(r)>0&&!['DISPATCHED','ARCHIVED','COMPLETED'].includes(String(r.status||'PENDING').toUpperCase())&&!r.archived&&String(r.planDate||'')===d).slice().sort(workSort);if(!rows.length)return toast('No work selected for planning date');
   const total=rows.reduce((a,r)=>a+pendingQty(r),0);
   const body=`<div class="head"><h1>EAGLE FILTRATION PRODUCT PRIVATE LIMITED</h1><div class="sub">MORNING PENDING WORK PLANNING REPORT</div><div class="meta"><span>${rows.length} work • Pending Qty ${fmt(total)}</span><span>PLAN DATE: ${esc(dateDisplay(d))}</span></div></div><table><thead><tr><th>#</th><th>Work No</th><th>Party</th><th>Item / Description</th><th>Cloth</th><th>Order Qty</th><th>Cut Qty</th><th>Pending</th><th>Delivery</th><th>Priority</th><th>Remark</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td><b>${esc(r.workNo||'')}</b></td><td>${esc(r.party||'')}</td><td>${esc(r.description||'')}</td><td>${esc(r.cloth||'')}</td><td>${fmt(r.orderQty)}</td><td>${fmt(r.cutQty)}</td><td><b>${fmt(pendingQty(r))}</b></td><td>${esc(dateDisplay(r.deliveryDate||''))}</td><td>${esc(r.priority||'')}</td><td>${esc(r.remark||'')}</td></tr>`).join('')}</tbody></table><div style="margin-top:28px;display:flex;justify-content:space-between"><span>Prepared By: __________________</span><span>Approved By: __________________</span></div>`;
   openPrintWindow('Morning Pending Work Planning',body,true)
