@@ -189,11 +189,11 @@ function recordFor(code,work){
 }
 function aggregate(r,cat){
  if(!r)return 'NOT RECORDED';
- const stats=cat.items.map(it=>r.results?.[it.id]||'NOT RECORDED');
- if(stats.some(x=>x==='FAIL'))return 'FAIL';
- if(stats.some(x=>x==='HOLD'))return 'HOLD';
- if(stats.some(x=>x==='NOT RECORDED'))return 'NOT RECORDED';
- return 'PASS / N/A';
+ // Audit integrity: use the checkpoint revision that existed when the record
+ // was created. Legacy V320/V323 cleaning entries have the original checks.
+ const points=arr(r.checklistSnapshot).length?r.checklistSnapshot:
+   isClean(cat.code)?LEGACY_CLEANING_ITEMS[cat.code]:cat.items;
+ return aggregateFromPoints(r,points);
 }
 function annex(work,compact=false){
  const allSrl=srlsFor(work), st=getState();
