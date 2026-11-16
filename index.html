@@ -103,7 +103,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker" allow="microphone; autoplay"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V305</div>
+<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V306</div>
 <script src="./backup-safe.js?v=3"></script>
 <button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261116-v305',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261116-v306',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -183,7 +183,7 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261116-v305';
+ const urls=groups.flat(), ver='20261116-v306';
  // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
  // Never clear browser storage or replace Cloud data while recovering from a network failure.
  let nextChunk=0;
@@ -580,7 +580,7 @@ window.addEventListener('message',function(event){
  }
  const outer=document.createElement('button');outer.id='cfmDispatchOuterV265';outer.type='button';outer.textContent='✓ Dispatch Done / History';outer.style.cssText='position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom, 0px) + 72px);z-index:2147483647;background:#1269a0;color:#fff;border:0;border-radius:10px;padding:12px 14px;font:700 13px system-ui;box-shadow:0 3px 12px #0005';document.body.appendChild(outer);
  outer.onclick=()=>{install();try{const d=frame.contentWindow.document;const inner=d.getElementById('cfmDispatchOpenV264');if(inner)inner.click();else alert('Dispatch panel is loading. Wait for ERP Cloud to load, then tap again.')}catch(e){alert('Dispatch panel unavailable: '+e.message)}};
- frame.addEventListener('load',()=>setTimeout(install,1500));setInterval(install,3000);
+ frame.addEventListener('load',()=>setTimeout(install,1500));setInterval(install,12000);
 })();
 </script>
 <script id="cfm-all-pending-v266">
@@ -600,7 +600,7 @@ button.onclick=()=>{panel.hidden=false;draw()};document.getElementById('cfmAllCl
 <script id="cfm-v271-hide-jessi">
 (function(){
 function hide(){try{const d=document.getElementById('app')?.contentWindow?.document;if(!d)return;for(const el of d.querySelectorAll('[id*="jessi" i],[class*="jessi" i]')){if(el.closest('script,style'))continue;el.style.setProperty('display','none','important')}}catch(e){}}
-document.getElementById('app')?.addEventListener('load',hide);setInterval(hide,1800);
+document.getElementById('app')?.addEventListener('load',hide);setInterval(hide,12000);
 })();
 </script>
 <style id="cfm-v272-clean-controls">
@@ -611,7 +611,7 @@ document.getElementById('app')?.addEventListener('load',hide);setInterval(hide,1
  const exact=/^(simulation|simulate|test simulation|demo mode|fix work nos|load work nos|all pending work orders|label issued register)$/i;
  function clean(d){if(!d||!d.body)return;for(const el of d.querySelectorAll('button,[role="button"]')){const t=String(el.textContent||'').replace(/[🔧☁️📋🏷✓]/g,'').trim();if(exact.test(t))el.style.setProperty('display','none','important')}}
  function run(){clean(document);try{clean(document.getElementById('app')?.contentWindow?.document)}catch(_){}}
- document.getElementById('app')?.addEventListener('load',run);setInterval(run,2500);run();
+ document.getElementById('app')?.addEventListener('load',run);setInterval(run,12000);run();
 })();
 </script>
 <style id="cfm-v273-dispatch-position">
@@ -621,7 +621,7 @@ document.getElementById('app')?.addEventListener('load',hide);setInterval(hide,1
 <script id="cfm-v273-single-dispatch">
 (function(){
 function tidy(){try{const d=document.getElementById('app')?.contentWindow?.document;if(!d)return;const inner=d.getElementById('cfmDispatchOpenV264');if(inner)inner.style.setProperty('display','none','important')}catch(_){}}
-document.getElementById('app')?.addEventListener('load',tidy);setInterval(tidy,1500);
+document.getElementById('app')?.addEventListener('load',tidy);setInterval(tidy,12000);
 })();
 </script>
 
@@ -674,7 +674,7 @@ const label=(active?.textContent||'').toLowerCase();
 const visible=!!dash?(getComputedStyle(dash).display!=='none'&&!dash.hidden):label.includes('dashboard');
 b.style.display=visible?'block':'none';
 }catch(_){}}
-f.addEventListener('load',install);setInterval(install,2000);install();
+f.addEventListener('load',install);setInterval(install,12000);install();
 })();
 </script>
 <style id="cfm-v293-cutqty-css">
@@ -699,7 +699,7 @@ $('cqRows293').addEventListener('input',e=>{if(e.target.type!=='number')return;c
 $('cqRows293').addEventListener('click',async e=>{if(!e.target.classList.contains('cqSave'))return;const btn=e.target,row=btn.closest('.cqrow'),wo=row.dataset.wo,inp=row.querySelector('input'),n=Number(inp.value);const record=live.find(x=>x.workNo===wo),max=Number(record?.orderQty||0);if(!Number.isInteger(n)||n<0||n>max){alert('Enter whole quantity between 0 and '+max);return}if(!confirm(wo+': save total cut quantity '+n+' of '+max+'?'))return;btn.disabled=true;try{const w=frame.contentWindow;const latest=await w.eval('cloudFetch()');const cloudOrder=latest?.payload?.pending?.find(x=>x.workNo===wo);if(!cloudOrder||['DISPATCHED','ARCHIVED'].includes(String(cloudOrder.status||'').toUpperCase()))throw Error('Order is not pending in Cloud');if(Number(cloudOrder.cutQty||0)!==Number(record.cutQty||0))throw Error('Cloud quantity changed. Refresh and try again.');const result=w.eval('(()=>{const r=state.pending.find(x=>x.workNo==='+JSON.stringify(wo)+');if(!r)throw Error("Work Order not found locally");if(["DISPATCHED","ARCHIVED"].includes(String(r.status||"").toUpperCase()))throw Error("Order is dispatched");r.cutQty='+n+';r.manualCutQtyUpdatedAt=new Date().toISOString();r.manualCutQtySource="DASHBOARD_MANUAL";save();return r.cutQty})()');if(result!==n)throw Error('Local save mismatch');$('cqMsg293').textContent=wo+' saved locally; Cloud sync in progress. Refresh to verify.';await new Promise(resolve=>setTimeout(resolve,1400));const verified=await w.eval('cloudFetch()');if(Number(verified?.payload?.pending?.find(x=>x.workNo===wo)?.cutQty)!==n)throw Error('Cloud not yet confirmed. Check Sync status before another edit.');record.cutQty=n;row.querySelector('.cqBalance').textContent=Math.max(0,max-n);$('cqMsg293').textContent='✓ '+wo+' Cutting Qty '+n+' / '+max+' saved in Cloud.';}catch(err){$('cqMsg293').textContent='Save not verified: '+String(err.message||err)+'. Refresh before retry.';}finally{btn.disabled=false}});
 $('cqClose293').onclick=()=>panel.hidden=true;$('cqSearch293').oninput=draw;
 function install(){try{const d=frame.contentWindow.document;if(!d?.body)return;let btn=d.getElementById('cfmManualCutQtyDashboard293');if(!btn){btn=d.createElement('button');btn.id='cfmManualCutQtyDashboard293';btn.type='button';btn.textContent='✂ Pending Orders • Cutting Qty';btn.style.cssText='margin:10px 12px;padding:12px 15px;background:#116c55;color:#fff;border:0;border-radius:9px;font-weight:bold;cursor:pointer';btn.onclick=()=>{panel.hidden=false;load()};const dash=d.getElementById('view-dashboard');(dash||d.body).prepend(btn)}}catch(e){}}
-frame.addEventListener('load',install);setInterval(install,1800);install();
+frame.addEventListener('load',install);setInterval(install,12000);install();
 })();
 </script>
 
