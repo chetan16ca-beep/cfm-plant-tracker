@@ -21,6 +21,106 @@ const CATALOG=[
 ['DSP','Dispatch',['DSP-01|Packing vs dispatch qty reconciled','DSP-02|Challan/invoice, transporter, address verified','DSP-03|Dispatch details and approval recorded','DSP-04|Dispatched job retained in history, not active pending']],
 ['RPT','Batch Report / SOP Review',['RPT-01|Work, party, product, qty and SRL linked','RPT-02|Material and production SOP IDs attached; separate area-cleaning logs reviewed','RPT-03|Results, operator, verifier and timestamp displayed','RPT-04|Missing checks marked NOT RECORDED, never PASS','RPT-05|Product ticket and Batch Annexure can print','RPT-06|Checklist record/version traceable']]
 ].map(([code,name,items])=>({code,name,items:items.map(s=>{const i=s.indexOf('|');return {id:s.slice(0,i),text:s.slice(i+1)}})}));
+
+// V324 - controlled cleaning SOP specifications. Existing checkpoint IDs MCL/PCL/ECL/RCL
+// retain their original meaning. Previous checklist results are never retroactively changed.
+const CLEANING_MASTER={
+ MCL:{
+  heading:'Machine Cleaning & Pre-Operation Hygiene',
+  scope:'Stitching, cutting, thread cutting and approved non-electrical machine surfaces',
+  purpose:'Prevent lint, thread waste, cross-contamination and unsafe machine restart.',
+  frequency:'At shift start/end, changeover and after repair/contamination; follow site-approved frequency.',
+  responsibility:'Assigned machine operator performs; supervisor physically verifies and releases the machine.',
+  safety:'Stop machine. Follow site-approved isolation before handling cleaning points. Do not open energized panels or remove safety guards without authorization.',
+  items:[
+  'MCL-01|Machine stopped and identified|Verify machine identity and complete stop before beginning cleaning. Confirm no moving needle, blade or driven parts.|Machine correctly identified, controls OFF and all moving parts stationary.',
+  'MCL-02|Safe isolation confirmed|Follow the site-approved machine shutdown/isolation procedure before any cleaning near hazardous parts. Refer difficult isolation to maintenance.|Safe condition confirmed; unauthorized restart prevented during cleaning.',
+  'MCL-03|Lint, thread and scrap removed|Remove loose fabric, lint, thread ends and process scrap from reachable machine and nearby work surfaces using approved tools.|No visible loose thread, dust accumulation or scrap on accessible areas.',
+  'MCL-04|Surfaces and guards inspected|Inspect accessible bed, work platform, guards and covers for cleanliness, damage and correct position; do not open electrical enclosures.|Clean contact surfaces; guards present and visibly intact.',
+  'MCL-05|Tools accounted for; supervisor checked|Return brushes, cloths and tools to assigned storage. Supervisor visually verifies the cleaned machine before release.|No tool or loose material left; supervisor release recorded.',
+  'MCL-06|Approved cleaning method used|Use approved dry brush, vacuum or lint-free cloth suitable for machine surfaces; avoid unapproved solvent or water on electrical components.|Suitable method used without wet electrical parts or surface damage.',
+  'MCL-07|Thread path and work zone clear|With machine safely isolated, remove accessible lint around stitch/needle and thread feed area without touching sharp parts unsafely.|Thread path and work zone clear of waste; no blocked accessible openings.',
+  'MCL-08|Oil leak or defect inspected|Visually check for leakage, loose parts, damaged needle/guards or abnormal condition; stop and report defects for maintenance.|No unresolved safety-critical defect; defects recorded as HOLD/FAIL.',
+  'MCL-09|Previous-job material cleared|Remove previous order fabric pieces, thread cones, job tags and scrap from the machine work zone before next product.|No mix-up material or unrelated labels at machine station.',
+  'MCL-10|Area released for operation|Confirm machine and adjacent floor are clean, tools removed, protection restored and supervisor has reviewed the condition.|Machine/area released only after verification; unresolved issues held.'
+  ]
+ },
+ PCL:{
+  heading:'Plant & Production Area Cleaning',
+  scope:'Production floors, walkways, tables, common working areas, bins and non-electrical accessible surfaces',
+  purpose:'Maintain orderly, contaminant-controlled, obstruction-free production areas.',
+  frequency:'Daily and shift end; immediately for spills or debris; follow area cleaning plan.',
+  responsibility:'Designated housekeeping/area operator performs; area supervisor verifies.',
+  safety:'Use approved cleaning materials and PPE. Isolate hazards and spills; never block emergency exits or electrical access.',
+  items:[
+  'PCL-01|Floors, tables and walkways cleaned|Remove loose lint, dust and scrap from designated floors, worktables and access routes using an approved method.|Visibly clean surfaces; dry, non-slip walking surfaces and no loose waste.',
+  'PCL-02|Waste segregated; passages clear|Transfer thread/fabric scrap and other waste into identified bins. Keep aisles, entrances and exits unobstructed.|Waste in correct bins; no obstruction of walkways or emergency routes.',
+  'PCL-03|Spills and contamination controlled|Identify liquid spills, leaks or contamination. Contain and report hazards; only trained staff use approved spill procedure.|No uncontrolled spill; contaminated area secured until released.',
+  'PCL-04|Equipment returned; shift approved|Clean and return mops, brushes and waste collection tools. Supervisor checks area condition at handover.|Tools stored correctly; shift/area release confirmed.',
+  'PCL-05|Corners and low-access points checked|Inspect reachable corners, machine surroundings and under-table areas for dust/fabric accumulation without unsafe access.|No visible built-up lint or fabric scraps in accessible points.',
+  'PCL-06|High-contact work surfaces cleaned|Clean shared handles, table edges and contact surfaces as suitable for the surface and approved work method.|Clean and dry contact points; no residue that may transfer to product.',
+  'PCL-07|Material zones remain separated|Check that clean materials, active work, rejected items and scrap remain in designated labeled locations.|No mixing of accepted, HOLD, reject and scrap material.',
+  'PCL-08|Cleaning tools inspected and stored|Check cleaning tools are usable, clean after application and place them in designated storage.|No soiled or defective cleaning tool left in the work area.',
+  'PCL-09|Safety access and bins verified|Check bin overflow, emergency access, electrical panel approach and visible floor hazards during the final walk-through.|Access clear, waste contained and hazards reported/controlled.',
+  'PCL-10|Supervisor clearance documented|Perform final area walk-through and record outstanding issues, correction and release by area supervisor.|No open critical issue; verified area/shift status recorded.'
+  ]
+ },
+ ECL:{
+  heading:'Electrical Machine / Panel Cleaning',
+  scope:'Electrical enclosures, drives, control cabinets and machine electrical interfaces - authorized personnel only',
+  purpose:'Prevent contamination-related electrical faults without exposing personnel to electrical hazards.',
+  frequency:'Per preventive-maintenance plan or when authorized after contamination/maintenance.',
+  responsibility:'Authorized qualified electrician only performs and signs off; maintenance supervisor verifies.',
+  safety:'Electrical work is restricted to qualified authorized personnel. Follow site electrical isolation, lockout/tagout and verification rules. Never clean energized panels.',
+  items:[
+  'ECL-01|Authorized electrician and permit verified|Confirm named competent/authorized electrician and required site work approval before any electrical-machine cleaning.|Authorization and site approval verified; unauthorized work not started.',
+  'ECL-02|Electrical isolation and zero-energy verified|Authorized electrician follows documented lockout/tagout and safe de-energization verification requirements before cleaning.|Isolation verification complete under site procedure; no exposed energized work.',
+  'ECL-03|Prohibited wet / air methods excluded|Confirm no water, wet cloth, unapproved solvent or unauthorized compressed air is used near electrical components.|Only approved electrical-safe cleaning practice used.',
+  'ECL-04|Approved dry cleaning and visual check|Authorized personnel remove accessible dust with approved equipment and visually inspect cable/guards without disturbing connections.|Clean accessible enclosure; defects reported rather than adjusted unsafely.',
+  'ECL-05|Restoration authorized and signed off|After reassembly and checks, only authorized personnel restore power using the approved site restart procedure.|Maintenance authorization and safe release recorded.',
+  'ECL-06|Moisture / ingress check|Visually check for visible water ingress, condensation, excessive dust or contamination before any cleaning or restart.|No uncontrolled moisture/ingress; unsafe condition placed on HOLD.',
+  'ECL-07|PPE and cleaning tools approved|Confirm task-appropriate PPE and approved clean tools are available and in serviceable condition.|Required PPE/tools confirmed by authorized worker.',
+  'ECL-08|Heat or damage indicators reported|Visually flag scorch marks, unusual odor, cable damage, loose covers or other abnormal indicators; do not touch live equipment.|Abnormal conditions isolated and referred to qualified maintenance.',
+  'ECL-09|Covers and labels inspected|After authorized cleaning verify enclosure covers, warning labels, guards and cable entries appear correctly secured.|Enclosure visibly intact and identification/guards restored.',
+  'ECL-10|Maintenance release and record completed|Record electrical machine/panel identity, assigned electrician, supervisor and any defect/corrective-action reference.|Signed-off status and unresolved HOLD conditions traceable.'
+  ]
+ },
+ RCL:{
+  heading:'Packing Room Cleaning & Line Clearance',
+  scope:'Packing room, packing tables, packaging-material racks, labeling and sealing stations',
+  purpose:'Prevent packaging contamination, wrong-label use and product/lot mix-ups.',
+  frequency:'Before packing, at product changeover and after shift cleaning as required.',
+  responsibility:'Packing operator performs; packing/quality supervisor verifies area release.',
+  safety:'Stop and make safe packing/sealing equipment before cleaning; use only approved clean and dry materials.',
+  items:[
+  'RCL-01|Previous order material cleared|Remove old product labels, prior-order packing materials, unused cartons and loose pieces before new packing starts.|No previous order items or loose labels on the packing line.',
+  'RCL-02|Packing contact surfaces cleaned|Clean packing benches, preparation tables, weighing and accessible contact surfaces by approved method.|Surfaces visibly clean, dry and free from product transfer residue.',
+  'RCL-03|Packaging stock clean and dry|Inspect bags, cartons, liners and sealing material before use; segregate torn, wet or soiled supplies.|Only intact and clean packaging materials available to operation.',
+  'RCL-04|Packing room released for product|Supervisor verifies room/line status and intended product after cleaning and clearance.|Area approved for intended packing; outstanding holds closed.',
+  'RCL-05|Room floor, racks and bins checked|Remove dust and waste from reachable floor corners, racks and scrap bins; keep packed products protected.|No visible loose debris near exposed packing.',
+  'RCL-06|Contamination indicators inspected|Check for dust, fibers, water leak, pest evidence or other visible contamination around the packing zone.|No unresolved contamination; suspicious area quarantined and reported.',
+  'RCL-07|Packaging material segregated|Keep accepted packing materials protected and separate from waste, returns and rejected supplies.|No mixed/rejected packaging at active packing station.',
+  'RCL-08|Sealing / labeling workstation safe|Clean accessible sealing/labeling surfaces after approved shutdown and verify guards and work area.|Equipment surface clean; controls and guards visually intact.',
+  'RCL-09|Current labels and instructions checked|Confirm only relevant product/party/job label set is at line; remove obsolete printouts and tags.|Current approved label and instruction only; no mixed labels.',
+  'RCL-10|Final line clearance signed off|Verify the entire packing zone is clean and ready. Record supervisor approval or HOLD reason before starting.|Packing permitted only after documented clearance.'
+  ]
+ }
+};
+const LEGACY_CLEANING_ITEMS=Object.fromEntries(CATALOG.filter(c=>Object.hasOwn(CLEANING_MASTER,c.code)).map(c=>[c.code,c.items.map(x=>({...x}))]));
+for(const cat of CATALOG){
+ const doc=CLEANING_MASTER[cat.code];
+ if(doc){
+  cat.items=doc.items.map(line=>{
+   const [id,text,description,acceptance]=line.split('|');
+   return {id,text,description,acceptance};
+  });
+ }
+}
+const SOP_DOCUMENT_REV='01';
+const SOP_DOCUMENT_ISSUED='2026-11-16';
+const sopDocumentNo=code=>'SOP-CFM-'+code;
+const sopChecklistNo=code=>'CHK-CFM-'+code+'-01';
+
 const $=id=>document.getElementById(id);
 const norm=s=>String(s==null?'':s).trim().toUpperCase();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -293,9 +393,23 @@ function openPanel(preset){
   for(const id of ['cfmSopTicket318','cfmSopAnnex318']){
    const button=$(id);if(button)button.style.display=hasWork?'':'none';
   }
-  $('cfmSopChecks318').innerHTML='<b>'+esc(cat.name)+' • '+cat.items.length+' numbered checks</b>'+
-   cat.items.map((item,i)=>'<div style="display:grid;grid-template-columns:1fr 118px;gap:7px;padding:7px 0;border-bottom:1px solid #e0edf5"><label>'+esc(item.id+' • '+item.text)+'</label>'+
-   '<select data-sop-id="'+esc(item.id)+'" style="padding:5px"><option value="">NOT RECORDED</option><option>PASS</option><option>HOLD</option><option>FAIL</option><option>N/A</option></select></div>').join('');
+  const spec=CLEANING_MASTER[cat.code];
+  const docInfo=spec?'<section style="border:1px solid #afd6e8;background:#f3f9fd;border-radius:10px;padding:12px;margin-bottom:12px">'+
+    '<div style="font-weight:800;color:#164d69;font-size:15px">'+esc(spec.heading)+'</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:11px;font-weight:700;margin:6px 0">'+
+     '<span>SOP NO: '+esc(sopDocumentNo(cat.code))+'</span><span>CHECKLIST: '+esc(sopChecklistNo(cat.code))+'</span>'+
+     '<span>REV: '+esc(SOP_DOCUMENT_REV)+'</span></div>'+
+    '<p style="font-size:12px;margin:5px 0"><b>Purpose:</b> '+esc(spec.purpose)+'</p>'+
+    '<p style="font-size:12px;margin:5px 0"><b>Scope:</b> '+esc(spec.scope)+'</p>'+
+    '<p style="font-size:12px;margin:5px 0"><b>Frequency:</b> '+esc(spec.frequency)+'</p>'+
+    '<p style="font-size:12px;margin:5px 0"><b>Responsibility:</b> '+esc(spec.responsibility)+'</p>'+
+    '<p style="font-size:12px;margin:6px 0;color:#84391b"><b>Safety control:</b> '+esc(spec.safety)+'</p></section>':'';
+  $('cfmSopChecks318').innerHTML=docInfo+'<b>'+esc(cat.name)+' • '+cat.items.length+' numbered checks</b>'+
+   cat.items.map(item=>'<div style="display:grid;grid-template-columns:minmax(0,1fr) 118px;gap:8px;padding:10px 0;border-bottom:1px solid #dceaf2;align-items:start">'+
+    '<div><strong style="display:block;color:#1e4f68;font-size:13px">'+esc(item.id+' • '+item.text)+'</strong>'+
+    (item.description?'<div style="font-size:12px;line-height:1.45;color:#3a5567;margin-top:4px"><b>Procedure:</b> '+esc(item.description)+'</div>':'')+
+    (item.acceptance?'<div style="font-size:12px;line-height:1.45;color:#18665d;margin-top:3px"><b>Acceptance:</b> '+esc(item.acceptance)+'</div>':'')+'</div>'+
+    '<select data-sop-id="'+esc(item.id)+'" aria-label="'+esc(item.id)+' result" style="padding:7px;max-width:118px"><option value="">NOT RECORDED</option><option>PASS</option><option>HOLD</option><option>FAIL</option><option>N/A</option></select></div>').join('');
   setMsg('');
  };
  $('cfmSopWork318').value=preset||'';
@@ -325,7 +439,8 @@ function openPanel(preset){
   panel.querySelectorAll('[data-sop-id]').forEach(x=>{results[x.dataset.sopId]=x.value;if(['HOLD','FAIL'].includes(x.value))hasBad=true});
   if(Object.values(results).some(v=>!v)){setMsg('Complete every numbered item with PASS, HOLD, FAIL or N/A.');return}
   if(hasBad&&!remark){setMsg('HOLD or FAIL needs a reason / corrective action in Remark.');return}
-  const rec={id:'SOP-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),schema:schemaId,code:cat.code,workNo,srlNo,inwardNo,area,shift,operator,supervisor,results,remark,timestamp:new Date().toISOString(),device:typeof deviceLabel==='function'?deviceLabel():'ERP'};
+  if(isClean(cat.code)&&Object.values(results).includes('N/A')&&!remark){setMsg('Audit: N/A needs a written justification in Remark.');return}
+  const rec={id:'SOP-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),schema:schemaId,code:cat.code,workNo,srlNo,inwardNo,area,shift,operator,supervisor,results,remark,timestamp:new Date().toISOString(),device:typeof deviceLabel==='function'?deviceLabel():'ERP',documentNo:isClean(cat.code)?sopDocumentNo(cat.code):'',checklistNo:isClean(cat.code)?sopChecklistNo(cat.code):'',sopRevision:isClean(cat.code)?SOP_DOCUMENT_REV:'',checklistSnapshot:isClean(cat.code)?cat.items.map(item=>({...item})):[]};
   const before=arr(st.sopRecords).slice();
   st.sopRecords=records().concat(rec);backup(st.sopRecords);
   try{
