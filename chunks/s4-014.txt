@@ -1174,7 +1174,7 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
  window.dailyWorkBlock=function(r,n,date){
    const html=old(r,n,date),list=parts(r);
    if(!list.length)return html;
-   const extra='<div class="cfm-v297-parts" style="margin:5px 0 8px;border:1px solid #687f91;padding:5px;font-size:10px;break-inside:avoid"><b>CUTTING COMPONENTS — WRITE QTY MANUALLY</b><table style="width:100%;border-collapse:collapse;margin-top:3px"><thead><tr><th style="text-align:left;border:1px solid #8fa0ab">PART / LAYER</th><th style="border:1px solid #8fa0ab">TODAY CUT QTY</th><th style="border:1px solid #8fa0ab">REMARK</th></tr></thead><tbody>'+list.map(p=>'<tr><td style="border:1px solid #8fa0ab;padding:4px">'+escPart(p)+'</td><td style="border:1px solid #8fa0ab;min-width:85px"></td><td style="border:1px solid #8fa0ab;min-width:85px"></td></tr>').join('')+'</tbody></table></div>';
+   const extra='<div class="cfm-v297-parts" style="margin:5px 0 8px;border:1px solid #687f91;padding:5px;font-size:10px;break-inside:avoid"><b>CUTTING COMPONENTS — QTY & PERSON</b><table style="width:100%;border-collapse:collapse;margin-top:3px"><thead><tr><th style="text-align:left;border:1px solid #8fa0ab">PART / LAYER</th><th style="border:1px solid #8fa0ab">TODAY CUT QTY</th><th style="border:1px solid #8fa0ab">PERSON NAME</th></tr></thead><tbody>'+list.map(p=>'<tr><td style="border:1px solid #8fa0ab;padding:4px">'+escPart(p)+'</td><td style="border:1px solid #8fa0ab;min-width:85px"></td><td style="border:1px solid #8fa0ab;min-width:85px"></td></tr>').join('')+'</tbody></table></div>';
    const last=html.lastIndexOf('</div>');
    return last>=0?html.slice(0,last)+extra+html.slice(last):html+extra;
  };
