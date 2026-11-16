@@ -190,6 +190,28 @@ const FIELD_CONTROLS={
 const usesField=(code,key)=>(FIELDS_BY_SOP[code]||[]).includes(key);
 const KEY='cfm-sop-register-fallback-v318';
 const schemaId='CFM-SOP-v1';
+
+/* V327 controlled team names: operator names are department-specific.
+ * Electrical cleaning uses an explicitly named authorized electrician only.
+ * Employee assignment is not a safety/cleaning sign-off.
+ */
+const TEAM_BY_SOP={
+  CUT:['Sumit'],
+  STI:['Vijayraj','Lavkush','Ankit','Satish','Rahul'],
+  THR:['Bhavna','Radha','Jitu','Sangita'],
+  GUN:['Bhavna','Radha','Jitu','Sangita'],
+  PKG:['Bhavna','Radha','Jitu','Sangita'],
+  FQC:['Chetan','Lala'],
+  MR:['Chetan','Lala'],
+  SRL:['Chetan','Lala'],
+  DSP:['Lala'],
+  MCL:['Bhavna','Radha','Sangita'],
+  PCL:['Bhavna','Radha','Sangita'],
+  RCL:['Bhavna','Radha','Sangita'],
+  ECL:[], // authorised electrician name must be recorded, not inferred.
+  RPT:[]  // verifier entered by name; no unconfirmed roster assignment.
+};
+
 function safeRead(){try{return arr(JSON.parse(localStorage.getItem(KEY)||'[]'))}catch(_){return []}}
 function backup(a){try{localStorage.setItem(KEY,JSON.stringify(a.slice(-2500)))}catch(_){}}
 function records(){
@@ -485,7 +507,7 @@ function openPanel(preset){
  '<label>Machine / Area<input id="cfmSopArea318" placeholder="Cutting 1 / Packing Room" style="width:100%;padding:8px;box-sizing:border-box"></label>'+
  '<label>Shift<select id="cfmSopShift318" style="width:100%;padding:8px"><option>Day</option><option>Night</option><option>General</option></select></label>'+
  '<label>SOP Print Date (IST)<input id="cfmSopPrintDate322" type="date" style="width:100%;padding:8px;box-sizing:border-box"></label>'+
- '<label>Operator *<input id="cfmSopOperator318" style="width:100%;padding:8px;box-sizing:border-box"></label>'+
+ '<label>Operator / Checked By *<select id="cfmSopOperator318" style="width:100%;padding:8px;box-sizing:border-box"></select></label>'+'<label id="cfmSopOtherPersonWrap327" style="display:none">Authorized Person Name *<input id="cfmSopOperatorOther327" maxlength="90" autocomplete="name" placeholder="Enter actual authorized person name" style="width:100%;padding:8px;box-sizing:border-box"></label>'+
  '<label>Supervisor *<input id="cfmSopSupervisor318" style="width:100%;padding:8px;box-sizing:border-box"></label></div>'+
  '<div id="cfmSopChecks318" style="margin:12px 0"></div>'+
  '<label>Remark / deviation<input id="cfmSopRemark318" style="display:block;width:100%;padding:8px;box-sizing:border-box"></label>'+
@@ -500,6 +522,34 @@ function openPanel(preset){
  overlay.append(panel);document.body.append(overlay);
  const field=id=>$(id)?.value?.trim()||'';
  const setMsg=s=>{$('cfmSopMsg318').textContent=s};
+
+ const populateOperatorDropdown=(code)=>{
+  const select=$('cfmSopOperator318'),extra=$('cfmSopOperatorOther327'),wrap=$('cfmSopOtherPersonWrap327');
+  if(!select||!extra||!wrap)return;
+  const names=TEAM_BY_SOP[code]||[];
+  const old=select.value;
+  select.replaceChildren();
+  const option=(value,label)=>{
+   const item=document.createElement('option');
+   item.value=value;item.textContent=label;select.append(item);
+  };
+  option('','Select person');
+  names.forEach(name=>option(name,name));
+  if(!names.length){
+   option('__MANUAL__',code==='ECL'?'Authorized electrician — enter name':'Enter responsible person name');
+   select.value='__MANUAL__';
+  }else if(names.includes(old))select.value=old;
+  else select.value='';
+  const toggle=()=>{
+   const manual=select.value==='__MANUAL__';
+   wrap.style.display=manual?'':'none';
+   extra.required=manual;
+   extra.placeholder=code==='ECL'?'Authorized electrician full name':'Actual person full name';
+   if(!manual)extra.value='';
+  };
+  select.onchange=toggle;
+  toggle();
+ };
  const render=()=>{
   const cat=CATALOG.find(x=>x.code===field('cfmSopCode318'));if(!cat)return;
   for(const [key,id] of Object.entries(FIELD_CONTROLS)){
@@ -535,6 +585,7 @@ function openPanel(preset){
     (item.description?'<div style="font-size:12px;line-height:1.45;color:#3a5567;margin-top:4px"><b>Procedure:</b> '+esc(item.description)+'</div>':'')+
     (item.acceptance?'<div style="font-size:12px;line-height:1.45;color:#18665d;margin-top:3px"><b>Acceptance:</b> '+esc(item.acceptance)+'</div>':'')+'</div>'+
     '<select data-sop-id="'+esc(item.id)+'" aria-label="'+esc(item.id)+' result" style="padding:7px;max-width:118px"><option value="">NOT RECORDED</option><option>PASS</option><option>HOLD</option><option>FAIL</option><option>N/A</option></select></div>').join('');
+  populateOperatorDropdown(cat.code);
   setMsg('');
  };
  $('cfmSopWork318').value=preset||'';
@@ -552,7 +603,7 @@ function openPanel(preset){
     inwardNo=usesField(cat.code,'inward')?field('cfmSopInward318'):'',
     area=usesField(cat.code,'area')?field('cfmSopArea318'):'',
     shift=usesField(cat.code,'shift')?field('cfmSopShift318'):'',
-    operator=field('cfmSopOperator318'),supervisor=field('cfmSopSupervisor318'),
+    operator=field('cfmSopOperator318')==='__MANUAL__'?field('cfmSopOperatorOther327'):field('cfmSopOperator318'),supervisor=field('cfmSopSupervisor318'),
     remark=field('cfmSopRemark318');
   const st=getState();
   if(!st||typeof save!=='function'){setMsg('ERP Save not ready');return}
