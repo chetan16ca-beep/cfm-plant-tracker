@@ -1155,3 +1155,28 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
  },true);
 })();
 </script>
+
+
+<script id="cfm-v297-product-cutting-parts">
+(function(){
+ const old=window.dailyWorkBlock;
+ if(typeof old!=='function')return;
+ function parts(r){
+  const s=[r.description,r.item,r.product,r.productName,r.party==='?'?'':r.eagleCode].filter(Boolean).join(' ').toUpperCase();
+  if(/\b(?:FBD|FINGER BAG)\b/.test(s))return ['Dia','Finger','Topla'];
+  if(/\b(?:MICRONI[ZS]ER|JET\s*MILL)\b/.test(s))return ['1st Layer','2nd Layer','3rd Layer','Rope / Pipe'];
+  if(/\bSNF\b/.test(s))return ['Bottom','Filter','Kona'];
+  if(/\bRNF\b/.test(s))return ['Dia','Collar','Filter'];
+  if(/\b(?:CF[\s-]*BAG|CENTRIFUGE)\b/.test(s))return ['Collar','Bottom','Filter','Dome / Patta','Rope'];
+  return [];
+ }
+ const escPart=s=>String(s).replace(/[&<>"]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;':'&quot;'}[x]));
+ window.dailyWorkBlock=function(r,n,date){
+   const html=old(r,n,date),list=parts(r);
+   if(!list.length)return html;
+   const extra='<div class="cfm-v297-parts" style="margin:5px 0 8px;border:1px solid #687f91;padding:5px;font-size:10px;break-inside:avoid"><b>CUTTING COMPONENTS — WRITE QTY MANUALLY</b><table style="width:100%;border-collapse:collapse;margin-top:3px"><thead><tr><th style="text-align:left;border:1px solid #8fa0ab">PART / LAYER</th><th style="border:1px solid #8fa0ab">TODAY CUT QTY</th><th style="border:1px solid #8fa0ab">REMARK</th></tr></thead><tbody>'+list.map(p=>'<tr><td style="border:1px solid #8fa0ab;padding:4px">'+escPart(p)+'</td><td style="border:1px solid #8fa0ab;min-width:85px"></td><td style="border:1px solid #8fa0ab;min-width:85px"></td></tr>').join('')+'</tbody></table></div>';
+   const last=html.lastIndexOf('</div>');
+   return last>=0?html.slice(0,last)+extra+html.slice(last):html+extra;
+ };
+})();
+</script>
