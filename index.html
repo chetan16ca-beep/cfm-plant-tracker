@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261116-v299',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261116-v300',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -183,7 +183,7 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261116-v299';
+ const urls=groups.flat(), ver='20261116-v300';
  // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
  // Never clear browser storage or replace Cloud data while recovering from a network failure.
  let nextChunk=0;
