@@ -103,7 +103,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker" allow="microphone; autoplay"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V313</div>
+<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V314</div>
 <script src="./backup-safe.js?v=3"></script>
 <button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261116-v313',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261116-v314',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -183,7 +183,7 @@ if('serviceWorker' in navigator){
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261116-v313';
+ const urls=groups.flat(), ver='20261116-v314';
  // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
  // Never clear browser storage or replace Cloud data while recovering from a network failure.
  let nextChunk=0;
@@ -660,19 +660,53 @@ $('cfmResultClose').onclick=()=>p.hidden=true;$('cfmResultSearch').oninput=optio
 </style>
 <script id="cfm-v277-dashboard-dispatch">
 (function(){
-const f=document.getElementById('app');
-function install(){try{
-const d=f.contentWindow.document;if(!d||!d.body)return;
-let b=d.getElementById('cfmDashboardDispatchV277');
-if(!b){b=d.createElement('button');b.id='cfmDashboardDispatchV277';b.type='button';b.textContent='✓ Dispatch Done / History';b.style.cssText='display:none;width:calc(100% - 32px);margin:12px 16px;padding:13px;background:#1269a0;color:white;border:0;border-radius:12px;font:700 14px system-ui;box-shadow:0 2px 8px #0002';b.onclick=()=>{const inner=d.getElementById('cfmDispatchOpenV264');if(inner)inner.click();else alert('Dispatch History loading. Retry in a moment.')};d.body.appendChild(b)}
-const dash=d.querySelector('#dashboard,#dashboardPage,#page-dashboard,[data-page="dashboard"],.dashboard-page');
-if(dash&&b.parentNode!==dash)dash.insertBefore(b,dash.firstChild);
-const active=d.querySelector('.nav-btn.active,.nav-item.active,[data-tab].active,.tab-btn.active');
-const label=(active?.textContent||'').toLowerCase();
-const visible=!!dash?(getComputedStyle(dash).display!=='none'&&!dash.hidden):label.includes('dashboard');
-b.style.display=visible?'block':'none';
-}catch(_){}}
-f.addEventListener('load',install);setInterval(install,12000);install();
+  const frame=document.getElementById('app');
+  if(!frame)return;
+  // V314: Quick Actions are in normal Dashboard flow, not over the plant cards.
+  function install(){
+    try{
+      const doc=frame.contentWindow.document;
+      if(!doc?.body)return;
+      const dash=doc.getElementById('view-dashboard')||
+        doc.querySelector('#dashboardPage,#page-dashboard,.dashboard-page');
+      if(!dash)return;
+      // Remove old injected floating/dashboard duplicate, if it exists.
+      const legacy=doc.getElementById('cfmDashboardDispatchV277');
+      if(legacy)legacy.remove();
+      let bar=doc.getElementById('cfmV314QuickActions');
+      if(!bar){
+        bar=doc.createElement('div');
+        bar.id='cfmV314QuickActions';
+        bar.setAttribute('role','group');
+        bar.setAttribute('aria-label','Batch and Dispatch quick actions');
+        bar.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 14px;padding:0;position:relative;z-index:1;box-sizing:border-box;max-width:calc(100% - 28px)';
+        function add(id,label,color,handler){
+          const btn=doc.createElement('button');
+          btn.id=id;btn.type='button';btn.textContent=label;
+          btn.style.cssText='position:static;display:block;width:100%;min-height:46px;white-space:normal;line-height:1.3;text-align:center;box-sizing:border-box;border:0;border-radius:10px;padding:10px 8px;background:'+color+';color:white;font:700 12px system-ui;box-shadow:0 2px 7px #0002;cursor:pointer';
+          btn.onclick=handler;
+          bar.appendChild(btn);
+        }
+        add('cfmV314DispatchQuick','✓ Dispatch / History','#125a86',()=>{
+          const outer=document.getElementById('cfmDispatchOuterV265');
+          if(outer)outer.click();
+          else{
+            const inner=doc.getElementById('cfmDispatchOpenV264');
+            if(inner)inner.click();else alert('History loading. Refresh ERP and retry.');
+          }
+        });
+        add('cfmV314BatchQuick','📄 Batch / Person Reports','#14694e',()=>{
+          const outer=document.getElementById('cfmResultOpen');
+          if(outer)outer.click();else alert('Batch Reports loading. Refresh ERP and retry.');
+        });
+      }
+      if(bar.parentNode!==dash)dash.insertBefore(bar,dash.firstChild);
+      else if(dash.firstChild!==bar)dash.insertBefore(bar,dash.firstChild);
+    }catch(e){console.warn('CFM Quick Actions unavailable',e)}
+  }
+  frame.addEventListener('load',install);
+  setInterval(install,12000);
+  install();
 })();
 </script>
 <style id="cfm-v293-cutqty-css">
@@ -830,6 +864,20 @@ frame.addEventListener('load',install);setInterval(install,12000);install();
 }
 @media(min-width:780px){
  #cfmDispatchOuterV265 { bottom:20px!important;right:18px!important; }
+}
+</style>
+<style id="cfm-v314-no-overlap">
+/* V314: Do not cover ERP dashboard, production cards or the phone navigation.
+   Accessible Quick Actions live in normal Dashboard flow inside #view-dashboard. */
+#cfmDispatchOuterV265,#cfmResultOpen {
+  display:none!important;
+}
+#cfmUpdateVersion {
+  left:8px!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 7px)!important;
+  font-size:9px!important;
+  padding:2px 5px!important;
+  opacity:.88!important;
 }
 </style>
 </body></html>
