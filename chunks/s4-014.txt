@@ -704,7 +704,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
  let queued=false;
  function fix(){
   const version=document.querySelector('.app-version-badge');
-  if(version&&version.textContent!=='V306 LIVE'&&/^\s*V\d+\s+LIVE\s*$/i.test(version.textContent||''))version.textContent='V306 LIVE';
+  if(version&&version.textContent!=='V307 LIVE'&&/^\s*V\d+\s+LIVE\s*$/i.test(version.textContent||''))version.textContent='V307 LIVE';
   const settings=document.getElementById('cfmSettingsBtnV111'),notif=document.getElementById('cfmNotifBtnV112');
   if(settings){
    if(settings.textContent!=='⚙️ Settings')settings.textContent='⚙️ Settings';
@@ -766,7 +766,7 @@ let scanRoot=document.getElementById('multiPoItems');if(scanRoot)new MutationObs
 })();
 </script>
 <script id="cfm-v115-force-version">
-(function(){const f=()=>{const e=document.querySelector('.app-version-badge');if(e&&e.textContent!=='V306 LIVE'&&/^\s*V\d+\s+LIVE\s*$/i.test(e.textContent||''))e.textContent='V306 LIVE'};setTimeout(f,350)})();
+(function(){const f=()=>{const e=document.querySelector('.app-version-badge');if(e&&e.textContent!=='V307 LIVE'&&/^\s*V\d+\s+LIVE\s*$/i.test(e.textContent||''))e.textContent='V307 LIVE'};setTimeout(f,350)})();
 </script>
 <script id="cfm-v148-smart-ops">
 (function(){
