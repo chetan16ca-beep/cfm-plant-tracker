@@ -295,12 +295,12 @@ function printableSop(cat,rec){
  '<p style="font-size:11px;color:#465f71"><strong>Record status:</strong> '+esc(title)+
   (legacy?' • Historical checklist; original checkpoint set preserved.':'')+
   (!saved?' • DO NOT USE AS PROOF OF EXECUTED CLEANING.':'')+'</p>'+
- (spec?'<div style="background:#f6fafc;padding:8px 11px;border:1px solid #d4e5ec;break-inside:avoid">'+
+ (spec&&!legacy?'<div style="background:#f6fafc;padding:8px 11px;border:1px solid #d4e5ec;break-inside:avoid">'+
   '<p><b>1.0 PURPOSE</b> — '+esc(spec.purpose)+'</p>'+
   '<p><b>2.0 SCOPE</b> — '+esc(spec.scope)+'</p>'+
   '<p><b>3.0 FREQUENCY / TRIGGER</b> — '+esc(spec.frequency)+'</p>'+
   '<p><b>4.0 RESPONSIBILITY</b> — '+esc(spec.responsibility)+'</p>'+
-  '<p><b>5.0 SAFETY / PRECAUTIONS</b> — '+esc(spec.safety)+'</p></div>':'')+
+  '<p><b>5.0 SAFETY / PRECAUTIONS</b> — '+esc(spec.safety)+'</p></div>':legacy?'<p style="padding:8px;border:1px solid #e3caa5;background:#fff8e9"><b>LEGACY SOP RECORD:</b> Printed with the original historical checkpoints only. Revision 01 expanded methods and acceptance criteria are not retrospective evidence of completed work.</p>':'')+
  '<h2>6.0 EXECUTION & TRACEABILITY</h2>'+
  '<div class="cfm-doc-grid">'+
   meta('SOP Number',docNo)+meta('Checklist Number',chkNo)+meta('Revision',revision)+
@@ -362,7 +362,8 @@ function sopPrintDaily(day){
  const td=x=>'<td style="'+style+'">'+esc(x==null||x===''?'-':x)+'</td>';
  const rows=daily.map((r,i)=>{
    const cat=CATALOG.find(c=>c.code===r.code);
-   return '<tr>'+td(i+1)+td('SOP-CFM-'+r.code)+td(cat?.name||r.code)+
+   return '<tr>'+td(i+1)+td(r.documentNo||'SOP-CFM-'+r.code)+td(r.checklistNo||('CHK-CFM-'+r.code))+
+     td(r.sopRevision||(isClean(r.code)?'LEGACY':'-'))+td(r.id)+td(cat?.name||r.code)+
      td(r.area||r.workNo||r.srlNo||r.inwardNo||'-')+
      td(r.operator||'-')+td(r.supervisor||'-')+
      td(cat?aggregateFromPoints(r,arr(r.checklistSnapshot).length?r.checklistSnapshot:(isClean(cat.code)?LEGACY_CLEANING_ITEMS[cat.code]:cat.items)):'UNKNOWN SOP')+
@@ -372,8 +373,8 @@ function sopPrintDaily(day){
  '<div style="border-bottom:3px solid #126b95;padding-bottom:9px"><b style="font-size:17px">EAGLE FILTRATION PRODUCT PVT. LTD.</b><div>CFM OPERATIONS • DATE-WISE SOP REGISTER</div></div>'+
  '<h2>SOP Register • '+esc(sopDateHeading(day))+'</h2>'+
  '<p><b>'+daily.length+'</b> actual saved SOP record(s). IST date is calculated from saved timestamp. Missing checklists are never counted as PASS.</p>'+
- '<table><thead><tr><th>#</th><th>SOP Code</th><th>Department / Checklist</th><th>Machine / Area / Work</th><th>Operator</th><th>Supervisor</th><th>Result</th><th>Time (IST)</th></tr></thead><tbody>'+
- (rows||'<tr><td colspan="8" style="padding:12px;color:#a13a31">No saved SOP records for selected date.</td></tr>')+
+ '<table style="font-size:9px"><thead><tr><th>#</th><th>SOP No.</th><th>Checklist No.</th><th>Rev.</th><th>Record ID</th><th>Checklist</th><th>Machine / Area / Work</th><th>Operator</th><th>Supervisor</th><th>Result</th><th>Time (IST)</th></tr></thead><tbody>'+
+ (rows||'<tr><td colspan="11" style="padding:12px;color:#a13a31">No saved SOP records for selected date.</td></tr>')+
  '</tbody></table>';
  // Include each saved checklist so a printed date register remains auditable.
  daily.forEach((rec,i)=>{
