@@ -781,4 +781,27 @@ frame.addEventListener('load',install);setInterval(install,12000);install();
 })();
 </script>
 
+
+<style id="cfm-v310-restore-dispatch-history">
+/* Make existing live Dispatch/History opener visible on every screen.
+   This changes presentation only; dispatch/restoration actions still require confirmation. */
+#cfmDispatchOuterV265 {
+ display:block!important;
+ right:10px!important;
+ top:auto!important;
+ bottom:calc(env(safe-area-inset-bottom, 0px) + 86px)!important;
+ z-index:2147483647!important;
+ max-width:190px!important;
+ background:#125a86!important;
+ color:#fff!important;
+ border:1px solid #0e4d72!important;
+ border-radius:11px!important;
+ padding:10px 12px!important;
+ box-shadow:0 4px 16px rgba(0,0,0,.20)!important;
+ font:700 12px system-ui!important;
+}
+@media(min-width:780px){
+ #cfmDispatchOuterV265 { bottom:20px!important;right:18px!important; }
+}
+</style>
 </body></html>
