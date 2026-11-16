@@ -1,4 +1,4 @@
-/* CFM SOP Register V318 | 2026-11-16
+/* CFM SOP Register V320 | 2026-11-16
  * Additive checklists only. NO stock/cutting/order/dispatch mutations.
  * Records ride in the existing state + cloud payload and save() pipeline.
  * Historical records are never silently marked PASS or overwritten.
@@ -19,7 +19,7 @@ const CATALOG=[
 ['FQC','Final QC',['FQC-01|Size, micron/mesh, layers, antistatic spec verified','FQC-02|Joint, seam, hole, contamination and workmanship checked','FQC-03|Accepted/HOLD/reject quantities separated','FQC-04|Nonconformance and QC person recorded','FQC-05|Only released quantity handed to Packing']],
 ['PKG','Packing & Labeling',['PKG-01|Packing room cleaning release verified','PKG-02|Work, party, accepted qty and product matched','PKG-03|Clean suitable protective packing used','PKG-04|Work, product, pack no, qty, date, traceability label checked','PKG-05|Packed qty and supervisor handover recorded']],
 ['DSP','Dispatch',['DSP-01|Packing vs dispatch qty reconciled','DSP-02|Challan/invoice, transporter, address verified','DSP-03|Dispatch details and approval recorded','DSP-04|Dispatched job retained in history, not active pending']],
-['RPT','Batch Report / SOP Review',['RPT-01|Work, party, product, qty and SRL linked','RPT-02|Material, cleaning and production SOP IDs attached','RPT-03|Results, operator, verifier and timestamp displayed','RPT-04|Missing checks marked NOT RECORDED, never PASS','RPT-05|Product ticket and Batch Annexure can print','RPT-06|Checklist record/version traceable']]
+['RPT','Batch Report / SOP Review',['RPT-01|Work, party, product, qty and SRL linked','RPT-02|Material and production SOP IDs attached; separate area-cleaning logs reviewed','RPT-03|Results, operator, verifier and timestamp displayed','RPT-04|Missing checks marked NOT RECORDED, never PASS','RPT-05|Product ticket and Batch Annexure can print','RPT-06|Checklist record/version traceable']]
 ].map(([code,name,items])=>({code,name,items:items.map(s=>{const i=s.indexOf('|');return {id:s.slice(0,i),text:s.slice(i+1)}})}));
 const $=id=>document.getElementById(id);
 const norm=s=>String(s==null?'':s).trim().toUpperCase();
@@ -28,6 +28,20 @@ const arr=s=>Array.isArray(s)?s:[];
 const getState=()=>{try{return typeof state!=='undefined'?state:null}catch(_){return null}};
 const isClean=code=>['MCL','PCL','ECL','RCL'].includes(code);
 const isMaterial=code=>['MR','SRL'].includes(code);
+// Each form shows only its own required traceability fields.
+// Cleaning records are independent of Work Orders and cloth inward/stock.
+const FIELDS_BY_SOP={
+ MR:['srl','inward'], SRL:['srl'],
+ MCL:['area','shift'], PCL:['area','shift'], ECL:['area','shift'], RCL:['area','shift'],
+ CUT:['work','srl','shift'], STI:['work','srl','shift'],
+ THR:['work','shift'], GUN:['work','shift'], FQC:['work','shift'],
+ PKG:['work','shift'], DSP:['work','shift'], RPT:['work','shift']
+};
+const FIELD_CONTROLS={
+ work:'cfmSopWork318', srl:'cfmSopSrl318', inward:'cfmSopInward318',
+ area:'cfmSopArea318', shift:'cfmSopShift318'
+};
+const usesField=(code,key)=>(FIELDS_BY_SOP[code]||[]).includes(key);
 const KEY='cfm-sop-register-fallback-v318';
 const schemaId='CFM-SOP-v1';
 function safeRead(){try{return arr(JSON.parse(localStorage.getItem(KEY)||'[]'))}catch(_){return []}}
@@ -85,11 +99,11 @@ function annex(work,compact=false){
  const allSrl=srlsFor(work), st=getState();
  const wo=arr(st?.pending).find(x=>norm(x.workNo)===norm(work));
  const lineStyle='border:1px solid #b9cbd9;padding:5px 6px;font:10px Arial,sans-serif;vertical-align:top';
- const cands=CATALOG.map(cat=>({cat,entries:recordFor(cat.code,work)}));
+ const cands=CATALOG.filter(cat=>!isClean(cat.code)).map(cat=>({cat,entries:recordFor(cat.code,work)}));
  let html='<section class="cfm-sop-print" style="page-break-before:always;color:#173548;font:11px Arial,sans-serif"><h2 style="font-size:17px;margin:0 0 7px">CFM SOP Checklist Annexure</h2>'+
  '<p style="font-size:10px">Work: <b>'+esc(work)+'</b> | Party: '+esc(wo?.party||'-')+' | Product: '+esc(wo?.description||'-')+' | Qty: '+esc(wo?.orderQty||'-')+
  ' | SRL: '+esc(allSrl.join(', ')||'NOT RECORDED')+'</p>'+
- '<p style="font-size:10px">Saved checklists only. Production Done Qty is NOT proof of checklist PASS. Missing results are NOT RECORDED. Auto-linked by Work No or recorded Cutting SRL.</p>';
+ '<p style="font-size:10px">Saved checklists only. Production Done Qty is NOT proof of checklist PASS. Missing results are NOT RECORDED. Work-related checks linked by Work No or Cutting SRL; area cleaning is logged separately.</p>';
  html+='<table style="border-collapse:collapse;width:100%"><thead><tr><th style="'+lineStyle+'">SOP / Code</th><th style="'+lineStyle+'">Result</th><th style="'+lineStyle+'">Operator / Supervisor</th><th style="'+lineStyle+'">Saved At</th></tr></thead><tbody>';
  for(const {cat,entries} of cands){
   let result=entries.length?entries.map(r=>aggregate(r,cat)).join('; '):'NOT RECORDED';
@@ -162,6 +176,22 @@ function openPanel(preset){
  const setMsg=s=>{$('cfmSopMsg318').textContent=s};
  const render=()=>{
   const cat=CATALOG.find(x=>x.code===field('cfmSopCode318'));if(!cat)return;
+  for(const [key,id] of Object.entries(FIELD_CONTROLS)){
+   const control=$(id),label=control?.closest('label'),visible=usesField(cat.code,key);
+   if(label)label.style.display=visible?'':'none';
+   if(control)control.disabled=!visible;
+  }
+  const area=$('cfmSopArea318'),areaLabel=area?.closest('label');
+  if(areaLabel){
+   const areaTitle={MCL:'Machine *',PCL:'Plant / Floor Area *',ECL:'Electrical Machine / Panel *',RCL:'Packing Room / Area *'}[cat.code]||'Machine / Area *';
+   if(areaLabel.firstChild?.nodeType===3)areaLabel.firstChild.nodeValue=areaTitle;
+   if(area)area.placeholder={MCL:'Stitching Machine 01',PCL:'Plant Floor / Walkway',ECL:'Electrical Machine / Panel 01',RCL:'Packing Room'}[cat.code]||'Machine / Area';
+  }
+  // Product ticket and batch annexure need a Work Order: hide for area / receipt logs.
+  const hasWork=usesField(cat.code,'work');
+  for(const id of ['cfmSopTicket318','cfmSopAnnex318']){
+   const button=$(id);if(button)button.style.display=hasWork?'':'none';
+  }
   $('cfmSopChecks318').innerHTML='<b>'+esc(cat.name)+' • '+cat.items.length+' numbered checks</b>'+
    cat.items.map((item,i)=>'<div style="display:grid;grid-template-columns:1fr 118px;gap:7px;padding:7px 0;border-bottom:1px solid #e0edf5"><label>'+esc(item.id+' • '+item.text)+'</label>'+
    '<select data-sop-id="'+esc(item.id)+'" style="padding:5px"><option value="">NOT RECORDED</option><option>PASS</option><option>HOLD</option><option>FAIL</option><option>N/A</option></select></div>').join('');
@@ -174,10 +204,15 @@ function openPanel(preset){
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
  $('cfmSopSave318').addEventListener('click',()=>{
   const cat=CATALOG.find(x=>x.code===field('cfmSopCode318'));if(!cat)return;
-  const workNo=field('cfmSopWork318'),srlNo=field('cfmSopSrl318'),
-    inwardNo=field('cfmSopInward318'),area=field('cfmSopArea318'),
+  // Never persist hidden references (e.g. preset Work No from a pending card)
+  // into a cleaning checklist. Historical saved checklists are left untouched.
+  const workNo=usesField(cat.code,'work')?field('cfmSopWork318'):'',
+    srlNo=usesField(cat.code,'srl')?field('cfmSopSrl318'):'',
+    inwardNo=usesField(cat.code,'inward')?field('cfmSopInward318'):'',
+    area=usesField(cat.code,'area')?field('cfmSopArea318'):'',
+    shift=usesField(cat.code,'shift')?field('cfmSopShift318'):'',
     operator=field('cfmSopOperator318'),supervisor=field('cfmSopSupervisor318'),
-    remark=field('cfmSopRemark318'),shift=field('cfmSopShift318');
+    remark=field('cfmSopRemark318');
   const st=getState();
   if(!st||typeof save!=='function'){setMsg('ERP Save not ready');return}
   if(!operator||!supervisor||!$('cfmSopApproved318').checked){setMsg('Operator, supervisor and verification tick are mandatory.');return}
@@ -191,7 +226,11 @@ function openPanel(preset){
   const rec={id:'SOP-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),schema:schemaId,code:cat.code,workNo,srlNo,inwardNo,area,shift,operator,supervisor,results,remark,timestamp:new Date().toISOString(),device:typeof deviceLabel==='function'?deviceLabel():'ERP'};
   const before=arr(st.sopRecords).slice();
   st.sopRecords=records().concat(rec);backup(st.sopRecords);
-  try{save(false);setMsg('Checklist saved locally; Cloud Sync badge must confirm upload. Batch print will read this record.');render();}
+  try{
+   save(false);
+   setMsg('Checklist saved locally. Confirm Cloud Sync before relying on the record.');
+   render();
+  }
   catch(e){st.sopRecords=before;backup(before);setMsg('Save failed: '+String(e.message||e))}
  });
  $('cfmSopTicket318').addEventListener('click',()=>printDoc(field('cfmSopWork318'),false));
