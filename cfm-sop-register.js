@@ -250,28 +250,92 @@ function wrapPrint(){
    Read-only: no ERP state writes and never invents completed/PASS checks. */
 function printableSop(cat,rec){
  const saved=!!rec?.id;
+ const spec=CLEANING_MASTER[cat.code]||null;
+ // An earlier saved checklist had fewer checkpoints: print exactly its legacy
+ // checklist, never turn newly added revision 01 points into historical failures.
+ const legacy=saved&&!!spec&&!arr(rec?.checklistSnapshot).length;
+ const points=saved&&arr(rec?.checklistSnapshot).length?rec.checklistSnapshot:
+   legacy?LEGACY_CLEANING_ITEMS[cat.code]:cat.items;
  const results=rec?.results||{};
- const title=saved?'SAVED SOP RECORD':'BLANK / UNSAVED SOP PREVIEW';
- const style='border:1px solid #b8ccd9;padding:7px 8px;text-align:left;vertical-align:top';
- const td=x=>'<td style="'+style+'">'+esc(x==null||x===''?'-':x)+'</td>';
- const items=cat.items.map((item,i)=>'<tr>'+td(item.id)+td(item.text)+td(results[item.id]||'NOT RECORDED')+'</tr>').join('');
- const info=(label,value)=>'<div style="border:1px solid #ccdbe4;padding:7px;border-radius:5px"><small style="color:#597186;display:block">'+esc(label)+'</small><b>'+esc(value||'-')+'</b></div>';
- const areaLabel=isClean(cat.code)?'Machine / Area':isMaterial(cat.code)?'Receipt / SRL Reference':'Work / Process';
- const ref=isClean(cat.code)?rec?.area:isMaterial(cat.code)?(rec?.srlNo||rec?.inwardNo):rec?.workNo;
- const date=rec?.timestamp?new Date(rec.timestamp).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}):'Not saved';
- const summary=saved?aggregate(rec,cat):'NOT RECORDED (no saved record)';
- return '<style>@page{size:A4 portrait;margin:13mm}body{font:12px Arial,sans-serif;color:#142f43}h2{font-size:19px;color:#146c85;margin:4px 0}table{width:100%;border-collapse:collapse;margin:13px 0}th{background:#e8f3f9;color:#234c62;padding:8px;border:1px solid #b8ccd9;text-align:left}.info{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}.sign{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:36px}.sign div{border-top:1px solid #6c8290;padding-top:6px;text-align:center}.noprint{color:#7b3914}@media print{tr{break-inside:avoid}}</style>'+
- '<header style="border-bottom:3px solid #16628b;padding-bottom:9px"><strong style="font-size:17px">EAGLE FILTRATION PRODUCT PVT. LTD.</strong><div style="font-size:10px;letter-spacing:.8px">CFM OPERATIONS • SOP CONTROLLED CHECKLIST</div></header>'+
- '<h2>'+esc(cat.code+' — '+cat.name)+'</h2>'+
- '<p class="noprint" style="padding:8px;background:#f3f7fa;border:1px solid #d7e5ea"><b>'+esc(title)+'</b> • '+esc(saved?'Actual saved operator checklist.':'No matching saved entry; this is only a blank SOP template. Do not treat as cleaning completed.')+'</p>'+
- '<div class="info">'+info('SOP Code','SOP-CFM-'+cat.code)+info(areaLabel,ref||'-')+
- (rec?.workNo?info('Work Order',rec.workNo):'')+(rec?.srlNo?info('SRL No.',rec.srlNo):'')+
- info('Date / Time',date)+info('Shift',rec?.shift||'-')+info('Operator',rec?.operator||'-')+info('Supervisor',rec?.supervisor||'-')+
- info('Overall Result',summary)+'</div>'+
- '<table><thead><tr><th style="width:68px">SOP ID</th><th>Cleaning / Inspection Point</th><th style="width:120px">Recorded Result</th></tr></thead><tbody>'+items+'</tbody></table>'+
- '<p><b>Remark / Deviation:</b> '+esc(rec?.remark||'-')+'</p>'+
- '<p style="font-size:10px;color:#526679">PASS must be manually verified. HOLD / FAIL requires corrective action. N/A is an explicit operator selection; missing result is NOT RECORDED.</p>'+
- '<div class="sign"><div>Operator Signature</div><div>Supervisor Verification / Signature</div></div>';
+ const revision=spec?(legacy?'LEGACY / PRE-REV 01':(rec?.sopRevision||SOP_DOCUMENT_REV)):'ERP CHECKLIST';
+ const docNo=rec?.documentNo||(spec?sopDocumentNo(cat.code):'SOP-CFM-'+cat.code);
+ const chkNo=rec?.checklistNo||(spec?sopChecklistNo(cat.code):'CHK-CFM-'+cat.code);
+ const title=saved?'SAVED SOP ENTRY':'BLANK / UNSAVED TEMPLATE';
+ const areaLabel=spec?'Machine / Area':isMaterial(cat.code)?'Receipt / SRL Reference':'Work / Process';
+ const ref=spec?rec?.area:isMaterial(cat.code)?(rec?.srlNo||rec?.inwardNo):rec?.workNo;
+ const savedAt=rec?.timestamp?new Date(rec.timestamp).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}):'NOT SAVED';
+ const summary=saved?aggregateFromPoints(rec,points):'NOT RECORDED';
+ const cell=(value,extra='')=>'<td style="border:1px solid #bdcfdb;padding:7px;vertical-align:top;word-break:normal;'+extra+'">'+esc(value==null||value===''?'-':value)+'</td>';
+ const itemRows=points.map(item=>'<tr>'+
+   cell(item.id,'width:60px;font-weight:700;color:#195573')+
+   cell(item.text,'font-weight:700;width:145px')+
+   cell(item.description||item.text,'width:auto')+
+   cell(item.acceptance||(legacy?'Visual verification per original checklist':'Meet documented work requirement'),'width:auto')+
+   cell(saved?(results[item.id]||'NOT RECORDED'):'NOT RECORDED','width:92px;font-weight:700')+
+  '</tr>').join('');
+ const meta=(label,value)=>'<div style="border:1px solid #c6d6e0;border-radius:5px;padding:7px 9px;min-width:0"><small style="display:block;color:#506e80;font-size:9px;text-transform:uppercase;letter-spacing:.3px">'+esc(label)+'</small><b style="font-size:11px;overflow-wrap:anywhere">'+esc(value||'-')+'</b></div>';
+ const printedAt=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
+ return '<style>@page{size:A4 landscape;margin:11mm}body{font:11px/1.4 Arial,sans-serif;color:#183a50}'+
+  'h1{font-size:18px;margin:9px 0 4px;color:#143e58}h2{font-size:12px;margin:12px 0 5px;color:#12637b}'+
+  'table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:10px;margin-top:10px}'+
+  'th{background:#e6f2f8;color:#17455d;border:1px solid #adc6d4;padding:8px;text-align:left}thead{display:table-header-group}'+
+  'tr{break-inside:avoid}p{margin:5px 0}'+
+  '.cfm-doc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:11px 0}'+
+  '.cfm-sop-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:29px}'+
+  '.cfm-sop-sign>div{border-top:1px solid #708b9b;text-align:center;padding-top:5px;color:#46677b}'+
+  '</style>'+
+ '<section class="cfm-sop-audit-sheet">'+
+ '<header style="display:flex;justify-content:space-between;gap:16px;align-items:start;border-bottom:3px solid #176c8d;padding:4px 0 10px">'+
+  '<div><b style="font-size:18px;letter-spacing:.6px;color:#153f57">EAGLE FILTRATION PRODUCT PVT. LTD.</b>'+
+  '<div style="font-size:10px;letter-spacing:1px;color:#537283">CFM PLANT OPERATIONS • CONTROLLED SOP CHECKLIST</div></div>'+
+  '<div style="font-size:10px;text-align:right;min-width:200px"><b>DOCUMENT CONTROL</b><div>SOP No: '+esc(docNo)+'</div>'+
+  '<div>Checklist No: '+esc(chkNo)+'</div><div>Revision: '+esc(revision)+'</div>'+
+  '<div>Issue Date: '+esc(legacy?'Original revision not specified':SOP_DOCUMENT_ISSUED)+'</div></div></header>'+
+ '<h1>'+esc((spec?.heading||cat.name).toUpperCase())+'</h1>'+
+ '<p style="font-size:11px;color:#465f71"><strong>Record status:</strong> '+esc(title)+
+  (legacy?' • Historical checklist; original checkpoint set preserved.':'')+
+  (!saved?' • DO NOT USE AS PROOF OF EXECUTED CLEANING.':'')+'</p>'+
+ (spec?'<div style="background:#f6fafc;padding:8px 11px;border:1px solid #d4e5ec;break-inside:avoid">'+
+  '<p><b>1.0 PURPOSE</b> — '+esc(spec.purpose)+'</p>'+
+  '<p><b>2.0 SCOPE</b> — '+esc(spec.scope)+'</p>'+
+  '<p><b>3.0 FREQUENCY / TRIGGER</b> — '+esc(spec.frequency)+'</p>'+
+  '<p><b>4.0 RESPONSIBILITY</b> — '+esc(spec.responsibility)+'</p>'+
+  '<p><b>5.0 SAFETY / PRECAUTIONS</b> — '+esc(spec.safety)+'</p></div>':'')+
+ '<h2>6.0 EXECUTION & TRACEABILITY</h2>'+
+ '<div class="cfm-doc-grid">'+
+  meta('SOP Number',docNo)+meta('Checklist Number',chkNo)+meta('Revision',revision)+
+  meta('Record / Entry ID',saved?rec.id:'NOT SAVED')+
+  meta(areaLabel,ref||'NOT ENTERED')+meta('Shift',rec?.shift||'-')+
+  meta('Cleaning / Entry Saved At (IST)',savedAt)+meta('Overall Result',summary)+
+  meta('Operator (name entered)',rec?.operator||'NOT RECORDED')+
+  meta('Supervisor (name entered)',rec?.supervisor||'NOT RECORDED')+
+  meta('Source Device',rec?.device||'-')+
+  meta('Report Printed At (IST)',printedAt)+
+  (rec?.workNo?meta('Work Order',rec.workNo):'')+
+  (rec?.srlNo?meta('SRL No.',rec.srlNo):'')+'</div>'+
+ '<h2>7.0 CHECKPOINT EXECUTION / ACCEPTANCE RECORD</h2>'+
+ '<table><thead><tr><th style="width:64px">Check No.</th><th style="width:140px">Inspection Parameter</th>'+
+  '<th>Detailed SOP Procedure / What to Verify</th><th>Objective Acceptance Criteria</th>'+
+  '<th style="width:97px">Recorded Result</th></tr></thead><tbody>'+itemRows+'</tbody></table>'+
+ '<h2>8.0 DEVIATION / NON-CONFORMANCE / CORRECTIVE ACTION</h2>'+
+ '<div style="border:1px solid #c4d9e3;padding:9px;min-height:35px;overflow-wrap:anywhere">'+
+  esc(rec?.remark||'No remark entered')+'</div>'+
+ '<p style="font-size:10px;color:#445f72"><b>Result interpretation:</b> PASS = check completed and accepted; HOLD = not released; FAIL = failed; N/A = not applicable (justify in remark); NOT RECORDED = no evidence entered. Names entered in ERP are not electronic signatures.</p>'+
+ '<h2>9.0 VERIFICATION & RELEASE</h2><div class="cfm-sop-sign">'+
+  '<div>Executed By — Operator Signature / Date</div>'+
+  '<div>Checked By — Supervisor Signature / Date</div>'+
+  '<div>Authorized Release / Corrective-Action Closure</div></div>'+
+ '<footer style="border-top:1px solid #c9d7de;margin-top:18px;padding-top:5px;display:flex;justify-content:space-between;gap:9px;color:#567085;font-size:9px">'+
+  '<span>Controlled format • ERP-generated record; verify physical execution and signatures at audit</span>'+
+  '<span>'+esc(chkNo)+' • Rev '+esc(revision)+'</span></footer></section>';
+}
+function aggregateFromPoints(rec,items){
+ if(!rec)return 'NOT RECORDED';
+ const stats=items.map(item=>rec.results?.[item.id]||'NOT RECORDED');
+ if(stats.includes('FAIL'))return 'FAIL';
+ if(stats.includes('HOLD'))return 'HOLD';
+ if(stats.includes('NOT RECORDED'))return 'NOT RECORDED';
+ return 'PASS / N/A';
 }
 /* V322: Date-wise SOP print. The date refers to saved timestamps in Asia/Kolkata;
    printing never changes SOP records or manufacturing/stock state. */
@@ -301,7 +365,7 @@ function sopPrintDaily(day){
    return '<tr>'+td(i+1)+td('SOP-CFM-'+r.code)+td(cat?.name||r.code)+
      td(r.area||r.workNo||r.srlNo||r.inwardNo||'-')+
      td(r.operator||'-')+td(r.supervisor||'-')+
-     td(cat?aggregate(r,cat):'UNKNOWN SOP')+
+     td(cat?aggregateFromPoints(r,arr(r.checklistSnapshot).length?r.checklistSnapshot:(isClean(cat.code)?LEGACY_CLEANING_ITEMS[cat.code]:cat.items)):'UNKNOWN SOP')+
      td(new Date(r.timestamp).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit'}))+'</tr>';
  }).join('');
  let doc='<style>@page{size:A4 portrait;margin:13mm}body{font:11px Arial,sans-serif;color:#183c51}table{width:100%;border-collapse:collapse}th{border:1px solid #bed1da;padding:7px;text-align:left;background:#e5f3fa}tr{break-inside:avoid}.page{page-break-before:always}</style>'+
@@ -316,7 +380,7 @@ function sopPrintDaily(day){
    const cat=CATALOG.find(c=>c.code===rec.code);
    if(cat)doc+='<div class="page"><div style="font-weight:bold;color:#406b81">Record '+(i+1)+' of '+daily.length+' • '+esc(sopDateHeading(day))+'</div>'+printableSop(cat,rec)+'</div>';
  });
- window.openPrintWindow('CFM SOP Daily Register '+day,doc,false);
+ window.openPrintWindow('CFM SOP Daily Register '+day,doc,true);
 }
 
 function printSopCategory(cat,fields){
@@ -340,7 +404,7 @@ function printSopCategory(cat,fields){
   doc+='<p style="color:#a13a31;font:700 12px Arial">NO SAVED RECORDS ON '+esc(sopDateHeading(date))+'. This is a blank SOP reference, NOT proof that cleaning or checking was done.</p>'+
     printableSop(cat,null);
  }
- window.openPrintWindow('SOP '+cat.code+' '+date,doc,false);
+ window.openPrintWindow('SOP '+cat.code+' '+date,doc,!!CLEANING_MASTER[cat.code]);
 }
 
 function openPanel(preset){
