@@ -527,7 +527,7 @@ function openPanel(preset){
  const machineRoster=(area)=>{
   const a=norm(area);
   // Never guess the responsible person: only offer the team of the named machine.
-  if(/THREAD\\s*CUT|THREAD\\s*TRIM/.test(a))return TEAM_BY_SOP.THR;
+  if(/THREAD\s*CUT|THREAD\s*TRIM/.test(a))return TEAM_BY_SOP.THR;
   if(/GUN|FINISH/.test(a))return TEAM_BY_SOP.GUN;
   if(/STITCH|SEW/.test(a))return TEAM_BY_SOP.STI;
   if(/CUT|CNC/.test(a))return TEAM_BY_SOP.CUT;
@@ -538,12 +538,12 @@ function openPanel(preset){
   const select=$('cfmSopWork318');if(!select)return;
   const remembered=wanted||select.value;
   const list=arr(getState()?.pending)
-   .filter(row=>/^CFM-\\d+$/i.test(String(row?.workNo||'')))
+   .filter(row=>/^CFM-\d+$/i.test(String(row?.workNo||'')))
    .filter(row=>{
      const s=[row.workNo,row.party,row.description].join(' ').toUpperCase();
      return !query||s.includes(String(query).trim().toUpperCase())||norm(row.workNo)===norm(remembered);
    })
-   .sort((a,b)=>Number(String(b.workNo).match(/\\d+$/)?.[0]||0)-Number(String(a.workNo).match(/\\d+$/)?.[0]||0));
+   .sort((a,b)=>Number(String(b.workNo).match(/\d+$/)?.[0]||0)-Number(String(a.workNo).match(/\d+$/)?.[0]||0));
   const unique=new Set();
   select.replaceChildren();
   const none=document.createElement('option');none.value='';none.textContent='Select Work Order';select.append(none);
