@@ -254,17 +254,29 @@ function printableSop(cat,rec){
  // An earlier saved checklist had fewer checkpoints: print exactly its legacy
  // checklist, never turn newly added revision 01 points into historical failures.
  const legacy=saved&&!!spec&&!arr(rec?.checklistSnapshot).length;
- const points=saved&&arr(rec?.checklistSnapshot).length?rec.checklistSnapshot:
+ // V325: Every print of a selected SOP always contains the full CURRENT
+ // checklist. Historical outcomes are shown only for IDs actually recorded.
+ // Unrecorded new checkpoints must never be silently marked PASS.
+ const archivedPoints=saved&&arr(rec?.checklistSnapshot).length?rec.checklistSnapshot:
    legacy?LEGACY_CLEANING_ITEMS[cat.code]:cat.items;
+ const points=spec?[
+   ...cat.items,
+   ...archivedPoints.filter(item=>!cat.items.some(now=>now.id===item.id))
+ ]:archivedPoints;
+ const originallyRecorded=archivedPoints.filter(item=>Object.prototype.hasOwnProperty.call(rec?.results||{},item.id)).length;
+ const currentCompleted=cat.items.filter(item=>Object.prototype.hasOwnProperty.call(rec?.results||{},item.id)).length;
  const results=rec?.results||{};
- const revision=spec?(legacy?'LEGACY / PRE-REV 01':(rec?.sopRevision||SOP_DOCUMENT_REV)):'ERP CHECKLIST';
+ const revision=spec?(legacy?'01 TEMPLATE / LEGACY ENTRY':(rec?.sopRevision||SOP_DOCUMENT_REV)):'ERP CHECKLIST';
  const docNo=rec?.documentNo||(spec?sopDocumentNo(cat.code):'SOP-CFM-'+cat.code);
  const chkNo=rec?.checklistNo||(spec?sopChecklistNo(cat.code):'CHK-CFM-'+cat.code);
  const title=saved?'SAVED SOP ENTRY':'BLANK / UNSAVED TEMPLATE';
  const areaLabel=spec?'Machine / Area':isMaterial(cat.code)?'Receipt / SRL Reference':'Work / Process';
  const ref=spec?rec?.area:isMaterial(cat.code)?(rec?.srlNo||rec?.inwardNo):rec?.workNo;
  const savedAt=rec?.timestamp?new Date(rec.timestamp).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}):'NOT SAVED';
- const summary=saved?aggregateFromPoints(rec,points):'NOT RECORDED';
+ // The saved historical result is based only on its original checkpoint
+ // set. Separately disclose coverage of the current controlled checklist.
+ const summary=saved?aggregateFromPoints(rec,archivedPoints):'NOT RECORDED';
+ const checklistCoverage=spec?(saved?currentCompleted+'/'+cat.items.length:'0/'+cat.items.length):'';
  const cell=(value,extra='')=>'<td style="border:1px solid #bdcfdb;padding:7px;vertical-align:top;word-break:normal;'+extra+'">'+esc(value==null||value===''?'-':value)+'</td>';
  const itemRows=points.map(item=>'<tr>'+
    cell(item.id,'width:60px;font-weight:700;color:#195573')+
@@ -290,23 +302,25 @@ function printableSop(cat,rec){
   '<div style="font-size:10px;letter-spacing:1px;color:#537283">CFM PLANT OPERATIONS • CONTROLLED SOP CHECKLIST</div></div>'+
   '<div style="font-size:10px;text-align:right;min-width:200px"><b>DOCUMENT CONTROL</b><div>SOP No: '+esc(docNo)+'</div>'+
   '<div>Checklist No: '+esc(chkNo)+'</div><div>Revision: '+esc(revision)+'</div>'+
-  '<div>Issue Date: '+esc(legacy?'Original revision not specified':SOP_DOCUMENT_ISSUED)+'</div></div></header>'+
+  '<div>Issue Date: '+esc(SOP_DOCUMENT_ISSUED)+'</div></div></header>'+
  '<h1>'+esc((spec?.heading||cat.name).toUpperCase())+'</h1>'+
  '<p style="font-size:11px;color:#465f71"><strong>Record status:</strong> '+esc(title)+
-  (legacy?' • Historical checklist; original checkpoint set preserved.':'')+
+  (legacy?' • Legacy record: results are shown only for originally recorded checkpoints.':'')+
   (!saved?' • DO NOT USE AS PROOF OF EXECUTED CLEANING.':'')+'</p>'+
- (spec&&!legacy?'<div style="background:#f6fafc;padding:8px 11px;border:1px solid #d4e5ec;break-inside:avoid">'+
+ (spec?'<div style="background:#f6fafc;padding:8px 11px;border:1px solid #d4e5ec;break-inside:avoid">'+
   '<p><b>1.0 PURPOSE</b> — '+esc(spec.purpose)+'</p>'+
   '<p><b>2.0 SCOPE</b> — '+esc(spec.scope)+'</p>'+
   '<p><b>3.0 FREQUENCY / TRIGGER</b> — '+esc(spec.frequency)+'</p>'+
   '<p><b>4.0 RESPONSIBILITY</b> — '+esc(spec.responsibility)+'</p>'+
-  '<p><b>5.0 SAFETY / PRECAUTIONS</b> — '+esc(spec.safety)+'</p></div>':legacy?'<p style="padding:8px;border:1px solid #e3caa5;background:#fff8e9"><b>LEGACY SOP RECORD:</b> Printed with the original historical checkpoints only. Revision 01 expanded methods and acceptance criteria are not retrospective evidence of completed work.</p>':'')+
+  '<p><b>5.0 SAFETY / PRECAUTIONS</b> — '+esc(spec.safety)+'</p></div>':'')+
+ (legacy?'<p style="padding:8px;border:1px solid #e3caa5;background:#fff8e9"><b>HISTORICAL RECORD:</b> All current Revision 01 checkpoints are listed for audit. New checkpoints without actual historical entries are NOT RECORDED; no work is assumed complete.</p>':'')+
  '<h2>6.0 EXECUTION & TRACEABILITY</h2>'+
  '<div class="cfm-doc-grid">'+
   meta('SOP Number',docNo)+meta('Checklist Number',chkNo)+meta('Revision',revision)+
   meta('Record / Entry ID',saved?rec.id:'NOT SAVED')+
   meta(areaLabel,ref||'NOT ENTERED')+meta('Shift',rec?.shift||'-')+
-  meta('Cleaning / Entry Saved At (IST)',savedAt)+meta('Overall Result',summary)+
+  meta('Cleaning / Entry Saved At (IST)',savedAt)+meta('Saved Record Result',summary)+
+  (spec?meta('Current Checklist Evidence',checklistCoverage+' checkpoint(s) recorded'):'')+
   meta('Operator (name entered)',rec?.operator||'NOT RECORDED')+
   meta('Supervisor (name entered)',rec?.supervisor||'NOT RECORDED')+
   meta('Source Device',rec?.device||'-')+
@@ -395,7 +409,7 @@ function printSopCategory(cat,fields){
     srlNo?norm(r.srlNo)===norm(srlNo):norm(r.inwardNo)===norm(inwardNo));
   return !workNo||norm(r.workNo)===norm(workNo);
  });
- let doc='<div style="font:12px Arial;padding:9px 0;border-bottom:1px solid #b2cad8"><b>SOP-CFM-'+esc(cat.code)+'</b> • Date: '+esc(sopDateHeading(date))+' • '+matches.length+' saved record(s)</div>';
+ let doc='<div style="font:12px Arial;padding:9px 0;border-bottom:1px solid #b2cad8"><b>SELECTED SOP ONLY: SOP-CFM-'+esc(cat.code)+'</b> • Date: '+esc(sopDateHeading(date))+' • '+matches.length+' saved record(s) • All '+cat.items.length+' checkpoints</div>';
  if(matches.length){
   matches.forEach((rec,i)=>{
    if(i)doc+='<div style="page-break-before:always"></div>';
@@ -433,7 +447,7 @@ function openPanel(preset){
  '<div id="cfmSopMsg318" role="status" style="min-height:22px;color:#9a3328;font-weight:700"></div>'+
  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
  '<button type="button" id="cfmSopSave318" style="padding:11px 14px;border:0;background:#087f6d;color:#fff;font-weight:700;border-radius:9px">Save Checklist</button>'+
- '<button type="button" id="cfmSopPrint321" style="padding:11px 14px;border:0;background:#155d92;color:#fff;font-weight:700;border-radius:9px">🖨 Print This SOP / Date</button>'+
+ '<button type="button" id="cfmSopPrint321" style="padding:11px 14px;border:0;background:#155d92;color:#fff;font-weight:700;border-radius:9px">🖨 Print Selected SOP — All Checks</button>'+
  '<button type="button" id="cfmSopPrintDaily322" style="padding:11px 14px;border:0;background:#40677d;color:#fff;font-weight:700;border-radius:9px">📅 Print All SOPs / Date</button>'+
  '<button type="button" id="cfmSopTicket318" style="padding:11px 14px;border:0;background:#1472bb;color:#fff;font-weight:700;border-radius:9px">Print Product Ticket + SOP</button>'+
  '<button type="button" id="cfmSopAnnex318" style="padding:11px 14px;border:1px solid #ccd6df;background:#fff;border-radius:9px">Print Full Annexure</button></div>';
