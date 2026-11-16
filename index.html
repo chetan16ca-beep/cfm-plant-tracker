@@ -773,7 +773,8 @@ frame.addEventListener('load',install);setInterval(install,12000);install();
     const review=(payload.reconstructedPersonWork||[]).filter(x=>norm(x.workNo)===wo);
     const actual=(payload.departmentWork||[]).filter(x=>norm(x.workNo)===wo);
     const sourceCuts=(payload.cutting||[]).filter(x=>norm(x.workNo)===wo);
-    const photoCuts=sourceCuts.filter(x=>x._redPenVerified===true||x._photoConfirmedByUser===true||/PHOTO CUTTING|RED PEN PHOTO/.test(norm(x.entryType)));
+    const photoCuts=sourceCuts.filter(x=>norm(x.entryType)!=='ORDER ONLY'&&(String(x.srlNo||x.srl||'').trim()||qty(x.cutQty)>0));
+    const usedSrls=[...new Set(photoCuts.map(x=>String(x.srlNo||x.srl||'').trim()).filter(Boolean))];
     const parts=(()=>{try{return frame.contentWindow.cfmProductParts?.(order)||[]}catch(_){return []}})();
     const stitches=(()=>{try{return frame.contentWindow.cfmBatchStitchOperations?.(order)||[]}catch(_){return []}})();
     const oq=qty(order.orderQty),isReview=review.length>0;
@@ -786,10 +787,10 @@ frame.addEventListener('load',install);setInterval(install,12000);install();
       const needsCheck=x._redPenPendingStock||x._physicalRollBalanceUnverified||x._stockUsageEstimated;
       return '<tr><td>'+esc(dateText(x.date))+'</td><td>'+esc(x.srlNo||x.srl||'-')+'</td><td>'+esc(part)+'</td><td>'+measurement+'</td><td class="center">'+esc(x.cutQty??'-')+'</td><td>'+esc(needsCheck?'Meter / SRL verify':'Cutting recorded')+'</td></tr>';
     }).join('');
-    const reference='<section><h3>Photo Cutting Reference — '+photoCuts.length+' Part Lines</h3>'+
+    const reference='<section><h3>Cutting Reference — '+photoCuts.length+' Entries (Photo / Manual)</h3>'+
       '<div class="photo-note">These are cut pieces, not completed bags. Stock-meter confirmation and department Done Qty must be recorded separately.</div>'+
       '<table class="reference"><thead><tr><th>DATE</th><th>SRL</th><th>PART</th><th>L × W (INCH)</th><th>PIECES</th><th>VERIFICATION</th></tr></thead><tbody>'+
-      (refs||'<tr><td colspan="6" class="center">No saved photo cutting reference</td></tr>')+'</tbody></table></section>';
+      (refs||'<tr><td colspan="6" class="center">No saved cutting reference</td></tr>')+'</tbody></table></section>';
     const stageRows=stages.map(stage=>{
       const real=actual.filter(x=>stageMatch(x,stage));
       const allocate=review.filter(x=>stageMatch(x,stage));
@@ -816,7 +817,8 @@ frame.addEventListener('load',install);setInterval(install,12000);install();
       '<div class="item"><small>Order Qty</small><b>'+esc(oq)+'</b></div>'+
       '<div class="item"><small>Report Date</small><b>'+esc(date)+'</b></div>'+
       '<div class="item wide"><small>Description</small><b>'+esc(order.description||saved.description||'-')+'</b></div>'+
-      '<div class="item wide"><small>Measurement / Details</small><b>'+esc(order.description2||'-')+'</b></div></div>'+
+      '<div class="item wide"><small>Measurement / Details</small><b>'+esc(order.description2||'-')+'</b></div>'+
+      '<div class="item" style="grid-column:span 4"><small>Cloth SRL No. (Actual Cutting Entry)</small><b>'+esc(usedSrls.join(' • ')||'Not recorded')+'</b></div></div>'+
       (parts.length?'<div class="content"><b>Product Content — Saved Cutting Parts / Layers:</b> '+esc(parts.join(' • '))+'</div>':'')+
       reference+
       '<table class="main"><thead><tr><th>DEPARTMENT</th><th>PERSON</th><th class="center">CHECK</th><th class="center">ORDER</th><th class="center">QTY</th><th class="center">PENDING</th><th>REMARK / WORK</th><th>DATE</th><th>REMARK</th></tr></thead><tbody>'+stageRows+'</tbody></table>'+
