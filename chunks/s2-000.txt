@@ -178,7 +178,7 @@
     </section>
 
     <section id="view-pending" class="view">
-<div class="notice" style="margin-bottom:10px;background:#fff7e6;border:1px solid #f0ddb4;color:#7a5100"><b>Note:</b> Order Qty blank/0 ho to work <b>QTY REQUIRED</b> me dikhega, gayab nahi hoga.</div>
+<!-- V315: Obsolete QTY REQUIRED note removed. Pending is strictly open work; source orders stay safe in Cloud. -->
       <div class="section-head">
         <div><h2>Pending Orders</h2><p>Searchable Party • One PO can contain multiple items • Pending Qty = Order Qty − Cut Qty</p></div>
         <button class="btn btn-primary" onclick="window.parent.openCFMPOWorkOrders()">📄 PO Photo / PDF → Work Orders</button>
