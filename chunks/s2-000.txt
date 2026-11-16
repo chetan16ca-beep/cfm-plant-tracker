@@ -186,7 +186,7 @@
       </div>
       <div class="filters">
         <input id="pendingSearch" placeholder="Search work no, party, item, cloth..." oninput="renderPending()" />
-        <select id="pendingStatus" onchange="renderPending()"><option value="OPEN">Open Pending</option><option value="CUTENTRY">✂ Cut Entry Pending</option><option value="ALL">All Active</option><option value="COMPLETE">Completed</option><option value="ARCHIVED">Archived</option></select>
+        <select id="pendingStatus" aria-label="Filter work orders by status" onchange="renderPending()"><option value="OPEN">Open Pending</option><option value="CUTENTRY">✂ Cut Entry Pending</option><option value="ALL">All Work Orders</option><option value="COMPLETE">Completed</option><option value="DISPATCHED">Dispatched</option><option value="ARCHIVED">Archived</option></select>
       </div>
       <div id="pendingList"></div>
     </section>
