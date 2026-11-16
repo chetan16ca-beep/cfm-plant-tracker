@@ -145,6 +145,47 @@ function wrapPrint(){
  }
  wrapped.__cfmSopV318=true;window.openPrintWindow=wrapped;
 }
+
+/* V321: Work-Order-independent SOP print, including area-cleaning checklists.
+   Read-only: no ERP state writes and never invents completed/PASS checks. */
+function printableSop(cat,rec){
+ const saved=!!rec?.id;
+ const results=rec?.results||{};
+ const title=saved?'SAVED SOP RECORD':'BLANK / UNSAVED SOP PREVIEW';
+ const style='border:1px solid #b8ccd9;padding:7px 8px;text-align:left;vertical-align:top';
+ const td=x=>'<td style="'+style+'">'+esc(x==null||x===''?'-':x)+'</td>';
+ const items=cat.items.map((item,i)=>'<tr>'+td(item.id)+td(item.text)+td(results[item.id]||'NOT RECORDED')+'</tr>').join('');
+ const info=(label,value)=>'<div style="border:1px solid #ccdbe4;padding:7px;border-radius:5px"><small style="color:#597186;display:block">'+esc(label)+'</small><b>'+esc(value||'-')+'</b></div>';
+ const areaLabel=isClean(cat.code)?'Machine / Area':isMaterial(cat.code)?'Receipt / SRL Reference':'Work / Process';
+ const ref=isClean(cat.code)?rec?.area:isMaterial(cat.code)?(rec?.srlNo||rec?.inwardNo):rec?.workNo;
+ const date=rec?.timestamp?new Date(rec.timestamp).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}):'Not saved';
+ const summary=saved?aggregate(rec,cat):'NOT RECORDED (no saved record)';
+ return '<style>@page{size:A4 portrait;margin:13mm}body{font:12px Arial,sans-serif;color:#142f43}h2{font-size:19px;color:#146c85;margin:4px 0}table{width:100%;border-collapse:collapse;margin:13px 0}th{background:#e8f3f9;color:#234c62;padding:8px;border:1px solid #b8ccd9;text-align:left}.info{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}.sign{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:36px}.sign div{border-top:1px solid #6c8290;padding-top:6px;text-align:center}.noprint{color:#7b3914}@media print{tr{break-inside:avoid}}</style>'+
+ '<header style="border-bottom:3px solid #16628b;padding-bottom:9px"><strong style="font-size:17px">EAGLE FILTRATION PRODUCT PVT. LTD.</strong><div style="font-size:10px;letter-spacing:.8px">CFM OPERATIONS • SOP CONTROLLED CHECKLIST</div></header>'+
+ '<h2>'+esc(cat.code+' — '+cat.name)+'</h2>'+
+ '<p class="noprint" style="padding:8px;background:#f3f7fa;border:1px solid #d7e5ea"><b>'+esc(title)+'</b> • '+esc(saved?'Actual saved operator checklist.':'No matching saved entry; this is only a blank SOP template. Do not treat as cleaning completed.')+'</p>'+
+ '<div class="info">'+info('SOP Code','SOP-CFM-'+cat.code)+info(areaLabel,ref||'-')+
+ (rec?.workNo?info('Work Order',rec.workNo):'')+(rec?.srlNo?info('SRL No.',rec.srlNo):'')+
+ info('Date / Time',date)+info('Shift',rec?.shift||'-')+info('Operator',rec?.operator||'-')+info('Supervisor',rec?.supervisor||'-')+
+ info('Overall Result',summary)+'</div>'+
+ '<table><thead><tr><th style="width:68px">SOP ID</th><th>Cleaning / Inspection Point</th><th style="width:120px">Recorded Result</th></tr></thead><tbody>'+items+'</tbody></table>'+
+ '<p><b>Remark / Deviation:</b> '+esc(rec?.remark||'-')+'</p>'+
+ '<p style="font-size:10px;color:#526679">PASS must be manually verified. HOLD / FAIL requires corrective action. N/A is an explicit operator selection; missing result is NOT RECORDED.</p>'+
+ '<div class="sign"><div>Operator Signature</div><div>Supervisor Verification / Signature</div></div>';
+}
+function printSopCategory(cat,fields){
+ if(typeof window.openPrintWindow!=='function'){alert('Print engine is still loading. Refresh the ERP and retry.');return}
+ const {workNo,area,srlNo,inwardNo}=fields;
+ const matches=records().filter(r=>norm(r.code)===norm(cat.code)).filter(r=>{
+  if(isClean(cat.code))return !!area&&norm(r.area)===norm(area);
+  if(isMaterial(cat.code))return !!(srlNo||inwardNo)&&
+    (srlNo?norm(r.srlNo)===norm(srlNo):norm(r.inwardNo)===norm(inwardNo));
+  return !!workNo&&norm(r.workNo)===norm(workNo);
+ });
+ const saved=matches.length?matches[matches.length-1]:null;
+ window.openPrintWindow('SOP Checklist '+cat.code,printableSop(cat,saved),false);
+}
+
 function openPanel(preset){
  if(!ensure()){alert('ERP not ready');return}
  $('cfmSopModalV318')?.remove();
@@ -169,6 +210,7 @@ function openPanel(preset){
  '<div id="cfmSopMsg318" role="status" style="min-height:22px;color:#9a3328;font-weight:700"></div>'+
  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
  '<button type="button" id="cfmSopSave318" style="padding:11px 14px;border:0;background:#087f6d;color:#fff;font-weight:700;border-radius:9px">Save Checklist</button>'+
+ '<button type="button" id="cfmSopPrint321" style="padding:11px 14px;border:0;background:#155d92;color:#fff;font-weight:700;border-radius:9px">🖨 Preview / Print SOP</button>'+
  '<button type="button" id="cfmSopTicket318" style="padding:11px 14px;border:0;background:#1472bb;color:#fff;font-weight:700;border-radius:9px">Print Product Ticket + SOP</button>'+
  '<button type="button" id="cfmSopAnnex318" style="padding:11px 14px;border:1px solid #ccd6df;background:#fff;border-radius:9px">Print Full Annexure</button></div>';
  overlay.append(panel);document.body.append(overlay);
@@ -232,6 +274,13 @@ function openPanel(preset){
    setMsg('Checklist saved locally. Confirm Cloud Sync before relying on the record.');
   }
   catch(e){st.sopRecords=before;backup(before);setMsg('Save failed: '+String(e.message||e))}
+ });
+ $('cfmSopPrint321').addEventListener('click',()=>{
+  const cat=CATALOG.find(x=>x.code===field('cfmSopCode318'));if(!cat)return;
+  printSopCategory(cat,{
+   workNo:field('cfmSopWork318'),area:field('cfmSopArea318'),
+   srlNo:field('cfmSopSrl318'),inwardNo:field('cfmSopInward318')
+  });
  });
  $('cfmSopTicket318').addEventListener('click',()=>printDoc(field('cfmSopWork318'),false));
  $('cfmSopAnnex318').addEventListener('click',()=>{
