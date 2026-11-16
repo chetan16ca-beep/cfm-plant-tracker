@@ -569,7 +569,7 @@ load();
 })();
 renderAll();restoreUiResumeState();setTimeout(cloudInit,300);
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(console.warn);
-setInterval(checkScheduledNotification,30000);setInterval(cloudPoll,3000);
+setInterval(checkScheduledNotification,30000);setInterval(cloudPoll,6000);
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden)captureUiResumeState();
   else{checkScheduledNotification();cloudPoll();}
