@@ -32,7 +32,7 @@ window.openPendingForm=function(i=null){
   const mi=measurementInfo(r);
   const html=field('workNo','Work No.',r.workNo)+partySelectHTML(r.party)+field('poNo','PO / Reference (New order)',r.poNo)+field('orderDate','Order Date',r.orderDate,'date')+field('deliveryDate','Delivery Date',r.deliveryDate,'date')+
     productPickerHTML(r)+
-    field('actualProductType','Actual Product Type (Required for Cutting Print)',r.actualProductType||'','text',false,['','CF BAG','FBD','RNF','SNF','MICRONIZER JET MILL','OTHER'])+
+    field('actualProductType','Actual Product Type (Required for Cutting Print)',r.actualProductType||'','text',false,['','CF BAG','FBD','RNF','SNF','MICRONIZER JET MILL','SPARKLER FILTER CLOTH','OTHER'])+
     field('eagleCode','Eagle Code (Auto)',r.eagleCode)+field('itemCode','Item Code',r.itemCode)+field('cloth','Cloth (Auto if master available)',r.cloth)+field('width','Width (Auto if master available)',r.width,'number')+
     `<div class="field full"><label>Measurement (Auto)</label><div id="pendingMeasurementPreview" class="auto-box ${mi.text==='MEASUREMENT REQUIRED'?'warn':'ok'}"><b>${esc(mi.text)}</b><div class="inline-help">${esc(mi.source||'')}</div></div></div>`+
     field('orderQty','Order Qty (Enter only new qty)',r.orderQty,'number')+`<div class="field"><label>Cut Qty (Automatic)</label><input name="cutQty" type="number" step="any" value="${esc(r.cutQty)}" readonly style="background:#eef3f8"/></div>`+
