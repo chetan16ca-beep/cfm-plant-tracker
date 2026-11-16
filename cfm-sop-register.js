@@ -116,6 +116,52 @@ for(const cat of CATALOG){
   });
  }
 }
+
+// V326 controlled Packing & Bag Label Verification SOP. Label applies to EACH
+// finished bag; it is not limited to the carton/outer packing label.
+// Preserve PKG-01..05 IDs; historical snapshots and results are not rewritten.
+const PACKING_MASTER={
+ heading:'Packing Control & Individual Bag Label Verification',
+ scope:'All finished filtration bags before final protective packing, and outer pack labels when specified.',
+ purpose:'Prevent unlabeled bags, wrong product/party/specification identification, mixed orders and loss of traceability at dispatch.',
+ frequency:'For every finished bag during final packing, at label changeover and at final packing release.',
+ responsibility:'Packing operator checks label and product against the approved Work Order/label template; packing supervisor verifies results and releases the batch.',
+ safety:'Do not pack or dispatch a bag with a missing, illegible, wrong or unattached required label. Hold affected bags, correct labels and verify again before release.',
+ items:[
+  'PKG-01|Packing room cleaning released|Check the saved Packing Room Cleaning release or confirm area clearance before placing clean finished bags on the packing station.|Packing room is clean and released; unresolved cleaning HOLD is escalated.',
+  'PKG-02|Work Order, party, product and accepted quantity verified|Compare the packing batch with the latest approved Work Order, product description and Final QC accepted quantity.|Packing material and finished bags match the approved order and released quantity.',
+  'PKG-03|Approved clean protective packing used|Inspect bag/liner/carton for damage, moisture and contamination before placing finished filters inside.|Suitable protective materials are clean, dry, intact and appropriate to product.',
+  'PKG-04|Outer pack labeling and traceability verified|Compare outer pack marking with Work No, product, pack number, packed quantity and date as required on the approved packing template.|Outer pack has the required, legible and correctly matched traceability details.',
+  'PKG-05|Packed quantity and supervisor handover recorded|Count accepted packed bags and reconcile with Final QC; record handover to supervisor for verification.|Packed quantity equals released quantity; discrepancies held for reconciliation.',
+  'PKG-06|Individual label present on EVERY finished bag|Physically inspect every completed filter bag for the required product identification label before protective packing.|100% of finished bags have the required label; any unlabeled bag is held.',
+  'PKG-07|Label applied at approved bag location|Verify label is fixed at the approved position for the specific bag design without covering functional surfaces or stitching.|Label is positioned consistently as per approved product/label specification.',
+  'PKG-08|Correct company / manufacturer identity|Compare printed company/manufacturer identity with the current approved bag label artwork where required.|Company identity is correct and matches approved label template; no obsolete branding.',
+  'PKG-09|Customer / Party name correct|Read the actual bag label and match Party Name/customer information to its Work Order and approved label requirement.|Exact required Party/Customer name on each bag; no mix-up with another order.',
+  'PKG-10|Product name / bag type correct|Check label product identification (e.g. CF, FBD, RNF, SNF, ANFD, filter cloth) against actual bag and approved order.|Correct product type, variant and description; no incorrect product designation.',
+  'PKG-11|Bag dimensions / size match order|Compare any printed bag size, length, diameter and product-specific dimensions to the approved Work Order and product drawing, where required.|Required label sizes are correct and consistent with the actual finished bag.',
+  'PKG-12|Micron / mesh specification correct|Verify printed micron or mesh value against approved order, specification and finished product; apply N/A only when genuinely inapplicable.|Printed filtration rating matches approved specification wherever required.',
+  'PKG-13|Cloth / material specification correct|Verify printed cloth name/code, material, fabric grade or construction when listed on approved label against manufacturing record.|No mismatch in required cloth/material identification.',
+  'PKG-14|Antistatic, layers and special features correct|Compare printed antistatic status, layer count, treatment and other special features to the order when the label requires them.|Required features are accurate; any mismatch triggers HOLD and correction.',
+  'PKG-15|Work Order / batch traceability correct|Match printed Work No, batch/lot or internal identification (if required on label) to physical bag batch and production record.|Bag traceability is unambiguous and linked to the correct approved order.',
+  'PKG-16|Individual bag / package quantity reference correct|Check any quantity, pack number or unit identification shown on label or attached pack marking as required.|Correct quantity/pack identification; actual count reconciles to accepted packing batch.',
+  'PKG-17|Print clearly readable and complete|Inspect each required printed field for clear text, complete characters, correct language/layout and absence of fading or smudges.|All mandatory label details readable and complete; no damaged or incomplete print.',
+  'PKG-18|Label attachment strong and undamaged|Check sewn, heat-applied or other approved label attachment for alignment, secure fixing and absence of loose edges or product damage.|Label remains securely fixed; bag fabric and stitching are not damaged.',
+  'PKG-19|No wrong / duplicate / mixed labels|After product or order changeover, remove prior labels and check every bag/pack contains the correct current label, with no duplicate conflicting tags.|No obsolete, duplicate conflicting or mixed-order labels on finished bags.',
+  'PKG-20|Final bag-label verification & release|Packing operator completes individual bag-label verification; supervisor checks physical product against label and records any HOLD, FAIL, rework and final release.|All required checks passed or justified N/A; wrong/unlabeled bags remain on HOLD until corrected and verified.'
+ ]
+};
+const SOP_MASTERS={...CLEANING_MASTER,PKG:PACKING_MASTER};
+const LEGACY_CONTROLLED_ITEMS={
+ ...LEGACY_CLEANING_ITEMS,
+ PKG:CATALOG.find(c=>c.code==='PKG').items.map(item=>({...item}))
+};
+const isControlledSop=code=>!!SOP_MASTERS[code];
+const pkg=CATALOG.find(c=>c.code==='PKG');
+pkg.items=PACKING_MASTER.items.map(line=>{
+ const [id,text,description,acceptance]=line.split('|');
+ return {id,text,description,acceptance};
+});
+
 const SOP_DOCUMENT_REV='01';
 const SOP_DOCUMENT_ISSUED='2026-11-16';
 const sopDocumentNo=code=>'SOP-CFM-'+code;
@@ -192,7 +238,7 @@ function aggregate(r,cat){
  // Audit integrity: use the checkpoint revision that existed when the record
  // was created. Legacy V320/V323 cleaning entries have the original checks.
  const points=arr(r.checklistSnapshot).length?r.checklistSnapshot:
-   isClean(cat.code)?LEGACY_CLEANING_ITEMS[cat.code]:cat.items;
+   isControlledSop(cat.code)?LEGACY_CONTROLLED_ITEMS[cat.code]:cat.items;
  return aggregateFromPoints(r,points);
 }
 function annex(work,compact=false){
@@ -250,7 +296,7 @@ function wrapPrint(){
    Read-only: no ERP state writes and never invents completed/PASS checks. */
 function printableSop(cat,rec){
  const saved=!!rec?.id;
- const spec=CLEANING_MASTER[cat.code]||null;
+ const spec=SOP_MASTERS[cat.code]||null;
  // An earlier saved checklist had fewer checkpoints: print exactly its legacy
  // checklist, never turn newly added revision 01 points into historical failures.
  const legacy=saved&&!!spec&&!arr(rec?.checklistSnapshot).length;
@@ -258,7 +304,7 @@ function printableSop(cat,rec){
  // checklist. Historical outcomes are shown only for IDs actually recorded.
  // Unrecorded new checkpoints must never be silently marked PASS.
  const archivedPoints=saved&&arr(rec?.checklistSnapshot).length?rec.checklistSnapshot:
-   legacy?LEGACY_CLEANING_ITEMS[cat.code]:cat.items;
+   legacy?LEGACY_CONTROLLED_ITEMS[cat.code]:cat.items;
  const points=spec?[
    ...cat.items,
    ...archivedPoints.filter(item=>!cat.items.some(now=>now.id===item.id))
@@ -270,8 +316,8 @@ function printableSop(cat,rec){
  const docNo=rec?.documentNo||(spec?sopDocumentNo(cat.code):'SOP-CFM-'+cat.code);
  const chkNo=rec?.checklistNo||(spec?sopChecklistNo(cat.code):'CHK-CFM-'+cat.code);
  const title=saved?'SAVED SOP ENTRY':'BLANK / UNSAVED TEMPLATE';
- const areaLabel=spec?'Machine / Area':isMaterial(cat.code)?'Receipt / SRL Reference':'Work / Process';
- const ref=spec?rec?.area:isMaterial(cat.code)?(rec?.srlNo||rec?.inwardNo):rec?.workNo;
+ const areaLabel=isClean(cat.code)?'Machine / Area':isMaterial(cat.code)?'Receipt / SRL Reference':'Work Order / Process';
+ const ref=isClean(cat.code)?rec?.area:isMaterial(cat.code)?(rec?.srlNo||rec?.inwardNo):rec?.workNo;
  const savedAt=rec?.timestamp?new Date(rec.timestamp).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}):'NOT SAVED';
  // The saved historical result is based only on its original checkpoint
  // set. Separately disclose coverage of the current controlled checklist.
@@ -377,10 +423,10 @@ function sopPrintDaily(day){
  const rows=daily.map((r,i)=>{
    const cat=CATALOG.find(c=>c.code===r.code);
    return '<tr>'+td(i+1)+td(r.documentNo||'SOP-CFM-'+r.code)+td(r.checklistNo||('CHK-CFM-'+r.code))+
-     td(r.sopRevision||(isClean(r.code)?'LEGACY':'-'))+td(r.id)+td(cat?.name||r.code)+
+     td(r.sopRevision||(isControlledSop(r.code)?'LEGACY':'-'))+td(r.id)+td(cat?.name||r.code)+
      td(r.area||r.workNo||r.srlNo||r.inwardNo||'-')+
      td(r.operator||'-')+td(r.supervisor||'-')+
-     td(cat?aggregateFromPoints(r,arr(r.checklistSnapshot).length?r.checklistSnapshot:(isClean(cat.code)?LEGACY_CLEANING_ITEMS[cat.code]:cat.items)):'UNKNOWN SOP')+
+     td(cat?aggregateFromPoints(r,arr(r.checklistSnapshot).length?r.checklistSnapshot:(isControlledSop(cat.code)?LEGACY_CONTROLLED_ITEMS[cat.code]:cat.items)):'UNKNOWN SOP')+
      td(new Date(r.timestamp).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit'}))+'</tr>';
  }).join('');
  let doc='<style>@page{size:A4 portrait;margin:13mm}body{font:11px Arial,sans-serif;color:#183c51}table{width:100%;border-collapse:collapse}th{border:1px solid #bed1da;padding:7px;text-align:left;background:#e5f3fa}tr{break-inside:avoid}.page{page-break-before:always}</style>'+
@@ -419,7 +465,7 @@ function printSopCategory(cat,fields){
   doc+='<p style="color:#a13a31;font:700 12px Arial">NO SAVED RECORDS ON '+esc(sopDateHeading(date))+'. This is a blank SOP reference, NOT proof that cleaning or checking was done.</p>'+
     printableSop(cat,null);
  }
- window.openPrintWindow('SOP '+cat.code+' '+date,doc,!!CLEANING_MASTER[cat.code]);
+ window.openPrintWindow('SOP '+cat.code+' '+date,doc,!!SOP_MASTERS[cat.code]);
 }
 
 function openPanel(preset){
@@ -472,7 +518,7 @@ function openPanel(preset){
   for(const id of ['cfmSopTicket318','cfmSopAnnex318']){
    const button=$(id);if(button)button.style.display=hasWork?'':'none';
   }
-  const spec=CLEANING_MASTER[cat.code];
+  const spec=SOP_MASTERS[cat.code];
   const docInfo=spec?'<section style="border:1px solid #afd6e8;background:#f3f9fd;border-radius:10px;padding:12px;margin-bottom:12px">'+
     '<div style="font-weight:800;color:#164d69;font-size:15px">'+esc(spec.heading)+'</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:11px;font-weight:700;margin:6px 0">'+
@@ -484,7 +530,7 @@ function openPanel(preset){
     '<p style="font-size:12px;margin:5px 0"><b>Responsibility:</b> '+esc(spec.responsibility)+'</p>'+
     '<p style="font-size:12px;margin:6px 0;color:#84391b"><b>Safety control:</b> '+esc(spec.safety)+'</p></section>':'';
   $('cfmSopChecks318').innerHTML=docInfo+'<b>'+esc(cat.name)+' • '+cat.items.length+' numbered checks</b>'+
-   cat.items.map(item=>'<div style="display:grid;grid-template-columns:minmax(0,1fr) 118px;gap:8px;padding:10px 0;border-bottom:1px solid #dceaf2;align-items:start">'+
+   cat.items.map(item=>(cat.code==='PKG'&&item.id==='PKG-06'?'<div style="padding:10px 12px;margin:12px 0 4px;background:#e8f6ee;border-left:4px solid #14804b;font-weight:800;color:#155a3b">BAG LABEL VERIFICATION — EVERY FINISHED BAG (PKG-06 to PKG-20)</div>':'')+'<div style="display:grid;grid-template-columns:minmax(0,1fr) 118px;gap:8px;padding:10px 0;border-bottom:1px solid #dceaf2;align-items:start">'+
     '<div><strong style="display:block;color:#1e4f68;font-size:13px">'+esc(item.id+' • '+item.text)+'</strong>'+
     (item.description?'<div style="font-size:12px;line-height:1.45;color:#3a5567;margin-top:4px"><b>Procedure:</b> '+esc(item.description)+'</div>':'')+
     (item.acceptance?'<div style="font-size:12px;line-height:1.45;color:#18665d;margin-top:3px"><b>Acceptance:</b> '+esc(item.acceptance)+'</div>':'')+'</div>'+
@@ -518,8 +564,8 @@ function openPanel(preset){
   panel.querySelectorAll('[data-sop-id]').forEach(x=>{results[x.dataset.sopId]=x.value;if(['HOLD','FAIL'].includes(x.value))hasBad=true});
   if(Object.values(results).some(v=>!v)){setMsg('Complete every numbered item with PASS, HOLD, FAIL or N/A.');return}
   if(hasBad&&!remark){setMsg('HOLD or FAIL needs a reason / corrective action in Remark.');return}
-  if(isClean(cat.code)&&Object.values(results).includes('N/A')&&!remark){setMsg('Audit: N/A needs a written justification in Remark.');return}
-  const rec={id:'SOP-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),schema:schemaId,code:cat.code,workNo,srlNo,inwardNo,area,shift,operator,supervisor,results,remark,timestamp:new Date().toISOString(),device:typeof deviceLabel==='function'?deviceLabel():'ERP',documentNo:isClean(cat.code)?sopDocumentNo(cat.code):'',checklistNo:isClean(cat.code)?sopChecklistNo(cat.code):'',sopRevision:isClean(cat.code)?SOP_DOCUMENT_REV:'',checklistSnapshot:isClean(cat.code)?cat.items.map(item=>({...item})):[]};
+  if(isControlledSop(cat.code)&&Object.values(results).includes('N/A')&&!remark){setMsg('Audit: N/A needs a written justification in Remark.');return}
+  const rec={id:'SOP-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),schema:schemaId,code:cat.code,workNo,srlNo,inwardNo,area,shift,operator,supervisor,results,remark,timestamp:new Date().toISOString(),device:typeof deviceLabel==='function'?deviceLabel():'ERP',documentNo:isControlledSop(cat.code)?sopDocumentNo(cat.code):'',checklistNo:isControlledSop(cat.code)?sopChecklistNo(cat.code):'',sopRevision:isControlledSop(cat.code)?SOP_DOCUMENT_REV:'',checklistSnapshot:isControlledSop(cat.code)?cat.items.map(item=>({...item})):[]};
   const before=arr(st.sopRecords).slice();
   st.sopRecords=records().concat(rec);backup(st.sopRecords);
   try{
