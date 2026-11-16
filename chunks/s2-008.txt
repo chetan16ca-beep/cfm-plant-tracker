@@ -810,11 +810,13 @@ function renderPending(){
   // status as an actionable pending work order. No Cloud/stock writes here.
   const q=($('pendingSearch')?.value||'').toLowerCase();
   const filter=$('pendingStatus');
+  const selectedStatus=filter?.value||'OPEN';
   if(filter){
-    filter.value='OPEN';
-    Array.from(filter.options||[]).forEach(o=>{if(o.value!=='OPEN')o.hidden=true});
-    filter.disabled=true;
-    filter.title='Pending work only — completed and dispatched are retained in History';
+    // V329: historical status filtering is read-only from live verified Cloud.
+    // Only OPEN can render existing actionable local cards after cross-check.
+    filter.disabled=false;
+    for(const option of Array.from(filter.options||[]))option.hidden=false;
+    filter.title='View verified Cloud orders by status. Historical orders are read-only.';
   }
   const localRows=(state.pending||[]).filter(r=>orderOpen(r)&&JSON.stringify(r).toLowerCase().includes(q));
   localRows.sort((a,b)=>String(b.workNo||'').localeCompare(String(a.workNo||''),undefined,{numeric:true}));
@@ -828,15 +830,25 @@ function renderPending(){
       '</div>';
   }else{
     const mismatch=cfmPendingListSignature(cfmPendingCloudRows)!==cfmPendingListSignature(state.pending||[]);
-    if(mismatch){
-      // Even when local Cloud sync is dirty, never show stale actionable orders.
-      // The Cloud list is read-only; unsynced local data is retained for recovery.
-      const cloudRows=cfmPendingCloudOnly(cfmPendingCloudRows).filter(r=>JSON.stringify(r).toLowerCase().includes(q));
+    if(mismatch || selectedStatus!=='OPEN'){
+      // V329: All status views use the last verified Cloud snapshot, NEVER local
+      // unverified Completed/Dispatched rows. All historical cards are read-only.
+      const cloudRows=(selectedStatus==='OPEN'?cfmPendingCloudOnly(cfmPendingCloudRows):cfmPendingCloudRows)
+        .filter(r=>{
+          const status=normalize(r?.status);
+          if(selectedStatus==='ALL')return true;
+          if(selectedStatus==='CUTENTRY')return !!r?.cutEntryPending && !r?.archived && status!=='DISPATCHED';
+          if(selectedStatus==='COMPLETE')return status==='COMPLETED';
+          if(selectedStatus==='DISPATCHED')return status==='DISPATCHED'||normalize(r?.dispatchStatus)==='DISPATCHED';
+          if(selectedStatus==='ARCHIVED')return !!r?.archived||status==='ARCHIVED';
+          return true;
+        })
+        .filter(r=>JSON.stringify(r).toLowerCase().includes(q));
       cloudRows.sort((a,b)=>String(b.workNo||'').localeCompare(String(a.workNo||''),undefined,{numeric:true}));
       const alert='<div class="notice" style="background:#fff6dc;border-left:4px solid #d59e2c;color:#795619;padding:12px;border-radius:8px;margin-bottom:12px">'+
-        '<b>☁ LIVE CLOUD PENDING • READ-ONLY</b><div>'+
-        (cloudDirty?'Unsynced local changes are preserved. ':'Local ERP differs from current Cloud. ')+
-        'Only confirmed Cloud Pending orders are shown. Do not repeat dispatch or create duplicate orders before safe sync.</div>'+
+        '<b>☁ LIVE CLOUD '+esc(filter?.selectedOptions?.[0]?.textContent||'Orders')+' • READ-ONLY</b><div>'+
+        (mismatch?(cloudDirty?'Unsynced local changes are preserved. ':'Local ERP differs from current Cloud. '):'Showing verified Cloud order history. ')+
+        'Status filter is read-only. No dispatch, stock or cutting changes are made here; do not create duplicate orders before safe sync.</div>'+
         (cfmPendingCloudError?'<small>Cloud recheck failed; last verified Cloud snapshot shown.</small>':'')+
         '</div>';
       result=alert+(cloudRows.map(r=>{
@@ -844,9 +856,10 @@ function renderPending(){
         return '<article class="data-card" style="border:1px solid #c7d9e6;border-left:4px solid #1674c9;padding:12px;margin-bottom:10px">'+
           '<b class="work">'+esc(r.workNo||'-')+'</b> • '+esc(r.party||'-')+
           '<div class="desc" style="margin:7px 0">'+esc(r.description||'-')+'</div>'+
-          '<div>Order '+fmt(r.orderQty)+' • Cut '+fmt(r.cutQty||0)+' • <b>Pending '+fmt(bal)+'</b></div>'+
-          '<small>Live Cloud • read-only until safe sync</small></article>';
-      }).join('')||'<div class="empty">No live Cloud pending work orders</div>');
+          '<div><b>Status: '+esc(r.status||'NOT SET')+'</b> • Order '+fmt(r.orderQty)+' • Cut '+fmt(r.cutQty||0)+
+          (normalize(r.status)==='PENDING'?' • Pending '+fmt(bal):'')+'</div>'+
+          '<small>Verified Cloud record • read-only</small></article>';
+      }).join('')||'<div class="empty">No Cloud work orders match this filter</div>');
     }else{
       result=(cfmPendingCloudError?'<div class="notice" style="background:#fff3d6;padding:10px">⚠ Cloud recheck unavailable. Last verified Pending snapshot matched local orders.</div>':'')+
         (localRows.map(r=>pendingCard(r)).join('')||'<div class="empty">No pending work orders</div>');
