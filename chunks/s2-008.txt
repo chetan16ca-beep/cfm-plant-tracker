@@ -294,7 +294,7 @@ window.cfmRefreshWorkNos=async function(){
       cloudDirty=false;
       setCloudBadge('⚠️ Work Orders visible • stock sync needs review','amber');
       console.warn('CFM V171 local/cloud differences; writes paused',problems);
-      $('pendingStatus').value='ALL';$('pendingSearch').value='';showView('pending');renderPending();
+      $('pendingStatus').value='OPEN';$('pendingSearch').value='';showView('pending');renderPending();
       alert('Cloud Work Orders shown: '+(row.payload.pending||[]).length+' (last CFM-'+Math.max(0,...row.payload.pending.map(x=>Number(String(x.workNo||'').match(/(\d+)$/)?.[1]||0)))+'). Added '+added+' missing records on this device. Existing local Stock/Cutting kept. Cloud writing is PAUSED due to data differences. No records deleted.');
       return;
     }
@@ -304,7 +304,7 @@ window.cfmRefreshWorkNos=async function(){
     cloudVersion=num(row.version)||cloudVersion;
     cloudUpdatedAt=row.updated_at||'';
     cloudDirty=false;cloudReady=true;
-    renderAll();$('pendingStatus').value='ALL';$('pendingSearch').value='';showView('pending');renderPending();
+    renderAll();$('pendingStatus').value='OPEN';$('pendingSearch').value='';showView('pending');renderPending();
     const max=Math.max(0,...state.pending.map(x=>Number(String(x.workNo||'').match(/(\d+)$/)?.[1]||0)));
     setCloudBadge('☁️ '+state.pending.length+' Work Orders • CFM-'+max,'green');
     toast('Cloud loaded: '+state.pending.length+' Work Orders • Last CFM-'+max);
@@ -430,7 +430,7 @@ const hasOrderQty=r=>r&&r.orderQty!==''&&r.orderQty!=null&&Number.isFinite(Numbe
 const pendingQty=r=>hasOrderQty(r)?Math.max(0,num(r.orderQty)-num(r.cutQty)):0;
 const isArchived=r=>!!r?.archived||normalize(r?.status)==='ARCHIVED';
 const isCutEntryPending=r=>!!r?.cutEntryPending;
-const orderOpen=r=>!isArchived(r)&&!isCutEntryPending(r)&&(!hasOrderQty(r)||pendingQty(r)>0);
+const orderOpen=r=>normalize(r?.status)==='PENDING'&&!isArchived(r)&&!isCutEntryPending(r)&&hasOrderQty(r)&&pendingQty(r)>0;
 const explicitDocStatus=(r,key)=>String(r?.[key]||'').trim().toUpperCase();
 function docStatus(r,key){
   const s=explicitDocStatus(r,key);
@@ -734,7 +734,7 @@ function renderDashboard(){
   // Underlying pending orders, cutting entries and SRL stock remain untouched.
   // V228: open must be a real work-order array; window.open is a browser
   // function, and open.slice() previously threw after an otherwise saved PO.
-  const open=(state.pending||[]).filter(r=>hasOrderQty(r)&&pendingQty(r)>0&&!isArchived(r));
+  const open=(state.pending||[]).filter(orderOpen);
   const todayCut=state.cutting.filter(r=>r.date===todayISO()).reduce((a,r)=>a+num(r.cutQty),0);
   $('kpis').innerHTML=kpi("Today's Cut Qty",fmt(todayCut),'','cutting');
   try{renderPhysicalStockDashboard()}catch(e){console.warn('Physical Stock dashboard failed',e)}
@@ -777,15 +777,19 @@ function pendingCard(r,compact=false){
   return `<div class="data-card ${planned?'plan-card planned':''} ${cutEntry?'cut-entry-pending-card':''} ${compact?'clickable-card':''}" ${compact?`onclick="openPendingForm(${idx})" role="button" tabindex="0"`:''}><div class="card-top"><div><div class="work">${esc(r.workNo||'No Work No')}</div><div class="party">${esc(r.party||'')}</div></div><span class="chip ${chipClass}">${workStatus}</span></div><div class="desc">${esc(r.description||'')}</div>${r.description2?`<div class="desc pending-desc2"><b>Description 2:</b> ${esc(r.description2)}</div>`:'' }<div class="chips">${cutEntry?`<span class="chip amber">✂ Physical Cutting Done</span><span class="chip">Entry Balance ${fmt(p)}</span>`:'' }${r.eagleCode?`<span class="chip green">Eagle ${esc(r.eagleCode)}</span>`:`<span class="chip red">Eagle Code Required</span>`}<span class="chip ${mi.text==='MEASUREMENT REQUIRED'?'amber':'green'}">📐 ${esc(mi.text)}</span><span class="chip">Order ${fmt(r.orderQty)}</span><span class="chip">Cut ${fmt(r.cutQty)}</span><span class="chip">Cloth ${esc(r.cloth||'-')}</span>${r.width!==''?`<span class="chip">W ${esc(r.width)}</span>`:''}${r.poNo?`<span class="chip">PO ${esc(r.poNo)}</span>`:''}${r.deliveryDate?`<span class="chip">Del ${esc(dateDisplay(r.deliveryDate))}</span>`:''}${r.planDate?`<span class="chip plan-badge">Plan ${esc(dateDisplay(r.planDate))}</span>`:''}${archived&&r.archivedAt?`<span class="chip">Archived ${esc(dateDisplay(String(r.archivedAt).slice(0,10)))}</span>`:''}${!archived&&!cutEntry&&done?`<span class="chip ${docNeedsAction(r,'billStatus')?'red':'green'}">Bill ${esc(bs)}</span><span class="chip ${docNeedsAction(r,'challanStatus')?'red':'green'}">Challan ${esc(cs)}</span>`:''}</div><div class="progress"><span style="width:${pct}%"></span></div>${compact?'':archived?`<div class="card-actions"><button class="btn btn-sm btn-green" onclick="restorePending(${idx})">↩ Restore</button><button class="btn btn-sm" onclick="openPendingForm(${idx})">View / Edit</button><button class="btn btn-sm" onclick="openAttachmentDialog(${idx})">☁️ Files</button><button class="btn btn-sm btn-danger" onclick="deleteMistakeWork(${idx})">🗑 Permanent Delete</button></div>`:`<div class="card-actions"><button class="btn btn-sm" onclick="openPendingForm(${idx})">Edit</button><button class="btn btn-sm btn-green" onclick="openCuttingFromPending(${idx})">Cutting Entry</button>${cutEntry?`<button class="btn btn-sm" onclick="restoreCutEntryPending(${idx})">↩ Back to Pending</button>`:'' }${!done&&!cutEntry?`<button class="btn btn-sm btn-primary" onclick="markCutEntryPending(${idx})">✂ Cutting Done • Entry Later</button><button class="btn btn-sm ${planned?'btn-danger':'btn-primary'}" onclick="toggleTomorrowPlan(${idx})">${planned?'Remove Tomorrow':'Plan Tomorrow'}</button>`:''}<button class="btn btn-sm" onclick="openAttachmentDialog(${idx})">☁️ Photo / Drawing</button><button class="btn btn-sm" onclick="openDocsForm(${idx})"><span class="ico">🧾</span><span>Docs</span></button><button class="btn btn-sm" onclick="archivePending(${idx})">📦 Archive</button><button class="btn btn-sm btn-danger" onclick="deleteMistakeWork(${idx})">🗑 Delete Mistake</button></div>`}</div>`;
 }
 function renderPending(){
-  const q=($('pendingSearch').value||'').toLowerCase(),mode=$('pendingStatus').value;
-  let rows=state.pending.filter(r=>normalize(r.status)!=='DISPATCHED'&&JSON.stringify(r).toLowerCase().includes(q));
-  if(mode==='OPEN')rows=rows.filter(orderOpen);
-  if(mode==='CUTENTRY')rows=rows.filter(r=>!isArchived(r)&&isCutEntryPending(r));
-  if(mode==='ALL')rows=rows.filter(r=>!isArchived(r));
-  if(mode==='COMPLETE')rows=rows.filter(r=>!isArchived(r)&&!isCutEntryPending(r)&&hasOrderQty(r)&&pendingQty(r)<=0);
-  if(mode==='ARCHIVED')rows=rows.filter(isArchived);
+  // V312: Pending page is strictly PENDING status + nonzero cutting balance.
+  // Completed, dispatched, archived and cutting-entry-only records stay in Cloud/history.
+  const q=($('pendingSearch')?.value||'').toLowerCase();
+  const filter=$('pendingStatus');
+  if(filter){
+    filter.value='OPEN';
+    Array.from(filter.options||[]).forEach(o=>{if(o.value!=='OPEN')o.hidden=true});
+    filter.disabled=true;
+    filter.title='Pending work only — completed and dispatched records are retained separately';
+  }
+  const rows=(state.pending||[]).filter(r=>orderOpen(r)&&JSON.stringify(r).toLowerCase().includes(q));
   rows.sort((a,b)=>String(b.workNo||'').localeCompare(String(a.workNo||''),undefined,{numeric:true}));
-  $('pendingList').innerHTML=rows.map(r=>pendingCard(r)).join('')||'<div class="empty">No matching orders</div>';
+  $('pendingList').innerHTML=rows.map(r=>pendingCard(r)).join('')||'<div class="empty">No pending work orders</div>';
 }
 
 window.markCutEntryPending=function(i){
