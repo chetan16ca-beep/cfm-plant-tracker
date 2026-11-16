@@ -790,7 +790,7 @@ $('saveFormBtn').addEventListener('click',()=>{
       $('editDialog').close();
       // saveMultiPoItems already persisted and scheduled its own UI update.
       // Avoid a synchronous full ERP render in the Save click handler.
-      if(!wasMultiPO)try{renderAll()}catch(e){console.error('Save screen refresh failed',e)}
+      if(!wasMultiPO)setTimeout(()=>{try{renderAll()}catch(e){console.error('Save screen refresh failed',e);try{toast('Saved • Refresh screen to see latest order')}catch(_){}}},50);
       if(nextCutting){
         const reopenNext=()=>{
           try{
