@@ -173,17 +173,74 @@ function printableSop(cat,rec){
  '<p style="font-size:10px;color:#526679">PASS must be manually verified. HOLD / FAIL requires corrective action. N/A is an explicit operator selection; missing result is NOT RECORDED.</p>'+
  '<div class="sign"><div>Operator Signature</div><div>Supervisor Verification / Signature</div></div>';
 }
+/* V322: Date-wise SOP print. The date refers to saved timestamps in Asia/Kolkata;
+   printing never changes SOP records or manufacturing/stock state. */
+function sopPrintDateOf(value){
+ const date=new Date(value);
+ if(!Number.isFinite(date.getTime()))return '';
+ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',day:'2-digit',month:'2-digit',year:'numeric'}).formatToParts(date);
+ const m={};parts.forEach(p=>{if(p.type!=='literal')m[p.type]=p.value});
+ return m.year+'-'+m.month+'-'+m.day;
+}
+function sopTodayDate(){return sopPrintDateOf(new Date())}
+function sopDateHeading(day){
+ const m=String(day||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+ return m?m[3]+'-'+m[2]+'-'+m[1]:String(day||'');
+}
+function sopPrintRowsForDate(day){
+ return records().filter(r=>sopPrintDateOf(r?.timestamp)===day);
+}
+function sopPrintDaily(day){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(day)){alert('Choose a valid SOP Print Date.');return}
+ if(typeof window.openPrintWindow!=='function'){alert('Print engine is not ready. Reopen ERP.');return}
+ const daily=sopPrintRowsForDate(day);
+ const style='border:1px solid #bed1da;padding:7px 8px;vertical-align:top;text-align:left';
+ const td=x=>'<td style="'+style+'">'+esc(x==null||x===''?'-':x)+'</td>';
+ const rows=daily.map((r,i)=>{
+   const cat=CATALOG.find(c=>c.code===r.code);
+   return '<tr>'+td(i+1)+td('SOP-CFM-'+r.code)+td(cat?.name||r.code)+
+     td(r.area||r.workNo||r.srlNo||r.inwardNo||'-')+
+     td(r.operator||'-')+td(r.supervisor||'-')+
+     td(cat?aggregate(r,cat):'UNKNOWN SOP')+
+     td(new Date(r.timestamp).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit'}))+'</tr>';
+ }).join('');
+ let doc='<style>@page{size:A4 portrait;margin:13mm}body{font:11px Arial,sans-serif;color:#183c51}table{width:100%;border-collapse:collapse}th{border:1px solid #bed1da;padding:7px;text-align:left;background:#e5f3fa}tr{break-inside:avoid}.page{page-break-before:always}</style>'+
+ '<div style="border-bottom:3px solid #126b95;padding-bottom:9px"><b style="font-size:17px">EAGLE FILTRATION PRODUCT PVT. LTD.</b><div>CFM OPERATIONS • DATE-WISE SOP REGISTER</div></div>'+
+ '<h2>SOP Register • '+esc(sopDateHeading(day))+'</h2>'+
+ '<p><b>'+daily.length+'</b> actual saved SOP record(s). IST date is calculated from saved timestamp. Missing checklists are never counted as PASS.</p>'+
+ '<table><thead><tr><th>#</th><th>SOP Code</th><th>Department / Checklist</th><th>Machine / Area / Work</th><th>Operator</th><th>Supervisor</th><th>Result</th><th>Time (IST)</th></tr></thead><tbody>'+
+ (rows||'<tr><td colspan="8" style="padding:12px;color:#a13a31">No saved SOP records for selected date.</td></tr>')+
+ '</tbody></table>';
+ // Include each saved checklist so a printed date register remains auditable.
+ daily.forEach((rec,i)=>{
+   const cat=CATALOG.find(c=>c.code===rec.code);
+   if(cat)doc+='<div class="page"><div style="font-weight:bold;color:#406b81">Record '+(i+1)+' of '+daily.length+' • '+esc(sopDateHeading(day))+'</div>'+printableSop(cat,rec)+'</div>';
+ });
+ window.openPrintWindow('CFM SOP Daily Register '+day,doc,false);
+}
+
 function printSopCategory(cat,fields){
  if(typeof window.openPrintWindow!=='function'){alert('Print engine is still loading. Refresh the ERP and retry.');return}
- const {workNo,area,srlNo,inwardNo}=fields;
- const matches=records().filter(r=>norm(r.code)===norm(cat.code)).filter(r=>{
-  if(isClean(cat.code))return !!area&&norm(r.area)===norm(area);
-  if(isMaterial(cat.code))return !!(srlNo||inwardNo)&&
-    (srlNo?norm(r.srlNo)===norm(srlNo):norm(r.inwardNo)===norm(inwardNo));
-  return !!workNo&&norm(r.workNo)===norm(workNo);
+ const {workNo,area,srlNo,inwardNo,date}=fields;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(String(date||''))){alert('Choose SOP Print Date.');return}
+ const matches=sopPrintRowsForDate(date).filter(r=>norm(r.code)===norm(cat.code)).filter(r=>{
+  // Blank optional reference means "all machines/works of this SOP on this day".
+  if(isClean(cat.code))return !area||norm(r.area)===norm(area);
+  if(isMaterial(cat.code))return (!srlNo&&!inwardNo)||(
+    srlNo?norm(r.srlNo)===norm(srlNo):norm(r.inwardNo)===norm(inwardNo));
+  return !workNo||norm(r.workNo)===norm(workNo);
  });
- const saved=matches.length?matches[matches.length-1]:null;
- window.openPrintWindow('SOP Checklist '+cat.code,printableSop(cat,saved),false);
+ let doc='<div style="font:12px Arial;padding:9px 0;border-bottom:1px solid #b2cad8"><b>SOP-CFM-'+esc(cat.code)+'</b> • Date: '+esc(sopDateHeading(date))+' • '+matches.length+' saved record(s)</div>';
+ if(matches.length){
+  matches.forEach((rec,i)=>{
+   if(i)doc+='<div style="page-break-before:always"></div>';
+   doc+=printableSop(cat,rec);
+  });
+ }else{
+  doc+='<p style="color:#a13a31;font:700 12px Arial">NO SAVED RECORDS ON '+esc(sopDateHeading(date))+'. This is a blank SOP reference, NOT proof that cleaning or checking was done.</p>'+
+    printableSop(cat,null);
+ }
+ window.openPrintWindow('SOP '+cat.code+' '+date,doc,false);
 }
 
 function openPanel(preset){
@@ -202,6 +259,7 @@ function openPanel(preset){
  '<label>Inward No.<input id="cfmSopInward318" placeholder="INW-..." style="width:100%;padding:8px;box-sizing:border-box"></label>'+
  '<label>Machine / Area<input id="cfmSopArea318" placeholder="Cutting 1 / Packing Room" style="width:100%;padding:8px;box-sizing:border-box"></label>'+
  '<label>Shift<select id="cfmSopShift318" style="width:100%;padding:8px"><option>Day</option><option>Night</option><option>General</option></select></label>'+
+ '<label>SOP Print Date (IST)<input id="cfmSopPrintDate322" type="date" style="width:100%;padding:8px;box-sizing:border-box"></label>'+
  '<label>Operator *<input id="cfmSopOperator318" style="width:100%;padding:8px;box-sizing:border-box"></label>'+
  '<label>Supervisor *<input id="cfmSopSupervisor318" style="width:100%;padding:8px;box-sizing:border-box"></label></div>'+
  '<div id="cfmSopChecks318" style="margin:12px 0"></div>'+
@@ -210,7 +268,8 @@ function openPanel(preset){
  '<div id="cfmSopMsg318" role="status" style="min-height:22px;color:#9a3328;font-weight:700"></div>'+
  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
  '<button type="button" id="cfmSopSave318" style="padding:11px 14px;border:0;background:#087f6d;color:#fff;font-weight:700;border-radius:9px">Save Checklist</button>'+
- '<button type="button" id="cfmSopPrint321" style="padding:11px 14px;border:0;background:#155d92;color:#fff;font-weight:700;border-radius:9px">🖨 Preview / Print SOP</button>'+
+ '<button type="button" id="cfmSopPrint321" style="padding:11px 14px;border:0;background:#155d92;color:#fff;font-weight:700;border-radius:9px">🖨 Print This SOP / Date</button>'+
+ '<button type="button" id="cfmSopPrintDaily322" style="padding:11px 14px;border:0;background:#40677d;color:#fff;font-weight:700;border-radius:9px">📅 Print All SOPs / Date</button>'+
  '<button type="button" id="cfmSopTicket318" style="padding:11px 14px;border:0;background:#1472bb;color:#fff;font-weight:700;border-radius:9px">Print Product Ticket + SOP</button>'+
  '<button type="button" id="cfmSopAnnex318" style="padding:11px 14px;border:1px solid #ccd6df;background:#fff;border-radius:9px">Print Full Annexure</button></div>';
  overlay.append(panel);document.body.append(overlay);
@@ -241,6 +300,7 @@ function openPanel(preset){
  };
  $('cfmSopWork318').value=preset||'';
  if(preset&&srlsFor(preset).length===1)$('cfmSopSrl318').value=srlsFor(preset)[0];
+ $('cfmSopPrintDate322').value=sopTodayDate();
  $('cfmSopCode318').addEventListener('change',render);render();
  $('cfmSopClose318').addEventListener('click',()=>overlay.remove());
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
@@ -279,9 +339,11 @@ function openPanel(preset){
   const cat=CATALOG.find(x=>x.code===field('cfmSopCode318'));if(!cat)return;
   printSopCategory(cat,{
    workNo:field('cfmSopWork318'),area:field('cfmSopArea318'),
-   srlNo:field('cfmSopSrl318'),inwardNo:field('cfmSopInward318')
+   srlNo:field('cfmSopSrl318'),inwardNo:field('cfmSopInward318'),
+   date:field('cfmSopPrintDate322')
   });
  });
+ $('cfmSopPrintDaily322').addEventListener('click',()=>sopPrintDaily(field('cfmSopPrintDate322')));
  $('cfmSopTicket318').addEventListener('click',()=>printDoc(field('cfmSopWork318'),false));
  $('cfmSopAnnex318').addEventListener('click',()=>{
    const w=field('cfmSopWork318');if(!/^CFM-\d+$/i.test(w))return setMsg('Work No required to print annexure');
