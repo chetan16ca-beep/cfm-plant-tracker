@@ -228,8 +228,8 @@ function openPanel(preset){
   st.sopRecords=records().concat(rec);backup(st.sopRecords);
   try{
    save(false);
-   setMsg('Checklist saved locally. Confirm Cloud Sync before relying on the record.');
    render();
+   setMsg('Checklist saved locally. Confirm Cloud Sync before relying on the record.');
   }
   catch(e){st.sopRecords=before;backup(before);setMsg('Save failed: '+String(e.message||e))}
  });
