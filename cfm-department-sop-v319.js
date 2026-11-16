@@ -50,10 +50,11 @@ function choose(work,group){
    const b=document.createElement('button');b.type='button';b.style.cssText=btnStyle;b.textContent=sop(code)+' • '+label;b.onclick=()=>specific(code,work);grid.append(b);
   });
  }else{
-  CATS.forEach(g=>{
-   const b=document.createElement('button');b.type='button';b.style.cssText=btnStyle;b.textContent=g.icon+' '+g.title;
-   b.onclick=()=>g.items.length===1?specific(g.items[0][0],work):choose(work,g);grid.append(b);
-  });
+  CATS.forEach(g=>g.items.forEach(([code,label])=>{
+   const button=document.createElement('button');button.type='button';button.style.cssText=btnStyle;
+   button.textContent=g.icon+' '+sop(code)+' • '+label;
+   button.onclick=()=>specific(code,work);grid.append(button);
+  }));
  }
  shell.append(grid);
  if(group){
@@ -70,10 +71,11 @@ function mount(){
   const h=document.createElement('h3');h.textContent='Department-wise SOP / Checklists';h.style.cssText='font:800 16px system-ui;color:#135176;margin:0 0 5px';
   const p=document.createElement('p');p.textContent='Cleaning, Material और Production अलग-अलग खोलें। हर page में सिर्फ उसी SOP के numbered points आएँगे।';p.style.cssText='font:12px/1.4 system-ui;color:#4c7088;margin:0 0 9px';
   const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:7px';
-  CATS.forEach(g=>{
-   const b=document.createElement('button');b.type='button';b.textContent=g.icon+' '+g.title;b.style.cssText=btnStyle+';text-align:center';
-   b.onclick=()=>g.items.length===1?specific(g.items[0][0],''):choose('',g);grid.append(b);
-  });
+  CATS.forEach(g=>g.items.forEach(([code,label])=>{
+   const button=document.createElement('button');button.type='button';
+   button.textContent=g.icon+' '+sop(code)+' • '+label;button.style.cssText=btnStyle+';text-align:center';
+   button.onclick=()=>specific(code,'');grid.append(button);
+  }));
   root.append(h,p,grid);dash.insertBefore(root,dash.firstChild);
  }
  const legacy=$('cfmSopOpen318');if(legacy)legacy.style.setProperty('display','none','important');
