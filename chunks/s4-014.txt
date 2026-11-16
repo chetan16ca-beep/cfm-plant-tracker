@@ -141,6 +141,7 @@ const mo=new MutationObserver(inject);mo.observe(document.body,{childList:true,s
   if(type==='FILTER PRESS')return['Complete Filter Press Cloth — One Stitching Person'];
   return[];
  }
+ window.cfmBatchStitchOperations=batchStitchOperations;
  function work(w){return (state.pending||[]).find(x=>N(x.workNo)===N(w))}
  function matchStage(x,s){const p=N(x.process||x.department||x.stage||x.dept||x.departmentName||x.processName);if(s==='GUN / FINISHING')return p.includes('GUN')||p.includes('FINISH');if(s==='FINAL CHECKING')return p.includes('CHECK')||p==='QC'||p.includes('QUALITY');if(s==='THREAD CUTTING')return p.includes('THREAD');if(s==='CUTTING')return p.includes('CUT')&&!p.includes('THREAD');return p.includes(s)}
  function peopleOptions(){const p=[...(typeof FIXED_PERSONS!=='undefined'?FIXED_PERSONS:[]).map(x=>typeof x==='string'?x:(x.name||'')),...(state.customPersons||[]).map(x=>typeof x==='string'?x:(x.name||'')),...(state.departmentWork||[]).map(x=>x.person||'')];return [...new Set(p.filter(Boolean))].sort().map(x=>'<option value="'+esc(x)+'"></option>').join('')}
