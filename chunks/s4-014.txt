@@ -935,7 +935,7 @@ setTimeout(v,400);new MutationObserver(()=>requestAnimationFrame(v)).observe(doc
   // The previous visible-pending-only override bypassed selection and printed all 13 pages.
   window.printDailyCuttingPlan=function(){
     const date=$('printDate')?.value||todayISO();
-    const open=(state.pending||[]).filter(r=>pendingQty(r)>0).slice().sort(workSort);
+    const open=(state.pending||[]).filter(r=>pendingQty(r)>0&&!['DISPATCHED','ARCHIVED','COMPLETED'].includes(String(r.status||'PENDING').toUpperCase())&&!r.archived).slice().sort(workSort);
     if(!open.length)return toast('No open pending work');
     document.getElementById('cfmCutPlanSelector')?.remove();
     const overlay=document.createElement('div');overlay.id='cfmCutPlanSelector';
