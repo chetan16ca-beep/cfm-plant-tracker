@@ -107,29 +107,10 @@ function setup(){
  if(!dashboard||document.getElementById('cfmSapWorkspace'))return;
  const section=document.createElement('section');
  section.id='cfmSapWorkspace';section.className='sap-workspace';
- section.innerHTML='<div class="sap-intro"><div><div class="sap-kicker">CFM • ENTERPRISE OPERATIONS</div>'+
-  '<h1>Plant Operations Workspace</h1><p>Orders · Stock · Cutting · Production · Dispatch</p></div>'+
-  '<button type="button" data-action="__command">Open Production Center</button></div>'+
-  '<div class="sap-section-title"><span>Plant Overview · Verified Cloud & Device Records</span><button class="sap-cloud-verify" type="button" id="cfmSapVerifyCloud">↻ Verify Cloud Counts</button></div>'+
-  '<div class="sap-cloud-status" id="cfmSapCloudStatus" role="status" aria-live="polite">Reading Cloud Work Orders…</div>'+
-  '<div class="sap-metrics">'+
-    '<div class="sap-metric sap-metric-cloud"><span>Cloud Work Orders</span><strong id="cfmSapCloudOrders">—</strong><small>Unique saved Pending Work Nos in Cloud</small></div>'+
-    '<div class="sap-metric sap-metric-cloud"><span>Cloud Known Work Nos</span><strong id="cfmSapCloudKnown">—</strong><small>Pending + Cutting history, deduplicated</small></div>'+
-    '<div class="sap-metric"><span>Local Known Work Nos</span><strong id="cfmSapKnownCount">—</strong><small>Pending + Cutting + Issue history</small></div>'+
-    '<div class="sap-metric"><span>SRL Stock Rolls</span><strong id="cfmSapStoreCount">—</strong><small>Store records on this device</small></div>'+
-    '<div class="sap-metric"><span>Cutting Entries</span><strong id="cfmSapCutCount">—</strong><small>Cutting records on this device</small></div>'+
-  '</div>'+
-  '<div class="sap-section-title">ERP Modules</div><div class="sap-tile-grid"></div>'+
-  '<p class="sap-workspace-note">Cloud totals are fetched read-only from the existing CFM Shared State. Cloud Known counts unique Work Nos in Pending + Cutting, including historical Cutting-only numbers; it does not imply all numbers in a sequence exist. Local-only records remain separate, and no Cloud data overwrites this device. Never clear browser data before saving a backup.</p>';
- const grid=section.querySelector('.sap-tile-grid');
- tiles.forEach(([emoji,title,desc,action])=>{
-  const b=document.createElement('button');b.type='button';b.className='sap-tile';
-  b.innerHTML='<span class="sap-tile-icon"></span><span><strong></strong><small></small></span>';
-  b.querySelector('.sap-tile-icon').textContent=emoji;
-  b.querySelector('strong').textContent=title;b.querySelector('small').textContent=desc;
-  b.addEventListener('click',()=>nav(action));grid.appendChild(b);
- });
- section.querySelector('[data-action]').addEventListener('click',()=>nav('__command'));
+ section.innerHTML='<details class="cfm-cloud-compact" style="background:#f5fbff;border:1px solid #cee3ed;border-radius:12px;padding:8px 12px;margin:0 0 6px">'+
+  '<summary style="cursor:pointer;font:700 12px system-ui;color:#16546a;list-style:none">☁ Cloud · <strong id="cfmSapCloudOrders">—</strong> Orders · <strong id="cfmSapCloudKnown">—</strong> Known Work Nos ▾</summary>'+
+  '<div style="padding-top:8px"><button class="sap-cloud-verify" type="button" id="cfmSapVerifyCloud">↻ Verify Cloud Counts</button><div class="sap-cloud-status" id="cfmSapCloudStatus" role="status" aria-live="polite">Reading Cloud Work Orders…</div></div>'+
+  '</details><div class="sap-metrics" style="display:none!important" aria-hidden="true"></div>';
  dashboard.prepend(section);
  function update(){
   try{
