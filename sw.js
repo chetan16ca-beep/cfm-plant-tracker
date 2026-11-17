@@ -62,7 +62,7 @@ self.addEventListener('fetch',event=>{
   if(url.origin===location.origin){
     const isAppAsset=url.pathname.startsWith(new URL(BASE).pathname);
     if(isAppAsset){
-      // Online users always get fresh HTML, scripts, chunks and all other app assets.
+      // Keep HTML and unversioned scripts fresh; reuse only deployment-versioned code chunks.
       const isVersionedChunk=url.pathname.startsWith(new URL('chunks/',BASE).pathname)&&url.searchParams.has('v');
       event.respondWith(isVersionedChunk?cachedVersionedChunk(req):freshOrCached(req));
     }
