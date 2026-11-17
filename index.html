@@ -103,7 +103,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker" allow="microphone; autoplay"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V329</div>
+<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V330</div>
 <script src="./backup-safe.js?v=3"></script>
 <button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
@@ -349,6 +349,8 @@ html,body{background:#f4faff!important;color:#13233b!important}
  src=src.replace('</head>','<script defer src="./cfm-unique-measurement-print.js?v=263"></scr'+'ipt></head>');
  // V259: Editable Non-CF measurement XLSX download / guarded import. No stock writes.
  src=src.replace('</head>','<script defer src="./cfm-noncf-measurements-excel.js?v=263"></scr'+'ipt></head>');
+ // V330: Central Eagle EFPPL numbered Product Code Master (29 products).
+ src=src.replace('</head>','<script defer src="./cfm-efppl-master-v330.js?v=330"></scr'+'ipt></head>');
 
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
@@ -458,7 +460,7 @@ $('mrPrintBtn').onclick=()=>{const a=meters(),total=Number($('mrTotal').value);i
  const p=document.getElementById('cfmPOPanel'),f=document.getElementById('cfmPOFrame');
  window.openCFMPOWorkOrders=function(){
    p.hidden=false;
-   if(!f.getAttribute('src'))f.src='./po-workorder.html?v=10';
+   if(!f.getAttribute('src'))f.src='./po-workorder.html?v=330';
  };
  document.getElementById('cfmPOOpen').addEventListener('click',window.openCFMPOWorkOrders);
  if(new URLSearchParams(location.search).get('openPO')==='1')setTimeout(window.openCFMPOWorkOrders,100);
@@ -482,7 +484,7 @@ window.addEventListener('message',function(event){
   const party=String(d.party||'').trim(),po=String(d.poNumber||'').trim(),date=String(d.poDate||'');
   if(d.verified!==true||!party||party.length>160||!po||po.length>110||!/[0-9]/.test(po)||!/^\d{4}-\d{2}-\d{2}$/.test(date))return fail('Missing verified PO details. Return to PO Reader.');
   if(!Array.isArray(d.lines)||d.lines.length<1||d.lines.length>40)return fail('PO must contain 1–40 verified product lines');
-  const rows=d.lines.map(x=>({description:String(x.description||'').trim(),quantity:Number(x.quantity),customerCode:String(x.customerCode||'').trim()}));
+  const rows=d.lines.map(x=>({description:String(x.description||'').trim(),quantity:Number(x.quantity),customerCode:String(x.customerCode||'').trim(),efpplCode:String(x.efpplCode||'').trim()}));
   if(rows.some(x=>!x.description||x.description.length>600||!Number.isSafeInteger(x.quantity)||x.quantity<1||x.quantity>100000||x.customerCode.length>60))return fail('Invalid product description or quantity. Verify PO again.');
   const issue=String(d.discrepancy||'').slice(0,350),reason=String(d.discrepancyReason||'').trim().slice(0,350);
   if(issue&&!reason)return fail('Resolve PO quantity mismatch and enter verification reason first');
@@ -521,9 +523,11 @@ window.addEventListener('message',function(event){
         originalInput.value=full.value;
         originalInput.dispatchEvent(new Event('input',{bubbles:true}));
       });
-      set(root,'.multi-item-code',x.customerCode);
+      root.dataset.buyerItemCode=x.customerCode; // Original buyer PO code stays separate from EFPPL code.
+      set(root,'.multi-item-code',x.efpplCode);
       set(root,'.multi-qty',x.quantity);
-      if(issue&&reason)set(root,'.multi-description2','PO qty discrepancy verified: '+issue+' | '+reason);
+      const notes=[x.customerCode?'Buyer PO Item Code: '+x.customerCode:'',issue&&reason?'PO qty discrepancy verified: '+issue+' | '+reason:''].filter(Boolean);
+      if(notes.length)set(root,'.multi-description2',notes.join(' | '));
     });
     w.cfmPOImportedDraft={party,poNo:po,lineCount:rows.length};
     const panel=$('multiPoItems'),notice=doc.createElement('div');
