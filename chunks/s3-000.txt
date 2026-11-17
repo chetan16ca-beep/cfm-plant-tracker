@@ -1294,14 +1294,14 @@ function cfmPOInlineStatus(msg){
    bar.append(openExisting);
  }
 }
-function cfmPOShowSavedReceipt(party,poNo,created){
+function cfmPOShowSavedReceipt(party,poNo,created,cloudVerifiedOnly=false){
  const workNos=created.map(x=>String(x.workNo||''));
  const previous=document.getElementById('cfmPoSaveReceipt');
  if(previous){try{previous.close()}catch(_){}previous.remove()}
  const dialog=document.createElement('dialog');dialog.id='cfmPoSaveReceipt';
  dialog.setAttribute('aria-label','PO Saved Confirmation');
  dialog.style.cssText='position:fixed;box-sizing:border-box;width:min(92vw,510px);max-width:510px;max-height:85vh;overflow:auto;margin:auto;border:1px solid #b6e2ca;border-radius:19px;padding:21px;background:white;color:#17384e;box-shadow:0 18px 65px #0005;font:14px/1.5 system-ui';
- dialog.innerHTML='<div style="display:flex;align-items:center;gap:12px;margin-bottom:13px"><span aria-hidden="true" style="display:grid;place-items:center;width:43px;height:43px;border-radius:50%;background:#def6e7;color:#137447;font-size:25px">✓</span><div><b style="font-size:19px">PO Saved Successfully</b><div style="font-size:11px;color:#62788a">Verified in this device’s saved Work Orders</div></div></div>'+
+ dialog.innerHTML='<div style="display:flex;align-items:center;gap:12px;margin-bottom:13px"><span aria-hidden="true" style="display:grid;place-items:center;width:43px;height:43px;border-radius:50%;background:#def6e7;color:#137447;font-size:25px">✓</span><div><b style="font-size:19px">PO Saved Successfully</b><div style="font-size:11px;color:#62788a">'+(cloudVerifiedOnly?'Verified in Live Cloud • device storage needs attention':'Verified in this device’s saved Work Orders')+'</div></div></div>'+
  '<div id="cfmPoSaveReceiptDetails" style="padding:13px 15px;border:1px solid #d9e6ee;border-radius:11px;background:#f7fafc;white-space:pre-wrap;line-height:1.65;word-break:break-word"></div>'+
  '<div id="cfmPoSaveCloudState" role="status" aria-live="polite" style="margin:14px 0;padding:11px;border:1px solid #edcc8b;border-radius:10px;background:#fff7e6;color:#855919;font-weight:700">⏳ Saved on this device • Cloud sync pending</div>'+
  '<div style="font-size:11px;color:#62788a;margin-bottom:15px">Cloud confirmation is shown separately. If Cloud sync fails, your local order stays on this device. Do not create duplicate orders.</div>'+
@@ -1313,11 +1313,12 @@ function cfmPOShowSavedReceipt(party,poNo,created){
   const themes={ok:['#e5f7e9','#a4dcba','#176f3e'],error:['#fff0ed','#eeaea7','#a12b25'],pending:['#fff7e6','#edcc8b','#855919']};
   const c=themes[color]||themes.pending;badge.style.background=c[0];badge.style.borderColor=c[1];badge.style.color=c[2];
  }
+ if(cloudVerifiedOnly)status('✅ CLOUD VERIFIED • All '+workNos.length+' Work Orders are stored online. Device storage is low; do not re-save.','ok');
  const onCloud=(event)=>{
   const d=event.detail||{},set=new Set((d.workNos||[]).map(String));
   if(!workNos.length||!workNos.every(x=>set.has(x)))return;
   if(d.ok===true)status('✅ CLOUD SYNC COMPLETE • All '+workNos.length+' PO Work Orders backed up in Cloud','ok');
-  else if(d.ok===false)status('⚠️ CLOUD SYNC FAILED • Work Orders are saved on this device only. Use Sync Now after resolving the connection.','error');
+  else if(d.ok===false&&!cloudVerifiedOnly)status('⚠️ CLOUD SYNC FAILED • Work Orders are saved on this device only. Use Sync Now after resolving the connection.','error');
  };
  document.addEventListener('cfm:po-cloud-result',onCloud);
  const close=()=>{document.removeEventListener('cfm:po-cloud-result',onCloud);try{if(dialog.open)dialog.close()}catch(_){}dialog.remove()};
@@ -1342,8 +1343,57 @@ function cfmPOShowSavedReceipt(party,poNo,created){
  },80);
 }
 
+
+/* V333: If the phone runs out of localStorage, cloudPush may still save the
+ * Work Order. Never show "PO NOT SAVED" solely because local readback fails.
+ * Verify the exact Work Orders from live Cloud before any success receipt.
+ * Preserve the editor and in-memory state if Cloud is not confirmed.
+ */
+let cfmPOCloudVerificationRunning=false;
+async function cfmPOVerifyCloudAfterLocalFailure(party,poNo,created){
+ const editor=document.getElementById('editDialog');
+ let statusBar=editor?.querySelector('#cfmPoSaveInlineStatus');
+ if(editor&&!statusBar){
+  statusBar=document.createElement('div');
+  statusBar.id='cfmPoSaveInlineStatus';
+  statusBar.setAttribute('role','status');
+  const actions=editor.querySelector('.dialog-actions');
+  if(actions)actions.before(statusBar);else editor.append(statusBar);
+ }
+ const setStatus=(message,warning=false)=>{
+  if(!statusBar)return;
+  statusBar.style.cssText='display:block;padding:13px;margin:12px 0;border:2px solid '+(warning?'#dfaa69':'#f2ca76')+';border-radius:10px;background:'+(warning?'#fff1e6':'#fff8e6')+';color:#784b15;font:750 13px/1.5 system-ui';
+  statusBar.textContent=message;
+ };
+ setStatus('⏳ Phone storage could not confirm this PO. Checking live Cloud for '+created.map(x=>x.workNo).join(', ')+'. DO NOT tap Save again.');
+ const same=(a,b)=>String(a??'').trim().toUpperCase()===String(b??'').trim().toUpperCase();
+ try{
+  for(let attempt=0;attempt<11;attempt++){
+   if(attempt)await new Promise(resolve=>setTimeout(resolve,attempt<5?650:1500));
+   let remote=null;
+   try{remote=await cloudFetch()}catch(e){console.warn('PO Cloud verification retry',e)}
+   const pending=remote?.payload?.pending;
+   const confirmed=Array.isArray(pending)&&created.length>0&&created.every(order=>pending.some(record=>
+    same(record.workNo,order.workNo)&&same(record.party,order.party)&&same(record.poNo,order.poNo)&&
+    same(record.description,order.description)&&Number(record.orderQty)===Number(order.orderQty)));
+   if(confirmed){
+    if(window.cfmPOImportedDraft&&same(window.cfmPOImportedDraft.poNo,poNo))window.cfmPOImportedDraft=null;
+    try{if(editor?.open)editor.close()}catch(e){console.warn(e)}
+    if(statusBar?.isConnected)statusBar.remove();
+    try{cfmPOShowSavedReceipt(party,poNo,created,true)}
+    catch(e){console.error('Cloud verified; saved receipt UI error',e);toast('✅ Work Orders verified in Live Cloud: '+created.map(x=>x.workNo).join(', '))}
+    setTimeout(()=>{try{renderDashboard();renderPending()}catch(e){console.warn('Cloud-verified PO view refresh',e)}},350);
+    return true;
+   }
+  }
+  setStatus('⚠️ Cloud is not yet verified and phone storage is full. DO NOT re-save this PO. Keep this editor open, check the Cloud Sync status or export a backup before leaving.',true);
+  return false;
+ }finally{cfmPOCloudVerificationRunning=false}
+}
+
 window.saveMultiPoItems=function(){
   try{
+    if(cfmPOCloudVerificationRunning){toast('Cloud verification running • do not Save again');return false}
     const party=String(document.getElementById('multiParty')?.value||'').trim();
     const fail=(msg,el)=>{cfmPOInlineStatus(msg);toast(msg);if(el){el.style.border='2px solid #dc2626';try{el.scrollIntoView({behavior:'smooth',block:'center'})}catch(e){};setTimeout(()=>el.focus(),50)}return false};
     if(!party)return fail('Party required • upar Party enter karo',document.getElementById('multiParty'));
@@ -1413,7 +1463,15 @@ window.saveMultiPoItems=function(){
       stored.pending.some(x=>String(x.workNo||'')===String(order.workNo||'')&&
         String(x.party||'')===String(order.party||'')&&String(x.poNo||'')===String(order.poNo||'')&&
         String(x.description||'')===String(order.description||'')&&Number(x.orderQty)===Number(order.orderQty)));
-    if(!confirmed)return fail('Work Orders could not be verified in local saved records. Keep the app open and check Sync before retrying.',document.getElementById('saveFormBtn'));
+    if(!confirmed){
+      cfmPOCloudVerificationRunning=true;
+      cfmPOVerifyCloudAfterLocalFailure(party,poNo,created).catch(e=>{
+        cfmPOCloudVerificationRunning=false;
+        console.error('PO Cloud verify failed',e);
+        cfmPOInlineStatus('Cloud verification error. DO NOT re-save. Check Cloud Work Orders and backup first.');
+      });
+      return false;
+    }
     if(imported&&String(imported.poNo||'').trim().toUpperCase()===poNo.toUpperCase())window.cfmPOImportedDraft=null;
     toast(created.length+' PO items locally saved • '+workRange);
     // The order is ALREADY verified in localStorage. A receipt display error
