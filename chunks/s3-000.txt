@@ -787,12 +787,12 @@ $('saveFormBtn').addEventListener('click',()=>{
       const nextCutting=dialogResumeMeta?.type==='cutting' && dialogResumeMeta?.i==null;
       const priorCutting=nextCutting?{...obj}:null;
       const wasMultiPO=dialogResumeMeta?.type==='multiPending';
+      const savedPending=dialogResumeMeta?.type==='pending';
       $('editDialog').close();
       // V327: Work Order creation only needs the Pending and Dashboard
       // lists refreshed. Rendering EVERY module immediately after Save can
       // block mobile interactions and obscure the success confirmation.
       if(!wasMultiPO){
-        const savedPending=dialogResumeMeta?.type==='pending';
         setTimeout(()=>{
           try{
             if(savedPending){renderDashboard();renderPending();}
