@@ -97,9 +97,9 @@ async function cloudFetchMeta(){
   const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&select=version,updated_at';
   const r=await fetch(u,{headers:cloudHeaders(),cache:'no-store'});if(!r.ok)throw new Error('Cloud meta '+r.status);const a=await r.json();return a[0]||null;
 }
-async function cloudFetch(){
+async function cloudFetch(signal=null){
   const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&select=payload,version,updated_at';
-  const r=await fetch(u,{headers:cloudHeaders(),cache:'no-store'});
+  const r=await fetch(u,{headers:cloudHeaders(),cache:'no-store',...(signal?{signal}:{})});
   if(!r.ok)throw new Error('Cloud read '+r.status);
   const a=await r.json();return a[0]||null;
 }
@@ -347,13 +347,21 @@ async function cloudPush(force=false){
     if(!baseVersion)throw new Error('Unknown cloud version; refusing unsafe save');
     const nextVersion=baseVersion+1;
     const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+baseVersion;
-    const r=await fetch(u,{
-      method:'PATCH',
-      headers:{...cloudHeaders(),'Prefer':'return=representation','x-cfm-base-version':String(baseVersion)},
-      body:JSON.stringify({payload:(()=>{const d=clone(snapshot);delete d.measurements;delete d.srlTracker;delete d.issueRegister;delete d.srlOpenClose;delete d.productMaster;return d})(),version:nextVersion,updated_at:new Date().toISOString()})
-    });
-    if(!r.ok)throw new Error('Cloud save '+r.status+' • stale device or safety protection');
-    const a=await r.json();
+    // V336: a stalled mobile request must not leave Cloud Save spinning forever.
+    // After timeout, the PO flow reads Cloud before deciding whether it saved.
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),20000);
+    let a;
+    try{
+      const r=await fetch(u,{
+        method:'PATCH',
+        signal:controller.signal,
+        headers:{...cloudHeaders(),'Prefer':'return=representation','x-cfm-base-version':String(baseVersion)},
+        body:JSON.stringify({payload:(()=>{const d=clone(snapshot);delete d.measurements;delete d.srlTracker;delete d.issueRegister;delete d.srlOpenClose;delete d.productMaster;return d})(),version:nextVersion,updated_at:new Date().toISOString()})
+      });
+      if(!r.ok)throw new Error('Cloud save '+r.status+' • stale device or safety protection');
+      a=await r.json();
+    }finally{clearTimeout(timeout)}
     if(!a.length)throw new Error('Cloud version conflict: another device updated the database. Your local draft is safe; export backup and resolve Sync conflict.');
     cloudVersion=num(a[0].version)||nextVersion;
     cloudUpdatedAt=a[0].updated_at||new Date().toISOString();
