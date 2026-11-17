@@ -15,7 +15,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  safety:
+    name: Read-only ERP safety smoke test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Work Order, Store, Cutting, SOP and backup files
+        run: node --test tests/erp-safety.test.mjs
+
   deploy:
+    needs: safety
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
