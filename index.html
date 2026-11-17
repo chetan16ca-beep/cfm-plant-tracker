@@ -497,49 +497,25 @@ window.addEventListener('message',function(event){
   let duplicates=[];
   try{duplicates=w.cfmPOExistingOrders(party,po)||[]}catch(e){return fail('Could not check existing PO. Refresh ERP first.')}
   if(duplicates.length)return fail('PO '+po+' for '+party+' is already saved in ERP as '+duplicates.map(x=>x.workNo+' (Qty '+(x.orderQty??'?')+')').slice(0,8).join(', ')+'. Open Pending Orders to view the existing record. This PO has NOT been imported again.');
+  // V341: Verified photo/PDF PO uses the same fast Cloud form as manual PO.
+  // Do not reopen the giant ERP multi-item modal (it froze on Android).
+  // Original description, buyer item code and discrepancy details are kept.
   try{
-    w.openMultiPendingForm('verified-po-import');
-    const doc=w.document,$=id=>doc.getElementById(id);
-    if(!$('multiParty')||!$('multiPoItems')||!$('multiPoNo'))throw Error('Multi-item PO editor could not open');
-    $('multiParty').value=party;$('multiPoNo').value=po;
-    if($('multiOrderDate'))$('multiOrderDate').value=date;
-    const delivery=String(d.deliveryDate||'');
-    if(delivery&& !/^\d{4}-\d{2}-\d{2}$/.test(delivery))throw Error('Invalid delivery date in PO');
-    if(delivery&&$('multiDeliveryDate'))$('multiDeliveryDate').value=delivery;
-    for(let i=1;i<rows.length;i++)w.addMultiPoItem();
-    const editors=[...doc.querySelectorAll('#multiPoItems .multi-po-item-row')];
-    if(editors.length!==rows.length)throw Error('ERP could not prepare all product rows');
-    const set=(root,selector,value)=>{const el=root.querySelector(selector);if(!el)throw Error('Field missing: '+selector);el.value=value};
-    rows.forEach((x,i)=>{
-      const root=editors[i];
-      root.dataset.poSource='verified'; // Prevent Product Master replacing original buyer description.
-      set(root,'.multi-item-product',x.description);
-      const originalInput=root.querySelector('.multi-item-product');
-      const full=doc.createElement('textarea');
-      full.className='multi-po-original-description';
-      full.rows=3;full.maxLength=600;full.value=x.description;
-      full.setAttribute('aria-label','Original PO Description 1');
-      full.style.cssText='width:100%;box-sizing:border-box;min-height:110px;padding:10px;border:1px solid #9bb8c7;border-radius:9px;font:14px/1.5 inherit;resize:vertical;background:#f9fcff;white-space:pre-wrap';
-      originalInput.after(full);
-      originalInput.style.display='none';
-      full.addEventListener('input',()=>{
-        originalInput.value=full.value;
-        originalInput.dispatchEvent(new Event('input',{bubbles:true}));
-      });
-      root.dataset.buyerItemCode=x.customerCode; // Original buyer PO code stays separate from EFPPL code.
-      set(root,'.multi-item-code',x.efpplCode);
-      set(root,'.multi-qty',x.quantity);
-      const notes=[x.customerCode?'Buyer PO Item Code: '+x.customerCode:'',issue&&reason?'PO qty discrepancy verified: '+issue+' | '+reason:''].filter(Boolean);
-      if(notes.length)set(root,'.multi-description2',notes.join(' | '));
-    });
-    w.cfmPOImportedDraft={party,poNo:po,lineCount:rows.length};
-    const panel=$('multiPoItems'),notice=doc.createElement('div');
-    notice.style.cssText='background:#fff3d6;border:1px solid #eac97c;padding:12px;border-radius:9px;margin:8px 0;font-weight:700;color:#794d0b';
-    notice.textContent='Imported PO '+po+' • '+rows.length+' separate Work Orders. Original PO Description is preserved in Description 1; Item Code stays separate. Verify product, quantity, cloth, size, measurement and Work No. before clicking Save PO Items. '+(issue?'Quantity discrepancy: '+issue+' • Resolution: '+reason:'');
-    panel.parentNode.insertBefore(notice,panel);
-    document.getElementById('cfmPOPanel').hidden=true;
-    reply(event.source,true,'Prepared '+rows.length+' items in ERP Multi-item PO form. Verify each and press Save PO Items to create work orders.');
-  }catch(e){fail('Could not fill ERP form: '+(e.message||e))}
+    let unsynced=false;
+    try{unsynced=!!w.eval('typeof cloudDirty!=="undefined"&&cloudDirty')}catch(_){}
+    if(unsynced)return fail('This device has unsynced ERP edits. Sync or export a backup first so local data cannot be lost when opening the Fast Work Order page.');
+    const transfer={
+      kind:'CFM_FAST_PO_IMPORT_V341',party,poNo:po,orderDate:date,
+      deliveryDate:String(d.deliveryDate||''),
+      issue,reason,items:rows.map(x=>({
+        description:x.description,quantity:x.quantity,
+        buyerItemCode:x.customerCode,efpplCode:x.efpplCode
+      }))
+    };
+    sessionStorage.setItem('cfm-fast-po-import-v341',JSON.stringify(transfer));
+    reply(event.source,true,'Opening Fast Work Order with '+rows.length+' verified PO lines. Fill cloth/width and save after review.');
+    location.assign(new URL('./fast-work-order.html',location.href).href);
+  }catch(e){fail('Could not open Fast Work Order: '+(e.message||e))}
 });
 })();
 </script>
