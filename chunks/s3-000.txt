@@ -1495,12 +1495,17 @@ async function cfmPOAtomicCloudSave(party,poNo,created){
   }
   try{cfmPOShowSavedReceipt(party,poNo,created,true)}
   catch(e){console.error('PO Cloud saved, receipt UI failed',e);toast('PO Saved Successfully • '+workNos.join(', '))}
-  // A deferred best-effort local copy cannot block the Save confirmation.
-  // Never clear any existing local history, Stock or user backups.
-  setTimeout(()=>{
-   try{safeStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
-   catch(e){console.warn('Phone storage limit; Work Order is safe in Cloud',e)}
-  },1000);
+  // V338: DO NOT rewrite the entire ERP state in localStorage after a
+  // Cloud-confirmed PO. The previously deferred megabyte-sized write was
+  // still freezing Android shortly after displaying "Saved". Cloud is the
+  // durable source of truth; retain current in-memory state for this session.
+  // Write only a tiny receipt when the browser allows it. Do not clear or
+  // overwrite existing Stock/Cutting/history/backups.
+  try{
+   safeStorage.setItem('cfm-last-po-cloud-receipt-v338',JSON.stringify({
+    workNos,party,poNo,version:Number(remoteVersion)||0,at:new Date().toISOString()
+   }));
+  }catch(e){console.warn('PO receipt cache unavailable; Cloud record is authoritative',e)}
  };
  status('Saving '+workNos.join(', ')+' to Live Cloud…');
  try{
