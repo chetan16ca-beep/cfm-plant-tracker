@@ -10,10 +10,14 @@ const CATS=[
  {title:'Thread Cutting',icon:'🪡',items:[['THR','Thread Cutting']]},
  {title:'Gun Finishing',icon:'🔧',items:[['GUN','Gun Finishing']]},
  {title:'Final QC',icon:'🔎',items:[['FQC','Final Quality Checking']]},
- {title:'Packing',icon:'📦',items:[['PKG','Packing & Labeling']]},
+ {title:'Packing',icon:'📦',items:[['PKG','Packing']]},
+ {title:'Label',icon:'🏷️',items:[['LBL','Individual Bag Label Verification']]},
  {title:'Dispatch',icon:'🚚',items:[['DSP','Dispatch']]},
  {title:'Report Verification',icon:'📋',items:[['RPT','Batch Report Check']]}
 ];
+// Only the six manufacturing stages belong to the Work Order SOP launcher.
+// The dashboard retains all other independent department SOP checklists.
+const WO_SOP_CODES=new Set(['CUT','STI','THR','GUN','PKG','LBL']);
 const $=id=>document.getElementById(id);
 const sop=id=>'SOP-CFM-'+id;
 const btnStyle='padding:11px 12px;min-height:48px;background:white;border:1px solid #b6d8ea;border-radius:9px;color:#165478;text-align:left;font:700 13px/1.35 system-ui;cursor:pointer';
@@ -40,10 +44,10 @@ function choose(work,group){
  overlay.style.cssText='position:fixed;inset:0;z-index:2147483610;display:grid;place-items:center;padding:10px;background:#062f47bb';
  const shell=document.createElement('section');shell.style.cssText='width:min(700px,100%);max-height:93vh;overflow:auto;box-sizing:border-box;background:#fff;padding:14px;border-radius:13px;font:13px/1.45 system-ui;color:#143f5e';
  const header=document.createElement('div');header.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px';
- const h=document.createElement('h2');h.textContent=group?group.title+' SOP':'Choose Department SOP';h.style.cssText='font:800 18px system-ui;margin:0';
+ const h=document.createElement('h2');h.textContent=group?group.title+' SOP':work?'Work Order SOP / Checklist':'Choose Department SOP';h.style.cssText='font:800 18px system-ui;margin:0';
  const x=document.createElement('button');x.type='button';x.textContent='✕ Close';x.style.cssText=btnStyle;x.onclick=closeChooser;
  header.append(h,x);shell.append(header);
- const detail=document.createElement('p');detail.textContent=(work?'Work No. '+work+' • ':'')+(group?'Only '+group.title+' checklists are shown.':'Select one department first.');shell.append(detail);
+ const detail=document.createElement('p');detail.textContent=(work?'Work No. '+work+' • ':'')+(group?'Only '+group.title+' checklists are shown.':work?'Only Cutting, Stitching, Thread Cutting, Gun Finishing, Packing and Label checklists belong to this Work Order.':'Select one department first.');shell.append(detail);
  const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px';
  if(group){
   group.items.forEach(([code,label])=>{
@@ -51,6 +55,7 @@ function choose(work,group){
   });
  }else{
   CATS.forEach(g=>g.items.forEach(([code,label])=>{
+   if(work&&!WO_SOP_CODES.has(code))return;
    const button=document.createElement('button');button.type='button';button.style.cssText=btnStyle;
    button.textContent=g.icon+' '+sop(code)+' • '+label;
    button.onclick=()=>specific(code,work);grid.append(button);
@@ -86,7 +91,7 @@ function mount(){
    const work=(card.querySelector('.work')?.textContent||'').trim();
    if(!/^CFM-\d+$/i.test(work))return;
    const b=document.createElement('button');b.type='button';b.className='btn btn-sm';b.dataset.cfmDeptSop='1';
-   b.textContent='☑ Department SOP';b.onclick=()=>choose(work);
+   b.textContent='☑ Work Order SOP';b.onclick=()=>choose(work);
    (card.querySelector('.card-actions')||card).append(b);
  });
 }
