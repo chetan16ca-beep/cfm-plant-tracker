@@ -682,9 +682,9 @@ const safeStorage=(()=>{
   try{
     const ls=window.localStorage; const k='__cfm_storage_test__';
     ls.setItem(k,'1'); ls.removeItem(k);
-    return {getItem:(x)=>ls.getItem(x),setItem:(x,v)=>ls.setItem(x,v),removeItem:(x)=>ls.removeItem(x)};
+    return {persistent:true,getItem:(x)=>ls.getItem(x),setItem:(x,v)=>ls.setItem(x,v),removeItem:(x)=>ls.removeItem(x)};
   }catch(e){
-    return {getItem:(x)=>Object.prototype.hasOwnProperty.call(mem,x)?mem[x]:null,setItem:(x,v)=>{mem[x]=String(v)},removeItem:(x)=>{delete mem[x]}};
+    return {persistent:false,getItem:(x)=>Object.prototype.hasOwnProperty.call(mem,x)?mem[x]:null,setItem:(x,v)=>{mem[x]=String(v)},removeItem:(x)=>{delete mem[x]}};
   }
 })();
 </script>
