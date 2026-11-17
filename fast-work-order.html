@@ -281,12 +281,15 @@ try{
     row.dataset.importedCode=String(x.efpplCode||'');
    }
    updateStatus('saveStatus','Imported '+imp.items.length+' verified PO lines. Fill Cloth and Width, review EFPPL codes, then tick verification. Nothing saved yet.');
-   document.addEventListener('DOMContentLoaded',()=>{
+   // Assign codes after the deferred Product Master has populated dropdowns.
+   document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{
     for(const row of document.querySelectorAll('[data-item]')){
      const code=row.dataset.importedCode;
-     if(code&&row.querySelector('[data-code] option[value="'+CSS.escape(code)+'"]'))row.querySelector('[data-code]').value=code;
+     if(code&&[...row.querySelector('[data-code]').options].some(opt=>opt.value===code)){
+      row.querySelector('[data-code]').value=code;
+     }
     }
-   });
+   },0));
   }
  }
 }catch(e){console.warn('Imported PO draft unavailable',e)}
