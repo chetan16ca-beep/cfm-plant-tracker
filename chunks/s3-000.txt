@@ -1554,6 +1554,27 @@ async function cfmPOAtomicCloudSave(party,poNo,created){
     cfmPOVerifyCloudAfterLocalFailure(party,poNo,created,true).finally(()=>{retry.disabled=false});
    };
    bar.append(retry);
+   // V338: even when the network cannot confirm a Save, staff can return
+   // to other ERP work without force-closing the entire PWA. This is NOT a
+   // success acknowledgement and does not resend or erase the PO.
+   const resume=document.createElement('button');
+   resume.type='button';
+   resume.textContent='Continue Other ERP Work (no re-save)';
+   resume.style.cssText='display:block;margin-top:9px;padding:10px;border:1px solid #9db9c7;border-radius:8px;background:#eff8fc;color:#155b79;font:750 13px system-ui';
+   resume.onclick=()=>{
+    try{if(editor?.open)editor.close()}catch(err){console.warn(err)}
+    try{showView('dashboard')}catch(err){console.warn(err)}
+    // Keep an unmistakable warning in the dashboard; never display a green
+    // Saved receipt for an order whose Cloud commit is still unknown.
+    const dashboard=document.getElementById('view-dashboard');
+    if(dashboard){
+     let warn=document.getElementById('cfmPOUnverifiedV338');
+     if(!warn){warn=document.createElement('div');warn.id='cfmPOUnverifiedV338';dashboard.prepend(warn)}
+     warn.style.cssText='margin:12px 0;padding:12px;border:2px solid #d6a568;border-radius:10px;background:#fff6e9;color:#794b1d;font:700 13px system-ui';
+     warn.textContent='⚠️ '+workNos.join(', ')+' Cloud Save NOT VERIFIED. Do not create this order again until Cloud status is checked.';
+    }
+   };
+   bar.append(resume);
   }
   return false;
  }finally{
