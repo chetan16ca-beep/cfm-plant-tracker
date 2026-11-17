@@ -1490,148 +1490,119 @@ async function cfmPOCheckCloudStatusFast(created){
 }
 
 async function cfmPOAtomicCloudSave(party,poNo,created){
+ // V340: Never trap a mobile operator inside a modal while awaiting the
+ // network. The Cloud is the authority; no false "saved" confirmation.
  const editor=document.getElementById('editDialog');
- const workNos=created.map(x=>String(x.workNo||''));
+ const workNos=created.map(r=>String(r.workNo||''));
  const token=workNos.join('|')+'-'+Date.now();
  if(editor)editor.dataset.cfmPoVerifyToken=token;
- let bar=editor?.querySelector('#cfmPoSaveInlineStatus');
- if(editor&&!bar){
-  bar=document.createElement('div');bar.id='cfmPoSaveInlineStatus';
-  bar.setAttribute('role','status');
-  (editor.querySelector('.dialog-actions')||editor).before(bar);
- }
- const same=(a,b)=>String(a??'').trim().toUpperCase()===String(b??'').trim().toUpperCase();
+ const old=document.getElementById('cfmPoFloatingSaveV340');
+ if(old)old.remove();
+ const panel=document.createElement('section');
+ panel.id='cfmPoFloatingSaveV340';
+ panel.setAttribute('role','status');
+ panel.setAttribute('aria-live','polite');
+ panel.style.cssText='position:fixed;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);z-index:2147483646;max-width:620px;margin:0 auto;background:#ecf9f2;color:#12593a;border:2px solid #83c6a4;border-radius:13px;box-shadow:0 6px 22px #0004;padding:12px 14px;box-sizing:border-box;font:700 13px/1.5 system-ui';
+ const message=document.createElement('div');
+ panel.append(message);
+ const actions=document.createElement('div');
+ actions.style.cssText='display:flex;gap:7px;flex-wrap:wrap;margin-top:7px';
+ panel.append(actions);
  const status=(msg,warning=false)=>{
-  if(!bar?.isConnected)return;
-  bar.style.cssText='display:block;position:relative;padding:11px;margin:10px 0;border:2px solid '+(warning?'#e3b17b':'#96d1b1')+';border-radius:10px;background:'+(warning?'#fff7ed':'#eaf8ef')+';color:'+(warning?'#864c1e':'#13653a')+';font:750 13px/1.5 system-ui';
-  let label=bar.querySelector('[data-cfm-save-status]');
-  if(!label){label=document.createElement('div');label.dataset.cfmSaveStatus='1';bar.prepend(label)}
-  label.textContent=msg;
+  message.textContent=msg;
+  panel.style.background=warning?'#fff4e5':'#ecf9f2';
+  panel.style.borderColor=warning?'#dda56e':'#83c6a4';
+  panel.style.color=warning?'#7c451b':'#12593a';
  };
- let verified=false;
- const showSuccess=(remoteVersion)=>{
+ const addAction=(label,handler)=>{
+  const button=document.createElement('button');button.type='button';
+  button.style.cssText='border:1px solid #a5c5d0;border-radius:8px;background:white;color:#174f64;padding:8px 10px;font:700 12px system-ui;cursor:pointer';
+  button.textContent=label;button.onclick=handler;actions.append(button);return button;
+ };
+ const same=(a,b)=>String(a??'').trim().toUpperCase()===String(b??'').trim().toUpperCase();
+ let verified=false,finalized=false;
+ const showSuccess=(version)=>{
   if(verified)return;
   verified=true;
   cfmPOCloudVerificationRunning=false;
   try{document.getElementById('cfmPOUnverifiedV338')?.remove()}catch(_){}
-  if(Number(remoteVersion)>0){
-   cloudVersion=Math.max(Number(cloudVersion)||0,Number(remoteVersion));
-   cloudUpdatedAt=new Date().toISOString();cloudReady=true;
-  }
+  if(Number(version)>0){cloudVersion=Math.max(Number(cloudVersion)||0,Number(version));cloudUpdatedAt=new Date().toISOString();cloudReady=true}
   try{setCloudBadge('☁️ PO saved in Live Cloud','green')}catch(_){}
   if(window.cfmPOImportedDraft&&same(window.cfmPOImportedDraft.poNo,poNo))window.cfmPOImportedDraft=null;
-  // Close the Save editor as soon as Cloud records are VERIFIED, even when
-  // a slow RPC response is still pending. No dashboard full re-render.
-  if(editor?.dataset.cfmPoVerifyToken===token){
-   try{if(editor.open)editor.close()}catch(e){console.warn('Editor close after Cloud confirmation',e)}
-   if(bar?.isConnected)bar.remove();
-   delete editor.dataset.cfmPoVerifyToken;
-  }
+  if(editor?.dataset.cfmPoVerifyToken===token)delete editor.dataset.cfmPoVerifyToken;
+  if(panel.isConnected)panel.remove();
   try{cfmPOShowSavedReceipt(party,poNo,created,true)}
-  catch(e){console.error('Saved PO receipt display issue',e);toast('PO Saved Successfully • '+workNos.join(', '))}
-  // No full data serialization or localStorage history writes on confirmation.
-  try{safeStorage.setItem('cfm-last-po-cloud-receipt-v339',JSON.stringify({workNos,party,poNo,version:Number(remoteVersion)||0,at:new Date().toISOString()}))}
-  catch(e){console.warn('Cloud verified; phone receipt storage unavailable',e)}
+  catch(e){console.error('Cloud verified; receipt display issue',e);try{toast('PO Saved Successfully • '+workNos.join(', '))}catch(_){}}
+  // A large localStorage write after success caused prior Android freezes.
+  // Cloud records and existing local backups/Stock/Cutting are untouched.
+  try{safeStorage.setItem('cfm-last-po-cloud-receipt-v340',JSON.stringify({workNos,party,poNo,version:Number(version)||0,at:new Date().toISOString()}))}catch(_){}
  };
- const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
- status('Saving '+workNos.join(', ')+' to Live Cloud…');
- // Operator can return to Dashboard at any time without creating another PO.
- // A tiny warning remains until a real Cloud acknowledgement arrives.
- if(bar&&!bar.querySelector('[data-cfm-continue-erp]')){
-  const go=document.createElement('button');
-  go.type='button';go.dataset.cfmContinueErp='1';
-  go.textContent='Continue ERP Work (without re-saving)';
-  go.style.cssText='display:block;margin-top:9px;padding:9px 12px;border:1px solid #82adb9;border-radius:8px;background:white;color:#18566a;font:750 13px system-ui';
-  go.onclick=()=>{
-   if(verified)return;
-   try{if(editor?.open)editor.close()}catch(e){console.warn(e)}
-   try{showView('dashboard')}catch(e){console.warn('Dashboard navigation',e)}
-   const dash=document.getElementById('view-dashboard');
-   if(dash){
-    let warn=document.getElementById('cfmPOUnverifiedV338');
-    if(!warn){warn=document.createElement('div');warn.id='cfmPOUnverifiedV338';dash.prepend(warn)}
-    warn.style.cssText='margin:10px 0;padding:12px;background:#fff6e9;border:2px solid #d9aa67;border-radius:10px;color:#75451b;font:750 13px system-ui';
-    warn.textContent='⏳ '+workNos.join(', ')+' Cloud verification pending. DO NOT Save this PO again. You can continue other ERP work.';
-   }
-  };
-  bar.append(go);
- }
- // V339: Status checks run CONCURRENTLY with the save request.
- // The first confirmed outcome instantly closes the blocking dialog;
- // the server may have committed even when Android is slow to read its reply.
- const watcher=(async()=>{
-  for(let attempt=0;attempt<11&&!verified;attempt++){
-   await sleep(attempt===0?1100:1400);
+ const check=async()=>{
+  if(verified)return true;
+  try{
+   const result=await cfmPOCheckCloudStatusFast(created);
+   if(result.found){showSuccess(result.version);return true}
+  }catch(e){console.warn('Read-only PO status unavailable',e)}
+  return false;
+ };
+ status('⏳ Saving '+workNos.join(', ')+' in Live Cloud. You can continue ERP work. Do not save this PO again.');
+ const checkButton=addAction('↻ Check Cloud Status',async()=>{
+  checkButton.disabled=true;
+  const found=await check();
+  if(!found&&!verified)status('Cloud confirmation still pending for '+workNos.join(', ')+'. Do not re-save this PO.',true);
+  checkButton.disabled=false;
+ });
+ addAction('Continue ERP Work',()=>{
+  try{showView('dashboard')}catch(e){console.warn('ERP navigation unavailable',e)}
+  // This never says "Saved" before Cloud verification.
+  if(!verified)status('⏳ '+workNos.join(', ')+' still verifying in Cloud. You can use other ERP screens. DO NOT re-save.',true);
+ });
+ document.body.append(panel);
+ // Make the editor non-blocking BEFORE starting network work.
+ // Keep the pending order in memory; Cloud will persist it atomically.
+ try{if(editor?.open)editor.close()}catch(e){console.warn('PO editor close failed',e)}
+ try{if(editor&&editor.dataset.cfmPoVerifyToken===token)delete editor.dataset.cfmPoVerifyToken}catch(_){}
+ // Best effort, small draft (never delete or rewrite original local data).
+ try{safeStorage.setItem('cfm-pending-po-draft-v340',JSON.stringify({party,poNo,created,at:new Date().toISOString()}))}catch(_){}
+ // A small read-only Cloud lookup can acknowledge success even when the
+ // Android browser never receives the write request's HTTP response.
+ const observer=(async()=>{
+  for(let attempt=0;attempt<9&&!verified;attempt++){
+   await new Promise(resolve=>setTimeout(resolve,attempt===0?1100:1600));
    if(verified)break;
-   try{
-    const result=await cfmPOCheckCloudStatusFast(created);
-    if(result.found){showSuccess(result.version);return true}
-   }catch(e){if(attempt===0||attempt===10)console.warn('PO status probe unavailable',e)}
+   if(await check())return true;
   }
   return false;
  })();
  try{
-  const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),17000);
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),16000);
   let result;
   try{
    const res=await fetch(CLOUD_URL+'/rest/v1/rpc/cfm_append_pending_orders',{
     method:'POST',headers:cloudHeaders(),signal:controller.signal,
     body:JSON.stringify({p_orders:created})
    });
-   if(!res.ok){
-    const raw=await res.text();
-    throw new Error('Cloud '+res.status+' • '+String(raw||'Save refused').slice(0,240));
-   }
+   if(!res.ok){const raw=await res.text();throw new Error('Cloud '+res.status+' • '+raw.slice(0,180))}
    result=await res.json();
-  }finally{clearTimeout(timeout)}
+  }finally{clearTimeout(timer)}
   if(verified)return true;
-  if(result?.ok!==true||!workNos.every(no=>(result.workNos||[]).some(x=>same(no,x))))
-   throw new Error('Cloud returned incomplete Save receipt');
-  showSuccess(result.version);
-  return true;
+  if(result?.ok!==true||!workNos.every(no=>(result.workNos||[]).some(x=>same(no,x))))throw new Error('Incomplete Cloud receipt');
+  showSuccess(result.version);return true;
  }catch(e){
   if(verified)return true;
-  console.warn('PO response delayed; checking Cloud read-only',e);
-  status('Verifying '+workNos.join(', ')+' in Live Cloud. DO NOT Save again…');
-  // Do not resend a possibly committed PO. Check only.
-  try{
-   const fast=await cfmPOCheckCloudStatusFast(created);
-   if(fast.found){showSuccess(fast.version);return true}
-  }catch(err){console.warn('Fast PO confirmation unavailable',err)}
-  if(verified)return true;
-  // Existing watcher may still prove success shortly afterward.
-  const pending=await Promise.race([watcher,sleep(3500).then(()=>false)]);
-  if(verified||pending)return true;
-  status('⚠️ Cloud has not confirmed '+workNos.join(', ')+'. Do not Save again. Use Check Cloud Status below or Continue ERP Work.',true);
-  if(bar?.isConnected&&!bar.querySelector('[data-cfm-po-recheck]')){
-   const check=document.createElement('button');
-   check.type='button';check.dataset.cfmPoRecheck='1';
-   check.textContent='↻ Check Cloud Status (read-only)';
-   check.style.cssText='display:block;margin-top:8px;padding:10px;border:1px solid #d5aa75;border-radius:8px;background:white;color:#714b22;font:750 13px system-ui';
-   check.onclick=async()=>{
-    if(verified)return;
-    check.disabled=true;
-    try{
-     const status=await cfmPOCheckCloudStatusFast(created);
-     if(status.found)showSuccess(status.version);
-     else alert('Cloud Save still unconfirmed for '+workNos.join(', ')+'. Do not re-save yet.');
-    }catch(err){alert('Cloud connection unavailable. Do not re-save until verified.')}
-    finally{check.disabled=false}
-   };
-   bar.append(check);
-  }
+  console.warn('PO write response unknown, checking Cloud without re-saving',e);
+  status('Checking whether '+workNos.join(', ')+' reached Cloud. No duplicate Save will be sent.',true);
+  if(await check())return true;
+  const found=await Promise.race([observer,new Promise(resolve=>setTimeout(()=>resolve(false),3500))]);
+  if(found||verified)return true;
+  status('⚠️ Cloud confirmation unavailable for '+workNos.join(', ')+'. Check Cloud Status before making another PO.',true);
   return false;
  }finally{
-  if(!verified){
-   // Never allow accidental duplicate Save while the Cloud result is unknown.
-   const btn=document.getElementById('saveFormBtn');
-   if(editor?.open&&editor.dataset.cfmPoVerifyToken===token&&btn){
-    btn.dataset.saving='1';btn.disabled=true;
-    btn.textContent='Check Cloud Status — no duplicate Save';
-   }
-  }
-  watcher.finally(()=>{if(!verified)cfmPOCloudVerificationRunning=false});
+  finalized=true;
+  // Leave unconfirmed PO guarded against repeated creation until a manual
+  // read-only check succeeds. A successful response releases the guard.
+  if(verified)cfmPOCloudVerificationRunning=false;
+  observer.catch(e=>console.warn('PO verification observer failed',e));
  }
 }
 
