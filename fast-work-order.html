@@ -255,6 +255,14 @@ $('newOrder').onclick=()=>{
  window.scrollTo({top:0,behavior:'smooth'});
 };
 addItem();loadReference();
+// The EFPPL product master loads with defer. Fill the first row's code
+// dropdown once the script finishes, without duplicating existing options.
+document.addEventListener('DOMContentLoaded',()=>{
+ for(const row of document.querySelectorAll('[data-item]')){
+  const code=row.querySelector('[data-code]');
+  if(code&&code.options.length<=1)fillProducts(row);
+ }
+});
 })();
 </script>
 </body></html>
