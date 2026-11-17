@@ -49,7 +49,7 @@ function mount(){
  const section=E('details');section.id='cfmOperatorSafety347';
  section.append(E('summary','🛡 ERP Safety & Operator Settings ▾'));
  const content=E('div');content.className='inner';
- content.append(E('p','Display preferences only (this device). Product, GST, work order, stock and SOP data are unchanged.')).className='hint';
+ const description=E('p','Display preferences only (this device). Product, GST, work order, stock and SOP data are unchanged.');description.className='hint';content.append(description);
  const options=E('div');options.className='actions';
  const pref=getPref();
  for(const [label,prop,inverted] of [['Compact layout','comfortable',true],['Reduce motion','reduceMotion',false]]){
