@@ -1,6 +1,6 @@
 // CFM PWA: network-first for live ERP UI; offline fallback only.
 // No IndexedDB, localStorage, Supabase order/stock changes.
-const CACHE='cfm-plant-ui-20261117-v342-fast-po-all';
+const CACHE='cfm-plant-ui-20261118-v342-cached-chunks';
 const BASE=self.registration.scope;
 const SHELL=[BASE+'index.html',BASE+'po-workorder.html',BASE+'fast-work-order.html',BASE+'cfm-efppl-master-v330.js',BASE+'manifest.json',BASE+'cfm-plant-production-sop.js',BASE+'cfm-sop-register.js',BASE+'cfm-department-sop-v319.js',BASE+'cfm-unique-measurement-print.js',BASE+'cfm-noncf-measurements-excel.js',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
 
@@ -18,6 +18,23 @@ self.addEventListener('activate',event=>{
     await self.clients.claim();
   })());
 });
+
+// Versioned chunks can be loaded from device cache on repeat ERP visits.
+// Unlike editable Cloud data, chunks have a deployment version in their URL.
+async function cachedVersionedChunk(request){
+  const cache=await caches.open(CACHE);
+  const cached=await cache.match(request);
+  if(cached)return cached;
+  try{
+    const response=await fetch(request,{cache:'no-store'});
+    if(response.ok && response.type!=='opaque'){
+      try{await cache.put(request,response.clone())}catch(e){}
+    }
+    return response;
+  }catch(error){
+    return Response.error();
+  }
+}
 
 async function freshOrCached(request){
   const cache=await caches.open(CACHE);
@@ -46,7 +63,8 @@ self.addEventListener('fetch',event=>{
     const isAppAsset=url.pathname.startsWith(new URL(BASE).pathname);
     if(isAppAsset){
       // Online users always get fresh HTML, scripts, chunks and all other app assets.
-      event.respondWith(freshOrCached(req));
+      const isVersionedChunk=url.pathname.startsWith(new URL('chunks/',BASE).pathname)&&url.searchParams.has('v');
+      event.respondWith(isVersionedChunk?cachedVersionedChunk(req):freshOrCached(req));
     }
   }
 });
