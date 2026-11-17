@@ -94,7 +94,7 @@ function rowHtml(i){
  '<label>Width (inch) *<input data-width required type="number" min="1" step="any" placeholder="50"></label>'+
  '<label>Order Qty *<input data-qty required type="number" min="1" step="1" placeholder="2"></label>'+
  '<label>Eagle Code<input data-eagle placeholder="Optional"></label>'+
- '<label class="full">Active SRL (optional)<select data-srl><option value="">Select after Cloth + Width</option></select></label></div></div>';
+ '<label class="full">Active SRL (optional, multiple allowed)<select data-srl multiple size="3"><option value="">Select after Cloth + Width</option></select></label></div></div>';
 }
 function renumber(){
  const base=Number(reference?.nextNo)||0;
@@ -169,7 +169,7 @@ function collect(){
   cloth:row.querySelector('[data-cloth]').value.trim(),
   width:Number(row.querySelector('[data-width]').value),
   orderQty:Number(row.querySelector('[data-qty]').value),
-  selectedSrl:row.querySelector('[data-srl]').value
+  selectedSrl:[...row.querySelector('[data-srl]').selectedOptions].map(opt=>opt.value).filter(Boolean).join(', ')
  }));
  if(!items.length||items.length>40)throw Error('Enter 1–40 Work Order items.');
  for(const i of items)if(!i.description||!i.cloth||!(i.width>0)||!Number.isSafeInteger(i.orderQty)||i.orderQty<1)throw Error('Complete Description, Cloth, Width and Qty for every item.');
