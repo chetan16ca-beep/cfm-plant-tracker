@@ -49,7 +49,7 @@ function findCode(value){
   const num=Number(finger[1]);
   return MASTER.find(x=>x.itemNo.startsWith('10')&&Number(x.description.match(/(\d+) Finger/)[1])===num)||null;
  }
- if(/\b(?:CF|CENTRIFUG(?:E|AL))\b/.test(s)&&/\bBAG\b/.test(s)){
+ if(/\b(?:CF|CENTRIFUG(?:E|AL))\b/.test(s)){
   const size=s.match(/\bCF\s*[- ]\s*(12|18|36|48|60)\b/)||
    s.match(/\b(?:CF|CENTRIFUG(?:E|AL))(?:\s+BAG)?\s*[- ]?\s*(12|18|36|48|60)\b/)||
    s.match(/\b(12|18|36|48|60)\s*(?:"|INCH(?:ES)?\b|IN\b)/);
@@ -67,9 +67,9 @@ function findCode(value){
  [/\bANFD\b.*\bFILTER\s+CLOTH\b/,'5001']
  ];
  for(const [pattern,num] of direct)if(pattern.test(s))return MASTER.find(x=>x.itemNo===num)||null;
- const dims=s.match(/\b(26\s*X\s*30|38\s*X\s*42|52\s*X\s*54|62\s*X\s*64|19\s*X\s*43|15\s*X\s*43|25\s*X\s*55)\b/);
+ const dims=s.match(/\b(26|38|52|62|19|15|25)\s*(?:\"|INCH(?:ES)?)?\s*X\s*(30|42|54|64|43|55)\b/);
  if(dims){
-  const d=dims[1].replace(/\s/g,'');
+  const d=dims[1]+'X'+dims[2];
   const family=/\bSPARKLER\b/.test(s)?'SFP':/\bFILTER\s+PRESS\b/.test(s)?'FPC':'';
   if(family)return MASTER.find(x=>x.oldCode==='EFPPL-'+family+'-'+d)||null;
  }
