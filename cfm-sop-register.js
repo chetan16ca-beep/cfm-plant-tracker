@@ -18,6 +18,7 @@ const CATALOG=[
 ['GUN','Gun Finishing',['GUN-01|Incoming Work No and pieces counted','GUN-02|Approved tool/finishing method checked','GUN-03|Fibre/thread/dust removed without damage','GUN-04|Finish and accepted/rework quantity recorded']],
 ['FQC','Final QC',['FQC-01|Size, micron/mesh, layers, antistatic spec verified','FQC-02|Joint, seam, hole, contamination and workmanship checked','FQC-03|Accepted/HOLD/reject quantities separated','FQC-04|Nonconformance and QC person recorded','FQC-05|Only released quantity handed to Packing']],
 ['PKG','Packing & Labeling',['PKG-01|Packing room cleaning release verified','PKG-02|Work, party, accepted qty and product matched','PKG-03|Clean suitable protective packing used','PKG-04|Work, product, pack no, qty, date, traceability label checked','PKG-05|Packed qty and supervisor handover recorded']],
+['LBL','Individual Bag Label Verification',[]],
 ['DSP','Dispatch',['DSP-01|Packing vs dispatch qty reconciled','DSP-02|Challan/invoice, transporter, address verified','DSP-03|Dispatch details and approval recorded','DSP-04|Dispatched job retained in history, not active pending']],
 ['RPT','Batch Report / SOP Review',['RPT-01|Work, party, product, qty and SRL linked','RPT-02|Material and production SOP IDs attached; separate area-cleaning logs reviewed','RPT-03|Results, operator, verifier and timestamp displayed','RPT-04|Missing checks marked NOT RECORDED, never PASS','RPT-05|Product ticket and Batch Annexure can print','RPT-06|Checklist record/version traceable']]
 ].map(([code,name,items])=>({code,name,items:items.map(s=>{const i=s.indexOf('|');return {id:s.slice(0,i),text:s.slice(i+1)}})}));
@@ -150,7 +151,21 @@ const PACKING_MASTER={
   'PKG-20|Final bag-label verification & release|Packing operator completes individual bag-label verification; supervisor checks physical product against label and records any HOLD, FAIL, rework and final release.|All required checks passed or justified N/A; wrong/unlabeled bags remain on HOLD until corrected and verified.'
  ]
 };
-const SOP_MASTERS={...CLEANING_MASTER,PKG:PACKING_MASTER};
+// V334: Individual label inspection is a separate Work Order checklist.
+ // Keep the historic PKG-01..20 master and saved snapshots unchanged.
+ // These 15 label controls use the approved detailed PKG-06..20 language,
+ // but have independent SOP / checklist IDs and separately saved records.
+const LABEL_MASTER={
+ heading:'Individual Bag Label Verification & Traceability',
+ scope:'Each finished filter bag and each applicable customer-approved identification label, before final protective packing.',
+ purpose:'Prevent missing, wrong, loose or illegible bag labels and incorrect customer/product traceability.',
+ frequency:'100% of finished bags for each Work Order, plus each changeover or label artwork revision.',
+ responsibility:'Assigned label / packing operator checks each bag; packing supervisor verifies and releases the batch.',
+ safety:'Unlabelled, mismatched or improperly attached bags remain HOLD until corrected and reverified. Do not release without the required identification.',
+ items:PACKING_MASTER.items.slice(5).map((line,index)=>
+   line.replace(/^PKG-\\d{2}/,'LBL-'+String(index+1).padStart(2,'0')))
+};
+const SOP_MASTERS={...CLEANING_MASTER,PKG:PACKING_MASTER,LBL:LABEL_MASTER};
 const LEGACY_CONTROLLED_ITEMS={
  ...LEGACY_CLEANING_ITEMS,
  PKG:CATALOG.find(c=>c.code==='PKG').items.map(item=>({...item}))
@@ -158,6 +173,11 @@ const LEGACY_CONTROLLED_ITEMS={
 const isControlledSop=code=>!!SOP_MASTERS[code];
 const pkg=CATALOG.find(c=>c.code==='PKG');
 pkg.items=PACKING_MASTER.items.map(line=>{
+ const [id,text,description,acceptance]=line.split('|');
+ return {id,text,description,acceptance};
+});
+const labelCategory=CATALOG.find(c=>c.code==='LBL');
+labelCategory.items=LABEL_MASTER.items.map(line=>{
  const [id,text,description,acceptance]=line.split('|');
  return {id,text,description,acceptance};
 });
@@ -181,7 +201,7 @@ const FIELDS_BY_SOP={
  MCL:['area','shift'], PCL:['area','shift'], ECL:['area','shift'], RCL:['area','shift'],
  CUT:['work','srl','shift'], STI:['work','srl','shift'],
  THR:['work','shift'], GUN:['work','shift'], FQC:['work','shift'],
- PKG:['work','shift'], DSP:['work','shift'], RPT:['work','shift']
+ PKG:['work','shift'], LBL:['work','shift'], DSP:['work','shift'], RPT:['work','shift']
 };
 const FIELD_CONTROLS={
  work:'cfmSopWork318', srl:'cfmSopSrl318', inward:'cfmSopInward318',
@@ -201,6 +221,7 @@ const TEAM_BY_SOP={
   THR:['Bhavna','Radha','Jitu','Sangita'],
   GUN:['Bhavna','Radha','Jitu','Sangita'],
   PKG:['Bhavna','Radha','Jitu','Sangita'],
+  LBL:['Bhavna','Radha','Jitu','Sangita'],
   FQC:['Chetan','Lala'],
   MR:['Chetan','Lala'],
   SRL:['Chetan','Lala'],
@@ -267,7 +288,10 @@ function annex(work,compact=false){
  const allSrl=srlsFor(work), st=getState();
  const wo=arr(st?.pending).find(x=>norm(x.workNo)===norm(work));
  const lineStyle='border:1px solid #b9cbd9;padding:5px 6px;font:10px Arial,sans-serif;vertical-align:top';
- const cands=CATALOG.filter(cat=>!isClean(cat.code)).map(cat=>({cat,entries:recordFor(cat.code,work)}));
+ // Work Order ticket/annexure shows only the six production checks; all
+ // other department SOPs remain independently available for audit/date print.
+ const woStages=new Set(['CUT','STI','THR','GUN','PKG','LBL']);
+ const cands=CATALOG.filter(cat=>woStages.has(cat.code)).map(cat=>({cat,entries:recordFor(cat.code,work)}));
  let html='<section class="cfm-sop-print" style="page-break-before:always;color:#173548;font:11px Arial,sans-serif"><h2 style="font-size:17px;margin:0 0 7px">CFM SOP Checklist Annexure</h2>'+
  '<p style="font-size:10px">Work: <b>'+esc(work)+'</b> | Party: '+esc(wo?.party||'-')+' | Product: '+esc(wo?.description||'-')+' | Qty: '+esc(wo?.orderQty||'-')+
  ' | SRL: '+esc(allSrl.join(', ')||'NOT RECORDED')+'</p>'+
