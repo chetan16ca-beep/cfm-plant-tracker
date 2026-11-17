@@ -68,6 +68,26 @@ body #view-dashboard #cfmPhotoStockPanel h3{font-size:13px!important}
 body #view-dashboard #cfmPhotoStockPanel p{font-size:10px!important}
 body #view-dashboard #cfmPhotoStockSummary{font-size:11px!important;margin-top:5px!important}
 @media (max-width:360px){body #view-dashboard .photo-quick-actions button b{font-size:9px!important}body #view-dashboard .cfm-main-action .cfm-ma-copy strong{font-size:11px!important}}
+@media(max-width:760px){
+  body.cfm-forge #nav,body #nav{
+    display:flex!important;flex-flow:row nowrap!important;justify-content:flex-start!important;
+    align-items:center!important;overflow-x:auto!important;overflow-y:hidden!important;
+    height:65px!important;min-height:65px!important;max-height:65px!important;
+    gap:3px!important;padding:3px 5px!important;scrollbar-width:none!important;
+    -webkit-overflow-scrolling:touch!important
+  }
+  body #nav::-webkit-scrollbar{display:none!important}
+  body.cfm-forge #nav button,body #nav button{
+    display:flex!important;flex-direction:column!important;align-items:center!important;
+    justify-content:center!important;flex:0 0 65px!important;width:65px!important;
+    min-width:65px!important;min-height:56px!important;max-height:56px!important;
+    margin:0!important;padding:3px!important;gap:2px!important;
+    line-height:1.1!important;font-size:10px!important;border-radius:8px!important
+  }
+  body #nav button .ico{font-size:18px!important;margin:0!important}
+  body #nav button.mobile-more{flex-basis:58px!important;width:58px!important;min-width:58px!important}
+}
+
 `;
 function addStyle(){
  if(document.getElementById('cfm-dashboard-compact-style'))return;
