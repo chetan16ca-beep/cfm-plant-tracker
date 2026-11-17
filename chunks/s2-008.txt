@@ -324,11 +324,14 @@ async function cloudInit(){
       try{await window.parent.cfmSaveBackup?.()}catch(_){}
       cloudDirty=false;
       state=clone(row.payload);ensureExcelMasterData();syncDerivedState();
-      safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();
+      let persisted=true;
+      try{safeStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+      catch(e){persisted=false;console.warn('Phone storage full; Cloud data remains loaded',e)}
+      try{renderAll()}catch(e){console.error('Cloud loaded, but dashboard refresh failed',e)}
+      setCloudBadge(persisted?'☁️ Cloud ready • protected sync':'☁️ Cloud ready • phone storage limited',persisted?'green':'amber');
     }else{
       cloudReady=false;setCloudBadge('☁️ Cloud unavailable • local protected','red');return;
     }
-    setCloudBadge('☁️ Cloud ready • protected sync','green');
   }catch(e){console.warn(e);setCloudBadge('☁️ Offline – local data','red');}
 }
 async function cloudPush(force=false){
@@ -458,7 +461,10 @@ function load(){
   else state=clone(window.CFM_SEED||{pending:[],store:[],cutting:[]});
   ensureExcelMasterData();
   try{settings={...settings,...JSON.parse(safeStorage.getItem(SETTINGS_KEY)||'{}')} }catch(e){}
-  safeStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  // Mobile localStorage can be full even when live Cloud is healthy. Loading
+  // must never crash the ERP or silently remove existing orders/backups.
+  try{safeStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+  catch(e){console.warn('Startup storage full; keeping ERP state in memory and checking Cloud',e)}
 }
 let nextUpdateNotification=null;
 window.setNextUpdateNotification=function(title,body){
@@ -499,7 +505,26 @@ function genericUpdateNotification(prevRaw,nextRaw){
     return {title:'🔔 CFM Data Updated',body:deviceLabel()};
   }
 }
-function save(doRender=true){
+function save(doRender=true,options=null){
+  // V336: PO creation changes the pending order list only. Do not synchronously
+  // re-process ALL stock/cutting rows or duplicate large backup histories on
+  // every PO Save click. Leave existing history untouched (no deletion).
+  if(options?.poQuick===true){
+    localMutationSeq++;
+    let localSaved=false;
+    try{
+      const serialized=JSON.stringify(state);
+      safeStorage.setItem(STORAGE_KEY,serialized);
+      localSaved=safeStorage.persistent!==false&&safeStorage.getItem(STORAGE_KEY)===serialized;
+    }catch(e){
+      console.warn('PO local persistence unavailable; Cloud save required',e);
+    }
+    // Cloud synchronization is always queued, including quota failures.
+    // Caller verifies remote commit before showing a Cloud-saved receipt.
+    queueCloudPush();
+    nextUpdateNotification=null;
+    return {localSaved};
+  }
   // V332: the Save button handler refreshes the appropriate view AFTER closing
   // the editor. Never render every ERP module inside the same Save click:
   // doing so causes a mobile UI freeze and hides the saved confirmation.
