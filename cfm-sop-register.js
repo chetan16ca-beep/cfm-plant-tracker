@@ -163,7 +163,7 @@ const LABEL_MASTER={
  responsibility:'Assigned label / packing operator checks each bag; packing supervisor verifies and releases the batch.',
  safety:'Unlabelled, mismatched or improperly attached bags remain HOLD until corrected and reverified. Do not release without the required identification.',
  items:PACKING_MASTER.items.slice(5).map((line,index)=>
-   line.replace(/^PKG-\\d{2}/,'LBL-'+String(index+1).padStart(2,'0')))
+   line.replace(/^PKG-\d{2}/,'LBL-'+String(index+1).padStart(2,'0')))
 };
 const SOP_MASTERS={...CLEANING_MASTER,PKG:PACKING_MASTER,LBL:LABEL_MASTER};
 const LEGACY_CONTROLLED_ITEMS={
