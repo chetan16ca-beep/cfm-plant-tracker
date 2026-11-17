@@ -93,7 +93,7 @@ function rowHtml(i){
  '<label>Cloth *<input data-cloth required placeholder="333 AS / 9024"></label>'+
  '<label>Width (inch) *<input data-width required type="number" min="1" step="any" placeholder="50"></label>'+
  '<label>Order Qty *<input data-qty required type="number" min="1" step="1" placeholder="2"></label>'+
- '<label>Eagle Code<input data-eagle placeholder="Optional"></label>'+
+ '<label>Eagle Code<input data-eagle placeholder="Optional"></label>'+'<label>Buyer PO Item Code<input data-buyer placeholder="Optional"></label>'+
  '<label class="full">Active SRL (optional, multiple allowed)<select data-srl multiple size="3"><option value="">Select after Cloth + Width</option></select></label></div></div>';
 }
 function renumber(){
@@ -166,6 +166,7 @@ function collect(){
   description2:row.querySelector('[data-extra]').value.trim(),
   itemCode:row.querySelector('[data-code]').value,
   eagleCode:row.querySelector('[data-eagle]').value.trim(),
+  buyerItemCode:row.querySelector('[data-buyer]').value.trim(),
   cloth:row.querySelector('[data-cloth]').value.trim(),
   width:Number(row.querySelector('[data-width]').value),
   orderQty:Number(row.querySelector('[data-qty]').value),
@@ -220,7 +221,7 @@ $('woForm').addEventListener('submit',async e=>{
   if(!base||base<1)throw Error('Cannot establish next Work No.');
   pending=data.items.map((i,index)=>({
    workNo:'CFM-'+(base+index),party:data.party,poNo:data.poNo,orderDate:data.orderDate,deliveryDate:data.deliveryDate,
-   eagleCode:i.eagleCode,itemCode:i.itemCode,description:i.description,description2:i.description2,
+   eagleCode:i.eagleCode,itemCode:i.itemCode,buyerItemCode:i.buyerItemCode,description:i.description,description2:i.description2,
    cloth:i.cloth,width:i.width,orderQty:i.orderQty,cutQty:0,priority:data.priority,status:'PENDING',
    selectedSrl:i.selectedSrl,reservedSrl:i.selectedSrl,
    billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''
@@ -255,6 +256,40 @@ $('newOrder').onclick=()=>{
  window.scrollTo({top:0,behavior:'smooth'});
 };
 addItem();loadReference();
+// V341: Verified PDF/photo PO transfer opens this standalone screen without
+// losing the buyer's full original description, item code, date or quantity.
+// User still must verify Cloth/Width and tick approval before any Cloud Save.
+try{
+ const raw=sessionStorage.getItem('cfm-fast-po-import-v341');
+ if(raw){
+  sessionStorage.removeItem('cfm-fast-po-import-v341');
+  const imp=JSON.parse(raw);
+  if(imp?.kind==='CFM_FAST_PO_IMPORT_V341'&&Array.isArray(imp.items)&&imp.items.length>0&&imp.items.length<=40){
+   $('party').value=String(imp.party||'');
+   $('po').value=String(imp.poNo||'');
+   $('orderDate').value=String(imp.orderDate||today());
+   $('deliveryDate').value=String(imp.deliveryDate||'');
+   $('items').replaceChildren();
+   for(const x of imp.items){
+    addItem();
+    const row=$('items').lastElementChild;
+    row.querySelector('[data-desc]').value=String(x.description||'');
+    row.querySelector('[data-qty]').value=String(x.quantity||'');
+    row.querySelector('[data-buyer]').value=String(x.buyerItemCode||'');
+    const note=[x.buyerItemCode?'Buyer PO code: '+x.buyerItemCode:'',imp.issue&&imp.reason?'Quantity discrepancy approved: '+imp.issue+' | '+imp.reason:''].filter(Boolean).join(' | ');
+    row.querySelector('[data-extra]').value=note.slice(0,600);
+    row.dataset.importedCode=String(x.efpplCode||'');
+   }
+   updateStatus('saveStatus','Imported '+imp.items.length+' verified PO lines. Fill Cloth and Width, review EFPPL codes, then tick verification. Nothing saved yet.');
+   document.addEventListener('DOMContentLoaded',()=>{
+    for(const row of document.querySelectorAll('[data-item]')){
+     const code=row.dataset.importedCode;
+     if(code&&row.querySelector('[data-code] option[value="'+CSS.escape(code)+'"]'))row.querySelector('[data-code]').value=code;
+    }
+   });
+  }
+ }
+}catch(e){console.warn('Imported PO draft unavailable',e)}
 // The EFPPL product master loads with defer. Fill the first row's code
 // dropdown once the script finishes, without duplicating existing options.
 document.addEventListener('DOMContentLoaded',()=>{
