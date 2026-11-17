@@ -15,42 +15,8 @@ function navigate(view){
  if(typeof window.showView==='function')window.showView(view);
  else target.querySelector('button')?.focus();
 }
-function buildDeck(){
- document.body.classList.add('cfm-forge');
- const dash=document.getElementById('cfmSapWorkspace');
- if(!dash)return;
- const intro=dash.querySelector('.sap-intro');
- if(intro&&!intro.dataset.forge){
-  intro.dataset.forge='1';
-  const kicker=intro.querySelector('.sap-kicker');
-  if(kicker)kicker.textContent='CFM / PRECISION FILTRATION OPERATIONS';
-  const h=intro.querySelector('h1');
-  if(h)h.textContent='Your Plant. One Control Deck.';
-  const p=intro.querySelector('p');
-  if(p)p.textContent='Work Orders → Material → Production → Dispatch';
-  const content=intro.querySelector('div');
-  if(content&&!content.querySelector('.cfm-forge-signature')){
-   const stamp=document.createElement('div');stamp.className='cfm-forge-signature';
-   stamp.textContent='CFM FORGE  /  OPERATIONS INTERFACE';
-   content.appendChild(stamp);
-  }
- }
- if(!dash.querySelector('.cfm-forge-ribbon')){
-  const ribbon=document.createElement('nav');ribbon.className='cfm-forge-ribbon';
-  ribbon.setAttribute('aria-label','Production flow shortcuts');
-  for(const item of paths){
-   const b=document.createElement('button');b.type='button';
-   b.title='Open '+item.label+' module';b.setAttribute('data-forge-view',item.view);
-   const n=document.createElement('span');n.className='flow-no';n.textContent=item.i;
-   const copy=document.createElement('span');copy.className='flow-copy';
-   const title=document.createElement('strong');title.textContent=item.label;
-   const hint=document.createElement('small');hint.textContent=item.hint;
-   copy.append(title,hint);b.append(n,copy);
-   b.addEventListener('click',()=>navigate(item.view));ribbon.append(b);
-  }
-  intro?.after(ribbon);
- }
-}
+// Oversized deck and duplicate shortcuts removed; retain Forge theme and Work Order form navigation.
+function buildDeck(){document.body.classList.add('cfm-forge')}
 function decorateOrderJourney(){
  const dialog=document.getElementById('editDialog');
  if(!dialog?.open||!dialog.classList.contains('cfm-wo-dialog'))return;
