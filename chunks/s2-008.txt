@@ -500,6 +500,13 @@ function genericUpdateNotification(prevRaw,nextRaw){
   }
 }
 function save(doRender=true){
+  // V332: the Save button handler refreshes the appropriate view AFTER closing
+  // the editor. Never render every ERP module inside the same Save click:
+  // doing so causes a mobile UI freeze and hides the saved confirmation.
+  if(doRender && document.getElementById('editDialog')?.open &&
+     document.getElementById('saveFormBtn')?.dataset.saving==='1'){
+    doRender=false;
+  }
   syncDerivedState();
   localMutationSeq++;
   const next=JSON.stringify(state),prev=safeStorage.getItem(STORAGE_KEY);
