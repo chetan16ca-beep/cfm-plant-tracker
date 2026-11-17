@@ -1459,6 +1459,109 @@ async function cfmPOVerifyCloudAfterLocalFailure(party,poNo,created,checkOnly=fa
  }
 }
 
+
+/* V337: Atomic Cloud Work Order append.
+   Saves ONLY the new PO lines, avoiding serialization, browser quota and
+   transmission of the entire Store/Cutting/ERP state on each PO save.
+   Supabase enforces the same RLS and safety trigger, with idempotent retries.
+   A failed/unknown acknowledgement never causes automatic duplicate creation.
+ */
+async function cfmPOAtomicCloudSave(party,poNo,created){
+ const editor=document.getElementById('editDialog');
+ const workNos=created.map(x=>String(x.workNo||''));
+ const token=workNos.join('|')+'-'+Date.now();
+ if(editor)editor.dataset.cfmPoVerifyToken=token;
+ let bar=editor?.querySelector('#cfmPoSaveInlineStatus');
+ if(editor&&!bar){
+  bar=document.createElement('div');bar.id='cfmPoSaveInlineStatus';
+  bar.setAttribute('role','status');
+  (editor.querySelector('.dialog-actions')||editor).before(bar);
+ }
+ const status=(msg,warning=false)=>{
+  if(!bar?.isConnected)return;
+  bar.style.cssText='display:block;position:relative;padding:11px;margin:10px 0;border:2px solid '+(warning?'#e3b17b':'#96d1b1')+';border-radius:10px;background:'+(warning?'#fff7ed':'#eaf8ef')+';color:'+(warning?'#864c1e':'#13653a')+';font:750 13px/1.5 system-ui';
+  bar.textContent=msg;
+ };
+ const same=(a,b)=>String(a??'').trim().toUpperCase()===String(b??'').trim().toUpperCase();
+ const showSuccess=(remoteVersion)=>{
+  if(Number(remoteVersion)>0){
+   cloudVersion=Math.max(Number(cloudVersion)||0,Number(remoteVersion));
+   cloudUpdatedAt=new Date().toISOString();cloudReady=true;
+  }
+  try{setCloudBadge('☁️ PO saved in Live Cloud','green')}catch(_){}
+  if(window.cfmPOImportedDraft&&same(window.cfmPOImportedDraft.poNo,poNo))window.cfmPOImportedDraft=null;
+  if(editor?.dataset.cfmPoVerifyToken===token){
+   try{if(editor.open)editor.close()}catch(e){console.warn('Editor close after Cloud Save',e)}
+   if(bar?.isConnected)bar.remove();
+   delete editor.dataset.cfmPoVerifyToken;
+  }
+  try{cfmPOShowSavedReceipt(party,poNo,created,true)}
+  catch(e){console.error('PO Cloud saved, receipt UI failed',e);toast('PO Saved Successfully • '+workNos.join(', '))}
+  // A deferred best-effort local copy cannot block the Save confirmation.
+  // Never clear any existing local history, Stock or user backups.
+  setTimeout(()=>{
+   try{safeStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+   catch(e){console.warn('Phone storage limit; Work Order is safe in Cloud',e)}
+  },1000);
+ };
+ status('Saving '+workNos.join(', ')+' to Live Cloud…');
+ try{
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),16000);
+  let result;
+  try{
+   const r=await fetch(CLOUD_URL+'/rest/v1/rpc/cfm_append_pending_orders',{
+    method:'POST',headers:cloudHeaders(),signal:ctrl.signal,
+    body:JSON.stringify({p_orders:created})
+   });
+   if(!r.ok){
+    const raw=await r.text();
+    throw new Error('Cloud '+r.status+' • '+String(raw||'Save refused').slice(0,240));
+   }
+   result=await r.json();
+  }finally{clearTimeout(timer)}
+  if(result?.ok!==true || !workNos.every(no=>(result.workNos||[]).some(x=>same(no,x))))
+   throw new Error('Cloud returned an incomplete Save receipt');
+  showSuccess(result.version);
+  return true;
+ }catch(e){
+  console.warn('Atomic PO response unconfirmed; verifying read-only',e);
+  status('Checking Cloud for '+workNos.join(', ')+' (no duplicate Save)…');
+  // The request may have committed even if Android lost the response.
+  // Check read-only; never resend a possibly committed Work Order.
+  for(let attempt=0;attempt<2;attempt++){
+   const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),9000);
+   try{
+    const remote=await cloudFetch(ctrl.signal);
+    const found=created.every(x=>(remote?.payload?.pending||[]).some(y=>
+      same(y.workNo,x.workNo)&&same(y.party,x.party)&&same(y.poNo,x.poNo)&&
+      same(y.description,x.description)&&Number(y.orderQty)===Number(x.orderQty)));
+    if(found){showSuccess(remote.version);return true}
+   }catch(readError){console.warn('Cloud status read unavailable',readError)}
+   finally{clearTimeout(timer)}
+  }
+  status('⚠️ Cloud has NOT confirmed '+workNos.join(', ')+'. Do not press Save again. Use Check Cloud Status below; the ERP itself can remain open.',true);
+  if(bar?.isConnected){
+   const retry=document.createElement('button');retry.type='button';
+   retry.dataset.cfmPoRecheck='1';retry.textContent='↻ Check Cloud Status (read-only)';
+   retry.style.cssText='display:block;margin-top:10px;padding:10px;border:1px solid #d6a568;border-radius:8px;background:white;color:#76491d;font:750 13px system-ui';
+   retry.onclick=()=>{
+    if(cfmPOCloudVerificationRunning)return;
+    cfmPOCloudVerificationRunning=true;retry.disabled=true;
+    cfmPOVerifyCloudAfterLocalFailure(party,poNo,created,true).finally(()=>{retry.disabled=false});
+   };
+   bar.append(retry);
+  }
+  return false;
+ }finally{
+  cfmPOCloudVerificationRunning=false;
+  const btn=document.getElementById('saveFormBtn');
+  if(editor?.open&&editor.dataset.cfmPoVerifyToken===token&&btn){
+   btn.dataset.saving='1';btn.disabled=true;btn.textContent='Check Cloud Status — no duplicate Save';
+  }
+ }
+}
+
 window.saveMultiPoItems=function(){
   try{
     if(cfmPOCloudVerificationRunning){toast('Cloud verification running • do not Save again');return false}
@@ -1521,8 +1624,19 @@ window.saveMultiPoItems=function(){
     try{saveCustomParty(party)}catch(e){}
     const workRange=created.length===1?created[0].workNo:(created[0].workNo+' – '+created[created.length-1].workNo);
     try{setNextUpdateNotification('🔔 New PO Added',party+' • '+created.length+' item • '+workRange)}catch(e){}
-    // Persist and queue Cloud sync now; heavy full-app rendering should not
-    // block Save receipt or falsely look like a stalled button on Android.
+    // Prefer a tiny atomic Cloud request: prevents the Android freeze
+    // caused by rewriting the complete ERP state for each Work Order.
+    // Keep the dialog open until the Cloud acknowledges the exact PO.
+    if(navigator.onLine!==false){
+      cfmPOCloudVerificationRunning=true;
+      cfmPOAtomicCloudSave(party,poNo,created).catch(e=>{
+       cfmPOCloudVerificationRunning=false;
+       console.error('Unexpected atomic PO save failure',e);
+       cfmPOInlineStatus('Cloud Save needs verification. DO NOT repeat Save before checking existing Work Orders.');
+      });
+      return false;
+    }
+    // Offline fallback only: preserve local work without claiming Cloud Saved.
     let localReceipt=null;
     try{localReceipt=save(false,{poQuick:true})}
     catch(e){
