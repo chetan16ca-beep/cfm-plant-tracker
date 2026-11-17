@@ -1,0 +1,57 @@
+/* V346 Corporate Blue compact standalone workspaces: 4 HTML pages only.
+   Preserve PO reading, work-order save, cloud, validation, warning and file import logic. */
+@media screen {
+*{box-sizing:border-box}
+body{background:linear-gradient(180deg,#ecf5fb,#f7fafc 300px)!important;color:#153b59!important}
+header{background:linear-gradient(110deg,#092c4c,#075b82 78%,#078888)!important;color:white!important;padding:11px 12px!important;box-shadow:0 3px 10px #08385827!important}
+header h1{font-size:17px!important;line-height:1.25!important;margin:0 0 2px!important}
+header p,header small{font-size:11px!important;line-height:1.3!important}
+main{padding:9px!important;max-width:980px!important;margin:0 auto!important}
+main>h2{font-size:17px!important;margin:4px 0 8px!important;color:#0a416a!important}
+section{min-width:0!important;padding:10px!important;margin:8px 0!important;border:1px solid #ccdeea!important;border-radius:10px!important;background:#fff!important;box-shadow:0 2px 6px #143e5a0c!important}
+h2{font-size:15px!important;line-height:1.3!important;color:#104e77!important;margin:0 0 8px!important}
+h3{font-size:14px!important;margin:4px 0 8px!important}
+p,small,.note,.hint,.meta{line-height:1.4!important}
+p{margin:6px 0!important}
+.grid{gap:7px!important}
+.item,.card,.wo{min-width:0!important;padding:9px!important;margin:6px 0!important;border-radius:9px!important}
+.rowhead{margin:0 0 5px!important;gap:6px!important}
+.rowhead button{min-height:34px!important}
+.actions,.statbar{gap:6px!important}
+.actions>*{min-width:0}
+input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea{
+ min-width:0!important;max-width:100%!important;padding:7px 9px!important;
+ min-height:40px!important;border:1px solid #bfd4e3!important;
+ border-radius:8px!important;background:#fff!important;color:#163b55!important;
+ font:600 13px system-ui!important;margin-top:4px!important;
+}
+textarea{min-height:74px!important;resize:vertical!important}
+label{font-size:11.5px!important;line-height:1.35!important}
+button,.btn,.link{min-height:38px!important;padding:7px 10px!important;
+ border-radius:8px!important;font-size:12px!important;line-height:1.25!important}
+button:focus-visible,.btn:focus-visible,input:focus-visible,
+select:focus-visible,textarea:focus-visible{outline:2px solid #0a8bb1!important;outline-offset:2px!important}
+.status,.warn{padding:9px!important;margin:7px 0!important;font-size:12px!important;line-height:1.4!important;
+ border-radius:9px!important;overflow-wrap:anywhere!important}
+.note,.hint{font-size:11.5px!important}
+.pill,.chip{font-size:10.5px!important;padding:3px 6px!important}
+.num{font-size:21px!important;line-height:1.2!important}
+.stat{min-width:100px!important;padding:8px!important;border-radius:9px!important}
+.woTop{gap:5px!important;flex-wrap:wrap!important}
+.desc{margin:5px 0!important;font-size:12.5px!important;line-height:1.35!important;overflow-wrap:anywhere!important}
+.more{font-size:11.5px!important;line-height:1.4!important}
+table{font-size:11.5px!important}
+td,th{padding:5px!important}
+section:has(table){overflow-x:auto!important}
+iframe,img{max-height:240px!important}
+@media(max-width:520px){
+ main{padding:7px!important}
+ section{padding:8px!important;margin:7px 0!important}
+ .grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important}
+ .grid .full{grid-column:1/-1!important}
+ .actions>*{flex:1 1 115px!important}
+ .statbar{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:340px){.grid{grid-template-columns:minmax(0,1fr)!important}.statbar{grid-template-columns:minmax(0,1fr)!important}}
+}
+@media print{/* Exact printing and Work Order outputs must retain original print settings. */}
