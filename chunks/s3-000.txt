@@ -1416,10 +1416,19 @@ window.saveMultiPoItems=function(){
     if(!confirmed)return fail('Work Orders could not be verified in local saved records. Keep the app open and check Sync before retrying.',document.getElementById('saveFormBtn'));
     if(imported&&String(imported.poNo||'').trim().toUpperCase()===poNo.toUpperCase())window.cfmPOImportedDraft=null;
     toast(created.length+' PO items locally saved • '+workRange);
-    cfmPOShowSavedReceipt(party,poNo,created);
-    // Update visible lists after receipt opens; keep saved records even if
-    // another optional dashboard widget has a rendering exception.
-    setTimeout(()=>{try{renderAll()}catch(e){console.error('Post-PO refresh issue',e)}},400);
+    // The order is ALREADY verified in localStorage. A receipt display error
+    // must not be mistaken for a failed save (or encourage a duplicate retry).
+    try{cfmPOShowSavedReceipt(party,poNo,created)}
+    catch(receiptError){
+      console.error('PO saved; confirmation UI failed',receiptError);
+      try{toast('Work Order Saved Successfully • '+workRange)}catch(_){}
+    }
+    // V332: refresh only Work Orders and Dashboard, not every ERP module.
+    // Defer the refresh until after the saved confirmation is visible.
+    setTimeout(()=>{
+      try{renderDashboard();renderPending()}
+      catch(e){console.error('Post-PO refresh issue (data already saved)',e)}
+    },350);
     return true;
   }catch(e){console.error('PO SAVE FATAL',e);toast('SAVE ERROR: '+(e?.message||String(e)));return false}
 };
