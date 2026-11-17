@@ -27,6 +27,50 @@ window.deleteAnyAttachment=async function(idx){
   }catch(e){console.error(e);toast('Delete nahi hua')}
 }
 
+
+/* V327: Confirm a manual Work Order only after local readback verifies it.
+   Display inside the app regardless of Android/browser push permission. */
+window.cfmShowManualWoReceipt=function(rec){
+ const old=document.getElementById('cfmManualWoReceipt327');if(old){try{old.close()}catch(_){}old.remove()}
+ const dialog=document.createElement('dialog');dialog.id='cfmManualWoReceipt327';
+ dialog.setAttribute('aria-label','Work Order Saved Confirmation');
+ dialog.style.cssText='box-sizing:border-box;width:min(92vw,520px);max-width:520px;max-height:85vh;overflow:auto;margin:auto;border:1px solid #bde4cd;border-radius:16px;padding:20px;background:#fff;color:#153c52;box-shadow:0 18px 65px #0005;font:14px/1.5 system-ui';
+ const safe=x=>String(x==null?'':x).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ dialog.innerHTML='<header style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><span style="display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#dff7e8;color:#176942;font-size:25px">✓</span><div><b style="font-size:19px">Work Order Saved Successfully</b><div style="color:#507086;font-size:11px">Verified in this device’s saved Work Orders</div></div></header>'+
+  '<section style="padding:13px;background:#f3f8fc;border:1px solid #d8e8f1;border-radius:10px;line-height:1.8">'+
+  '<div><b>Work No.:</b> '+safe(rec.workNo)+'</div>'+
+  '<div><b>Party:</b> '+safe(rec.party||'-')+'</div>'+
+  '<div><b>Product:</b> '+safe(rec.description||'-')+'</div>'+
+  '<div><b>Order Qty:</b> '+safe(rec.orderQty)+'</div>'+
+  '</section>'+
+  '<p id="cfmManualWoSync327" role="status" style="padding:10px;border:1px solid #eccd96;background:#fff8e9;border-radius:9px;color:#795715;font-weight:700">✓ Saved on device • Cloud sync status must be verified separately</p>'+
+  '<p style="font-size:11px;color:#5c7588">A Cloud delay does not mean Save failed. Do not create the same Work Order twice.</p>'+
+  '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
+  '<button data-wo-act="view" type="button" style="padding:10px 13px;border:0;border-radius:9px;background:#116c9d;color:white;flex:1;font-weight:700">View Work Orders</button>'+
+  '<button data-wo-act="sync" type="button" style="padding:10px 13px;border:1px solid #aaccd9;border-radius:9px;background:#eff8fb;color:#1d5972;font-weight:700">Sync Now</button>'+
+  '<button data-wo-act="close" type="button" style="padding:10px 13px;border:1px solid #b6cbd6;border-radius:9px;background:white;color:#254456;font-weight:700">OK / Close</button></div>';
+ const close=()=>{try{if(dialog.open)dialog.close()}catch(_){}dialog.remove()};
+ dialog.addEventListener('cancel',e=>{e.preventDefault();close()});
+ dialog.addEventListener('click',e=>{
+  const b=e.target.closest('button[data-wo-act]');if(!b)return;
+  const act=b.dataset.woAct;
+  if(act==='close')return close();
+  if(act==='view'){close();showView('pending');return}
+  if(act==='sync'){
+   const line=dialog.querySelector('#cfmManualWoSync327');
+   if(line)line.textContent='⏳ Cloud Sync requested • Verify the Cloud status badge after syncing';
+   if(typeof window.manualCloudSync==='function')Promise.resolve(window.manualCloudSync()).catch(e=>{
+    if(line)line.textContent='⚠️ Cloud Sync error • '+String(e?.message||e)
+   });
+   else if(line)line.textContent='⚠️ Cloud Sync unavailable on this device';
+  }
+ });
+ document.body.append(dialog);
+ try{dialog.showModal()}catch(e){
+  dialog.style.position='fixed';dialog.style.inset='8vh 4vw auto';dialog.style.zIndex='2147483600';dialog.style.display='block';
+ }
+};
+
 window.openPendingForm=function(i=null){
   const r=i==null?{workNo:((state.pending||[]).some(x=>normalize(x.workNo)==='CFM-654')?nextWorkNo():'CFM-654'),party:'',poNo:'',orderDate:todayISO(),deliveryDate:'',eagleCode:'',itemCode:'',description:'',description2:'',cloth:'',width:'',orderQty:'',cutQty:0,priority:'NORMAL',status:'PENDING',billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''}:clone(state.pending[i]);
   const mi=measurementInfo(r);
@@ -40,7 +84,7 @@ window.openPendingForm=function(i=null){
     `<div class="field full"><div class="card-actions" style="margin:0"><button type="button" class="btn btn-primary" onclick="applyPreviousOrderToForm()">↩ Fill Previous Order</button><button type="button" class="btn btn-green" onclick="applyProductToPendingForm(true)">⚡ Auto Match Eagle Code + Measurement</button></div></div>`;
   openDialog(i==null?'Add Pending Order':`Edit ${r.workNo}`,html,o=>{
     const chosenParty=resolvePartyFromForm(o);
-    if(String(o.party||'')==='__NEW_PARTY__'&&!chosenParty){toast('New Party Name enter karo');return}
+    if(!chosenParty){toast('Party Name required • select or enter Customer Name');return false}
     o.party=chosenParty;delete o.newParty;
     if(!String(o.actualProductType||'').trim()){toast('Actual Product Type select karo');return false}
     saveCustomParty(o.party);
@@ -70,7 +114,27 @@ window.openPendingForm=function(i=null){
       setNextUpdateNotification('📝 Pending Work Updated',[o.workNo||'',o.party||'',o.description2||o.description||''].filter(Boolean).join(' • '));
     }
     save(false);
-    toast(wasArchived?'Archived order updated':'Order saved locally • Cloud sync queued')
+    // Cloud may still be syncing; confirm only what was verifiably persisted
+    // on this device. Never announce success from the in-memory pending list.
+    let persisted=null;
+    try{
+      const snapshot=JSON.parse(safeStorage.getItem(STORAGE_KEY)||'null');
+      persisted=(snapshot?.pending||[]).find(x=>
+        normalize(x.workNo)===normalize(o.workNo)&&
+        normalize(x.party)===normalize(o.party)&&
+        Number(x.orderQty)===Number(o.orderQty));
+    }catch(e){console.warn('Work Order saved readback:',e)}
+    if(!persisted){
+      toast('Work Order Save not verified • check Cloud/status before retrying');
+      return false;
+    }
+    toast(wasArchived?'Work Order update verified':'Work Order saved on this device');
+    const receiptRecord={
+      workNo:persisted.workNo,party:persisted.party,
+      description:persisted.description,orderQty:persisted.orderQty
+    };
+    setTimeout(()=>{try{window.cfmShowManualWoReceipt?.(receiptRecord)}catch(e){console.error('Work Order confirmation unavailable',e)}},125);
+    return true;
   },{type:'pending',i,workNo:r.workNo||''});
   setTimeout(()=>{
     bindPendingAutoFields();
