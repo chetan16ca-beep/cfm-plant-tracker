@@ -1482,6 +1482,7 @@ async function cfmPOAtomicCloudSave(party,poNo,created){
  };
  const same=(a,b)=>String(a??'').trim().toUpperCase()===String(b??'').trim().toUpperCase();
  const showSuccess=(remoteVersion)=>{
+  try{document.getElementById('cfmPOUnverifiedV338')?.remove()}catch(_){}
   if(Number(remoteVersion)>0){
    cloudVersion=Math.max(Number(cloudVersion)||0,Number(remoteVersion));
    cloudUpdatedAt=new Date().toISOString();cloudReady=true;
