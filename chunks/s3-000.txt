@@ -788,9 +788,20 @@ $('saveFormBtn').addEventListener('click',()=>{
       const priorCutting=nextCutting?{...obj}:null;
       const wasMultiPO=dialogResumeMeta?.type==='multiPending';
       $('editDialog').close();
-      // saveMultiPoItems already persisted and scheduled its own UI update.
-      // Avoid a synchronous full ERP render in the Save click handler.
-      if(!wasMultiPO)setTimeout(()=>{try{renderAll()}catch(e){console.error('Save screen refresh failed',e);try{toast('Saved • Refresh screen to see latest order')}catch(_){}}},50);
+      // V327: Work Order creation only needs the Pending and Dashboard
+      // lists refreshed. Rendering EVERY module immediately after Save can
+      // block mobile interactions and obscure the success confirmation.
+      if(!wasMultiPO){
+        const savedPending=dialogResumeMeta?.type==='pending';
+        setTimeout(()=>{
+          try{
+            if(savedPending){renderDashboard();renderPending();}
+            else renderAll();
+          }catch(e){console.error('Post-save screen refresh failed',e);
+            try{toast('Saved locally • Refresh view if needed')}catch(_){}
+          }
+        },savedPending?350:50);
+      }
       if(nextCutting){
         const reopenNext=()=>{
           try{
