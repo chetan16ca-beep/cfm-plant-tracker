@@ -498,7 +498,7 @@ window.addEventListener('message',function(event){
   try{duplicates=w.cfmPOExistingOrders(party,po)||[]}catch(e){return fail('Could not check existing PO. Refresh ERP first.')}
   if(duplicates.length)return fail('PO '+po+' for '+party+' is already saved in ERP as '+duplicates.map(x=>x.workNo+' (Qty '+(x.orderQty??'?')+')').slice(0,8).join(', ')+'. Open Pending Orders to view the existing record. This PO has NOT been imported again.');
   try{
-    w.openMultiPendingForm();
+    w.openMultiPendingForm('verified-po-import');
     const doc=w.document,$=id=>doc.getElementById(id);
     if(!$('multiParty')||!$('multiPoItems')||!$('multiPoNo'))throw Error('Multi-item PO editor could not open');
     $('multiParty').value=party;$('multiPoNo').value=po;
