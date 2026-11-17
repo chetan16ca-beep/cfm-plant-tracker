@@ -1312,9 +1312,10 @@ function cfmPOShowSavedReceipt(party,poNo,created,cloudVerifiedOnly=false){
  const workNos=created.map(x=>String(x.workNo||''));
  const previous=document.getElementById('cfmPoSaveReceipt');
  if(previous){try{previous.close()}catch(_){}previous.remove()}
- const dialog=document.createElement('dialog');dialog.id='cfmPoSaveReceipt';
+ // V338: a lightweight non-modal receipt cannot deadlock with the Work Order editor dialog.
+ const dialog=document.createElement('div');dialog.id='cfmPoSaveReceipt';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','false');
  dialog.setAttribute('aria-label','PO Saved Confirmation');
- dialog.style.cssText='position:fixed;box-sizing:border-box;width:min(92vw,510px);max-width:510px;max-height:85vh;overflow:auto;margin:auto;border:1px solid #b6e2ca;border-radius:19px;padding:21px;background:white;color:#17384e;box-shadow:0 18px 65px #0005;font:14px/1.5 system-ui';
+ dialog.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2147483646;display:block;box-sizing:border-box;width:min(92vw,510px);max-width:510px;max-height:min(85dvh,750px);overflow:auto;border:1px solid #b6e2ca;border-radius:19px;padding:21px;background:white;color:#17384e;box-shadow:0 18px 65px #0005;font:14px/1.5 system-ui';
  dialog.innerHTML='<div style="display:flex;align-items:center;gap:12px;margin-bottom:13px"><span aria-hidden="true" style="display:grid;place-items:center;width:43px;height:43px;border-radius:50%;background:#def6e7;color:#137447;font-size:25px">✓</span><div><b style="font-size:19px">PO Saved Successfully</b><div style="font-size:11px;color:#62788a">'+(cloudVerifiedOnly?'Verified in Live Cloud • device storage needs attention':'Verified in this device’s saved Work Orders')+'</div></div></div>'+
  '<div id="cfmPoSaveReceiptDetails" style="padding:13px 15px;border:1px solid #d9e6ee;border-radius:11px;background:#f7fafc;white-space:pre-wrap;line-height:1.65;word-break:break-word"></div>'+
  '<div id="cfmPoSaveCloudState" role="status" aria-live="polite" style="margin:14px 0;padding:11px;border:1px solid #edcc8b;border-radius:10px;background:#fff7e6;color:#855919;font-weight:700">⏳ Saved on this device • Cloud sync pending</div>'+
@@ -1336,7 +1337,7 @@ function cfmPOShowSavedReceipt(party,poNo,created,cloudVerifiedOnly=false){
  };
  document.addEventListener('cfm:po-cloud-result',onCloud);
  const close=()=>{document.removeEventListener('cfm:po-cloud-result',onCloud);try{if(dialog.open)dialog.close()}catch(_){}dialog.remove()};
- dialog.addEventListener('cancel',e=>{e.preventDefault();close()});
+ dialog.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();close()}});
  dialog.addEventListener('click',e=>{
   const button=e.target.closest('button[data-po-action]');if(!button)return;
   const action=button.dataset.poAction;
@@ -1348,13 +1349,10 @@ function cfmPOShowSavedReceipt(party,poNo,created,cloudVerifiedOnly=false){
    else status('⚠️ Sync unavailable • check Cloud connection.','error');
   }
  });
+ // Non-modal confirmation renders immediately: no extra showModal(), no
+ // browser modal stack or delayed render that can freeze Android's WebView.
  document.body.append(dialog);
- setTimeout(()=>{
-  try{dialog.showModal()}catch(e){
-   // Fallback: visible fixed confirmation even if modal dialogs are unavailable.
-   dialog.style.display='block';dialog.style.zIndex='2147483600';
-  }
- },80);
+ try{dialog.querySelector('[data-po-action="close"]')?.focus({preventScroll:true})}catch(_){}
 }
 
 
