@@ -333,12 +333,9 @@ function send(){
  render();
 }
 function init(){
+ // Keep the compact floating Jessi shortcut and voice/text dialog,
+ // but do not render the large dashboard promotion card.
  ensureFloatingJessi();
- newLauncher();
- if(!$("cfmAiLauncher")){
-  const root=$("view-dashboard");
-  if(root){const observer=new MutationObserver(()=>{newLauncher();if($("cfmAiLauncher"))observer.disconnect()});observer.observe(root,{childList:true,subtree:true})}
- }
  window.cfmOpenAskAi=open;
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
