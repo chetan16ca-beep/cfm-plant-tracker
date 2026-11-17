@@ -275,14 +275,8 @@ window.cfmOpenIntelligence=function(which){
  openCount++;
 };
 function init(){
- buildLauncher();
- if(!$('cfmIntelLauncher')){
-  const dash=$('view-dashboard');
-  if(dash){
-   const observer=new MutationObserver(()=>{if($('cfmSapWorkspace')){buildLauncher();if($('cfmIntelLauncher'))observer.disconnect()}});
-   observer.observe(dash,{childList:true});
-  }
- }
+ // Dashboard launcher removed on request to keep ERP compact.
+ // Tool dialog API remains available via window.cfmOpenIntelligence.
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
