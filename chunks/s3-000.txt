@@ -1259,7 +1259,18 @@ window.cfmPOExistingOrders=function(party,poNo){
    orderDate:String(x.orderDate||'')
  }));
 };
-window.openMultiPendingForm=function(){
+window.openMultiPendingForm=function(source){
+  // V341: manual PO entry uses a standalone small page, outside the large
+  // srcdoc dashboard. Imported PDF/photo POs still use the original prefilled
+  // editor, retaining their strict PO review and line verification workflow.
+  if(source!=='verified-po-import'&&!window.cfmPOImportedDraft){
+    try{
+      const parent=window.top;
+      const destination=new URL('./fast-work-order.html',parent.location.href);
+      parent.location.assign(destination.href);
+      return;
+    }catch(routeError){console.warn('Fast Work Order route unavailable; using legacy editor',routeError)}
+  }
   multiSrlBalanceCache=new Map();
   multiPoBaseNo=nextWorkStartNo();
   const parties=customerPartyOptions();
