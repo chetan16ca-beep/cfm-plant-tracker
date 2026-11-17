@@ -71,17 +71,24 @@ function choose(work,group){
 function mount(){
  const dash=$('view-dashboard');
  if(dash&&!$('cfmDeptSopMenu319')){
-  const root=document.createElement('section');root.id='cfmDeptSopMenu319';
-  root.style.cssText='margin:10px 0;padding:12px;background:#f7fbff;border:1px solid #c4e1f1;border-radius:12px';
-  const h=document.createElement('h3');h.textContent='Department-wise SOP / Checklists';h.style.cssText='font:800 16px system-ui;color:#135176;margin:0 0 5px';
-  const p=document.createElement('p');p.textContent='Cleaning, Material और Production अलग-अलग खोलें। हर page में सिर्फ उसी SOP के numbered points आएँगे।';p.style.cssText='font:12px/1.4 system-ui;color:#4c7088;margin:0 0 9px';
-  const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:7px';
+  // Compact by default: keep every SOP/checklist and print action available on tap.
+  const root=document.createElement('details');root.id='cfmDeptSopMenu319';
+  root.style.cssText='margin:6px 0;padding:0;background:#f7fbff;border:1px solid #c4e1f1;border-radius:10px;overflow:hidden';
+  const summary=document.createElement('summary');
+  summary.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;list-style:none;padding:10px 12px;min-height:42px;color:#135176;font:800 13px system-ui';
+  const heading=document.createElement('span');heading.textContent='☑ SOP & Department Checklists';
+  const hint=document.createElement('span');hint.textContent='15 SOPs ▾';hint.style.cssText='white-space:nowrap;color:#50768a;font:700 11px system-ui';
+  summary.append(heading,hint);
+  root.addEventListener('toggle',()=>{hint.textContent=root.open?'Close ▴':'15 SOPs ▾'});
+  const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:8px;border-top:1px solid #d8e7ef';
   CATS.forEach(g=>g.items.forEach(([code,label])=>{
    const button=document.createElement('button');button.type='button';
-   button.textContent=g.icon+' '+sop(code)+' • '+label;button.style.cssText=btnStyle+';text-align:center';
+   button.textContent=g.icon+' '+code+' · '+label;
+   button.title=sop(code)+' • '+label;
+   button.style.cssText='padding:7px 6px;min-height:39px;background:white;border:1px solid #bbd8e7;border-radius:8px;color:#165478;text-align:left;font:700 11px/1.25 system-ui;cursor:pointer;overflow-wrap:anywhere';
    button.onclick=()=>specific(code,'');grid.append(button);
   }));
-  root.append(h,p,grid);dash.insertBefore(root,dash.firstChild);
+  root.append(summary,grid);dash.insertBefore(root,dash.firstChild);
  }
  const legacy=$('cfmSopOpen318');if(legacy)legacy.style.setProperty('display','none','important');
  document.querySelectorAll('#pendingList .data-card').forEach(card=>{
