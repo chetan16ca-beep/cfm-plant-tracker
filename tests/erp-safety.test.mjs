@@ -15,7 +15,7 @@ const scripts=[
  'cfm-workno-reconcile.js','cfm-efppl-master-v330.js',
  'cfm-sop-register.js','cfm-department-sop-v319.js',
  'cfm-dashboard-compact-v343.js','cfm-theme-a-v344.js',
- 'cfm-dashboard-bottom-v345.js','cfm-cutting-reconciliation.js',
+ 'cfm-dashboard-bottom-v345.js','cfm-operator-safety-v347.js','cfm-cutting-reconciliation.js',
  'cfm-intelligence-core.js'
 ];
 for(const p of scripts){
@@ -36,6 +36,8 @@ has('backup-safe.js','indexedDB');
 has('backup-guardian.js','indexedDB');
 has('cfm-theme-a-v344.js','physicalStockSummary');
 has('cfm-dashboard-bottom-v345.js','cfmV195DashboardAudit');
+has('cfm-operator-safety-v347.js','cfmOperatorSafetyCheck');
+has('index.html','cfm-operator-safety-v347.js?v=347');
 for(const p of ['cfm-theme-a-v344.js','cfm-dashboard-bottom-v345.js','cfm-dashboard-compact-v343.js'])
  has('index.html',p);
 ok(!index.includes('cfm-jessi-voice.js'),'Removed Jessi is not loaded again');

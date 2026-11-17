@@ -363,6 +363,8 @@ html,body{background:#f4faff!important;color:#13233b!important}
  src=src.replace('</head>','<script defer src="./cfm-dashboard-bottom-v345.js?v=345"></scr'+'ipt></head>');
  // V346: Compact corporate-blue internal workspaces and dialogs; pure CSS only.
  src=src.replace('</head>','<link rel="stylesheet" href="./cfm-submodules-compact-v346.css?v=346"></head>');
+ // V347: operator preferences and read-only system check under Settings only.
+ src=src.replace('</head>','<script defer src="./cfm-operator-safety-v347.js?v=347"></scr'+'ipt></head>');
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{
