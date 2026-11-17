@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CFM Fast Work Order • Eagle Filtration</title>
+<style>
+:root{font-family:system-ui,"Segoe UI",Arial,sans-serif;color:#163849;background:#eef6f9}
+*{box-sizing:border-box}body{margin:0;background:#eef6f9}
+header{background:linear-gradient(110deg,#054968,#087c80);color:white;padding:15px 15px 18px;position:sticky;top:0;z-index:2}
+header h1{font-size:20px;margin:0 0 3px}header p{margin:0;font-size:12px;opacity:.9}
+main{max-width:720px;padding:12px;margin:auto}
+section{padding:15px;background:white;border:1px solid #d1e1e9;border-radius:13px;margin-bottom:12px;box-shadow:0 2px 6px #1542580d}
+h2{font-size:16px;color:#124963;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+label{font-weight:700;font-size:12px;color:#43616d;display:block}
+input,select,textarea{width:100%;min-width:0;font:600 15px system-ui;padding:11px;border-radius:8px;background:#fff;border:1px solid #bacfd9;margin:5px 0 0;color:#183d54}
+input:focus,select:focus{outline:2px solid #56a9db;outline-offset:1px}
+.item{border:1px solid #b6d6df;background:#f8fcfd;padding:11px;border-radius:11px;margin-bottom:11px}
+.rowhead{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:800;color:#166078;margin-bottom:9px}
+.rowhead button{padding:6px 11px;background:white;color:#aa3737;border:1px solid #e5b9b9}
+label.full{grid-column:1/-1}
+button,.btn{font:800 14px system-ui;display:inline-block;text-decoration:none;border:0;border-radius:9px;padding:12px;cursor:pointer}
+button.primary{background:linear-gradient(115deg,#075f82,#039289);color:white}
+button.secondary,.btn.secondary{background:#eaf4fa;color:#195474;border:1px solid #bcd7e3}
+button:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:9px}.actions>*{flex:1 1 auto}
+.status{font-size:13px;line-height:1.5;padding:12px;border-radius:9px;border:1px solid #c4d9e4;background:#f1f9fc;margin:12px 0}
+.status.error{background:#fff2ed;border-color:#dfaea0;color:#8f2c22}
+.status.success{background:#eaf8ef;border-color:#9fcfb1;color:#185a38}
+.note{font-size:12px;line-height:1.5;color:#53707d}
+label.check{display:flex;gap:9px;align-items:flex-start;margin:12px 0;font-size:13px}
+label.check input{width:19px;height:19px;margin:0;flex:none}
+#savedReceipt{display:none}.pill{font-size:11px;color:#075b83;background:#deeff8;border-radius:20px;padding:6px 9px;font-weight:700}
+@media(max-width:420px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}section{padding:12px}header h1{font-size:18px}input,select{font-size:14px}}
+</style>
+<script src="./cfm-efppl-master-v330.js?v=330" defer></script>
+</head><body>
+<header><h1>EAGLE CFM • Fast Work Order</h1><p>No heavy ERP dashboard • Direct Cloud Save • V341</p></header>
+<main>
+<section><div class="actions"><a class="btn secondary" href="./index.html">← Main CFM ERP</a><button type="button" class="secondary" id="reload">↻ Check Latest Cloud</button></div><div class="status" id="cloudStatus">Connecting to Live CFM Cloud…</div><small class="note">Cloud Save is authoritative. This form does not change Cutting, Store or stock balances.</small></section>
+<form id="woForm" autocomplete="off">
+<section>
+<h2>1. Company / PO Details</h2>
+<div class="grid">
+<label class="full">Party Name *<input id="party" list="parties" required placeholder="Select or type customer"><datalist id="parties"></datalist></label>
+<label>PO / Reference<input id="po" placeholder="PO Number"></label>
+<label>Order Date *<input id="orderDate" type="date" required></label>
+<label>Delivery Date<input id="deliveryDate" type="date"></label>
+<label>Priority<select id="priority"><option>NORMAL</option><option>HIGH</option><option>LOW</option></select></label>
+</div></section>
+<section><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><h2>2. Work Order Items</h2><span class="pill" id="nextNo">Work No. loading…</span></div>
+<div id="items"></div>
+<button class="secondary" type="button" id="addItem">+ Add Another Item</button>
+<p class="note">Every item becomes one Work Order. Choose SRL only if required; actual roll width and estimated meter are displayed for verification.</p>
+</section>
+<section>
+<label class="check"><input type="checkbox" id="verified">I verified Party, PO, Product, Cloth, Width and Quantity. Do not generate duplicate Work Orders.</label>
+<div class="actions"><button type="submit" class="primary" id="save" disabled>Save Work Orders to Live Cloud</button><a class="btn secondary" href="./index.html">Back to Main ERP</a></div>
+<div id="saveStatus" class="status" role="status" aria-live="polite">Select Party and complete your Work Order details.</div>
+<div id="verifyActions" class="actions" style="display:none"><button type="button" class="secondary" id="recheck">↻ Verify Existing Work Order (no re-save)</button></div>
+</section>
+</form>
+<section id="savedReceipt"><h2>✓ PO Saved Successfully</h2><div id="savedDetails"></div><div class="actions" style="margin-top:14px"><button class="secondary" id="newOrder" type="button">+ New Work Order</button><a class="btn secondary" href="./index.html">Return to Main CFM ERP</a></div></section>
+</main>
+<script>
+(function(){
+'use strict';
+const CLOUD='https://soluxixriexliipfnznc.supabase.co';
+const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvbHV4aXhyaWV4bGlpcGZuem5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NTM3OTgsImV4cCI6MjEwNjEyOTc5OH0.Jnk36EO3AYNBXufFuMr2zotXEIDYIOM2NVwPkuhTDa0';
+const CODE='EAGLE-CFM-28';
+const $=id=>document.getElementById(id);
+const norm=s=>String(s==null?'':s).trim().replace(/\s+/g,' ').toUpperCase();
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const headers=()=>({'apikey':ANON,'Authorization':'Bearer '+ANON,'Content-Type':'application/json','x-cfm-key':CODE});
+let reference=null,locked=false,pending=null,saved=false;
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+$('orderDate').value=today();
+function updateStatus(id,msg,type=''){
+ const el=$(id);el.textContent=msg;el.className='status'+(type?' '+type:'');
+}
+async function rpc(fn,params,timeoutMs=12000){
+ const controller=new AbortController(),tm=setTimeout(()=>controller.abort(),timeoutMs);
+ try{
+  const res=await fetch(CLOUD+'/rest/v1/rpc/'+fn,{method:'POST',headers:headers(),signal:controller.signal,cache:'no-store',body:JSON.stringify(params)});
+  if(!res.ok)throw Error('Cloud HTTP '+res.status+' • '+(await res.text()).slice(0,160));
+  return await res.json();
+ }finally{clearTimeout(tm)}
+}
+function rowHtml(i){
+ return '<div class="item" data-item><div class="rowhead"><span>Item '+(i+1)+' / Work No. <b data-num>—</b></span><button type="button" data-remove>×</button></div>'+
+ '<div class="grid"><label class="full">Product / Description *<input data-desc required placeholder="e.g. CF BAG 48 ORDINARY 5 MICRON"></label>'+
+ '<label class="full">Description 2 / Extra Spec<input data-extra placeholder="Optional"></label>'+
+ '<label class="full">EFPPL Numbered Product Code<select data-code><option value="">Select / Not mapped</option></select></label>'+
+ '<label>Cloth *<input data-cloth required placeholder="333 AS / 9024"></label>'+
+ '<label>Width (inch) *<input data-width required type="number" min="1" step="any" placeholder="50"></label>'+
+ '<label>Order Qty *<input data-qty required type="number" min="1" step="1" placeholder="2"></label>'+
+ '<label>Eagle Code<input data-eagle placeholder="Optional"></label>'+
+ '<label class="full">Active SRL (optional)<select data-srl><option value="">Select after Cloth + Width</option></select></label></div></div>';
+}
+function renumber(){
+ const base=Number(reference?.nextNo)||0;
+ [...document.querySelectorAll('[data-item]')].forEach((el,i)=>{
+  el.querySelector('[data-num]').textContent=base?'CFM-'+(base+i):'—';
+  el.querySelector('[data-remove]').disabled=document.querySelectorAll('[data-item]').length===1;
+ });
+ $('nextNo').textContent=base?'Next: CFM-'+base:'Work No. loading…';
+}
+function fillProducts(row){
+ const el=row.querySelector('[data-code]');
+ const products=window.CFM_EFPPL?.master||[];
+ for(const p of products){const opt=document.createElement('option');opt.value=p.code;opt.textContent=p.code+' • '+p.description;el.append(opt)}
+ el.addEventListener('change',()=>{
+  const p=products.find(p=>p.code===el.value);if(!p)return;
+  if(!row.querySelector('[data-desc]').value.trim())row.querySelector('[data-desc]').value=p.description;
+ });
+ row.querySelector('[data-desc]').addEventListener('change',()=>{
+  const found=window.CFM_EFPPL?.findCode(row.querySelector('[data-desc]').value);
+  if(found&&!el.value)el.value=found.code;
+ });
+}
+function addItem(){if(locked)return;const i=document.querySelectorAll('[data-item]').length;$('items').insertAdjacentHTML('beforeend',rowHtml(i));const row=$('items').lastElementChild;fillProducts(row);renumber()}
+$('addItem').onclick=addItem;
+$('items').addEventListener('click',e=>{if(e.target.matches('[data-remove]')&&!locked){e.target.closest('[data-item]').remove();renumber()}});
+$('items').addEventListener('change',e=>{
+ if(!e.target.matches('[data-cloth],[data-width]')||locked)return;
+ const row=e.target.closest('[data-item]');
+ const cloth=row.querySelector('[data-cloth]').value.trim(),width=Number(row.querySelector('[data-width]').value);
+ if(cloth&&width>0)refreshSrl(row,cloth,width);
+});
+async function refreshSrl(row,cloth,width){
+ const selector=row.querySelector('[data-srl]');selector.replaceChildren(new Option('Finding matching SRL…',''));
+ try{
+  const data=await rpc('cfm_fast_po_reference',{p_cloth:cloth,p_width:width});
+  if(!row.isConnected||norm(row.querySelector('[data-cloth]').value)!==norm(cloth)||Number(row.querySelector('[data-width]').value)!==width)return;
+  selector.replaceChildren(new Option('No SRL selected',''));
+  for(const s of data.srl||[]){
+   const label=s.srlNo+' • '+s.quality+' • '+s.width+'" • '+s.openingMtr+' MTR'+(s.estimated?' (estimated/not measured)':'');
+   selector.append(new Option(label,s.srlNo));
+  }
+ }catch(e){selector.replaceChildren(new Option('SRL lookup unavailable • can leave blank',''))}
+}
+async function loadReference(){
+ if(locked)return;
+ $('reload').disabled=true;
+ updateStatus('cloudStatus','Checking current Cloud Work Orders…');
+ try{
+  const data=await rpc('cfm_fast_po_reference',{p_cloth:'',p_width:null});
+  if(!data?.ok)throw Error('Cloud status unavailable');
+  reference=data;
+  $('parties').replaceChildren();
+  for(const party of data.parties||[]){const opt=document.createElement('option');opt.value=party;$('parties').append(opt)}
+  renumber();
+  $('save').disabled=false;
+  updateStatus('cloudStatus','☁ Live Cloud connected • '+(data.orders||[]).length+' Work Orders • Next CFM-'+data.nextNo,'success');
+ }catch(e){
+  $('save').disabled=true;
+  updateStatus('cloudStatus','⚠ '+e.message+'. Do not Save until Cloud is available.','error');
+ }finally{$('reload').disabled=false}
+}
+$('reload').onclick=loadReference;
+function collect(){
+ const party=$('party').value.trim(),poNo=$('po').value.trim();
+ if(!party)throw Error('Party name required.');
+ if(!$('orderDate').value)throw Error('Order date required.');
+ const items=[...document.querySelectorAll('[data-item]')].map(row=>({
+  description:row.querySelector('[data-desc]').value.trim(),
+  description2:row.querySelector('[data-extra]').value.trim(),
+  itemCode:row.querySelector('[data-code]').value,
+  eagleCode:row.querySelector('[data-eagle]').value.trim(),
+  cloth:row.querySelector('[data-cloth]').value.trim(),
+  width:Number(row.querySelector('[data-width]').value),
+  orderQty:Number(row.querySelector('[data-qty]').value),
+  selectedSrl:row.querySelector('[data-srl]').value
+ }));
+ if(!items.length||items.length>40)throw Error('Enter 1–40 Work Order items.');
+ for(const i of items)if(!i.description||!i.cloth||!(i.width>0)||!Number.isSafeInteger(i.orderQty)||i.orderQty<1)throw Error('Complete Description, Cloth, Width and Qty for every item.');
+ if(!$('verified').checked)throw Error('Tick the verification checkbox first.');
+ return {party,poNo,orderDate:$('orderDate').value,deliveryDate:$('deliveryDate').value,priority:$('priority').value,items};
+}
+function duplicate(existing,data){
+ if(!data.poNo)return [];
+ const same=x=>norm(x.party)===norm(data.party)&&norm(x.poNo)===norm(data.poNo);
+ return (existing||[]).filter(same).filter(old=>data.items.some(it=>norm(it.description)===norm(old.description)&&Number(it.orderQty)===Number(old.orderQty))).map(x=>x.workNo);
+}
+function renderSuccess(created){
+ saved=true;locked=true;
+ $('woForm').style.display='none';
+ $('savedReceipt').style.display='block';
+ $('savedDetails').textContent='Work Orders: '+created.map(x=>x.workNo).join(', ')+' • '+created.length+' item(s) • Party: '+created[0].party+' • Cloud verified';
+ updateStatus('cloudStatus','✓ Cloud confirmed '+created.map(x=>x.workNo).join(', '),'success');
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+async function verifyPending(){
+ if(!pending)return false;
+ const check=await rpc('cfm_check_pending_orders',{p_worknos:pending.map(x=>x.workNo)},9000);
+ const rows=Array.isArray(check?.records)?check.records:[];
+ const exists=pending.every(it=>rows.some(r=>norm(r.workNo)===norm(it.workNo)&&norm(r.party)===norm(it.party)&&norm(r.poNo)===norm(it.poNo)&&norm(r.description)===norm(it.description)&&Number(r.orderQty)===Number(it.orderQty)));
+ if(exists){renderSuccess(pending);return true}
+ return false;
+}
+$('recheck').onclick=async()=>{
+ $('recheck').disabled=true;
+ try{
+  if(await verifyPending())return;
+  updateStatus('saveStatus','Not confirmed yet. Do not tap Save again; retry the read-only check.','error');
+ }catch(e){updateStatus('saveStatus','Cannot verify Cloud: '+e.message+'. Do not re-save this order.','error')}
+ finally{$('recheck').disabled=false}
+};
+$('woForm').addEventListener('submit',async e=>{
+ e.preventDefault();if(locked||saved)return;
+ let data;
+ try{data=collect()}catch(err){updateStatus('saveStatus',err.message,'error');return}
+ locked=true;$('save').disabled=true;
+ updateStatus('saveStatus','Checking latest Work No. and possible duplicate PO…');
+ try{
+  const latest=await rpc('cfm_fast_po_reference',{p_cloth:'',p_width:null});
+  if(!latest?.ok)throw Error('Cloud unavailable');
+  const repeats=duplicate(latest.orders,data);
+  if(repeats.length)throw Error('This Party/PO/item already exists as '+repeats.join(', ')+'. No new Work Order created.');
+  const base=Number(latest.nextNo);
+  if(!base||base<1)throw Error('Cannot establish next Work No.');
+  pending=data.items.map((i,index)=>({
+   workNo:'CFM-'+(base+index),party:data.party,poNo:data.poNo,orderDate:data.orderDate,deliveryDate:data.deliveryDate,
+   eagleCode:i.eagleCode,itemCode:i.itemCode,description:i.description,description2:i.description2,
+   cloth:i.cloth,width:i.width,orderQty:i.orderQty,cutQty:0,priority:data.priority,status:'PENDING',
+   selectedSrl:i.selectedSrl,reservedSrl:i.selectedSrl,
+   billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''
+  }));
+  updateStatus('saveStatus','Saving '+pending.map(x=>x.workNo).join(', ')+' to Cloud… DO NOT submit again.');
+  let response;
+  try{response=await rpc('cfm_append_pending_orders',{p_orders:pending},15000)}
+  catch(e){
+   // A timed-out response may have saved. NEVER auto-resubmit the order.
+   updateStatus('saveStatus','Cloud response unclear: '+e.message+'. Checking existing records without re-saving…','error');
+   try{if(await verifyPending())return}catch(_){}
+   $('verifyActions').style.display='flex';
+   return;
+  }
+  if(response?.ok===true&&pending.every(x=>(response.workNos||[]).some(n=>norm(x.workNo)===norm(n)))){renderSuccess(pending);return}
+  try{if(await verifyPending())return}catch(_){}
+  $('verifyActions').style.display='flex';
+  updateStatus('saveStatus','Cloud receipt incomplete. Check status without re-saving.','error');
+ }catch(e){
+  if(!pending){locked=false;$('save').disabled=false}
+  updateStatus('saveStatus',e.message,'error');
+  if(pending)$('verifyActions').style.display='flex';
+ }
+});
+$('newOrder').onclick=()=>{
+ if(!saved)return;
+ locked=false;pending=null;saved=false;$('woForm').reset();
+ $('orderDate').value=today();$('items').replaceChildren();addItem();
+ $('woForm').style.display='block';$('savedReceipt').style.display='none';
+ $('verifyActions').style.display='none';
+ loadReference();updateStatus('saveStatus','Ready for a new PO. Previous Work Orders stay saved in Cloud.');
+ window.scrollTo({top:0,behavior:'smooth'});
+};
+addItem();loadReference();
+})();
+</script>
+</body></html>
