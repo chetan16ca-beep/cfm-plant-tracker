@@ -75,7 +75,9 @@ function open(r){
  return !isDispatched(r)&&normalize(r.status)==='PENDING'&&!r.cutEntryPending&&n(r.orderQty)>n(r.cutQty);
 }
 function options(sel,values,first){
- const val=sel.value;
+ const val=sel.value, signature=values.join('\u0001');
+ if(sel.dataset.optionsSignature===signature)return;
+ sel.dataset.optionsSignature=signature;
  sel.innerHTML='<option value="">'+first+'</option>'+values.map(v=>'<option value="'+E(v)+'">'+E(v)+'</option>').join('');
  if(values.includes(val))sel.value=val;
 }
@@ -99,6 +101,7 @@ function allRows(){
 function indexFor(r){
  try{
   if(typeof state==='undefined'||!Array.isArray(state.pending))return -1;
+  if(typeof cfmPendingListSignature==='function'&&cloud()&&cfmPendingListSignature(cloud())!==cfmPendingListSignature(state.pending))return -1;
   const idx=state.pending.findIndex(x=>normalize(x.workNo)===normalize(r.workNo));
   if(idx<0)return -1;
   const x=state.pending[idx];
@@ -181,7 +184,8 @@ function init(){
  filters.before(board);filters.classList.add('pd399-filters');board.querySelector('.pd399-list').before(filters);
  partyFilter=document.createElement('select');partyFilter.id='pd399Party';partyFilter.setAttribute('aria-label','Filter by Party');
  itemFilter=document.createElement('select');itemFilter.id='pd399Item';itemFilter.setAttribute('aria-label','Filter by Item');
- filters.append(partyFilter,itemFilter);
+ const originalStatus=document.getElementById('pendingStatus');
+ if(originalStatus){filters.insertBefore(partyFilter,originalStatus);filters.insertBefore(itemFilter,originalStatus)}else filters.append(partyFilter,itemFilter);
  advanced=document.createElement('details');advanced.className='pd399-advanced';advanced.innerHTML='<summary>⋯ More Details / Original Work Orders / Smart Cloth Allocation / SRL</summary>';
  board.after(advanced);advanced.append(list);oldList=list;
  board.addEventListener('click',e=>{
