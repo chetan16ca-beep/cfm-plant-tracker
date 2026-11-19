@@ -163,10 +163,14 @@ async function saveSlip(){
   const localLog=Array.isArray(state.packingSlips)?state.packingSlips:[];
   if(JSON.stringify(liveLog)!==JSON.stringify(localLog))throw Error('Unverified local packing slips differ from Cloud. Sync before saving');
   const rows=liveLog.filter(x=>up(x.workNo)===up(wo));
+  const deletedRefs=Array.isArray(latest.payload.packingSlipDeletedRefs)?latest.payload.packingSlipDeletedRefs:[];
+  const allNumbers=[...rows,...deletedRefs.filter(x=>up(x.workNo)===up(wo))]
+   .map(x=>Number(String(x.slipNo||'').match(/\/(\d+)$/)?.[1]||0));
+  const nextSerial=Math.max(0,...allNumbers)+1;
   const prev=shipped(rows)+baseline,balance=ordered-prev-amount;
   if(balance<0)throw Error('New shipment exceeds remaining Work Order Qty');
   record={
-   id:uuid(),slipNo:'PK/'+wo+'/'+String(rows.length+1).padStart(3,'0'),
+   id:uuid(),slipNo:'PK/'+wo+'/'+String(nextSerial).padStart(3,'0'),
    workNo:wo,party:liveRow.party||'',partyAddress:address,poNo:liveRow.poNo||'',
    poDate:field(liveRow,['poDate','purchaseOrderDate']),orderDate:liveRow.orderDate||'',
    customerItemNo:packingWOFields(liveRow).customerItemNo,size:packingWOFields(liveRow).size,
@@ -506,7 +510,10 @@ async function deletePackingSlips(all,specificId=null){
   a.href=backupUrl;a.download='CFM-Packing-Slips-Before-Delete-'+new Date().toISOString().slice(0,10)+'.json';
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(backupUrl),30000);
   const nextVersion=Number(latest.version)+1;
-  const nextPayload={...latest.payload,packingSlips:remaining,packingSlipDeletedIds:deletedIds};
+  const deletedRefs=Array.isArray(latest.payload.packingSlipDeletedRefs)?latest.payload.packingSlipDeletedRefs:[];
+  const nextDeletedRefs=[...deletedRefs,...selected.filter(x=>!deletedRefs.some(y=>String(y.id)===String(x.id)))
+   .map(x=>({id:String(x.id),slipNo:String(x.slipNo||''),workNo:String(x.workNo||''),deletedAt:new Date().toISOString()}))];
+  const nextPayload={...latest.payload,packingSlips:remaining,packingSlipDeletedIds:deletedIds,packingSlipDeletedRefs:nextDeletedRefs};
   cloudBusy=true;
   let response;
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
@@ -533,6 +540,7 @@ async function deletePackingSlips(all,specificId=null){
   // Never call save() here: save() queues a second upload of stale local data.
   state.packingSlips=confirmed.payload.packingSlips.slice();
   state.packingSlipDeletedIds=(confirmed.payload.packingSlipDeletedIds||[]).slice();
+  state.packingSlipDeletedRefs=(confirmed.payload.packingSlipDeletedRefs||[]).slice();
   cloudVersion=Number(confirmed.version);
   cloudUpdatedAt=confirmed.updated_at||new Date().toISOString();
   if(localMutationSeq===mutationAtStart)cloudDirty=false;
