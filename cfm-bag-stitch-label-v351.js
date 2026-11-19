@@ -49,8 +49,8 @@ function draw(){
   ctx.fillStyle=B;ctx.font='bold 17px Arial';ctx.fillText(a[0],48,y+25);
   ctx.fillText(':',179,y+25);
   let v=a[1],f=i===6?13:17;
-  ctx.font='bold '+f+'px Arial';
-  while(v.length&&ctx.measureText(v).width>212&&f>11){f--;ctx.font='bold '+f+'px Arial'}
+  ctx.font='400 '+f+'px Arial';
+  while(v.length&&ctx.measureText(v).width>212&&f>11){f--;ctx.font='400 '+f+'px Arial'}
   if(ctx.measureText(v).width>212){while(v.length&&ctx.measureText(v+'…').width>212)v=v.slice(0,-1);v+='…'}
   ctx.fillText(v,194,y+25);
   ctx.strokeStyle='#b7c9e0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(48,y+height-5);ctx.lineTo(400,y+height-5);ctx.stroke();
