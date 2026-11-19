@@ -1,4 +1,4 @@
-/* CFM V382 stitching label smoke tests. Read-only; no actual cloud/storage. */
+/* CFM V383 stitching label smoke tests. Read-only; no actual cloud/storage. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -54,7 +54,7 @@ test('Selecting a Work Order automatically fills all six label fields',()=>{
  assert.equal(layout.fields.length,6);
  for(const info of layout.fields)assert.ok(layout[info.key]?.lines?.length>0,info.key+' must fit');
 });
-test('Approved 85x45 layout uses actual original EAGLE logo and six navy heading cells',()=>{
+test('Approved 85x45 layout uses original EAGLE logo and six white non-bold heading cells',()=>{
  const h=harness();h.window.__tests.selectWork();
  const svg=h.window.__tests.vectorLabel();
  for(const phrase of ['width="85mm" height="45mm"','SINCE : 1992',
@@ -65,7 +65,14 @@ test('Approved 85x45 layout uses actual original EAGLE logo and six navy heading
   assert.ok(svg.includes(phrase),'Label preview missing '+phrase);
  }
  assert.match(svg,/M1 2L465 2Z/,'Logo must use corporate wordmark path');
- assert.match(svg,/fill="#19398e"/,'Printed headings use approved navy');
+ assert.ok(svg.includes('fill="#fff"'),'Heading boxes are white');
+ assert.match(svg, /WO NO\.<\/text>/);
+ assert.match(svg, /font-weight="400"[^>]*>WO NO\.<\/text>/);
+ assert.match(svg, /font-weight="400"[^>]*>ITEM CODE<\/text>/);
+ assert.match(svg, /font-weight="400"[^>]*>PRODUCT<\/text>/);
+ assert.match(svg, /font-weight="800"[^>]*>CFM-556<\/text>/);
+ assert.doesNotMatch(svg, /<rect[^>]*fill="#19398e"/);
+ assert.doesNotMatch(svg, /<path[^>]*fill="#19398e"/);
 });
 test('Direct TA220 print is black/white vector at actual 85x45 size',()=>{
  const h=harness();h.window.__tests.selectWork();h.window.__tests.printLabel(false);
