@@ -99,7 +99,7 @@ function summary(){
  const historyPanel=$('packSlipHistory');
  const company=slips().filter(x=>up(x.party)===up(row.party)).slice(-10).reverse();
  historyPanel.innerHTML=company.length?
-  '<strong>Same Company · Saved Packing Slips (Work Order-wise)</strong>'+
+  '<strong>☁ LIVE CLOUD · Verified Packing Slip History (Delete removes only this Cloud record)</strong>'+
   company.map(x=>'<div class="entry"><b>'+esc(x.slipNo)+' • '+esc(x.workNo)+'</b> · Sent '+esc(x.thisDispatched)+
    ' · Previous '+esc(x.previousDispatched)+' · Balance '+esc(x.balanceAfter)+
    '<small>'+esc((x.createdAt||'').slice(0,19).replace('T',' '))+'</small>'+
