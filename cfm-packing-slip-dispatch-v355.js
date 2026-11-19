@@ -1,4 +1,4 @@
-/* CFM V372 — original EAGLE lettering in Packing Slip; dispatch ledger unchanged.
+/* CFM V373 — approved plain white Packing Slip, black logo and text, dispatch ledger unchanged.
  * Opt-in manual shipment confirmation. Never assumes dispatched status equals quantity.
  * Uses the existing CFM versioned Cloud save. Does not change stock, cutting, or status.
  */
@@ -146,7 +146,7 @@ function logoHtml(color='#153968',width=92,height=72){
 function originalWordmarkHtml(){
  const brand=window.CFM_EAGLE_BRAND;
  return brand?.wordmarkPath?
- '<svg class="eagle-wordmark" viewBox="0 0 465 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EAGLE" preserveAspectRatio="xMinYMid meet"><path d="'+brand.wordmarkPath+'" fill="#e92934" fill-rule="evenodd"/></svg>':
+ '<svg class="eagle-wordmark" viewBox="0 0 465 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EAGLE" preserveAspectRatio="xMinYMid meet"><path d="'+brand.wordmarkPath+'" fill="#111" fill-rule="evenodd"/></svg>':
  '<span>EAGLE</span>';
 }
 function printSlip(a4=false,record=null){
@@ -155,7 +155,7 @@ function printSlip(a4=false,record=null){
  const w=window.open('','_blank');if(!w){say('Enable pop-ups for Packing Slip print.',true);return}
  const page=a4?'@page{size:A4 landscape;margin:10mm}':'@page{size:A5 landscape;margin:7mm}';
  const day=String(r.createdAt||'').slice(0,10);
- const head='<header class="letterhead"><div class="logo">'+logoHtml('#163568',92,72)+'</div>'+
+ const head='<header class="letterhead"><div class="logo">'+logoHtml('#000',92,72)+'</div>'+
  '<div class="identity"><div class="brandname">'+originalWordmarkHtml()+'</div><div class="company">FILTRATION PRODUCT PVT. LTD.</div><div class="iso">An ISO 9001:2015 Certified Company</div></div>'+
  '<div class="contact"><div class="since">SINCE : 1992</div><div>info@eaglefiltrations.com</div><div>www.eaglefiltrations.com</div><strong>+91 70416 70091</strong></div></header>'+
  '<div class="mfg">Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.</div>';
@@ -179,17 +179,17 @@ function printSlip(a4=false,record=null){
  '*{box-sizing:border-box}html,body{margin:0;color:#14171d;background:#fff;font-family:Arial,sans-serif}',
  '.sheet{width:100%;margin:0}.letterhead{display:grid;grid-template-columns:14% 47% 39%;align-items:center;gap:5px;padding:2px 5px 7px}',
  '.logo{display:flex;justify-content:center;align-items:center}.logo svg{max-width:100%;height:auto}',
- '.identity{border-right:2px solid #193a78;padding:4px 8px}.brandname{min-height:29px}.brandname .eagle-wordmark{display:block;width:90%;height:38px;max-width:320px}',
- '.company{font:bold 16px Arial;color:#276236}.iso{font:bold 10px Arial;margin-top:3px}',
+ ' .identity{border-right:1px solid #111;padding:4px 8px}.brandname{min-height:29px}.brandname .eagle-wordmark{display:block;width:90%;height:38px;max-width:320px}',
+ ' .company{font:bold 16px Arial;color:#111}.iso{font:bold 10px Arial;margin-top:3px}',
  '.contact{font:bold 11px/1.55 Arial;padding-left:9px}.contact strong{font-size:15px}',
- '.since{display:table;background:#163968;color:#fff;border-radius:15px;padding:1px 12px;font:bold 12px Arial;margin:0 0 4px}',
- '.mfg{text-align:right;padding:7px 11px;background:#1c3e80;color:#fff;font:bold 11px Arial}',
+ ' .since{display:table;background:#fff;color:#111;border:1px solid #111;border-radius:2px;padding:2px 12px;font:bold 12px Arial;margin:0 0 4px}',
+ ' .mfg{text-align:right;padding:5px 11px;background:#fff;color:#111;border-top:1px solid #111;border-bottom:1px solid #111;font:600 11px Arial}',
  'h2{text-align:center;font:bold 20px Arial;margin:9px 0 11px;letter-spacing:1px}',
  '.meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid #111;border-left:1px solid #111;margin-bottom:12px}',
  '.meta>div{border-right:1px solid #111;border-bottom:1px solid #111;padding:7px 8px;min-height:43px;overflow-wrap:anywhere}',
  '.meta small{font-size:9px;display:block;color:#555;margin-bottom:4px}.meta b{font-size:12px}',
  'table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:10px}th,td{border:1px solid #111;padding:8px 5px;text-align:left;vertical-align:top;overflow-wrap:anywhere}',
- 'th{background:#f0f2f4;text-align:center;font-size:9px}th:first-child{width:4%}th:nth-child(2){width:17%}th:nth-child(3){width:17%}',
+ 'th{background:#fff;text-align:center;font-size:9px}th:first-child{width:4%}th:nth-child(2){width:17%}th:nth-child(3){width:17%}',
  'th:nth-child(4){width:18%}th:nth-child(5){width:8%}th:nth-child(6){width:9%}th:nth-child(7){width:9%}th:nth-child(8){width:9%}th:nth-child(9){width:9%}',
  '.num{text-align:center;font-weight:bold;font-size:14px}.big{font-size:16px}',
  '.remarks{margin-top:12px;border:1px solid #111;padding:9px;font-size:11px;min-height:34px}',
