@@ -452,54 +452,102 @@ function build(){
  $('packSlipSave').onclick=saveSlip;$('packSlipPrint').onclick=()=>printSlip(false);$('packSlipA4').onclick=()=>printSlip(true);$('packSlipCarton').onclick=()=>printCartonLabel();
 }
 
+// V405: Cloud-first item deletion. Never pre-save a local snapshot and then
+// try to sync it: this caused a deleted slip to reappear when Cloud push failed.
+// Atomic version check preserves every other Cloud field byte-for-byte.
 async function deletePackingSlips(all,specificId=null){
  if(busy)return;
  if(!remote){say('Refresh Cloud before deleting.',true);return}
  const existing=slips();
- if(!existing.length){say('No saved Packing Slips to delete.');return}
- let ids=[];
- if(all){ids=existing.map(x=>String(x.id))}
+ if(!existing.length){say('No saved Packing Slips found in verified Cloud.');return}
+ let selected=[];
+ if(all){selected=existing.slice()}
  else if(specificId!==null){
-  const found=existing.find(x=>String(x.id)===String(specificId));
-  if(!found){say('This Packing Slip is not in verified Cloud history. Refresh first.',true);return}
-  ids=[String(found.id)];
+  const one=existing.find(x=>String(x.id)===String(specificId));
+  if(!one){say('Selected slip no longer exists in Cloud history. Refresh.',true);return}
+  selected=[one];
+ }else{
+  const wo=$('packSlipWO')?.value||'';
+  const choices=existing.filter(x=>!wo||up(x.workNo)===up(wo));
+  const input=prompt('Enter exact Cloud Packing Slip No.:\n'+choices.map(x=>x.slipNo||x.id).join('\n'));
+  if(input===null)return;
+  selected=choices.filter(x=>String(x.slipNo||'')===input.trim()||String(x.id)===input.trim());
+  if(selected.length!==1){say('Slip number missing or ambiguous. Nothing deleted.',true);return}
  }
- else {
-  const wo=$('packSlipWO').value;
-  const candidates=existing.filter(x=>!wo||up(x.workNo)===up(wo));
-  if(!candidates.length){say('No Packing Slips found for this Work Order.',true);return}
-  const choice=prompt('Enter exact Slip No to delete:\\n'+candidates.map(x=>x.slipNo||x.id).join('\\n'));
-  if(choice===null)return;
-  const found=candidates.find(x=>String(x.slipNo||'')===choice.trim()||String(x.id)===choice.trim());
-  if(!found){say('Slip number not found. Nothing deleted.',true);return}
-  ids=[String(found.id)];
+ const ids=selected.map(x=>String(x.id)),labels=selected.map(x=>String(x.slipNo||x.id));
+ if(new Set(ids).size!==ids.length||ids.some(x=>!x)){say('Missing/duplicate Slip IDs. No deletion.',true);return}
+ if(!confirm('DELETE '+ids.length+' Packing Slip(s) from LIVE Cloud?\n'+labels.join('\n')+
+   '\nOnly selected slip ledger entries will be removed. Work Orders, Cutting, Stock and Dispatch status stay unchanged.'))return;
+ if(!confirm('Final confirmation: delete exactly '+ids.length+' dummy/test Slip(s)?\n'+labels.join(', ')))return;
+ if(typeof cloudFetch!=='function'||typeof cloudHeaders!=='function'||
+    typeof CLOUD_URL==='undefined'||typeof safeStorage==='undefined'||
+    typeof state==='undefined'||!cloudReady||cloudBusy||cloudDirty){
+  say('Cloud/phone sync is not ready. Refresh Cloud and resolve pending sync before deleting. Nothing deleted.',true);return;
  }
- const labels=existing.filter(x=>ids.includes(String(x.id))).map(x=>String(x.slipNo||x.id)).join(', ');
- if(!confirm('DELETE '+ids.length+' Packing Slip(s) from Cloud?\nSlip: '+labels+'\nWork Orders, Stock and Dispatch modules will NOT be edited. This cannot be undone.'))return;
- if(!confirm('Final confirmation: permanently delete '+ids.length+' selected dummy/test Packing Slip(s)?\n'+labels))return;
- if(typeof cloudFetch!=='function'||typeof cloudPush!=='function'||typeof save!=='function'||typeof state==='undefined'||!cloudReady||cloudBusy||cloudDirty){say('Cloud is not ready. Sync first; nothing deleted.',true);return}
- busy=true;
+ const mutationAtStart=localMutationSeq;
+ busy=true;$('packSlipReload').disabled=true;
+ let patched=false;
  try{
   const latest=await cloudFetch();
-  if(!latest||Number(latest.version)!==Number(remote.version)||Number(latest.version)!==Number(cloudVersion))throw Error('Cloud changed. Refresh and try again');
-  const live=Array.isArray(latest.payload?.packingSlips)?latest.payload.packingSlips:[];
-  if(JSON.stringify(live)!==JSON.stringify(existing)||JSON.stringify(state.packingSlips||[])!==JSON.stringify(live))throw Error('Cloud/local Packing Slip history differs. Sync first');
+  if(!latest||!Number.isSafeInteger(Number(latest.version))||!Array.isArray(latest.payload?.pending))
+   throw Error('Cloud snapshot could not be verified');
+  if(Number(latest.version)!==Number(remote.version)||Number(latest.version)!==Number(cloudVersion))
+   throw Error('Cloud has changed on another device. Press Refresh Cloud and try again');
+  if(localMutationSeq!==mutationAtStart||cloudBusy||cloudDirty)
+   throw Error('Another ERP save is in progress. Wait for Cloud Sync first');
+  const live=Array.isArray(latest.payload.packingSlips)?latest.payload.packingSlips:[];
   const remaining=live.filter(x=>!ids.includes(String(x.id)));
-  if(live.length-remaining.length!==ids.length)throw Error('Selected records changed. Nothing deleted');
-  // Download a local JSON backup before changing the cloud ledger.
-  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),packingSlips:live},null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download='CFM-Packing-Slips-Backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
-  state.packingSlips=remaining;
-  clearTimeout(cloudPushTimer);save(false,{poQuick:true});clearTimeout(cloudPushTimer);
-  const ok=await cloudPush(true);
-  if(!ok)throw Error('Cloud did not confirm deletion; refresh before retrying');
+  if(live.length-remaining.length!==ids.length)
+   throw Error('Selected slip already changed/removed on Cloud. Refresh before retrying');
+  const deletedIds=[...new Set([...(Array.isArray(latest.payload.packingSlipDeletedIds)?latest.payload.packingSlipDeletedIds:[]).map(String),...ids])];
+  // Download a complete pre-delete Cloud history backup.
+  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),cloudVersion:latest.version,packingSlips:live},null,2)],{type:'application/json'});
+  const backupUrl=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=backupUrl;a.download='CFM-Packing-Slips-Before-Delete-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(backupUrl),30000);
+  const nextVersion=Number(latest.version)+1;
+  const nextPayload={...latest.payload,packingSlips:remaining,packingSlipDeletedIds:deletedIds};
+  cloudBusy=true;
+  let response;
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
+  try{
+   response=await fetch(CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+latest.version,{
+    method:'PATCH',signal:controller.signal,
+    headers:{...cloudHeaders(),'Prefer':'return=representation','x-cfm-base-version':String(latest.version)},
+    body:JSON.stringify({payload:nextPayload,version:nextVersion,updated_at:new Date().toISOString()})
+   });
+  }finally{clearTimeout(timer)}
+  if(!response.ok)throw Error('Cloud rejected Slip deletion (HTTP '+response.status+'). No local history has been changed');
+  const acknowledgment=await response.json();
+  if(!Array.isArray(acknowledgment)||acknowledgment.length!==1||
+     Number(acknowledgment[0].version)!==nextVersion)
+   throw Error('No atomic Cloud acknowledgment. Refresh to check whether deletion completed');
+  patched=true;
   const confirmed=await cloudFetch();
-  if(!confirmed||JSON.stringify(confirmed.payload?.packingSlips||[])!==JSON.stringify(remaining))throw Error('Cloud deletion could not be verified; refresh to inspect');
-  remote=confirmed;verifiedSlip=null;summary();
-  say('Deleted '+ids.length+' Packing Slip(s) from Cloud. Backup download requested.');
- }catch(e){say('Delete not verified: '+String(e.message||e)+'. Refresh Cloud to inspect.',true)}
- finally{busy=false}
+  if(!confirmed||!Array.isArray(confirmed.payload?.packingSlips)||
+     ids.some(id=>confirmed.payload.packingSlips.some(x=>String(x.id)===id))||
+     ids.some(id=>!(confirmed.payload.packingSlipDeletedIds||[]).map(String).includes(id)))
+   throw Error('Cloud receipt failed recheck. Refresh Cloud; do NOT repeat delete blindly');
+  remote=confirmed;
+  // Update local cache AFTER the committed Cloud snapshot is independently checked.
+  // Never call save() here: save() queues a second upload of stale local data.
+  state.packingSlips=confirmed.payload.packingSlips.slice();
+  state.packingSlipDeletedIds=(confirmed.payload.packingSlipDeletedIds||[]).slice();
+  cloudVersion=Number(confirmed.version);
+  cloudUpdatedAt=confirmed.updated_at||new Date().toISOString();
+  if(localMutationSeq===mutationAtStart)cloudDirty=false;
+  try{safeStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+  catch(e){console.warn('Cloud delete confirmed but device storage full',e)}
+  verifiedSlip=null;
+  summary();
+  setCloudBadge('☁️ Slip deletion verified · Cloud LIVE','green');
+  say('✓ CLOUD VERIFIED: '+labels.join(', ')+' permanently removed from Packing Slip History. Backup downloaded.');
+ }catch(e){
+  say((patched?'Cloud received the delete request. ':'Delete NOT confirmed. ')+String(e.message||e)+
+    ' · Press Refresh Cloud to verify; never assume deletion succeeded.',true);
+ }finally{
+  cloudBusy=false;busy=false;$('packSlipReload').disabled=false;
+ }
 }
 
 function mount(){
