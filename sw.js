@@ -1,8 +1,8 @@
 // CFM PWA: network-first for live ERP UI; offline fallback only.
 // No IndexedDB, localStorage, Supabase order/stock changes.
-const CACHE='cfm-plant-ui-20261118-v342-cached-chunks';
+const CACHE='cfm-plant-ui-20261119-v348-cached-chunks';
 const BASE=self.registration.scope;
-const SHELL=[BASE+'index.html',BASE+'po-workorder.html',BASE+'fast-work-order.html',BASE+'cfm-efppl-master-v330.js',BASE+'manifest.json',BASE+'cfm-plant-production-sop.js',BASE+'cfm-sop-register.js',BASE+'cfm-department-sop-v319.js',BASE+'cfm-unique-measurement-print.js',BASE+'cfm-noncf-measurements-excel.js',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
+const SHELL=[BASE+'index.html',BASE+'po-workorder.html',BASE+'fast-work-order.html',BASE+'cfm-efppl-master-v330.js',BASE+'cfm-store-srl-master-v348.js',BASE+'manifest.json',BASE+'cfm-plant-production-sop.js',BASE+'cfm-sop-register.js',BASE+'cfm-department-sop-v319.js',BASE+'cfm-unique-measurement-print.js',BASE+'cfm-noncf-measurements-excel.js',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(async cache=>{
