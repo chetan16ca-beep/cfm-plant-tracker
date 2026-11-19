@@ -1,4 +1,4 @@
-/* CFM V355 — Packing Slip / Dispatch Quantity Ledger.
+/* CFM V361 — MNC Eagle Packing Slip, Carton Label and dispatch ledger.
  * Opt-in manual shipment confirmation. Never assumes dispatched status equals quantity.
  * Uses the existing CFM versioned Cloud save. Does not change stock, cutting, or status.
  */
@@ -133,24 +133,97 @@ async function saveSlip(){
   say('⚠ '+String(e.message||e)+'. If save may have reached Cloud, press Refresh and inspect history. Do not duplicate dispatch.',true);
  }finally{busy=false;$('packSlipSave').disabled=false}
 }
-function printSlip(a4=false){
- const r=verifiedSlip;if(!r){say('First save the actual dispatch to Live Cloud, then print.',true);return}
- const w=window.open('','_blank');if(!w){say('Enable pop-ups for print.',true);return}
- const paper=a4?'@page{size:A4 portrait;margin:12mm}':'@page{size:A5 landscape;margin:8mm}';
- const html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(r.slipNo)+'</title><style>'+paper+
-  '*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0}.slip{border:2px solid #111;padding:12px 14px;max-width:100%;break-inside:avoid}'+
-  'h2{font-size:17px;text-align:center;margin:0 0 10px;letter-spacing:.06em}p{font-size:12px;margin:6px 0}.details{border-top:1px solid #111;border-bottom:1px solid #111;padding:7px 0;margin:9px 0}'+
-  '.numbers{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.numbers div{border:1px solid #111;padding:7px}.numbers small{font-size:11px;display:block}.numbers b{font-size:21px}.notes{font-size:11px}.footer{margin-top:8px;font-size:10px}'+
-  '</style></head><body><div class="slip"><h2>PACKING SLIP</h2>'+
-  '<p><b>SLIP:</b> '+esc(r.slipNo)+' · <b>DATE:</b> '+esc(r.createdAt?.slice(0,10)||'')+'</p>'+
-  '<p><b>PARTY:</b> '+esc(r.party)+' · <b>WORK ORDER:</b> '+esc(r.workNo)+'</p>'+
-  '<p><b>PO:</b> '+esc(r.poNo||'—')+' · <b>EFPPL:</b> '+esc(r.efpplCode||'—')+'</p>'+
-  '<div class="details"><b>ITEM:</b> '+esc(r.description||'')+(r.description2?'<p>'+esc(r.description2)+'</p>':'')+'</div>'+
-  '<div class="numbers"><div><small>ORDER QTY</small><b>'+esc(r.orderQty)+'</b></div><div><small>PREVIOUS DISPATCHED</small><b>'+esc(r.previousDispatched)+'</b></div>'+
-  '<div><small>THIS DISPATCH QTY</small><b>'+esc(r.thisDispatched)+'</b></div><div><small>BALANCE PENDING</small><b>'+esc(r.balanceAfter)+'</b></div></div>'+
-  (r.notes?'<p class="notes"><b>REMARKS:</b> '+esc(r.notes)+'</p>':'')+
-  '<div class="footer">TOTAL DISPATCHED TO DATE: '+esc(r.totalDispatched)+' · WORK ORDER-WISE TRACKING</div></div>'+
-  '<script>window.addEventListener("load",function(){window.print()})<\/script></body></html>';
+
+function printSafe(v){return esc(v===null||v===undefined||v===''?'—':v)}
+function logoHtml(color='#153968',width=92,height=72){
+ const brand=window.CFM_EAGLE_BRAND;
+ return brand?.logoSvg?.(width,height,color)||'<strong style="font-size:38px;color:'+color+'">E</strong>';
+}
+function printSlip(a4=false,record=null){
+ const r=record||verifiedSlip;
+ if(!r){say('Select a saved Packing Slip from history or confirm actual dispatch.',true);return}
+ const w=window.open('','_blank');if(!w){say('Enable pop-ups for Packing Slip print.',true);return}
+ const page=a4?'@page{size:A4 landscape;margin:10mm}':'@page{size:A5 landscape;margin:7mm}';
+ const day=String(r.createdAt||'').slice(0,10);
+ const head='<header class="letterhead"><div class="logo">'+logoHtml('#163568',92,72)+'</div>'+
+ '<div class="identity"><div class="brandname">EAGLE</div><div class="company">FILTRATION PRODUCT PVT. LTD.</div><div class="iso">An ISO 9001:2015 Certified Company</div></div>'+
+ '<div class="contact"><div class="since">SINCE : 1992</div><div>info@eaglefiltrations.com</div><div>www.eaglefiltrations.com</div><strong>+91 70416 70091</strong></div></header>'+
+ '<div class="mfg">Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.</div>';
+ const info='<h2>PACKING SLIP</h2><div class="meta">'+
+ '<div><small>PACKING SLIP NO.</small><b>'+printSafe(r.slipNo)+'</b></div>'+
+ '<div><small>DATE</small><b>'+printSafe(day)+'</b></div>'+
+ '<div><small>WORK ORDER NO.</small><b>'+printSafe(r.workNo)+'</b></div>'+
+ '<div><small>PARTY / SHIP TO</small><b>'+printSafe(r.party)+'</b></div>'+
+ '<div><small>CUSTOMER PO NO.</small><b>'+printSafe(r.poNo)+'</b></div>'+
+ '<div><small>DISPATCH STATUS</small><b>CONFIRMED</b></div></div>';
+ const tab='<table><thead><tr><th>SR.</th><th>ITEM / DESCRIPTION</th><th>DESCRIPTION 2 / SPECIFICATION</th><th>EFPPL PRODUCT CODE</th>'+
+ '<th>ORDER QTY</th><th>PREVIOUS SENT</th><th>THIS DISPATCH</th><th>TOTAL SENT</th><th>BALANCE</th></tr></thead><tbody><tr>'+
+ '<td>1</td><td>'+printSafe(r.description)+'</td><td>'+printSafe(r.description2)+'</td><td>'+printSafe(r.efpplCode)+'</td>'+
+ '<td class="num">'+printSafe(r.orderQty)+'</td><td class="num">'+printSafe(r.previousDispatched)+'</td><td class="num big">'+printSafe(r.thisDispatched)+'</td>'+
+ '<td class="num">'+printSafe(r.totalDispatched)+'</td><td class="num big">'+printSafe(r.balanceAfter)+'</td></tr></tbody></table>';
+ const footer='<div class="remarks"><b>DISPATCH / LR / COURIER REMARKS:</b> '+printSafe(r.notes)+'</div>'+
+ '<div class="sign"><div>PREPARED BY<br><b>'+printSafe(r.operator)+'</b></div><div>PACKED BY<br>_________________</div>'+
+ '<div>CHECKED BY<br>_________________</div><div>RECEIVED BY<br>_________________</div></div>'+
+ '<div class="audit">Work Order-wise confirmed dispatch · Slip '+printSafe(r.slipNo)+' · Reprinting this slip does not create a new dispatch.</div>';
+ const css=page+[
+ '*{box-sizing:border-box}html,body{margin:0;color:#14171d;background:#fff;font-family:Arial,sans-serif}',
+ '.sheet{width:100%;margin:0}.letterhead{display:grid;grid-template-columns:14% 47% 39%;align-items:center;gap:5px;padding:2px 5px 7px}',
+ '.logo{display:flex;justify-content:center;align-items:center}.logo svg{max-width:100%;height:auto}',
+ '.identity{border-right:2px solid #193a78;padding:4px 8px}.brandname{font:italic 900 42px/1 Arial;color:#153968;letter-spacing:2px}',
+ '.company{font:bold 16px Arial;color:#276236}.iso{font:bold 10px Arial;margin-top:3px}',
+ '.contact{font:bold 11px/1.55 Arial;padding-left:9px}.contact strong{font-size:15px}',
+ '.since{display:table;background:#163968;color:#fff;border-radius:15px;padding:1px 12px;font:bold 12px Arial;margin:0 0 4px}',
+ '.mfg{text-align:right;padding:7px 11px;background:#1c3e80;color:#fff;font:bold 11px Arial}',
+ 'h2{text-align:center;font:bold 20px Arial;margin:9px 0 11px;letter-spacing:1px}',
+ '.meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid #111;border-left:1px solid #111;margin-bottom:12px}',
+ '.meta>div{border-right:1px solid #111;border-bottom:1px solid #111;padding:7px 8px;min-height:43px;overflow-wrap:anywhere}',
+ '.meta small{font-size:9px;display:block;color:#555;margin-bottom:4px}.meta b{font-size:12px}',
+ 'table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:10px}th,td{border:1px solid #111;padding:8px 5px;text-align:left;vertical-align:top;overflow-wrap:anywhere}',
+ 'th{background:#f0f2f4;text-align:center;font-size:9px}th:first-child{width:4%}th:nth-child(2){width:17%}th:nth-child(3){width:17%}',
+ 'th:nth-child(4){width:18%}th:nth-child(5){width:8%}th:nth-child(6){width:9%}th:nth-child(7){width:9%}th:nth-child(8){width:9%}th:nth-child(9){width:9%}',
+ '.num{text-align:center;font-weight:bold;font-size:14px}.big{font-size:16px}',
+ '.remarks{margin-top:12px;border:1px solid #111;padding:9px;font-size:11px;min-height:34px}',
+ '.sign{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:17px 0 5px}.sign>div{border-top:1px solid #777;padding-top:6px;font:bold 10px Arial}',
+ '.audit{border-top:1px solid #c4c4c4;font:9px Arial;padding-top:6px;margin-top:9px;color:#555}',
+ '@media print{.sheet{break-inside:avoid}html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+ ].join('');
+ const html='<!doctype html><html><head><meta charset="utf-8"><title>'+printSafe(r.slipNo)+'</title><style>'+css+
+ '</style></head><body><div class="sheet">'+head+info+tab+footer+'</div>'+
+ '<script>window.addEventListener("load",function(){window.focus();window.print()})<\/script></body></html>';
+ w.document.open();w.document.write(html);w.document.close();
+}
+function printCartonLabel(record=null){
+ const r=record||verifiedSlip;if(!r){say('Select a saved Packing Slip or confirm dispatch first.',true);return}
+ const w=window.open('','_blank');if(!w){say('Enable pop-ups for Packing Label print.',true);return}
+ const header='<header><div class="mark">'+logoHtml('#000',70,55)+'</div><div><b>EAGLE</b><small>FILTRATION PRODUCT PVT. LTD.</small></div>'+
+ '<div class="kind">PACKING LABEL</div></header>';
+ const main='<div class="cell party"><small>SHIP TO / PARTY</small><strong>'+printSafe(r.party)+'</strong></div>'+
+ '<div class="twocol"><div class="cell"><small>PACKING SLIP NO.</small><b>'+printSafe(r.slipNo)+'</b></div>'+
+ '<div class="cell"><small>WORK ORDER NO.</small><b>'+printSafe(r.workNo)+'</b></div></div>'+
+ '<div class="twocol"><div class="cell"><small>PO NO.</small><b>'+printSafe(r.poNo)+'</b></div>'+
+ '<div class="cell"><small>DATE</small><b>'+printSafe(String(r.createdAt||'').slice(0,10))+'</b></div></div>'+
+ '<div class="cell"><small>ITEM / DESCRIPTION</small><b>'+printSafe(r.description)+'</b></div>'+
+ '<div class="cell"><small>SPECIFICATION / DESCRIPTION 2</small><b>'+printSafe(r.description2)+'</b></div>'+
+ '<div class="cell"><small>EFPPL PRODUCT CODE</small><b>'+printSafe(r.efpplCode)+'</b></div>'+
+ '<div class="qty"><div><small>THIS DISPATCH QTY</small><b>'+printSafe(r.thisDispatched)+'</b></div>'+
+ '<div><small>ORDER QTY</small><b>'+printSafe(r.orderQty)+'</b></div>'+
+ '<div><small>BALANCE</small><b>'+printSafe(r.balanceAfter)+'</b></div></div>';
+ const css=[
+ '@page{size:100mm 75mm;margin:0}*{box-sizing:border-box}html,body{width:100mm;height:75mm;margin:0;font-family:Arial,sans-serif;color:#111;background:#fff}',
+ '.label{width:100mm;height:75mm;padding:3mm;overflow:hidden}.sheet{border:1px solid #111;padding:2mm;height:100%}',
+ 'header{display:flex;align-items:center;gap:2mm;border-bottom:2px solid #111;padding-bottom:1mm;margin-bottom:2mm}',
+ '.mark svg{width:15mm;height:11mm}header b{display:block;font:bold italic 20px Arial}header small{display:block;font:bold 7px Arial}',
+ '.kind{margin-left:auto;font:bold 10px Arial;border:1px solid #111;padding:2px;white-space:nowrap}',
+ '.cell{padding:1mm;border-bottom:1px solid #aaa;overflow-wrap:anywhere;min-height:7mm}',
+ '.cell small,.qty small{display:block;font-size:7px;color:#555;margin-bottom:1mm}.cell b,.cell strong{font-size:10px;line-height:1.15}.party strong{font-size:12px}',
+ '.twocol{display:grid;grid-template-columns:1fr 1fr}.twocol .cell:first-child{border-right:1px solid #aaa}',
+ '.qty{display:grid;grid-template-columns:1.2fr 1fr 1fr;border:1px solid #111;margin-top:2mm}',
+ '.qty>div{padding:1mm;text-align:center}.qty>div+div{border-left:1px solid #111}.qty b{font:bold 17px Arial;display:block}',
+ '@media print{html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+ ].join('');
+ const html='<!doctype html><html><head><meta charset="utf-8"><title>Carton Label '+printSafe(r.slipNo)+'</title><style>'+
+ css+'</style></head><body><div class="label"><div class="sheet">'+header+main+'</div></div>'+
+ '<script>window.addEventListener("load",function(){window.focus();window.print()})<\/script></body></html>';
  w.document.open();w.document.write(html);w.document.close();
 }
 function build(){
