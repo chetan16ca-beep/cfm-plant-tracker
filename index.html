@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261120-v405',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261120-v405b',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -373,7 +373,7 @@ html,body{background:#f4faff!important;color:#13233b!important}
  src=src.replace('</head>','<script defer src="./cfm-eagle-brand-v361.js?v=370"></scr'+'ipt></head>');
  src=src.replace('</head>','<script defer src="./cfm-workorder-stitch-label-v352.js?v=396"></scr'+'ipt></head>');
  // V355: Packing Slip with live order qty, verified previous/this dispatch and history.
- src=src.replace('</head>','<script defer src="./cfm-packing-slip-dispatch-v355.js?v=405"></scr'+'ipt></head>');
+ src=src.replace('</head>','<script defer src="./cfm-packing-slip-dispatch-v355.js?v=405b"></scr'+'ipt></head>');
  // V367: ensure the EXISTING Packing Slip and Reprint buttons use the approved EAGLE letterhead.
  src=src.replace('</head>','<script defer src="./cfm-legacy-packing-letterhead-v366.js?v=380"></scr'+'ipt></head>');
  // V401: Single crisp A4-landscape Packing Slip print preview with two optional photos; presentation only.
