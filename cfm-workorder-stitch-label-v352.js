@@ -1,7 +1,7 @@
-/* CFM V359. Fix Stitching Label inside real #v167Pack card with 5mm stitch margins. */
+/* CFM V360. Approved EAGLE monochrome logo/chevron label, 600dpi, 5mm sewing margins. */
 (function(){
 'use strict';
-const $=id=>document.getElementById(id),C_W=1004,C_H=531,VIEW_W=850,VIEW_H=450;
+const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
 let loaded=[],pasted=false,printable=false,overflow=false;
 function val(id){return String($(id)?.value||'').trim()}
 function put(id,v){if($(id))$(id).value=String(v??'')}
@@ -61,73 +61,96 @@ function wrap(ctx,s,max,font){
 }
 function draw(){
  const can=$('woLabelCanvas');if(!can)return;
- const ctx=can.getContext('2d');ctx.setTransform(C_W/VIEW_W,0,0,C_H/VIEW_H,0,0);
+ const ctx=can.getContext('2d');
+ // Print at 600dpi (2008 × 1063) while composing in 850 × 450 label units (10 units/mm).
+ ctx.setTransform(C_W/VIEW_W,0,0,C_H/VIEW_H,0,0);
  const no=val('woLabelNo'),heading=val('woLabelHeading'),detail=val('woLabelDetails'),code=val('woLabelCode');
- // V358: 85 × 45 mm physical Taffeta. ONE unit = 0.1 mm.
- // Stitching safe zone: top [0,50] and bottom [400,450] = 5 mm each.
- // All printed artwork including rules and strokes fits inside y=54..396.
- const STITCH_TOP=50,STITCH_BOTTOM=400;
  ctx.fillStyle='#fff';ctx.fillRect(0,0,VIEW_W,VIEW_H);
- function poly(points){
-  ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.stroke();
- }
- function rounded(x,y,w,h,r){
+ ctx.strokeStyle='#111';
+ function roundedPath(x,y,w,h,r){
   ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
   ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
   ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.stroke();
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
  }
- ctx.strokeStyle='#000';ctx.lineWidth=2.8;rounded(17,56,816,338,13);
- // Delicate top/bottom MNC-style trim entirely INSIDE the stitching-safe region.
- ctx.lineWidth=1.8;ctx.beginPath();
- ctx.moveTo(105,67);ctx.lineTo(806,67);
- ctx.moveTo(43,384);ctx.lineTo(735,384);
- ctx.stroke();
- ctx.lineWidth=2.3;
+ function poly(points){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath()}
+ // Physical sewing margins: 0..50 and 400..450 remain ENTIRELY blank (5mm each).
+ // All branding, corner outlines and data live within y=54..395.
+ ctx.lineWidth=2.6;roundedPath(13,54,824,341,14);ctx.stroke();
+ // A recognizable monochrome eagle/bird from the repo's original vector logo.
+ // Vector path is rasterized at 600 dpi; never stretch a low-resolution logo photo.
+ ctx.save();ctx.translate(43,82);ctx.scale(.29,.39);ctx.fillStyle='#000';
+ const eagle=new Path2D('M125 150C67 151 24 116 7 72c28 18 48 20 66 14-26-16-39-35-44-57 28 18 51 24 72 20-15-16-21-32-21-49 26 23 47 38 68 48 27 13 44 34 51 63 23-9 47-12 72-7-22 11-39 25-53 42-21 25-52 36-93 33 22-5 38-14 48-28-16 5-32 5-48-1z');
+ const wing=new Path2D('M197 111c34-2 61-12 82-31-9 27-27 49-55 65-19 11-40 16-64 14 19-9 31-25 37-48z');
+ ctx.fill(eagle);ctx.fill(wing);ctx.restore();
+ ctx.lineWidth=2;ctx.strokeStyle='#000';
+ ctx.beginPath();ctx.moveTo(144,87);ctx.lineTo(144,158);ctx.moveTo(492,84);ctx.lineTo(492,159);ctx.stroke();
+ // Top header reproduces the approved monochrome Eagle industrial label layout.
+ ctx.fillStyle='#000';ctx.textBaseline='alphabetic';
+ ctx.font='italic 900 43px Arial,sans-serif';ctx.fillText('EAGLE',160,120,316);
+ ctx.font='bold 12.7px Arial,sans-serif';ctx.fillText('FILTRATION PRODUCT PVT. LTD.',162,140,322);
+ ctx.font='bold 10.8px Arial,sans-serif';ctx.fillText('An ISO 9001:2015 Certified Company',162,155,320);
+ // SINCE badge.
+ roundedPath(352,59,116,21,10.5);ctx.fill();
+ ctx.fillStyle='#fff';ctx.font='bold 13.5px Arial,sans-serif';ctx.textBaseline='middle';
+ ctx.fillText('SINCE : 1992',365,69.5,95);
+ // Contacts are real company fixed details from the approved image, not Work Order fields.
+ ctx.fillStyle='#000';ctx.textBaseline='middle';
+ ctx.font='bold 12.6px Arial,sans-serif';
+ ctx.fillText('✉  info@eaglefiltrations.com',512,101,310);
+ ctx.fillText('◎  www.eaglefiltrations.com',512,123,310);
+ ctx.font='bold 17px Arial,sans-serif';
+ ctx.fillText('☎  +91 70416 70091',512,145,308);
+ // Manufacturing banner under letterhead (solid black/white, no colour).
+ ctx.strokeStyle='#000';ctx.lineWidth=2.8;ctx.beginPath();
+ ctx.moveTo(16,169);ctx.lineTo(340,169);ctx.stroke();
+ ctx.fillStyle='#000';ctx.fillRect(367,165,468,30);
+ ctx.lineWidth=2.5;
  for(let i=0;i<3;i++){
-  const x=40+i*17;ctx.beginPath();ctx.moveTo(x+10,58);ctx.lineTo(x,69);ctx.stroke();
-  const rx=772+i*17;ctx.beginPath();ctx.moveTo(rx+10,383);ctx.lineTo(rx,393);ctx.stroke();
+  const x=342+i*9;ctx.beginPath();ctx.moveTo(x+15,167);ctx.lineTo(x-9,191);ctx.stroke();
  }
+ ctx.fillStyle='#fff';ctx.textBaseline='middle';ctx.font='bold 12px Arial,sans-serif';
+ ctx.fillText('Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',379,180,444);
+ // Exactly four printed Work Order fields. NO quantity, party, batch or fake code.
  const rows=[
-  {title:'WORK ORDER NO.',value:no,weight:'bold',max:26,min:13},
-  {title:'DESCRIPTION',value:heading,weight:'bold',max:21,min:10},
-  {title:'DESCRIPTION 2',value:detail,weight:'normal',max:21,min:10},
-  {title:'EFPPL PRODUCT CODE',value:code,weight:'bold',max:21,min:10}
+  {title:'WORK ORDER NO.',value:no,font:21,min:12},
+  {title:'DESCRIPTION',value:heading,font:20,min:11},
+  {title:'DESCRIPTION 2',value:detail,font:20,min:11},
+  {title:'EFPPL CODE',value:code,font:19,min:10.5}
  ];
- let clipped=false;
- for(let i=0;i<rows.length;i++){
-  const r=rows[i],y=78+i*74,h=69,x=31,labelEnd=344,tip=366,right=818;
-  ctx.strokeStyle='#000';ctx.lineWidth=2.1;ctx.strokeRect(x,y,right-x,h);
-  // WHITE chevron panel, black outlines and lettering. No solid black ink blocks.
-  poly([[x,y],[labelEnd,y],[tip,y+h/2],[labelEnd,y+h],[x,y+h]]);
-  ctx.fillStyle='#000';ctx.textBaseline='middle';
-  ctx.font='bold '+(i===3?17.5:21)+'px Arial';
-  ctx.fillText(r.title,x+13,y+h/2,labelEnd-x-24);
-  const value=String(r.value||'').trim()||'—';
-  let fitted=null;
-  for(let f=r.max;f>=r.min;f-=0.5){
-   const font=(r.weight==='bold'?'bold ':'')+f+'px Arial';
-   const lines=wrap(ctx,value,right-tip-21,font);
-   const lineH=Math.ceil(f*1.16);
-   if(lines.length*lineH<=h-12){fitted={font,lines,lineH};break}
+ let tooLong=false;
+ for(let i=0;i<4;i++){
+  const row=rows[i],x=28,y=202+i*46,h=42,split=245,tip=259,right=820;
+  // Full white outlined field, plus bold arrow-ended BLACK section identifier.
+  ctx.strokeStyle='#000';ctx.lineWidth=2;roundedPath(x,y,right-x,h,8);ctx.stroke();
+  ctx.fillStyle='#000';poly([[x+1,y+1],[split,y+1],[tip,y+h/2],[split,y+h-1],[x+1,y+h-1]]);
+  ctx.fill();
+  ctx.font='bold 16.5px Arial,sans-serif';ctx.fillStyle='#fff';ctx.textBaseline='middle';
+  ctx.fillText(row.title,x+14,y+h/2,split-x-24);
+  // Print live details with wrap. Never clip or silently substitute sample descriptions.
+  const value=String(row.value||'').trim()||'—';
+  let layout=null;
+  for(let f=row.font;f>=row.min;f-=.5){
+   const font='bold '+f+'px Arial,sans-serif';
+   const lines=wrap(ctx,value,right-tip-24,font);
+   const step=Math.ceil(f*1.13);
+   if(lines.length*step<=h-7){layout={lines,font,step};break}
   }
-  if(!fitted){
-   clipped=true;ctx.fillStyle='#000';ctx.font='bold 12px Arial';
-   ctx.fillText('DETAILS TOO LONG',tip+9,y+h/2);continue;
+  if(!layout){
+   tooLong=true;ctx.fillStyle='#000';ctx.font='bold 12px Arial';ctx.fillText('DETAILS TOO LONG',tip+12,y+h/2);
+  }else{
+   ctx.fillStyle='#000';ctx.font=layout.font;
+   const first=y+h/2-(layout.lines.length-1)*layout.step/2;
+   layout.lines.forEach((line,k)=>ctx.fillText(line,tip+12,first+k*layout.step));
   }
-  ctx.fillStyle='#000';ctx.font=fitted.font;
-  const centerY=y+h/2, firstY=centerY-(fitted.lines.length-1)*fitted.lineH/2;
-  fitted.lines.forEach((line,k)=>ctx.fillText(line,tip+9,firstY+k*fitted.lineH));
  }
- // Ensure blank print space even if this function is extended in the future.
- ctx.fillStyle='#fff';
- ctx.fillRect(0,0,VIEW_W,STITCH_TOP);
- ctx.fillRect(0,STITCH_BOTTOM,VIEW_W,VIEW_H-STITCH_BOTTOM);
- overflow=clipped;
- pasted=false;printable=!overflow&&Boolean(no&&code&&(heading||detail));
- note(overflow?'Text is too long for the safe printing area. Shorten the details before printing.':
- printable?'Print-ready 85 × 45 mm · White Taffeta · 5 mm blank stitch margin TOP & BOTTOM':
- 'Select Work Order and verify Description, Description 2 and EFPPL Code.');
+ // Enforce both 5mm stitching margins even when new graphic changes are added.
+ ctx.fillStyle='#fff';ctx.fillRect(0,0,850,50);ctx.fillRect(0,400,850,50);
+ overflow=tooLong;pasted=false;
+ printable=!overflow&&Boolean(no&&code&&(heading||detail));
+ note(overflow?'Label text exceeds 85×45 mm print-safe area. Shorten details; printing disabled.':
+ printable?'EAGLE final B&W logo design • 85×45 mm • 600 DPI • 5 mm top/bottom sewing margins':
+ 'Select Work Order and check its Description, Description 2 and EFPPL Code.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
@@ -189,18 +212,18 @@ function build(){
  '#woLabelDialog .help{font:11px/1.5 Arial;color:#546d80}@media(max-width:650px){#woLabelDialog .main{grid-template-columns:1fr;padding:9px}#woLabelDialog .preview{order:-1}#woLabelCanvas{width:300px;height:159px}}';
  document.head.append(style);
  const d=document.createElement('dialog');d.id='woLabelDialog';
- d.innerHTML='<div class="top"><div><strong>Work Order Stitching Label</strong><div style="font-size:11px">White Taffeta · 85 × 45 mm · 5 mm top/bottom stitching space</div></div><button id="woLabelClose">✕ Close</button></div>'+
+ d.innerHTML='<div class="top"><div><strong>Work Order Stitching Label</strong><div style="font-size:11px">EAGLE B&W Label · 85 × 45 mm · 5mm sewing margins</div></div><button id="woLabelClose">✕ Close</button></div>'+
  '<div class="main"><div>'+
  '<label>Work Order<select id="woLabelSelect"><option value="">Select Work Order / Manual</option></select></label><button id="woLabelRefresh">↻ Refresh Work Orders</button>'+
  '<label>Work Order No.<input id="woLabelNo" placeholder="CFM-556"></label>'+
  '<label>Heading — Work Order Description<textarea id="woLabelHeading" placeholder="Same heading as Work Order"></textarea></label>'+
  '<label>Details — Work Order Description 2<textarea id="woLabelDetails" placeholder="Same details as Work Order"></textarea></label>'+
  '<label>EFPPL Product Code<input id="woLabelCode" placeholder="EFPPL-2000-CF-48-TLT"></label>'+
- '<p class="help">Top & bottom 5 mm stays COMPLETELY BLANK for stitching (no text, rules or border). Black ink on WHITE Taffeta: print at 100%, black-only (no color/gray ink). For BLACK Taffeta, use a suitable WHITE thermal-transfer ribbon; normal black ribbon is not readable. Printed fields: Work Order No. + Description + Description 2 + EFPPL Code only.</p>'+
+ '<p class="help">Top & bottom 5 mm stays COMPLETELY BLANK for stitching (no text, rules or border). Black ink on WHITE Taffeta: print at 100%, black-only (no color/gray ink). For BLACK Taffeta, use a suitable WHITE thermal-transfer ribbon; normal black ribbon is not readable. Printed fields: Work Order No. + Description + Description 2 + EFPPL Code only; EAGLE header/contact printed as in approved reference.</p>'+
  '<label>Paste Matter<textarea id="woLabelMatter" placeholder="Work Order No.: CFM-556&#10;Heading: CF BAG 48 TOP L/T&#10;Details: 2 MICRON ANTISTATIC&#10;EFPPL Code: EFPPL-2000-CF-48-TLT"></textarea></label><button id="woLabelPaste">↳ Apply Pasted Matter</button>'+
  '<label>Or upload/paste image<input id="woLabelUpload" type="file" accept="image/png,image/jpeg,image/webp"></label>'+
  '<p class="help">Ctrl+V can paste an image. If text does not fit, printing is blocked instead of clipping the content.</p>'+
- '</div><div class="preview"><canvas id="woLabelCanvas" width="1004" height="531"></canvas><span id="woLabelNotice" role="status">Select Work Order</span></div></div>'+
+ '</div><div class="preview"><canvas id="woLabelCanvas" width="2008" height="1063"></canvas><span id="woLabelNotice" role="status">Select Work Order</span></div></div>'+
  '<div class="tools"><button id="woLabelGenerate" class="primary">✦ Generate Image</button><button id="woLabelCopy">⧉ Copy Image</button><button id="woLabelSave">↓ Save PNG</button><button id="woLabelPrint">🖨 Print 85 × 45</button><button id="woLabelA4">🖨 A4 (12 labels)</button></div>';
  document.body.append(d);
  $('woLabelClose').onclick=()=>d.close();
@@ -270,7 +293,7 @@ function mount(){
   wrap=document.createElement('div');wrap.id='cfmBWTaffetaEntry';
   wrap.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 0;margin:3px 0;';
   const btn=document.createElement('button');btn.id='woLabelLaunch';btn.type='button';
-  btn.textContent='🏷 White Taffeta Stitching Label · 85×45';
+  btn.textContent='🏷 EAGLE Stitching Label · 85×45';
   btn.style.cssText='display:block;min-height:37px;padding:8px 11px;border:1px solid #171717;border-radius:7px;background:#fff;color:#111;font:bold 12px Arial,sans-serif;cursor:pointer;max-width:100%';
   btn.onclick=()=>{$('woLabelDialog').showModal();draw();refresh()};
   wrap.append(btn);
