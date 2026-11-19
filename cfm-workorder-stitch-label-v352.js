@@ -133,8 +133,8 @@ function vectorLabel(){
  a.push(t(199,136,'FILTRATION PRODUCT PVT. LTD.',20,'#1b9850',800));
  a.push(t(199,157,'An ISO 9001:2015 Certified Company',17,'#111',800));
  // Green Since 1992 capsule and 3 true corporate contact details.
- a.push('<rect x="441" y="15" width="167" height="32" rx="16" fill="#20a34f"/>');
- a.push(t(457,39,'SINCE : 1992',23,'#fff',800));
+ a.push('<rect x="405" y="15" width="203" height="32" rx="16" fill="#20a34f"/>');
+ a.push(t(422,39,'SINCE : 1992',23,'#fff',800));
  a.push('<circle cx="555" cy="78" r="13" fill="#193f97"/>');
  a.push('<rect x="547" y="72" width="16" height="12" rx="1" fill="none" stroke="#fff" stroke-width="2"/>');
  a.push('<path d="M548 73l7 6 7 -6" fill="none" stroke="#fff" stroke-width="1.5"/>');
