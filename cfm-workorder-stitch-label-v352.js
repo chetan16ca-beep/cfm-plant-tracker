@@ -1,4 +1,4 @@
-/* CFM V383. User-approved original Eagle header; six white heading boxes with normal-weight black text and bold auto-fit values. */
+/* CFM V384. EAGLE label: white boxes, regular headings and 600-weight semi-bold auto-fit values. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -86,7 +86,7 @@ function label45Layout(){
   const value=String(raw||'').trim()||'—',width=550;
   for(let size=info.max;size>=info.min;size-=.5){
    // Single line can be prominent; 2 lines stay within 37-unit row height.
-   const font='800 '+size+'px Arial,Helvetica,sans-serif';
+   const font='600 '+size+'px Arial,Helvetica,sans-serif';
    const lines=wrap(ctx,value,width,font);
    if(lines.length>2||(lines.length>1&&size>16.5))continue;
    ctx.font=font;
@@ -151,7 +151,7 @@ function vectorLabel(){
  a.push('<path d="M157 169L119 204" stroke="#19398e" stroke-width="2"/>');
  a.push(t(174,194,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',
   20,'#111',400,'textLength="635" lengthAdjust="spacingAndGlyphs"'));
- // Six full-width content rows: white heading boxes with non-bold black labels and bold auto-fitted values.
+ // Six full-width content rows: white non-bold black headings, semi-bold auto-fitted values.
  const ty=214, left=21, edge=829, split=252, rh=37;
  a.push('<rect x="'+left+'" y="'+ty+'" width="'+(edge-left)+'" height="'+(rh*6)+
   '" rx="6" fill="#fff" stroke="#19398e" stroke-width="3"/>');
@@ -172,7 +172,7 @@ function vectorLabel(){
   const start=fit.lines.length===1?y+27:y+16;
   fit.lines.forEach((line,k)=>{
    const length=Math.min(fit.widths[k],fit.innerWidth-1);
-   a.push(t(267,start+k*fit.step,line,fit.size,'#111',800,
+   a.push(t(267,start+k*fit.step,line,fit.size,'#111',600,
     'textLength="'+length.toFixed(2)+'" lengthAdjust="spacingAndGlyphs"'));
   });
  });
@@ -195,7 +195,7 @@ function draw(){
  image.onload=()=>{if(seq!==drawSequence)return;ctx.clearRect(0,0,C_W,C_H);ctx.drawImage(image,0,0,C_W,C_H)};
  image.onerror=()=>note('Preview could not render. Please refresh.');
  image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
- note('CFM V383 · White heading boxes, normal labels, bold auto-fit values · 85×45 mm vector.');
+ note('CFM V384 · White boxes, normal headings, semi-bold details · 85×45 mm vector.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
