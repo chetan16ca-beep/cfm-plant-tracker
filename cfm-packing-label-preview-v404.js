@@ -16,15 +16,16 @@ function eagle(){
  '<div>FILTRATION PRODUCT PVT. LTD.</div></div></div>';
 }
 function page(record,work={}){
+ const mapped=window.CFM_PACKING_WO_FIELDS_V405?.(work)||{};
  const draft=!!record.draft,legacy=!!record.legacy;
- const code=pick(record,['efpplCode'])||pick(work,['efpplCode','itemCode','eagleCode'])||window.CFM_EFPPL?.codeForRow?.(work)?.code||'';
+ const code=pick(record,['efpplCode'])||mapped.efpplCode||pick(work,['efpplCode','itemCode','eagleCode'])||window.CFM_EFPPL?.codeForRow?.(work)?.code||'';
  const order=pick(record,['workNo'])||pick(work,['workNo']);
  const party=pick(record,['party'])||pick(work,['party']);
  const po=pick(record,['poNo'])||pick(work,['poNo']);
- const description=pick(record,['description'])||pick(work,['description']);
- const details=pick(record,['description2'])||pick(work,['description2']);
- const micron=pick(record,['micron'])||pick(work,['micron','micronRating']);
- const size=pick(record,['size'])||pick(work,['size','sizeInch','dimensions']);
+ const description=pick(record,['description'])||mapped.description||pick(work,['description']);
+ const details=pick(record,['description2'])||mapped.description2||pick(work,['description2']);
+ const micron=pick(record,['micron'])||mapped.micron||pick(work,['micron','micronRating']);
+ const size=pick(record,['size'])||mapped.size||pick(work,['size','sizeInch','dimensions']);
  const qty=clean(record.thisDispatched);
  const slip=clean(record.slipNo);
  const date=clean(record.createdAt||record.date).slice(0,10);
@@ -98,10 +99,11 @@ async function previewSelected(){
   if(!work)throw Error('Work Order is not present in verified Cloud');
   const entered=clean(document.getElementById('packSlipThis')?.value);
   const dispatchQty=entered&&Number.isSafeInteger(Number(entered))&&Number(entered)>0?String(Number(entered)):'';
+  const mapped=window.CFM_PACKING_WO_FIELDS_V405?.(work)||{};
   const record={draft:true,slipNo:'PREVIEW ONLY',workNo:wo,party:work.party,poNo:work.poNo,
-    efpplCode:pick(work,['efpplCode','itemCode','eagleCode'])||window.CFM_EFPPL?.codeForRow?.(work)?.code||'',
-    description:work.description,description2:work.description2,
-    micron:pick(work,['micron','micronRating']),size:pick(work,['size','sizeInch','dimensions']),
+    efpplCode:mapped.efpplCode||pick(work,['efpplCode','itemCode','eagleCode'])||window.CFM_EFPPL?.codeForRow?.(work)?.code||'',
+    description:mapped.description||work.description,description2:mapped.description2||work.description2,
+    micron:mapped.micron||pick(work,['micron','micronRating']),size:mapped.size||pick(work,['size','sizeInch','dimensions']),
     thisDispatched:dispatchQty};
   open(record,work,popup);
  }catch(e){popup.document.body.textContent='Label preview unavailable: '+String(e.message||e)+'. Please refresh Cloud.'}
