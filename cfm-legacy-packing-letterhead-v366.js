@@ -60,7 +60,7 @@ function setup(){
  '#v167Print .cfm-eagle-carton-logo strong{display:block!important;font:bold 8px Arial!important}',
  '#v167Print .v168-slip,#v167Print .v168-label{color:#111!important}',
  '#v167Print .v168-slip,#v167Print .v167-slip,#v167Print .v168-label,#v167Print .v167-label{background:#fff!important;background-image:none!important;color:#111!important}',
- '#v167Print .v168-slip *,#v167Print .v167-slip *,#v167Print .v168-label *,#v167Print .v167-label *{color:#111!important;background-image:none!important;box-shadow:none!important;text-shadow:none!important}',
+ '#v167Print .v168-slip *,#v167Print .v167-slip *,#v167Print .v168-label *,#v167Print .v167-label *{color:#111!important;background-color:#fff!important;background-image:none!important;box-shadow:none!important;text-shadow:none!important}',
  '#v167Print .v168-slip svg path,#v167Print .v167-slip svg path,#v167Print .v168-label svg path,#v167Print .v167-label svg path{fill:#111!important}',
  '#v167Print .v168-slip th,#v167Print .v167-slip th,#v167Print .v168-label th,#v167Print .v167-label th{background:#fff!important;color:#111!important}',
  '#v167Print .cfm-eagle-manufacturing{font-weight:600!important}',
