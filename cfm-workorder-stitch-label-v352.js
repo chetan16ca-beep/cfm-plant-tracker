@@ -146,11 +146,11 @@ function vectorLabel(){
  a.push(t(576,84,'info@eaglefiltrations.com',18,'#111',700));
  a.push(t(576,119,'www.eaglefiltrations.com',18,'#111',700));
  a.push(t(576,153,'+91 70416 70091',25,'#111',800));
- // The approved manufacturing ribbon is continuous and not repeated in the table.
- a.push('<path d="M109 201L150 169H831V207H109Z" fill="#19398e"/>');
- a.push('<path d="M157 169L119 204" stroke="#fff" stroke-width="5"/>');
+ // Manufacturing title also stays white (no filled blue band).
+ a.push('<path d="M109 201L150 169H831V207H109Z" fill="#fff" stroke="#19398e" stroke-width="2"/>');
+ a.push('<path d="M157 169L119 204" stroke="#19398e" stroke-width="2"/>');
  a.push(t(174,194,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',
-  20,'#fff',800,'textLength="635" lengthAdjust="spacingAndGlyphs"'));
+  20,'#111',400,'textLength="635" lengthAdjust="spacingAndGlyphs"'));
  // Six full-width content rows: white heading boxes with non-bold black labels and bold auto-fitted values.
  const ty=214, left=21, edge=829, split=252, rh=37;
  a.push('<rect x="'+left+'" y="'+ty+'" width="'+(edge-left)+'" height="'+(rh*6)+
