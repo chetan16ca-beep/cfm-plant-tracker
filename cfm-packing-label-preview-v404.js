@@ -59,12 +59,13 @@ function page(record,work={}){
  '.foot{margin-top:auto;border-top:1.3px solid #111;padding-top:2mm;display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:2mm;min-width:0}',
  '.foot>div{min-width:0;overflow-wrap:anywhere}.foot small{display:block;font:bold 7pt Arial}.foot b{display:block;font:bold 10pt/1.2 Arial;margin-top:1mm}',
  '.draft{font:bold 7pt Arial;text-align:center;color:#9b1c1c;padding:1.3mm 0 0}',
+ '.inside.tight{padding:1mm}.inside.tight .party{padding:1.5mm 0 1mm}.inside.tight .field{padding:1mm}.inside.tight .product{padding:1mm;min-height:0}.inside.tight .code{padding:1mm}.inside.tight .foot{padding-top:1mm}.inside.tight .party strong{font-size:9.5pt}.inside.tight .product strong,.inside.tight .code strong{font-size:9pt}.inside.tight .product p{font-size:7.5pt}',
  '@media screen and (max-width:600px){.sheet{margin:10px auto;transform:scale(.86);transform-origin:top center;margin-bottom:-14mm}}',
  '@media print{html,body{background:#fff!important}.toolbar{display:none!important}.sheet{margin:0;box-shadow:none}html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
  ].join('');
  const safeTitle=E(show(record.slipNo||record.workNo));
  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Packing Label '+safeTitle+'</title><style>'+css+'</style></head>'+
- '<body><div class="toolbar"><span>EAGLE · 4 × 4 inch Packing Label · Print Preview</span><div><button type="button" onclick="window.print()">Print / Save PDF</button> <button type="button" onclick="window.close()">Close</button></div></div>'+
+ '<body><div class="toolbar"><span>EAGLE · 4 × 4 inch Packing Label · Print Preview</span><div><button type="button" onclick="printLabelIfFits()">Print / Save PDF</button> <button type="button" onclick="window.close()">Close</button></div></div>'+
  '<main class="sheet"><div class="inside"><div class="head">'+eagle()+'<div class="heading">PACKING<br>LABEL</div></div>'+
  '<div class="status">'+E(status)+'</div>'+
  '<div class="party"><small>PARTY / COMPANY</small><strong>'+E(show(party))+'</strong></div>'+
@@ -74,7 +75,7 @@ function page(record,work={}){
  '<div class="two">'+field('MICRON',micron)+field('SIZE',size)+'</div>'+
  '<div class="foot"><div><small>PACKING SLIP NO.</small><b>'+E(show(slip))+'</b></div><div><small>PACK QTY (NOS)</small><b>'+E(show(qty))+'</b></div><div><small>SLIP DATE</small><b>'+E(show(date))+'</b></div></div>'+
  (draft?'<div class="draft">DRAFT PREVIEW · NO DISPATCH SAVED</div>':'')+
- '</div></main></body></html>';
+ '</div></main><script>function printLabelIfFits(){const e=document.querySelector(".inside");if(!e)return;e.classList.remove("tight");if(e.scrollHeight>e.clientHeight+2||e.scrollWidth>e.clientWidth+2)e.classList.add("tight");if(e.scrollHeight>e.clientHeight+2||e.scrollWidth>e.clientWidth+2){alert("Label text exceeds 4 x 4 inch space. Shorten the Work Order description before printing; no text will be cut off.");return;}window.print();}</scr'+'ipt></body></html>';
 }
 function open(record,work={},providedWindow=null){
  if(!record)return false;
@@ -113,14 +114,16 @@ function mount(){
   const b=document.createElement('button');b.type='button';b.id='cfmPackingLabelPreviewV404';
   b.textContent='👁 Packing Label 4×4 Preview (No Save)';
   b.title='Label preview from verified Work Order; it does not save or dispatch goods';
-  b.onclick=previewSelected;preview.after(b);
+  b.onclick=previewSelected;
+  const reload=document.getElementById('packSlipReload');
+  if(reload)reload.after(b);else preview.after(b);
  }
  const saved=document.getElementById('packSlipCarton');
  if(saved){saved.textContent='📦 Saved Packing Label 4×4 / Reprint';saved.title='Available after a Packing Slip has been saved and verified'}
  const cssId='cfmPackingLabelStyleV404';
  if(!document.getElementById(cssId)){
   const st=document.createElement('style');st.id=cssId;
-  st.textContent='#cfmPackingLabelPreviewV404{background:#eaf7ff!important;border:1px solid #87bddf!important;color:#114d7b!important}';
+  st.textContent='#cfmPackingLabelPreviewV404{display:block!important;width:100%!important;min-height:40px!important;margin:7px 0!important;background:#eaf7ff!important;border:1px solid #87bddf!important;color:#114d7b!important}';
   document.head.appendChild(st)
  }
  return true;
