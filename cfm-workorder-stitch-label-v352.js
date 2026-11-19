@@ -1,4 +1,4 @@
-/* CFM V358. Taffeta label with 5mm unprinted top/bottom stitching margins; read-only ERP. */
+/* CFM V359. Fix Stitching Label inside real #v167Pack card with 5mm stitch margins. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=1004,C_H=531,VIEW_W=850,VIEW_H=450;
@@ -227,6 +227,10 @@ function build(){
  draw();
 }
 function findPackingSection(dash){
+ // The live Dashboard's actual Packing Slip & Label card is #v167Pack.
+ // The older accordion-only selector missed this card and hid the print button.
+ const realCard=dash.querySelector('#v167Pack');
+ if(realCard)return realCard;
  // This section is created by the dashboard-compact module. Put the launcher
  // inside the existing "Packing Slip & Label" accordion, not on the main Dashboard.
  const matched=[...dash.querySelectorAll('details.cfm-mini-section')].find(el=>
@@ -272,7 +276,7 @@ function mount(){
   wrap.append(btn);
  }
  const target=findPackingSection(dash);
- if(target&&wrap.parentElement!==target)target.prepend(wrap);
+ if(target&&wrap.parentElement!==target)target.append(wrap);
  // Do not create another standalone Dashboard button.
  linkPackingDialog();
  return !!target;
