@@ -316,11 +316,20 @@ function build(){
  d.addEventListener('paste',e=>{const item=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith('image/'));if(item){e.preventDefault();imagePaste(item.getAsFile())}});
  $('woLabelCopy').onclick=async()=>{
   if(!ok())return;
+  const canvas=$('woLabelCanvas');
   try{
-   const blob=await new Promise(resolve=>$('woLabelCanvas').toBlob(resolve,'image/png'));
-   if(!blob||!navigator.clipboard?.write||typeof ClipboardItem==='undefined')throw Error('Copy unsupported');
-   await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);note('Image copied.');
-  }catch(e){note('Copy unsupported. Use Save PNG instead.')}
+   if(!window.isSecureContext)throw Error('Clipboard needs HTTPS');
+   if(!navigator.clipboard?.write||typeof ClipboardItem==='undefined')throw Error('Browser does not support image clipboard');
+   // ClipboardItem promise lets browsers retain the direct user gesture while PNG is generated.
+   const item=new ClipboardItem({'image/png':new Promise((resolve,reject)=>{
+    canvas.toBlob(blob=>blob?resolve(blob):reject(Error('PNG generation failed')),'image/png');
+   })});
+   await navigator.clipboard.write([item]);
+   note('Image copied. Paste with Ctrl+V.');
+  }catch(e){
+   const why=String(e?.message||e||'Clipboard permission denied');
+   note('Copy Image failed: '+why+'. Use Save PNG to download the same label.');
+  }
  };
  $('woLabelSave').onclick=()=>{
   if(!ok())return;
