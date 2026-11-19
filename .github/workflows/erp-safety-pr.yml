@@ -21,4 +21,4 @@ jobs:
         with:
           node-version: '22'
       - name: Run read-only regression checks
-        run: node --test tests/erp-safety.test.mjs tests/label-design-lock.test.mjs
+        run: node --test tests/erp-safety.test.mjs tests/label-design-lock.test.mjs tests/packing-slip-format.test.mjs
