@@ -213,8 +213,8 @@ function printCartonLabel(record=null){
  '<div><small>ORDER QTY</small><b>'+printSafe(r.orderQty)+'</b></div>'+
  '<div><small>BALANCE</small><b>'+printSafe(r.balanceAfter)+'</b></div></div>';
  const css=[
- '@page{size:100mm 75mm;margin:0}*{box-sizing:border-box}html,body{width:100mm;height:75mm;margin:0;font-family:Arial,sans-serif;color:#111;background:#fff}',
- '.label{width:100mm;height:75mm;padding:3mm;overflow:hidden}.sheet{border:1px solid #111;padding:2mm;height:100%}',
+ '@page{size:101.6mm 101.6mm;margin:0}*{box-sizing:border-box}html,body{width:101.6mm;height:101.6mm;margin:0;font-family:Arial,sans-serif;color:#111;background:#fff}',
+ '.label{width:101.6mm;height:101.6mm;padding:4mm;overflow:hidden}.sheet{border:1px solid #111;padding:2mm;height:100%}',
  'header{display:flex;align-items:center;gap:2mm;border-bottom:2px solid #111;padding-bottom:1mm;margin-bottom:2mm}',
  '.mark svg{width:15mm;height:11mm}header b{display:block;font:bold italic 20px Arial}header small{display:block;font:bold 7px Arial}',
  '.kind{margin-left:auto;font:bold 10px Arial;border:1px solid #111;padding:2px;white-space:nowrap}',
@@ -259,7 +259,7 @@ function build(){
  '<p style="font-size:11px">Save only after goods are actually sent. Printing an old slip does not create another dispatch record. Order, cutting and stock remain unchanged.</p>'+
  '</div><div><div id="packSlipSummary">Select Work Order.</div><div id="packSlipHistory" style="margin-top:10px;max-height:220px;overflow:auto"></div></div></div>'+
  '<div id="packSlipMsg" role="status">Load live Cloud to begin.</div>'+
- '<div class="pfoot"><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>🖨 Print Packing Slip</button><button id="packSlipA4" disabled>🖨 A4 Print</button><button id="packSlipCarton" disabled>📦 Print Packing Label 100×75</button></div>';
+ '<div class="pfoot"><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>🖨 Print Packing Slip</button><button id="packSlipA4" disabled>🖨 A4 Print</button><button id="packSlipCarton" disabled>📦 Print Packing Label 4×4</button></div>';
  document.body.append(d);
  $('packSlipClose').onclick=()=>d.close();
  // Reprint saved history without creating a second shipment or touching stock.
