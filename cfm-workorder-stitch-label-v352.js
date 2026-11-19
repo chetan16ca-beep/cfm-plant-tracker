@@ -1,4 +1,4 @@
-/* CFM V370. Original EAGLE wordmark + visible SINCE badge + expanded Item Code + header mobile. */
+/* CFM V371. Bigger WO/Mfg/phone/email and smaller Size/Micron; no clipping, vector print. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -81,12 +81,12 @@ function label45Layout(){
   }return null;
  }
  const out={v,
-  wo:fit(v.wo,127,29,12,1),
-  code:fit(v.code,457,29,12,2),
-  product:fit(v.product,397,26,11,2),
-  size:fit(v.size,171,26,12,2),
-  micron:fit(v.micron||v.spec,397,23,10.5,2),
-  date:fit(v.date,145,22,11,2)
+  wo:fit(v.wo,202,31,12,1),
+  code:fit(v.code,392,27,12,2),
+  product:fit(v.product,505,26,11,2),
+  size:fit(v.size,104,23,12,2),
+  micron:fit(v.micron||v.spec,221,22,10.5,2),
+  date:fit(v.date,337,27,11,2)
  };
  out.overflow=[out.wo,out.code,out.product,out.size,out.micron,out.date].some(x=>!x);
  out.valid=!out.overflow&&Boolean(v.wo&&v.code&&v.product);
@@ -116,28 +116,28 @@ function vectorLabel(){
  // Mobile number moved into the ample top-right header area.
  a.push('<circle cx="557" cy="62" r="11" fill="#17349b"/>');
  a.push(t(550,68,'+',19,'#fff',900));
- a.push(t(576,70,'+91 70416 70091',21,'#111',800));
+ a.push(t(568,74,'+91 70416 70091',27,'#111',800));
  a.push('<path d="M18 186H179 M180 186L205 163H836V194H180Z" stroke="#142e93" stroke-width="2" fill="#183594"/>');
  a.push(t(221,184,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',14,'#fff',700));
- // Expanded ITEM CODE section: value space is about 46mm (previously 25mm).
- // Row 1: WO No. | Item Code, Row 2: Product | Size, Row 3: Micron | Mfg Date.
+ // Layout V371: bigger WO/date cells; smaller Size/Micron cells; Item Code still wrapped within bounds.
+ // Row 1: WO No. (wider) | Item Code, Row 2: Product | small Size, Row 3: small Micron | wide Mfg Date.
  a.push('<rect x="17" y="201" width="816" height="165" rx="6" fill="#fff" stroke="#111" stroke-width="2.3"/>');
- a.push('<path d="M17 256H833 M17 311H833 M242 201V256 M141 256V366 M562 256V366" stroke="#111" stroke-width="2"/>');
- a.push('<rect x="18" y="202" width="82" height="53" fill="#f0f0f0"/>');
- a.push('<rect x="243" y="202" width="105" height="53" fill="#f0f0f0"/>');
- a.push('<rect x="18" y="257" width="123" height="53" fill="#f0f0f0"/>');
- a.push('<rect x="563" y="257" width="68" height="53" fill="#f0f0f0"/>');
- a.push('<rect x="18" y="312" width="123" height="53" fill="#f0f0f0"/>');
- a.push('<rect x="563" y="312" width="105" height="53" fill="#f0f0f0"/>');
+ a.push('<path d="M17 256H833 M17 311H833 M316 201V256 M653 256V311 M359 311V366" stroke="#111" stroke-width="2"/>');
+ a.push('<rect x="18" y="202" width="88" height="53" fill="#f0f0f0"/>');
+ a.push('<rect x="317" y="202" width="110" height="53" fill="#f0f0f0"/>');
+ a.push('<rect x="18" y="257" width="110" height="53" fill="#f0f0f0"/>');
+ a.push('<rect x="654" y="257" width="63" height="53" fill="#f0f0f0"/>');
+ a.push('<rect x="18" y="312" width="100" height="53" fill="#f0f0f0"/>');
+ a.push('<rect x="360" y="312" width="119" height="53" fill="#f0f0f0"/>');
  // The WO value and enlarged Code value cell have their own dividers.
- a.push('<path d="M100 201V256 M348 201V256 M631 256V311 M668 311V366" stroke="#111" stroke-width="2"/>');
+ a.push('<path d="M106 201V256 M428 201V256 M128 256V311 M717 256V311 M118 311V366 M479 311V366" stroke="#111" stroke-width="2"/>');
  const cells=[
-  {label:'WO NO.',lx:23,vx:105,y:201,fit:L.wo,fs:17},
-  {label:'ITEM CODE',lx:249,vx:357,y:201,fit:L.code,fs:17},
-  {label:'PRODUCT',lx:23,vx:150,y:256,fit:L.product,fs:18.5},
-  {label:'SIZE',lx:569,vx:640,y:256,fit:L.size,fs:19},
-  {label:'MICRON',lx:23,vx:150,y:311,fit:L.micron,fs:18.5},
-  {label:'MFG. DATE',lx:567,vx:676,y:311,fit:L.date,fs:16.5}
+  {label:'WO NO.',lx:23,vx:112,y:201,fit:L.wo,fs:17},
+  {label:'ITEM CODE',lx:324,vx:435,y:201,fit:L.code,fs:17},
+  {label:'PRODUCT',lx:23,vx:136,y:256,fit:L.product,fs:18},
+  {label:'SIZE',lx:661,vx:724,y:256,fit:L.size,fs:17.5},
+  {label:'MICRON',lx:23,vx:126,y:311,fit:L.micron,fs:17.5},
+  {label:'MFG. DATE',lx:365,vx:487,y:311,fit:L.date,fs:18.5}
  ];
  for(const c of cells){
   const mid=c.y+27.5;
@@ -150,10 +150,10 @@ function vectorLabel(){
  a.push('<path d="M423 374V433" stroke="#111" stroke-width="2"/>');
  a.push('<rect x="29" y="392" width="28" height="22" rx="2" stroke="#173793" stroke-width="2" fill="none"/>');
  a.push('<path d="M30 393l13 11 13 -11" stroke="#173793" stroke-width="2" fill="none"/>');
- a.push(t(68,410,'info@eaglefiltrations.com',21,'#111',700));
+ a.push(t(67,412,'info@eaglefiltrations.com',25,'#111',800));
  a.push('<circle cx="454" cy="403" r="13" stroke="#173793" stroke-width="2" fill="none"/>');
  a.push('<path d="M441 403h26 M454 390v26" stroke="#173793" stroke-width="2" fill="none"/>');
- a.push(t(474,410,'www.eaglefiltrations.com',21,'#111',700));
+ a.push(t(473,411,'www.eaglefiltrations.com',23,'#111',800));
  a.push('</svg>');
  return a.join('');
 }
@@ -173,7 +173,7 @@ function draw(){
  image.onload=()=>{if(seq!==drawSequence)return;ctx.clearRect(0,0,C_W,C_H);ctx.drawImage(image,0,0,C_W,C_H)};
  image.onerror=()=>note('Preview could not render. Please refresh.');
  image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
- note('Corrected 85×45 mm label · true original EAGLE vector font · SINCE 1992 visible · expanded Item Code · mobile in header.');
+ note('CFM V371 · WO No./Mfg Date/Mobile/Email larger · Size/Micron smaller · 85×45 mm vector label.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
