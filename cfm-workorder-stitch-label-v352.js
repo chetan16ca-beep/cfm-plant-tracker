@@ -280,8 +280,8 @@ function linkPackingDialog(){
  const footer=d.querySelector('.pfoot');
  if(!footer||$('packSlipStitchLabel'))return;
  const btn=document.createElement('button');btn.id='packSlipStitchLabel';btn.type='button';
- btn.textContent='🏷 Print Stitching Label';
- btn.title='White Taffeta 85 × 25 mm label for this Work Order';
+ btn.textContent='🏷 Print EAGLE Bag Label · 85×45';
+ btn.title='Approved EAGLE 85 × 45 mm vector bag label for this Work Order';
  btn.onclick=async()=>{
   const no=$('packSlipWO')?.value||'';
   if(d.open)d.close();
@@ -301,7 +301,7 @@ function mount(){
   wrap=document.createElement('div');wrap.id='cfmBWTaffetaEntry';
   wrap.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 0;margin:3px 0;';
   const btn=document.createElement('button');btn.id='woLabelLaunch';btn.type='button';
-  btn.textContent='🏷 Option 1 Stitching Label · 85×25';
+  btn.textContent='🏷 EAGLE Bag Label · 85×45';
   btn.style.cssText='display:block;min-height:37px;padding:8px 11px;border:1px solid #171717;border-radius:7px;background:#fff;color:#111;font:bold 12px Arial,sans-serif;cursor:pointer;max-width:100%';
   btn.onclick=()=>{$('woLabelDialog').showModal();draw();refresh()};
   wrap.append(btn);
