@@ -1,4 +1,4 @@
-/* CFM V373 — Black and white Packing Slip / parcel label, original Eagle vector wordmark.
+/* CFM V380 — Legacy Packing Slip mirrors available Work Order specs, PO and party address, read-only.
  * DISPLAY ONLY, preserves legacy packing-slip records, job cards, quantities,
  * package labels and print count; no save, stock, or dispatch-state writes.
  */
@@ -25,6 +25,42 @@ function enhance(){
   const slogan=document.createElement('div');slogan.className='cfm-eagle-manufacturing';
   slogan.textContent='Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.';
   head.after(slogan);
+  // The old Create Packing print is display-only and can contain several
+  // Work Orders. Enrich each printed row from the exact matching Work Order.
+  // It does not modify existing packing slips or fabricate missing addresses.
+  const pending=typeof state!=='undefined'&&Array.isArray(state?.pending)?state.pending:[];
+  const text=(x)=>String(x??'').trim();
+  const safe=(x)=>text(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const dataRows=[...slip.querySelectorAll('table tr')].filter(tr=>tr.querySelector('td'));
+  const found=[];
+  for(const tr of dataRows){
+   const wo=text(tr.cells?.[0]?.textContent);
+   const row=pending.find(x=>text(x.workNo)===wo);
+   if(!row)continue;
+   found.push(row);
+   const desc=tr.cells?.[1];if(!desc)continue;
+   const extra=[text(row.description2),text(row.itemCode||row.efpplCode),
+    text(row.buyerItemCode||row.customerItemCode||row.customerItemNo)];
+   if(extra.some(Boolean)){
+    const line=document.createElement('div');line.className='cfm-wo-print-spec';
+    line.innerHTML=(extra[0]?'<span>Spec: '+safe(extra[0])+'</span>':'')+
+      (extra[1]?'<span>EFPPL: '+safe(extra[1])+'</span>':'')+
+      (extra[2]?'<span>Customer Item: '+safe(extra[2])+'</span>':'');
+    desc.append(line);
+   }
+  }
+  const addresses=[...new Set(found.map(row=>text(
+   row.shipToAddress||row.deliveryAddress||row.dispatchAddress||
+   row.partyAddress||row.customerAddress||row.consigneeAddress||row.address)))].filter(Boolean);
+  const address=addresses.length===1?addresses[0]:'';
+  const details=document.createElement('div');details.className='cfm-wo-print-meta';
+  const fullWork=found.map(x=>text(x.workNo)).join(', ');
+  const po=found.map(x=>text(x.poNo)).filter(Boolean);
+  const uniquePO=[...new Set(po)];
+  details.innerHTML='<b>Ship-to / Party Address:</b> '+(address?safe(address):'<i>Not recorded in Work Order — verify from customer PO</i>')+
+    (fullWork?'<div><b>Work Order(s):</b> '+safe(fullWork)+'</div>':'')+
+    (uniquePO.length===1?'<div><b>Customer PO No.:</b> '+safe(uniquePO[0])+'</div>':'');
+  slogan.after(details);
   slip.dataset.eagleLetterhead='1';
  }
  for(const label of root.querySelectorAll('.v168-label,.v167-label')){
@@ -63,6 +99,9 @@ function setup(){
  '#v167Print .v168-slip *,#v167Print .v167-slip *,#v167Print .v168-label *,#v167Print .v167-label *{color:#111!important;background-color:#fff!important;background-image:none!important;box-shadow:none!important;text-shadow:none!important}',
  '#v167Print .v168-slip svg path,#v167Print .v167-slip svg path,#v167Print .v168-label svg path,#v167Print .v167-label svg path{fill:#111!important}',
  '#v167Print .v168-slip th,#v167Print .v167-slip th,#v167Print .v168-label th,#v167Print .v167-label th{background:#fff!important;color:#111!important}',
+ '#v167Print .cfm-wo-print-meta{background:#fff!important;color:#111!important;font:8px/1.35 Arial!important;white-space:pre-wrap!important;padding:1mm 2px!important;margin-bottom:2mm!important;border-bottom:1px solid #111!important}',
+ '#v167Print .cfm-wo-print-spec{display:block!important;font:7px/1.25 Arial!important;overflow-wrap:anywhere!important}',
+ '#v167Print .cfm-wo-print-spec span{display:block!important}',
  '#v167Print .cfm-eagle-manufacturing{font-weight:600!important}',
  'html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
  ].join('');
