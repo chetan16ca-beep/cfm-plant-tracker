@@ -49,7 +49,7 @@ function installPrintBridge(){
 function ensureHistoryDialog(){
  if(document.getElementById('cfmOldPackingHistoryV402'))return;
  const dialog=document.createElement('dialog');dialog.id='cfmOldPackingHistoryV402';
- dialog.innerHTML='<div class="cfm402-history-head"><strong>Old Packing Slip History — Manage Individual Slips</strong><button type="button" id="cfm402HistoryClose">✕</button></div>'+
+ dialog.innerHTML='<div class="cfm402-history-head"><strong>OLDER LOCAL Packing Slip History — This Device Only</strong><button type="button" id="cfm402HistoryClose">✕</button></div>'+
  '<p>Old slips are stored on this device. Reprint or delete one selected dummy/test slip at a time; deleted slips are backed up first. This does not modify Cloud Packing Slips, Stock or Work Orders.</p>'+
  '<div id="cfm402HistoryRows"></div>';
  document.body.appendChild(dialog);
@@ -83,7 +83,7 @@ function showHistory(){
  ensureHistoryDialog();const dlg=document.getElementById('cfmOldPackingHistoryV402');
  const rows=history();const list=dlg.querySelector('#cfm402HistoryRows');
  list.innerHTML=rows.length?rows.map(r=>
-  '<article class="cfm402-row"><div><b>'+esc(r.slipNo||'—')+'</b><small>'+esc(r.party||'')+' · '+esc(r.date||'')+' · '+
+  '<article class="cfm402-row"><div><b>LOCAL · '+esc(r.slipNo||'—')+'</b><small>'+esc(r.party||'')+' · '+esc(r.date||'')+' · '+
   (Array.isArray(r.jobs)?r.jobs.length:0)+' Work Order(s)</small></div>'+
   '<div class="cfm402-row-actions"><button type="button" data-old-slip="'+esc(r.slipNo||'')+'" data-action="reprint">A4 Reprint</button>'+
   '<button type="button" class="cfm402-delete" data-old-slip="'+esc(r.slipNo||'')+'" data-action="delete">🗑 Delete</button></div></article>').join(''):
