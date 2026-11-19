@@ -1,4 +1,4 @@
-/* CFM V372. Approved 85x45 design; printed label text regular-weight at user request. */
+/* CFM V371. Bigger WO/Mfg/phone/email and smaller Size/Micron; no clipping, vector print. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -95,7 +95,7 @@ function label45Layout(){
 function vectorLabel(){
  const L=label45Layout();if(!L?.valid)return null;
  const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
- const t=(x,y,v,size,color='#111',weight=400,attrs='')=>'<text x="'+x+'" y="'+y+'" font-family="Arial,Helvetica,sans-serif" font-size="'+size+'" font-weight="'+weight+'" fill="'+color+'" '+attrs+'>'+E(v)+'</text>';
+ const t=(x,y,v,size,color='#111',weight=700,attrs='')=>'<text x="'+x+'" y="'+y+'" font-family="Arial,Helvetica,sans-serif" font-size="'+size+'" font-weight="'+weight+'" fill="'+color+'" '+attrs+'>'+E(v)+'</text>';
  const a=['<svg xmlns="http://www.w3.org/2000/svg" width="85mm" height="45mm" viewBox="0 0 850 450">',
  '<rect width="850" height="450" fill="#fff"/>',
  '<rect x="8" y="8" width="834" height="434" rx="16" fill="none" stroke="#112d99" stroke-width="5"/>'];
@@ -106,19 +106,19 @@ function vectorLabel(){
  a.push('<path d="M188 43V144" stroke="#111" stroke-width="2.2"/>');
  // SINCE badge has its own full-width area, away from logo and company letters.
  a.push('<rect x="282" y="15" width="181" height="29" rx="14.5" fill="#168f44"/>');
- a.push(t(301,36,'SINCE : 1992',20,'#fff',500));
+ a.push(t(301,36,'SINCE : 1992',20,'#fff',800));
  // True original EAGLE letter shapes, traced as SVG paths from the supplied header image.
  if(brand?.wordmarkPath){
   a.push('<g transform="translate(204 55) scale(.63 .69)" fill="#e72c35" fill-rule="evenodd"><path d="'+brand.wordmarkPath+'"/></g>');
  }else a.push(t(201,103,'EAGLE',60,'#e72c35',900));
- a.push(t(207,128,'FILTRATION PRODUCT PVT. LTD.',19,'#188c41',400));
- a.push(t(207,146,'An ISO 9001:2015 Certified Company',14.5,'#111',400));
+ a.push(t(207,128,'FILTRATION PRODUCT PVT. LTD.',19,'#188c41',500));
+ a.push(t(207,146,'An ISO 9001:2015 Certified Company',14.5,'#111',700));
  // Mobile number moved into the ample top-right header area.
  a.push('<circle cx="557" cy="62" r="11" fill="#17349b"/>');
  a.push(t(550,68,'+',19,'#fff',900));
- a.push(t(568,74,'+91 70416 70091',27,'#111',400));
+ a.push(t(568,74,'+91 70416 70091',27,'#111',800));
  a.push('<path d="M18 186H179 M180 186L205 163H836V194H180Z" stroke="#142e93" stroke-width="2" fill="#183594"/>');
- a.push(t(221,184,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',14,'#fff',400));
+ a.push(t(221,184,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',14,'#fff',700));
  // Layout V371: bigger WO/date cells; smaller Size/Micron cells; Item Code still wrapped within bounds.
  // Row 1: WO No. (wider) | Item Code, Row 2: Product | small Size, Row 3: small Micron | wide Mfg Date.
  a.push('<rect x="17" y="201" width="816" height="165" rx="6" fill="#fff" stroke="#111" stroke-width="2.3"/>');
@@ -141,19 +141,19 @@ function vectorLabel(){
  ];
  for(const c of cells){
   const mid=c.y+27.5;
-  a.push(t(c.lx,mid+6,c.label,c.fs,'#111',500));
+  a.push(t(c.lx,mid+6,c.label,c.fs,'#111',800));
   const first=mid-(c.fit.lines.length-1)*c.fit.step/2+c.fit.size*.34;
-  c.fit.lines.forEach((line,n)=>a.push(t(c.vx,first+n*c.fit.step,line,c.fit.size,'#111',400)));
+  c.fit.lines.forEach((line,n)=>a.push(t(c.vx,first+n*c.fit.step,line,c.fit.size,'#111',800)));
  }
  // Contact footer now has two clearly spaced cells, phone moved into header.
  a.push('<rect x="17" y="374" width="816" height="59" rx="7" stroke="#111" stroke-width="2.5" fill="#fff"/>');
  a.push('<path d="M423 374V433" stroke="#111" stroke-width="2"/>');
  a.push('<rect x="29" y="392" width="28" height="22" rx="2" stroke="#173793" stroke-width="2" fill="none"/>');
  a.push('<path d="M30 393l13 11 13 -11" stroke="#173793" stroke-width="2" fill="none"/>');
- a.push(t(67,412,'info@eaglefiltrations.com',25,'#111',400));
+ a.push(t(67,412,'info@eaglefiltrations.com',25,'#111',800));
  a.push('<circle cx="454" cy="403" r="13" stroke="#173793" stroke-width="2" fill="none"/>');
  a.push('<path d="M441 403h26 M454 390v26" stroke="#173793" stroke-width="2" fill="none"/>');
- a.push(t(473,411,'www.eaglefiltrations.com',23,'#111',400));
+ a.push(t(473,411,'www.eaglefiltrations.com',23,'#111',800));
  a.push('</svg>');
  return a.join('');
 }
