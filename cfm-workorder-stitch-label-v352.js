@@ -1,4 +1,4 @@
-/* CFM V376. Larger EAGLE wordmark and legible 2-line manufacturing title; phone in lower contact row. */
+/* CFM V377. Approved V376 layout; black-only vector thermal print for TSC TA220, no dither. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -217,7 +217,16 @@ function printLabel(sheet){
  if(!ok())return;
  const w=window.open('','_blank');if(!w){note('Please enable pop-ups to print.');return}
  // Image import is explicitly raster; all generated Work Order labels print as vectors.
- const art=pasted?'<img src="'+$('woLabelCanvas').toDataURL('image/png')+'" alt="Imported label">':vectorLabel();
+ // TA220 is a 203-DPI monochrome thermal printer. Convert only the
+ // generated print SVG to 100% black/white: gray and color ink gets halftoned
+ // into speckles and makes small letters appear broken. The approved preview,
+ // positions, fonts, logo contours and printed label dimensions are unchanged.
+ const vector=pasted?null:vectorLabel();
+ const ink=vector?.replace(/\b(fill|stroke)="#([0-9a-f]{3}|[0-9a-f]{6})"/gi,(full,attr,color)=>{
+  const white=['fff','ffffff','f0f0f0'].includes(color.toLowerCase());
+  return attr+'="'+(white?'#fff':'#000')+'"';
+ });
+ const art=pasted?'<img src="'+$('woLabelCanvas').toDataURL('image/png')+'" alt="Imported label">':ink;
  if(!art){w.close();note('Long text may be cut; print blocked until corrected.');return}
  const count=sheet?10:1;
  const page=sheet?'@page{size:A4 portrait;margin:7mm}.grid{display:grid;grid-template-columns:repeat(2,85mm);grid-template-rows:repeat(5,45mm);gap:3mm 5mm;}':
@@ -227,7 +236,7 @@ function printLabel(sheet){
  Array.from({length:count},()=>art).join('')+
  '</div><script>addEventListener("load",()=>{focus();print()})<\/script></body></html>';
  w.document.open();w.document.write(content);w.document.close();
- note(sheet?'A4 print: 10 SVG vector 85×45 mm labels':'85×45 mm SVG print ready: Actual Size 100%, Fit to Page OFF.');
+ note(sheet?'A4: 10 SVG black-only labels, 85×45 mm':'TA220: solid-black vector ink · 85×45 mm Actual Size 100% · Fit to Page OFF.');
 }
 function build(){
  const style=document.createElement('style');
