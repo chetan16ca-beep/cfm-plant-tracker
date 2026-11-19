@@ -181,6 +181,13 @@ function originalWordmarkHtml(){
 function printSlip(a4=false,record=null){
  const r=record||verifiedSlip;
  if(!r){say('Choose a Work Order, saved slip or legacy packing record.',true);return}
+ // V401 uses the exact Cloud-confirmed snapshot, or a clearly marked read-only draft.
+ // This only opens a print preview; it NEVER records dispatch or alters stock.
+ if(window.CFM_PACKING_PREVIEW_V401?.open){
+  const wo=remote?.payload?.pending?.find(x=>up(x.workNo)===up(r.workNo)&&up(x.party)===up(r.party)&&up(x.poNo)===up(r.poNo));
+  window.CFM_PACKING_PREVIEW_V401.open(r,{a4:true,workOrder:wo||null});
+  return;
+ }
  const w=window.open('','_blank');if(!w){say('Enable pop-ups for Packing Slip print.',true);return}
  const wo=remote?.payload?.pending?.find(x=>up(x.workNo)===up(r.workNo)&&up(x.party)===up(r.party)&&up(x.poNo)===up(r.poNo));
  const pick=(stored,work)=>String(stored??'').trim()||String(work??'').trim();
@@ -378,7 +385,7 @@ function build(){
  '<p style="font-size:11px">Save only after goods are actually sent. Printing an old slip does not create another dispatch record. Order, cutting and stock remain unchanged.</p>'+
  '</div><div><div id="packSlipSummary">Select Work Order.</div><div id="packSlipHistory" style="margin-top:10px;max-height:220px;overflow:auto"></div></div></div>'+
  '<div id="packSlipMsg" role="status">Load live Cloud to begin.</div>'+
- '<div class="pfoot"><button id="packSlipDeleteOne" type="button">🗑 Delete Single</button><button id="packSlipDeleteAll" type="button">🗑 Delete All Demo Slips</button><button id="packSlipPreview">👁 Preview (No Save)</button><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>🖨 Print Packing Slip</button><button id="packSlipA4" disabled>🖨 A4 Print</button><button id="packSlipCarton" disabled>📦 Print Packing Label 4×4</button></div>';
+ '<div class="pfoot"><button id="packSlipDeleteOne" type="button">🗑 Delete Single</button><button id="packSlipDeleteAll" type="button">🗑 Delete All Demo Slips</button><button id="packSlipPreview">👁 A4 Preview (No Save)</button><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>👁 Saved Slip Preview</button><button id="packSlipA4" disabled>🖨 A4 Landscape Preview & Print</button><button id="packSlipCarton" disabled>📦 Print Packing Label 4×4</button></div>';
  document.body.append(d);
  $('packSlipClose').onclick=()=>d.close();
  $('packSlipDeleteOne').onclick=()=>deletePackingSlips(false);
