@@ -1,4 +1,4 @@
-/* CFM V371. Bigger WO/Mfg/phone/email and smaller Size/Micron; no clipping, vector print. */
+/* CFM V375. User-approved white SINCE and Mfg. banners (black outlines/text); otherwise identical V371 label. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -105,8 +105,8 @@ function vectorLabel(){
  }else a.push(t(64,100,'E',79,'#193ba1',900));
  a.push('<path d="M188 43V144" stroke="#111" stroke-width="2.2"/>');
  // SINCE badge has its own full-width area, away from logo and company letters.
- a.push('<rect x="282" y="15" width="181" height="29" rx="14.5" fill="#168f44"/>');
- a.push(t(301,36,'SINCE : 1992',20,'#fff',800));
+ a.push('<rect x="282" y="15" width="181" height="29" rx="14.5" fill="#fff" stroke="#111" stroke-width="2"/>');
+ a.push(t(301,36,'SINCE : 1992',20,'#111',800));
  // True original EAGLE letter shapes, traced as SVG paths from the supplied header image.
  if(brand?.wordmarkPath){
   a.push('<g transform="translate(204 55) scale(.63 .69)" fill="#e72c35" fill-rule="evenodd"><path d="'+brand.wordmarkPath+'"/></g>');
@@ -117,8 +117,8 @@ function vectorLabel(){
  a.push('<circle cx="557" cy="62" r="11" fill="#17349b"/>');
  a.push(t(550,68,'+',19,'#fff',900));
  a.push(t(568,74,'+91 70416 70091',27,'#111',800));
- a.push('<path d="M18 186H179 M180 186L205 163H836V194H180Z" stroke="#142e93" stroke-width="2" fill="#183594"/>');
- a.push(t(221,184,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',14,'#fff',700));
+ a.push('<path d="M18 186H179 M180 186L205 163H836V194H180Z" stroke="#111" stroke-width="2" fill="#fff"/>');
+ a.push(t(221,184,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',14,'#111',700));
  // Layout V371: bigger WO/date cells; smaller Size/Micron cells; Item Code still wrapped within bounds.
  // Row 1: WO No. (wider) | Item Code, Row 2: Product | small Size, Row 3: small Micron | wide Mfg Date.
  a.push('<rect x="17" y="201" width="816" height="165" rx="6" fill="#fff" stroke="#111" stroke-width="2.3"/>');
