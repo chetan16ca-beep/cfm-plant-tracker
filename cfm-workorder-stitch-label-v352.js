@@ -80,7 +80,7 @@ function label45Layout(){
   {key:'product',label:'PRODUCT',max:31,min:12},
   {key:'micron',label:'MICRON',max:29,min:11},
   {key:'size',label:'SIZE',max:32,min:12},
-  {key:'date',label:'MFG. DATE',max:32,min:11}
+  {key:'date',label:'MFG. DATE',max:34,min:11}
  ];
  function fit(raw,info){
   const value=String(raw||'').trim()||'—',width=550;
@@ -150,7 +150,7 @@ function vectorLabel(){
  a.push('<path d="M109 201L150 169H831V207H109Z" fill="#fff" stroke="#19398e" stroke-width="2"/>');
  a.push('<path d="M157 169L119 204" stroke="#19398e" stroke-width="2"/>');
  a.push(t(174,194,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',
-  20,'#111',400,'textLength="635" lengthAdjust="spacingAndGlyphs"'));
+  24,'#111',400,'textLength="635" lengthAdjust="spacingAndGlyphs"'));
  // Six full-width content rows: white non-bold headings, medium-weight auto-fitted values.
  const ty=214, left=21, edge=829, split=252, rh=37;
  a.push('<rect x="'+left+'" y="'+ty+'" width="'+(edge-left)+'" height="'+(rh*6)+
@@ -165,10 +165,7 @@ function vectorLabel(){
  }
  L.fields.forEach((f,i)=>{
   const y=ty+i*rh,fit=L[f.key],txt=f.label;
-  if(f.key==='micron'){
-   a.push(t(36,y+16,'MICRON /',20,'#111',400));
-   a.push(t(36,y+33,'SPECIFICATION',18,'#111',400));
-  }else a.push(t(36,y+26,txt,24,'#111',400));
+  a.push(t(36,y+26,txt,f.key==='date'?27:24,'#111',400));
   const start=fit.lines.length===1?y+27:y+16;
   fit.lines.forEach((line,k)=>{
    const length=Math.min(fit.widths[k],fit.innerWidth-1);
