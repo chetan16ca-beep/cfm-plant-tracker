@@ -1,4 +1,4 @@
-/* CFM V373 — approved plain white Packing Slip, black logo and text, dispatch ledger unchanged.
+/* CFM V380 — Work Order-driven Packing Slip with verified ship-to address and full PO/product metadata.
  * Opt-in manual shipment confirmation. Never assumes dispatched status equals quantity.
  * Uses the existing CFM versioned Cloud save. Does not change stock, cutting, or status.
  */
@@ -14,6 +14,23 @@ function shipped(rows){return rows.reduce((a,x)=>a+(Number(x.thisDispatched)||0)
 function current(){
  const no=$('packSlipWO')?.value;
  return remote?.payload?.pending?.find(x=>String(x.workNo||'')===no)||null;
+}
+// Source fields only: no guessed postal address or manufactured PO item numbers.
+const field=(row,names)=>{
+ for(const name of names){const v=row?.[name];if(typeof v==='string'&&v.trim())return v.trim()}
+ return '';
+};
+const customerItem=row=>field(row,['buyerItemCode','customerItemCode','customerItemNo','buyerItemNo','poItemNo','itemNo']);
+const partyShipAddress=row=>{
+ const direct=field(row,['shipToAddress','deliveryAddress','dispatchAddress','partyAddress','customerAddress','shipTo','consigneeAddress','address']);
+ if(direct)return direct;
+ const matches=slips().filter(x=>up(x.party)===up(row?.party)&&up(x.poNo)===up(row?.poNo)&&String(x.partyAddress||'').trim());
+ const distinct=[...new Set(matches.map(x=>String(x.partyAddress).trim()))];
+ return distinct.length===1?distinct[0]:'';
+};
+function setOrderAddress(){
+ const row=current(),el=$('packSlipPartyAddress');
+ if(el)el.value=row?partyShipAddress(row):'';
 }
 function legacy(row){return !!row&&(
  up(row.status)==='DISPATCHED'||!!row.dispatchDoneAt||
@@ -36,8 +53,10 @@ function summary(){
   '<div><small>PREVIOUS DISPATCHED</small><b>'+esc(fmt(previous+extra))+'</b></div>'+
   '<div><small>THIS DISPATCH</small><b>'+esc(currentQty?fmt(currentQty):'—')+'</b></div>'+
   '<div><small>BALANCE AFTER SLIP</small><b>'+esc(fmt(remain))+'</b></div></div>'+
-  '<p><strong>'+esc(row.party||'—')+'</strong> · '+esc(row.workNo)+' · PO '+esc(row.poNo||'—')+'</p>'+
-  '<p class="packdesc">'+esc(row.description||'')+'</p>'+
+  '<p><strong>'+esc(row.party||'—')+'</strong> · '+esc(row.workNo)+' · Customer PO '+esc(row.poNo||'—')+'</p>'+
+  '<p><small>SHIP-TO ADDRESS:</small> '+esc($('packSlipPartyAddress')?.value||'Not in Work Order — enter and verify')+'</p>'+
+  '<p><small>CUSTOMER ITEM NO.:</small> '+esc(customerItem(row)||'—')+' · <small>EFPPL CODE:</small> '+esc(row.itemCode||row.efpplCode||'—')+'</p>'+
+  '<p class="packdesc">'+esc(row.description||'')+' · '+esc(row.description2||'')+'</p>'+
   (history.length?'<p>Verified recorded slips: '+history.length+' · Last '+esc(history.at(-1).createdAt?.slice(0,10)||'')+'</p>':
     '<p>Previous shipped quantity is only confirmed from slips saved through this ledger.</p>')+
   (baselineNeeded?'<p class="warning">This order has an earlier DISPATCHED status or dispatch document but no item-wise dispatch history. Enter the VERIFIED previously shipped quantity (0 only if none was sent). Do not assume full Order Qty was shipped.</p>':'')+
@@ -69,6 +88,7 @@ async function load(){
    sel.add(new Option(no+' · '+String(r.party||'').slice(0,30),no));
   }
   if(seen.has(old))sel.value=old;
+  setOrderAddress();
   say('Live Cloud verified · '+seen.size+' Work Orders · '+slips().length+' packing slips tracked');
   summary();
  }catch(e){remote=null;selected=null;verifiedSlip=null;summary();say('Cloud unavailable: '+String(e.message||e)+'. No shipment save possible.',true)}
@@ -88,6 +108,8 @@ async function saveSlip(){
  const baselineValue=$('packSlipPrior').value.trim(),baseline=requiresBaseline?Number(baselineValue):0;
  if(requiresBaseline&&baselineValue===''){say('Previous dispatched qty must be verified for this older dispatch order.',true);return}
  if(!Number.isSafeInteger(baseline)||baseline<0){say('Earlier dispatched qty must be a whole number (0 or more).',true);return}
+ const address=String($('packSlipPartyAddress')?.value||'').trim();
+ if(!address){say('Ship-to / Party Address missing. Enter and verify it against the customer PO before saving.',true);return}
  const ordered=Number(original.orderQty);
  if(!Number.isSafeInteger(ordered)||ordered<=0||shipped(history)+baseline+amount>ordered){say('Dispatch exceeds Work Order Qty, or order quantity is invalid.',true);return}
  if(typeof cloudFetch!=='function'||typeof cloudPush!=='function'||typeof save!=='function'||typeof state==='undefined'){say('CFM Cloud Save not available.',true);return}
@@ -109,9 +131,12 @@ async function saveSlip(){
   if(balance<0)throw Error('New shipment exceeds remaining Work Order Qty');
   record={
    id:uuid(),slipNo:'PK/'+wo+'/'+String(rows.length+1).padStart(3,'0'),
-   workNo:wo,party:liveRow.party||'',poNo:liveRow.poNo||'',
+   workNo:wo,party:liveRow.party||'',partyAddress:address,poNo:liveRow.poNo||'',
+   poDate:field(liveRow,['poDate','purchaseOrderDate']),orderDate:liveRow.orderDate||'',
+   customerItemNo:customerItem(liveRow),size:field(liveRow,['size','sizeInch','dimensions']),
+   micron:field(liveRow,['micron','micronRating']),
    description:liveRow.description||'',description2:liveRow.description2||'',
-   efpplCode:liveRow.itemCode||window.CFM_EFPPL?.codeForRow?.(liveRow)?.code||'',
+   efpplCode:liveRow.itemCode||liveRow.efpplCode||window.CFM_EFPPL?.codeForRow?.(liveRow)?.code||'',
    orderQty:ordered,previousDispatched:prev,manualPreviousBaseline:baseline,
    thisDispatched:amount,totalDispatched:prev+amount,balanceAfter:balance,
    createdAt:new Date().toISOString(),notes:String($('packSlipRemarks').value||'').trim(),
@@ -259,6 +284,7 @@ function build(){
  const d=document.createElement('dialog');d.id='packSlipDialog';
  d.innerHTML='<div class="phead"><div><strong>PACKING SLIP · DISPATCH BALANCE</strong><div style="font-size:11px">Cloud verified · Qty history · Work Order-wise</div></div><button id="packSlipClose">✕ Close</button></div>'+
  '<div class="pbody"><div><label>Work Order<select id="packSlipWO"><option value="">Select Work Order</option></select></label><button id="packSlipReload">↻ Refresh Cloud</button>'+
+ '<label>Ship-to / Party Address *<textarea id="packSlipPartyAddress" rows="3" placeholder="Auto from Work Order; otherwise exact customer PO shipping address" spellcheck="false"></textarea></label>'+
  '<label>THIS Dispatch Qty (actual nos)<input id="packSlipThis" type="number" min="1" step="1" placeholder="Qty sent today"></label>'+
  '<div id="packSlipBaselineWrap" hidden><label>Earlier Dispatched Qty (verify old dispatch)<input id="packSlipPrior" type="number" min="0" step="1" placeholder="Enter from old challan; 0 only if none"></label></div>'+
  '<label>Dispatch Remark / LR (optional)<input id="packSlipRemarks" placeholder="Courier / LR / dispatch notes"></label>'+
@@ -277,7 +303,8 @@ function build(){
   if(b.dataset.kind==='carton')printCartonLabel(item);
   else printSlip(true,item);
  };
- $('packSlipWO').onchange=()=>{$('packSlipThis').value='';$('packSlipPrior').value='';summary()};
+ $('packSlipWO').onchange=()=>{$('packSlipThis').value='';$('packSlipPrior').value='';setOrderAddress();summary()};
+ $('packSlipPartyAddress').oninput=summary;
  $('packSlipReload').onclick=load;
  $('packSlipThis').oninput=summary;$('packSlipPrior').oninput=summary;
  $('packSlipSave').onclick=saveSlip;$('packSlipPrint').onclick=()=>printSlip(false);$('packSlipA4').onclick=()=>printSlip(true);$('packSlipCarton').onclick=()=>printCartonLabel();
