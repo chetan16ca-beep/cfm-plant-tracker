@@ -76,10 +76,10 @@ function label45Layout(){
  // Geometry measured in 0.1 mm, matching the printed SVG. One large value
  // column gives long codes and product details the full width of the label.
  const fields=[
-  {key:'wo',label:'WO NO.',max:34,min:12},
-  {key:'code',label:'ITEM CODE',max:30,min:12},
-  {key:'product',label:'PRODUCT',max:31,min:12},
-  {key:'micron',label:'MICRON',max:34,min:11}
+  {key:'wo',label:'WO NO.',max:42,min:12},
+  {key:'code',label:'ITEM CODE',max:36,min:12},
+  {key:'product',label:'PRODUCT',max:37,min:12},
+  {key:'micron',label:'MICRON',max:42,min:11}
  ];
  function fit(raw,info){
   const value=String(raw||'').trim()||'—',width=550;
@@ -87,7 +87,7 @@ function label45Layout(){
    // Single line can be prominent; 2 lines stay within 37-unit row height.
    const font='600 '+size+'px Arial,Helvetica,sans-serif';
    const lines=wrap(ctx,value,width,font);
-   if(lines.length>2||(lines.length>1&&size>16.5))continue;
+   if(lines.length>2||(lines.length>1&&size>20))continue;
    ctx.font=font;
    const widths=lines.map(line=>{
     const m=ctx.measureText(line);
@@ -164,7 +164,7 @@ function vectorLabel(){
  }
  L.fields.forEach((f,i)=>{
   const y=ty+i*rh,fit=L[f.key],txt=f.label;
-  a.push(t(36,y+36,txt,27,'#000',600));
+  a.push(t(36,y+36,txt,30,'#000',600));
   const start=fit.lines.length===1?y+37:y+22;
   fit.lines.forEach((line,k)=>{
    const length=Math.min(fit.widths[k],fit.innerWidth-1);
@@ -191,7 +191,7 @@ function draw(){
  image.onload=()=>{if(seq!==drawSequence)return;ctx.clearRect(0,0,C_W,C_H);ctx.drawImage(image,0,0,C_W,C_H)};
  image.onerror=()=>note('Preview could not render. Please refresh.');
  image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
- note('CFM V390 · White boxes, high-contrast readable text · 85×45 mm vector.');
+ note('CFM V391 · White boxes, high-contrast readable text · 85×45 mm vector.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
