@@ -1,4 +1,4 @@
-/* CFM V366. Final Option 1 85x25mm, no logo/name/Stage/QC, read-only. */
+/* CFM V368. Option 1 85x25mm full-coverage label; no reserved stitching margins, read-only. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=591,VIEW_W=850,VIEW_H=250;
@@ -76,10 +76,10 @@ function label25Layout(){
   return null;
  };
  const L={
-  work:fit(values.wo,26,15,545,1),
-  desc:fit(values.desc,23,13,545,2),
-  spec:fit(values.spec,19.5,12,545,2),
-  code:fit(values.code,23,14,545,1),
+  work:fit(values.wo,26,15,514,1),
+  desc:fit(values.desc,23,13,514,2),
+  spec:fit(values.spec,19.5,12,514,2),
+  code:fit(values.code,23,14,514,1),
   values
  };
  L.valid=!!(values.wo&&values.code&&(values.desc||values.spec)&&L.work&&L.desc&&L.spec&&L.code);
@@ -88,48 +88,47 @@ function label25Layout(){
 }
 function draw(){
  const canvas=$('woLabelCanvas');if(!canvas)return;
- const ctx=canvas.getContext('2d');ctx.setTransform(C_W/VIEW_W,0,0,C_H/VIEW_H,0,0);
+ const ctx=canvas.getContext('2d');
+ ctx.setTransform(C_W/VIEW_W,0,0,C_H/VIEW_H,0,0);
  const L=label25Layout();if(!L)return;
- ctx.clearRect(0,0,850,250);ctx.fillStyle='#fff';ctx.fillRect(0,0,850,250);
- // Option 1: premium MNC industrial bands without any logo, company name, Stage or QC.
- // White Taffeta 85 × 25 mm. 3 mm top & bottom unprinted stitching edges.
+ ctx.fillStyle='#fff';ctx.fillRect(0,0,VIEW_W,VIEW_H);
+ // Final Option 1: all 25mm usable, NO reserved 3mm stitching bands.
+ // 0.8mm narrow frame inset is only for print-head clipping tolerance.
  ctx.strokeStyle='#000';ctx.lineWidth=3;
- ctx.beginPath();ctx.roundRect(16,32,818,186,13);ctx.stroke();
- ctx.strokeStyle='#000';ctx.lineWidth=2.3;
- for(const y of [87,167]){ctx.beginPath();ctx.moveTo(115,y);ctx.lineTo(815,y);ctx.stroke()}
- // Corner stripes are entirely within the print-safe interior.
- ctx.lineWidth=5;
+ ctx.beginPath();ctx.roundRect(8,8,834,234,11);ctx.stroke();
+ ctx.lineWidth=2.3;
+ ctx.beginPath();ctx.moveTo(100,72);ctx.lineTo(831,72);
+ ctx.moveTo(100,183);ctx.lineTo(831,183);
+ ctx.moveTo(294,18);ctx.lineTo(294,231);ctx.stroke();
+ ctx.lineWidth=4;
  for(let i=0;i<3;i++){
-  const x=46+i*22;
-  ctx.beginPath();ctx.moveTo(x+20,41);ctx.lineTo(x,68);ctx.stroke();
-  const xr=758+i*20;
-  ctx.beginPath();ctx.moveTo(xr+18,194);ctx.lineTo(xr,215);ctx.stroke();
+  const x=26+i*20;
+  ctx.beginPath();ctx.moveTo(x+15,16);ctx.lineTo(x,37);
+  ctx.moveTo(x+15,210);ctx.lineTo(x,232);ctx.stroke();
  }
- const labels=[['WORK ORDER NO.',52,37],['DESCRIPTION',103,68],['EFPPL CODE',180,35]];
  ctx.fillStyle='#000';ctx.textBaseline='middle';
- for(const [title,y,h] of labels){
-  ctx.font='bold 20px Arial,sans-serif';
-  ctx.fillText(title,126,y+h/2,185);
+ for(const [title,y] of [['WORK ORDER NO.',42],['DESCRIPTION',128],['EFPPL CODE',213]]){
+  ctx.font='bold 19.5px Arial,sans-serif';
+  ctx.fillText(title,99,y,184);
  }
- const dividerX=320;
- ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(dividerX,48);ctx.lineTo(dividerX,206);ctx.stroke();
- function content(row,center,maxLines,baseline){
-  if(!row)return;
+ if(!L.work||!L.desc||!L.spec||!L.code){
+  overflow=true;pasted=false;printable=false;
+  note('Description or code is too long for the 85×25 mm label. Printing blocked; shorten text.');
+  return;
+ }
+ const content=(row,y)=>{
   ctx.fillStyle='#000';ctx.font=row.font;ctx.textBaseline='middle';
-  const mid=center-(row.lines.length-1)*row.lineHeight/2;
-  row.lines.forEach((text,k)=>ctx.fillText(text,337,mid+k*row.lineHeight,481));
- }
- content(L.work,70);
- // Two distinct Work Order fields are kept in DESCRIPTION as heading + technical details.
- content(L.desc,L.spec.lines.length>0?116:127);
- content(L.spec,L.desc.lines.length>0?148:136);
- content(L.code,190);
- // Sew zone is always entirely blank, including border and bars.
- ctx.fillStyle='#fff';ctx.fillRect(0,0,850,30);ctx.fillRect(0,220,850,30);
+  const first=y-(row.lines.length-1)*row.lineHeight/2;
+  row.lines.forEach((line,i)=>ctx.fillText(line,311,first+i*row.lineHeight,514));
+ };
+ content(L.work,42);
+ content(L.desc,109);
+ content(L.spec,156);
+ content(L.code,213);
  overflow=L.overflow;pasted=false;printable=L.valid;
- note(L.overflow?'Text too long for the 25mm label; shorten details, print disabled.':
- printable?'Option 1 ready · 85×25 mm · NO logo/name/Stage/QC · 3mm stitching margins · sharp print':
- 'Select a Work Order to generate the 85×25 mm label.');
+ note(L.overflow?'Text too long for the 25mm label. Shorten details before printing.':
+ printable?'Option 1 ready · FULL 85×25 mm design · No reserved stitching margins · sharp vector print':
+ 'Select Work Order to generate your 85×25 mm label.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
@@ -170,23 +169,23 @@ function ok(){if(printable)return true;note('Enter Work Order, heading/details a
 function vectorLabel(){
  const L=label25Layout();if(!L?.valid)return null;
  const escape=t=>String(t??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[ch]));
- const txt=(x,y,word,size,weight=700,max=0)=>'<text x="'+x+'" y="'+y+'" fill="#000" font-family="Arial,Helvetica,sans-serif" font-size="'+size+'" font-weight="'+weight+'"'+(max?' textLength="'+max+'" lengthAdjust="spacingAndGlyphs"':'')+'>'+escape(word)+'</text>';
+ const txt=(x,y,word,size,weight=700)=>'<text x="'+x+'" y="'+y+'" fill="#000" font-family="Arial,Helvetica,sans-serif" font-size="'+size+'" font-weight="'+weight+'">'+escape(word)+'</text>';
  const o=['<svg xmlns="http://www.w3.org/2000/svg" width="85mm" height="25mm" viewBox="0 0 850 250">',
- '<rect width="850" height="250" fill="white"/>',
- '<rect x="16" y="32" width="818" height="186" rx="13" stroke="#000" stroke-width="3" fill="none"/>',
- '<path d="M115 87H815 M115 167H815 M320 48V206" stroke="#000" stroke-width="2.3" fill="none"/>'];
+ '<rect width="850" height="250" fill="#fff"/>',
+ '<rect x="8" y="8" width="834" height="234" rx="11" stroke="#000" stroke-width="3" fill="none"/>',
+ '<path d="M100 72H831 M100 183H831 M294 18V231" stroke="#000" stroke-width="2.3" fill="none"/>'];
  for(let i=0;i<3;i++){
-  const x=46+i*22,rx=758+i*20;
-  o.push('<path d="M'+(x+20)+' 41L'+x+' 68 M'+(rx+18)+' 194L'+rx+' 215" fill="none" stroke="#000" stroke-width="5"/>');
+  const x=26+i*20;
+  o.push('<path d="M'+(x+15)+' 16L'+x+' 37 M'+(x+15)+' 210L'+x+' 232" fill="none" stroke="#000" stroke-width="4"/>');
  }
- const names=[['WORK ORDER NO.',71],['DESCRIPTION',137],['EFPPL CODE',197]];
- names.forEach(([name,y])=>o.push(txt(126,y,name,20)));
+ [['WORK ORDER NO.',42],['DESCRIPTION',128],['EFPPL CODE',213]].forEach(([name,y])=>o.push(txt(99,y+7,name,19.5)));
  const add=(fit,y)=>{
-  const mid=y-(fit.lines.length-1)*fit.lineHeight/2;
-  fit.lines.forEach((line,k)=>o.push(txt(337,mid+k*fit.lineHeight+fit.size*.36,line,fit.size)));
+  const first=y-(fit.lines.length-1)*fit.lineHeight/2;
+  fit.lines.forEach((line,i)=>o.push(txt(311,first+i*fit.lineHeight+fit.size*.35,line,fit.size)));
  };
- add(L.work,70);add(L.desc,116);add(L.spec,148);add(L.code,190);
- o.push('</svg>');return o.join('');
+ add(L.work,42);add(L.desc,109);add(L.spec,156);add(L.code,213);
+ o.push('</svg>');
+ return o.join('');
 }
 function printLabel(sheet){
  if(!ok())return;
@@ -202,7 +201,7 @@ function printLabel(sheet){
  Array.from({length:count},()=>art).join('')+
  '</div><script>addEventListener("load",()=>{focus();print()})<\/script></body></html>';
  w.document.open();w.document.write(content);w.document.close();
- note(sheet?'A4 print: 20 vector-sharp 85×25 mm labels':'Vector print ready: Actual Size 100%, 85×25 mm, 3mm sewing margins.');
+ note(sheet?'A4 print: 20 vector-sharp 85×25 mm labels':'Vector print ready: Actual Size 100%, 85×25 mm, no blank stitching margins.');
 }
 function build(){
  const style=document.createElement('style');
@@ -224,7 +223,7 @@ function build(){
  '<label>Heading — Work Order Description<textarea id="woLabelHeading" placeholder="Same heading as Work Order"></textarea></label>'+
  '<label>Details — Work Order Description 2<textarea id="woLabelDetails" placeholder="Same details as Work Order"></textarea></label>'+
  '<label>EFPPL Product Code<input id="woLabelCode" placeholder="EFPPL-2000-CF-48-TLT"></label>'+
- '<p class="help">Top & bottom 3 mm stays COMPLETELY BLANK for stitching (no text, rules or border). Black ink on WHITE Taffeta: print at 100%, black-only (no color/gray ink). For BLACK Taffeta, use a suitable WHITE thermal-transfer ribbon; normal black ribbon is not readable. Printed fields: Work Order No. + Description (including Description 2 technical details) + EFPPL Code only. No logo, no company name, no Stage/QC.</p>'+
+ '<p class="help">Full 85 × 25 mm label height is used; there are no reserved top/bottom stitching strips. The outer border is inset about 0.8 mm to reduce clipping. Black ink on WHITE Taffeta: print at 100%, black-only (no color/gray ink). For BLACK Taffeta, use a suitable WHITE thermal-transfer ribbon; normal black ribbon is not readable. Printed fields: Work Order No. + Description (including Description 2 technical details) + EFPPL Code only. No logo, no company name, no Stage/QC.</p>'+
  '<label>Paste Matter<textarea id="woLabelMatter" placeholder="Work Order No.: CFM-556&#10;Heading: CF BAG 48 TOP L/T&#10;Details: 2 MICRON ANTISTATIC&#10;EFPPL Code: EFPPL-2000-CF-48-TLT"></textarea></label><button id="woLabelPaste">↳ Apply Pasted Matter</button>'+
  '<label>Or upload/paste image<input id="woLabelUpload" type="file" accept="image/png,image/jpeg,image/webp"></label>'+
  '<p class="help">Ctrl+V can paste an image. If text does not fit, printing is blocked instead of clipping the content.</p>'+
@@ -248,7 +247,7 @@ function build(){
  $('woLabelSave').onclick=()=>{
   if(!ok())return;
   const a=document.createElement('a');a.href=$('woLabelCanvas').toDataURL('image/png');
-  a.download='CFM-Stitching-Label-'+(val('woLabelNo').replace(/[^a-z0-9_-]/gi,'-')||'85x45')+'.png';
+  a.download='CFM-Stitching-Label-'+(val('woLabelNo').replace(/[^a-z0-9_-]/gi,'-')||'85x25')+'.png';
   document.body.append(a);a.click();a.remove();note('PNG saved.');
  };
  $('woLabelPrint').onclick=()=>printLabel(false);$('woLabelA4').onclick=()=>printLabel(true);
