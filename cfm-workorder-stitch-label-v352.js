@@ -1,4 +1,4 @@
-/* CFM V352. Landscape 85x45 label. Read-only Work Order lookup and PNG printing. */
+/* CFM V353. Taffeta black-and-white-only print, 85x45 landscape; read-only ERP label. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=1004,C_H=531,VIEW_W=850,VIEW_H=450;
@@ -63,13 +63,13 @@ function draw(){
  const can=$('woLabelCanvas');if(!can)return;
  const ctx=can.getContext('2d');ctx.setTransform(C_W/VIEW_W,0,0,C_H/VIEW_H,0,0);
  ctx.fillStyle='#fff';ctx.fillRect(0,0,850,450);
- ctx.strokeStyle='#1e3d68';ctx.lineWidth=2;ctx.strokeRect(8,8,834,434);
+ ctx.strokeStyle='#111';ctx.lineWidth=2.5;ctx.strokeRect(8,8,834,434);
  const no=val('woLabelNo'),heading=val('woLabelHeading'),detail=val('woLabelDetails'),code=val('woLabelCode');
- ctx.fillStyle='#193659';ctx.textBaseline='alphabetic';
+ ctx.fillStyle='#111';ctx.textBaseline='alphabetic';
  ctx.font='bold 23px Arial';ctx.fillText('WORK ORDER NO.',27,53);
  let nf=25;while(nf>12){ctx.font='bold '+nf+'px Arial';if(ctx.measureText(no||'—').width<520)break;nf--}
  ctx.fillText(no||'—',276,53);
- ctx.strokeStyle='#bdcbdb';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(27,75);ctx.lineTo(822,75);ctx.stroke();
+ ctx.strokeStyle='#111';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(27,75);ctx.lineTo(822,75);ctx.stroke();
  let chosen=null;
  for(let scale=1;scale>=0.43;scale-=0.025){
   const hs=Math.max(14,Math.round(30*scale)),ds=Math.max(11,Math.round(22*scale));
@@ -79,16 +79,16 @@ function draw(){
  }
  overflow=!chosen;
  if(overflow){
-  ctx.fillStyle='#a52626';ctx.font='bold 21px Arial';
+  ctx.fillStyle='#111';ctx.font='bold 21px Arial';
   ctx.fillText('Work Order details cannot fit on 85 × 45 mm',28,160);
   ctx.font='15px Arial';ctx.fillText('Please shorten the content. No text has been cut.',28,194);
  }else{
-  ctx.fillStyle='#172f50';let y=111;
+  ctx.fillStyle='#111';let y=111;
   for(const line of chosen.h){ctx.font='bold '+chosen.hs+'px Arial';if(line)ctx.fillText(line,30,y);y+=chosen.hGap}
   if(detail){y+=14;for(const line of chosen.d){ctx.font=chosen.ds+'px Arial';if(line)ctx.fillText(line,30,y);y+=chosen.dGap}}
  }
- ctx.strokeStyle='#bdcbdb';ctx.beginPath();ctx.moveTo(27,390);ctx.lineTo(822,390);ctx.stroke();
- ctx.fillStyle='#193659';ctx.font='bold 20px Arial';ctx.fillText('EFPPL CODE',27,421);
+ ctx.strokeStyle='#111';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(27,390);ctx.lineTo(822,390);ctx.stroke();
+ ctx.fillStyle='#111';ctx.font='bold 20px Arial';ctx.fillText('EFPPL CODE',27,421);
  let f=23;while(f>12){ctx.font='bold '+f+'px Arial';if(ctx.measureText(code||'—').width<=640)break;f--}
  ctx.fillText(code||'—',178,421);
  pasted=false;printable=!overflow&&Boolean(no&&code&&(heading||detail));
@@ -154,14 +154,14 @@ function build(){
  '#woLabelDialog .help{font:11px/1.5 Arial;color:#546d80}@media(max-width:650px){#woLabelDialog .main{grid-template-columns:1fr;padding:9px}#woLabelDialog .preview{order:-1}#woLabelCanvas{width:300px;height:159px}}';
  document.head.append(style);
  const d=document.createElement('dialog');d.id='woLabelDialog';
- d.innerHTML='<div class="top"><div><strong>Work Order Stitching Label</strong><div style="font-size:11px">Landscape 85 × 45 mm · No company branding</div></div><button id="woLabelClose">✕ Close</button></div>'+
+ d.innerHTML='<div class="top"><div><strong>Work Order Stitching Label</strong><div style="font-size:11px">Taffeta Black & White · 85 × 45 mm · No branding</div></div><button id="woLabelClose">✕ Close</button></div>'+
  '<div class="main"><div>'+
  '<label>Work Order<select id="woLabelSelect"><option value="">Select Work Order / Manual</option></select></label><button id="woLabelRefresh">↻ Refresh Work Orders</button>'+
  '<label>Work Order No.<input id="woLabelNo" placeholder="CFM-556"></label>'+
  '<label>Heading — Work Order Description<textarea id="woLabelHeading" placeholder="Same heading as Work Order"></textarea></label>'+
  '<label>Details — Work Order Description 2<textarea id="woLabelDetails" placeholder="Same details as Work Order"></textarea></label>'+
  '<label>EFPPL Product Code<input id="woLabelCode" placeholder="EFPPL-2000-CF-48-TLT"></label>'+
- '<p class="help">Printed content: Work Order No. + Description + Description 2 + EFPPL code. No company name, logo, batch no., date, party or footer.</p>'+
+ '<p class="help">Black ink on WHITE Taffeta: print at 100%, black-only (no color/gray ink). For BLACK Taffeta, use a suitable WHITE thermal-transfer ribbon; normal black ribbon is not readable. Printed fields: Work Order No. + Description + Description 2 + EFPPL Code only.</p>'+
  '<label>Paste Matter<textarea id="woLabelMatter" placeholder="Work Order No.: CFM-556&#10;Heading: CF BAG 48 TOP L/T&#10;Details: 2 MICRON ANTISTATIC&#10;EFPPL Code: EFPPL-2000-CF-48-TLT"></textarea></label><button id="woLabelPaste">↳ Apply Pasted Matter</button>'+
  '<label>Or upload/paste image<input id="woLabelUpload" type="file" accept="image/png,image/jpeg,image/webp"></label>'+
  '<p class="help">Ctrl+V can paste an image. If text does not fit, printing is blocked instead of clipping the content.</p>'+
@@ -195,7 +195,7 @@ function mount(){
  const dash=$('view-dashboard');if(!dash)return;
  if(!$('woLabelDialog'))build();
  if($('woLabelLaunch'))return;
- const btn=document.createElement('button');btn.id='woLabelLaunch';btn.type='button';btn.textContent='🏷 Work Order Label · 85×45';
+ const btn=document.createElement('button');btn.id='woLabelLaunch';btn.type='button';btn.textContent='🏷 B&W Taffeta Label · 85×45';
  btn.onclick=()=>{$('woLabelDialog').showModal();draw();refresh()};
  const target=dash.querySelector('.cfm-main-actions');
  if(target)target.append(btn);
