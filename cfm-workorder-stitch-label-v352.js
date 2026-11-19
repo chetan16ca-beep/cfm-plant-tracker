@@ -147,10 +147,10 @@ function vectorLabel(){
  a.push(t(576,119,'www.eaglefiltrations.com',18,'#111',700));
  a.push(t(576,153,'+91 70416 70091',25,'#111',800));
  // Manufacturing title also stays white (no filled blue band).
- a.push('<path d="M109 201L150 169H831V207H109Z" fill="#fff" stroke="#19398e" stroke-width="2"/>');
- a.push('<path d="M157 169L119 204" stroke="#19398e" stroke-width="2"/>');
+ a.push('<path d="M109 201L150 169H831V207H109Z" fill="#000" stroke="#000" stroke-width="2"/>');
+ a.push('<path d="M157 169L119 204" stroke="#000" stroke-width="2"/>');
  a.push(t(174,194,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',
-  24,'#000',600,'textLength="635" lengthAdjust="spacingAndGlyphs"'));
+  24,'#fff',600,'textLength="635" lengthAdjust="spacingAndGlyphs"'));
  // Six full-width content rows: white non-bold headings, medium-weight auto-fitted values.
  const ty=214, left=21, edge=829, split=252, rh=37;
  a.push('<rect x="'+left+'" y="'+ty+'" width="'+(edge-left)+'" height="'+(rh*6)+
