@@ -310,7 +310,7 @@ function build(){
  document.body.append(d);
  $('woLabelClose').onclick=()=>d.close();
  $('woLabelRefresh').onclick=refresh;$('woLabelSelect').onchange=selectWork;$('woLabelPaste').onclick=pasteMatter;
- for(const id of ['woLabelNo','woLabelHeading','woLabelDetails','woLabelCode','woLabelSize','woLabelMicron','woLabelMfgDate'])$(id).addEventListener('input',draw);
+ for(const id of ['woLabelNo','woLabelHeading','woLabelDetails','woLabelCode','woLabelMicron'])$(id)?.addEventListener('input',draw);
  $('woLabelGenerate').onclick=draw;
  $('woLabelUpload').onchange=e=>imagePaste(e.target.files?.[0]);
  d.addEventListener('paste',e=>{const item=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith('image/'));if(item){e.preventDefault();imagePaste(item.getAsFile())}});
