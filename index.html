@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261120-v402',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261120-v403',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -222,7 +222,7 @@ if('serviceWorker' in navigator){
  let src=texts.join('')+'\n';
   // One canonical displayed version. Old inline modules have repeated timers
   // that can otherwise force a stale header label after deployment.
-  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V402 LIVE');
+  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V403 LIVE');
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V167');
@@ -373,13 +373,13 @@ html,body{background:#f4faff!important;color:#13233b!important}
  src=src.replace('</head>','<script defer src="./cfm-eagle-brand-v361.js?v=370"></scr'+'ipt></head>');
  src=src.replace('</head>','<script defer src="./cfm-workorder-stitch-label-v352.js?v=396"></scr'+'ipt></head>');
  // V355: Packing Slip with live order qty, verified previous/this dispatch and history.
- src=src.replace('</head>','<script defer src="./cfm-packing-slip-dispatch-v355.js?v=401"></scr'+'ipt></head>');
+ src=src.replace('</head>','<script defer src="./cfm-packing-slip-dispatch-v355.js?v=403"></scr'+'ipt></head>');
  // V367: ensure the EXISTING Packing Slip and Reprint buttons use the approved EAGLE letterhead.
  src=src.replace('</head>','<script defer src="./cfm-legacy-packing-letterhead-v366.js?v=380"></scr'+'ipt></head>');
  // V401: Single crisp A4-landscape Packing Slip print preview with two optional photos; presentation only.
  src=src.replace('</head>','<script defer src="./cfm-packing-slip-preview-v401.js?v=401b"></scr'+'ipt></head>');
  // V402: One approved A4 slip format; hide old Create Packing, preserve old reprint history.
- src=src.replace('</head>','<script defer src="./cfm-packing-single-format-v402.js?v=402"></scr'+'ipt></head>');
+ src=src.replace('</head>','<script defer src="./cfm-packing-single-format-v402.js?v=403"></scr'+'ipt></head>');
  // V400: Approved Pending Orders corporate TABLE design. Cloud-verified; legacy controls preserved.
  src=src.replace('</head>','<script defer src="./cfm-pending-corporate-table-v400.js?v=400b"></scr'+'ipt></head>');
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
