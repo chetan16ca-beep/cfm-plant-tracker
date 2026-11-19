@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify Work Order, Store, Cutting, SOP and backup files
-        run: node --test tests/erp-safety.test.mjs
+        run: node --test tests/erp-safety.test.mjs tests/label-design-lock.test.mjs
 
   deploy:
     needs: safety
