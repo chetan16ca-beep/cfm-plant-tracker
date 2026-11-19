@@ -174,58 +174,102 @@ function originalWordmarkHtml(){
  '<svg class="eagle-wordmark" viewBox="0 0 465 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EAGLE" preserveAspectRatio="xMinYMid meet"><path d="'+brand.wordmarkPath+'" fill="#111" fill-rule="evenodd"/></svg>':
  '<span>EAGLE</span>';
 }
+// Print from the saved dispatch snapshot; drafts are explicitly marked and
+// never save to Cloud or change order/cutting/stock data.
 function printSlip(a4=false,record=null){
  const r=record||verifiedSlip;
- if(!r){say('Select a saved Packing Slip from history or confirm actual dispatch.',true);return}
+ if(!r){say('Select a saved slip or preview a Work Order.',true);return}
  const w=window.open('','_blank');if(!w){say('Enable pop-ups for Packing Slip print.',true);return}
+ const wo=remote?.payload?.pending?.find(x=>up(x.workNo)===up(r.workNo)&&up(x.party)===up(r.party)&&up(x.poNo)===up(r.poNo));
+ const pick=(stored,work)=>String(stored??'').trim()||String(work??'').trim();
+ const address=pick(r.partyAddress,wo?partyShipAddress(wo):'');
+ const item=pick(r.customerItemNo,wo?customerItem(wo):'');
+ const itemCode=pick(r.efpplCode,wo?.itemCode||wo?.efpplCode||'');
+ const product=pick(r.description,wo?.description||'');
+ const spec=pick(r.description2,wo?.description2||'');
+ const size=pick(r.size,field(wo,['size','sizeInch','dimensions']));
+ const micron=pick(r.micron,field(wo,['micron','micronRating']));
+ const poDate=pick(r.poDate,field(wo,['poDate','purchaseOrderDate']));
+ const draft=!!r.draft;
  const page=a4?'@page{size:A4 landscape;margin:10mm}':'@page{size:A5 landscape;margin:7mm}';
  const day=String(r.createdAt||'').slice(0,10);
  const head='<header class="letterhead"><div class="logo">'+logoHtml('#000',92,72)+'</div>'+
  '<div class="identity"><div class="brandname">'+originalWordmarkHtml()+'</div><div class="company">FILTRATION PRODUCT PVT. LTD.</div><div class="iso">An ISO 9001:2015 Certified Company</div></div>'+
  '<div class="contact"><div class="since">SINCE : 1992</div><div>info@eaglefiltrations.com</div><div>www.eaglefiltrations.com</div><strong>+91 70416 70091</strong></div></header>'+
  '<div class="mfg">Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.</div>';
- const info='<h2>PACKING SLIP</h2><div class="meta">'+
- '<div><small>PACKING SLIP NO.</small><b>'+printSafe(r.slipNo)+'</b></div>'+
- '<div><small>DATE</small><b>'+printSafe(day)+'</b></div>'+
- '<div><small>WORK ORDER NO.</small><b>'+printSafe(r.workNo)+'</b></div>'+
- '<div><small>PARTY / SHIP TO</small><b>'+printSafe(r.party)+'</b></div>'+
- '<div><small>CUSTOMER PO NO.</small><b>'+printSafe(r.poNo)+'</b></div>'+
- '<div><small>DISPATCH STATUS</small><b>CONFIRMED</b></div></div>';
- const tab='<table><thead><tr><th>SR.</th><th>ITEM / DESCRIPTION</th><th>DESCRIPTION 2 / SPECIFICATION</th><th>EFPPL PRODUCT CODE</th>'+
- '<th>ORDER QTY</th><th>PREVIOUS SENT</th><th>THIS DISPATCH</th><th>TOTAL SENT</th><th>BALANCE</th></tr></thead><tbody><tr>'+
- '<td>1</td><td>'+printSafe(r.description)+'</td><td>'+printSafe(r.description2)+'</td><td>'+printSafe(r.efpplCode)+'</td>'+
- '<td class="num">'+printSafe(r.orderQty)+'</td><td class="num">'+printSafe(r.previousDispatched)+'</td><td class="num big">'+printSafe(r.thisDispatched)+'</td>'+
- '<td class="num">'+printSafe(r.totalDispatched)+'</td><td class="num big">'+printSafe(r.balanceAfter)+'</td></tr></tbody></table>';
+ const box=(label,value)=>'<div><small>'+esc(label)+'</small><b>'+printSafe(value)+'</b></div>';
+ const top='<h2>PACKING SLIP'+(draft?' — DRAFT / NOT DISPATCHED':'')+'</h2>'+
+ '<div class="meta">'+
+ box('PACKING SLIP NO.',r.slipNo)+box('SLIP DATE',day)+box('WORK ORDER NO.',r.workNo)+box('CUSTOMER PO NO.',r.poNo)+'</div>'+
+ '<div class="partygrid"><div><small>PARTY / CUSTOMER NAME</small><b>'+printSafe(r.party)+'</b></div>'+
+ '<div><small>SHIP-TO / PARTY ADDRESS</small><b class="address">'+(address?esc(address):'<em>Address not recorded — verify with customer PO</em>')+'</b></div></div>'+
+ '<div class="refs">'+box('CUSTOMER PO DATE',poDate)+box('CUSTOMER ITEM NO.',item)+box('EFPPL ITEM CODE',itemCode)+'</div>';
+ const tab='<table><thead><tr><th style="width:5%">SR.</th><th style="width:35%">PRODUCT / ITEM DESCRIPTION</th>'+
+ '<th style="width:40%">TECHNICAL DESCRIPTION / SPECIFICATION</th><th style="width:10%">SIZE</th><th style="width:10%">MICRON</th></tr></thead><tbody>'+
+ '<tr><td class="center">1</td><td>'+printSafe(product)+'</td><td>'+printSafe(spec)+'</td>'+
+ '<td class="center">'+printSafe(size)+'</td><td class="center">'+printSafe(micron)+'</td></tr></tbody></table>';
+ const numbers='<div class="qtygrid">'+
+ box('ORDER QTY',r.orderQty)+box('PREVIOUS SENT',r.previousDispatched)+
+ box('THIS DISPATCH',r.thisDispatched)+box('TOTAL SENT',r.totalDispatched)+
+ box('BALANCE',r.balanceAfter)+'</div>';
  const footer='<div class="remarks"><b>DISPATCH / LR / COURIER REMARKS:</b> '+printSafe(r.notes)+'</div>'+
- '<div class="sign"><div>PREPARED BY<br><b>'+printSafe(r.operator)+'</b></div><div>PACKED BY<br>_________________</div>'+
- '<div>CHECKED BY<br>_________________</div><div>RECEIVED BY<br>_________________</div></div>'+
- '<div class="audit">Work Order-wise confirmed dispatch · Slip '+printSafe(r.slipNo)+' · Reprinting this slip does not create a new dispatch.</div>';
+ '<div class="sign"><div>PREPARED BY<b>'+printSafe(r.operator)+'</b></div>'+
+ '<div>PACKED BY<b>________________</b></div><div>CHECKED BY<b>________________</b></div>'+
+ '<div>RECEIVED BY<b>________________</b></div></div>'+
+ '<div class="audit">'+(draft?'DRAFT — no shipment recorded. Verify customer PO and address before confirming dispatch.':
+ 'Confirmed Work Order-wise dispatch · Slip '+printSafe(r.slipNo)+' · Reprinting never creates a second shipment.')+'</div>';
  const css=page+[
- '*{box-sizing:border-box}html,body{margin:0;color:#14171d;background:#fff;font-family:Arial,sans-serif}',
- '.sheet{width:100%;margin:0}.letterhead{display:grid;grid-template-columns:14% 47% 39%;align-items:center;gap:5px;padding:2px 5px 7px}',
+ '*{box-sizing:border-box}html,body{margin:0;color:#111;background:#fff;font-family:Arial,sans-serif}',
+ '.sheet{width:100%;margin:0}.letterhead{display:grid;grid-template-columns:14% 47% 39%;align-items:center;gap:4px;border-bottom:1px solid #111;padding:1px 4px 4px}',
  '.logo{display:flex;justify-content:center;align-items:center}.logo svg{max-width:100%;height:auto}',
- ' .identity{border-right:1px solid #111;padding:4px 8px}.brandname{min-height:29px}.brandname .eagle-wordmark{display:block;width:90%;height:38px;max-width:320px}',
- ' .company{font:bold 16px Arial;color:#111}.iso{font:bold 10px Arial;margin-top:3px}',
- '.contact{font:bold 11px/1.55 Arial;padding-left:9px}.contact strong{font-size:15px}',
- ' .since{display:table;background:#fff;color:#111;border:1px solid #111;border-radius:2px;padding:2px 12px;font:bold 12px Arial;margin:0 0 4px}',
- ' .mfg{text-align:right;padding:5px 11px;background:#fff;color:#111;border-top:1px solid #111;border-bottom:1px solid #111;font:600 11px Arial}',
- 'h2{text-align:center;font:bold 20px Arial;margin:9px 0 11px;letter-spacing:1px}',
- '.meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid #111;border-left:1px solid #111;margin-bottom:12px}',
- '.meta>div{border-right:1px solid #111;border-bottom:1px solid #111;padding:7px 8px;min-height:43px;overflow-wrap:anywhere}',
- '.meta small{font-size:9px;display:block;color:#555;margin-bottom:4px}.meta b{font-size:12px}',
- 'table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:10px}th,td{border:1px solid #111;padding:8px 5px;text-align:left;vertical-align:top;overflow-wrap:anywhere}',
- 'th{background:#fff;text-align:center;font-size:9px}th:first-child{width:4%}th:nth-child(2){width:17%}th:nth-child(3){width:17%}',
- 'th:nth-child(4){width:18%}th:nth-child(5){width:8%}th:nth-child(6){width:9%}th:nth-child(7){width:9%}th:nth-child(8){width:9%}th:nth-child(9){width:9%}',
- '.num{text-align:center;font-weight:bold;font-size:14px}.big{font-size:16px}',
- '.remarks{margin-top:12px;border:1px solid #111;padding:9px;font-size:11px;min-height:34px}',
- '.sign{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:17px 0 5px}.sign>div{border-top:1px solid #777;padding-top:6px;font:bold 10px Arial}',
- '.audit{border-top:1px solid #c4c4c4;font:9px Arial;padding-top:6px;margin-top:9px;color:#555}',
+ '.identity{border-right:1px solid #111;padding:4px 8px}.brandname{min-height:25px}.brandname .eagle-wordmark{display:block;width:90%;height:31px;max-width:320px}',
+ '.company{font:bold 15px Arial}.iso{font:bold 10px Arial;margin-top:3px}',
+ '.contact{font:bold 10px/1.5 Arial;padding-left:9px;overflow-wrap:anywhere}.contact strong{font-size:13px}',
+ '.since{display:table;background:#fff;border:1px solid #111;padding:1px 8px;margin:0 0 4px}',
+ '.mfg{text-align:right;padding:4px 10px;border-bottom:1px solid #111;font:bold 10px Arial;background:#fff}',
+ 'h2{text-align:center;font:bold 17px Arial;margin:7px 0;letter-spacing:.5px}',
+ '.meta,.refs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #111;border-left:1px solid #111}',
+ '.refs{grid-template-columns:1fr 1fr 1.5fr;border-top:0}',
+ '.meta>div,.refs>div,.partygrid>div{border-right:1px solid #111;border-bottom:1px solid #111;padding:5px 7px;min-width:0;overflow-wrap:anywhere}',
+ 'small{display:block;font-size:8px;font-weight:700;letter-spacing:.2px;margin-bottom:3px}',
+ '.meta b,.refs b,.partygrid b{display:block;font-size:11px;white-space:pre-wrap;line-height:1.25}',
+ '.partygrid{display:grid;grid-template-columns:36% 64%;border-left:1px solid #111}',
+ '.partygrid .address{min-height:15px}.partygrid em{font-weight:400;color:#555;font-size:10px}',
+ 'table{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:7px;font-size:10px}',
+ 'th,td{border:1px solid #111;padding:7px 5px;text-align:left;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}',
+ 'th{text-align:center;font-size:9px;background:#fff}.center{text-align:center}',
+ '.qtygrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid #111;border-right:0;margin-top:7px}',
+ '.qtygrid>div{padding:5px;border-right:1px solid #111;text-align:center}.qtygrid b{display:block;font:bold 16px Arial}',
+ '.remarks{border:1px solid #111;padding:6px;margin-top:7px;font-size:10px;min-height:22px}',
+ '.sign{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:13px 0 5px}',
+ '.sign>div{border-top:1px solid #999;padding-top:5px;font:bold 9px Arial}.sign b{display:block;margin-top:4px;font-size:10px}',
+ '.audit{border-top:1px solid #ccc;font:9px Arial;padding-top:5px;color:#444}',
  '@media print{.sheet{break-inside:avoid}html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
  ].join('');
  const html='<!doctype html><html><head><meta charset="utf-8"><title>'+printSafe(r.slipNo)+'</title><style>'+css+
- '</style></head><body><div class="sheet">'+head+info+tab+footer+'</div>'+
- '<script>window.addEventListener("load",function(){window.focus();window.print()})<\/script></body></html>';
+ '</style></head><body><div class="sheet">'+head+top+tab+numbers+footer+'</div>'+
+ '<script>addEventListener("load",function(){focus();print()})<\/script></body></html>';
  w.document.open();w.document.write(html);w.document.close();
+}
+function previewFromWorkOrder(){
+ const row=current();
+ if(!row){say('Choose a Work Order to preview the Packing Slip.',true);return}
+ const history=forWork(row.workNo);
+ const prev=shipped(history)+(legacy(row)&&!history.length?(Number($('packSlipPrior')?.value)||0):0);
+ const n=Number($('packSlipThis')?.value)||0;
+ const ordered=Number(row.orderQty)||0;
+ printSlip(true,{
+  draft:true,slipNo:'PREVIEW ONLY',workNo:row.workNo,party:row.party,
+  partyAddress:String($('packSlipPartyAddress')?.value||'').trim(),
+  poNo:row.poNo,poDate:field(row,['poDate','purchaseOrderDate']),
+  customerItemNo:customerItem(row),
+  efpplCode:row.itemCode||row.efpplCode||window.CFM_EFPPL?.codeForRow?.(row)?.code||'',
+  size:field(row,['size','sizeInch','dimensions']),micron:field(row,['micron','micronRating']),
+  description:row.description,description2:row.description2,
+  orderQty:ordered,previousDispatched:prev,thisDispatched:n,
+  totalDispatched:prev+n,balanceAfter:ordered-prev-n,createdAt:new Date().toISOString(),
+  notes:$('packSlipRemarks')?.value||'',operator:'',source:'DRAFT — READ ONLY'
+ });
 }
 function printCartonLabel(record=null){
  const r=record||verifiedSlip;if(!r){say('Select a saved Packing Slip or confirm dispatch first.',true);return}
@@ -291,7 +335,7 @@ function build(){
  '<p style="font-size:11px">Save only after goods are actually sent. Printing an old slip does not create another dispatch record. Order, cutting and stock remain unchanged.</p>'+
  '</div><div><div id="packSlipSummary">Select Work Order.</div><div id="packSlipHistory" style="margin-top:10px;max-height:220px;overflow:auto"></div></div></div>'+
  '<div id="packSlipMsg" role="status">Load live Cloud to begin.</div>'+
- '<div class="pfoot"><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>🖨 Print Packing Slip</button><button id="packSlipA4" disabled>🖨 A4 Print</button><button id="packSlipCarton" disabled>📦 Print Packing Label 4×4</button></div>';
+ '<div class="pfoot"><button id="packSlipPreview">👁 Preview (No Save)</button><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>🖨 Print Packing Slip</button><button id="packSlipA4" disabled>🖨 A4 Print</button><button id="packSlipCarton" disabled>📦 Print Packing Label 4×4</button></div>';
  document.body.append(d);
  $('packSlipClose').onclick=()=>d.close();
  // Reprint saved history without creating a second shipment or touching stock.
@@ -305,6 +349,7 @@ function build(){
  };
  $('packSlipWO').onchange=()=>{$('packSlipThis').value='';$('packSlipPrior').value='';setOrderAddress();summary()};
  $('packSlipPartyAddress').oninput=summary;
+ $('packSlipPreview').onclick=previewFromWorkOrder;
  $('packSlipReload').onclick=load;
  $('packSlipThis').oninput=summary;$('packSlipPrior').oninput=summary;
  $('packSlipSave').onclick=saveSlip;$('packSlipPrint').onclick=()=>printSlip(false);$('packSlipA4').onclick=()=>printSlip(true);$('packSlipCarton').onclick=()=>printCartonLabel();
