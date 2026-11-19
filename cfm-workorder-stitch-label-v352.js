@@ -1,4 +1,4 @@
-/* CFM V361. Authentic EAGLE head and vector-crisp printing with 5mm stitching margins. */
+/* CFM V365. Exact supplied Eagle emblem vector + correctly-proportioned SVG print; 5mm stitch margins. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -192,7 +192,7 @@ function vectorLabel(){
  const txt=(x,y,str,size,fill='#000',weight=700,extra='')=>'<text x="'+x+'" y="'+y+'" fill="'+fill+'" font-family="Arial,Helvetica,sans-serif" font-size="'+size+'" font-weight="'+weight+'" '+extra+'>'+escape(str)+'</text>';
  const o=['<svg xmlns="http://www.w3.org/2000/svg" width="85mm" height="45mm" viewBox="0 0 850 450">','<rect width="850" height="450" fill="white"/>'];
  o.push('<rect x="13" y="54" width="824" height="341" rx="14" fill="none" stroke="#000" stroke-width="2.6"/>');
- if(window.CFM_EAGLE_BRAND?.logoPath)o.push('<g transform="translate(40 79) scale('+ (91/185)+' '+(79/142)+')" fill="#000"><path d="'+window.CFM_EAGLE_BRAND.logoPath+'" fill-rule="evenodd"/></g>');
+ if(window.CFM_EAGLE_BRAND?.logoPath)o.push('<g transform="translate(40 79) scale('+ (91/210)+' '+(79/187)+')" fill="#000"><path d="'+window.CFM_EAGLE_BRAND.logoPath+'" fill-rule="evenodd"/></g>');
  else o.push(txt(50,125,'E',50));
  o.push('<path d="M144 87V158 M492 84V159" stroke="#000" stroke-width="2" fill="none"/>');
  o.push(txt(160,120,'EAGLE',43,'#000',900,'font-style="italic"'));
