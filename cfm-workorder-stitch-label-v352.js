@@ -86,7 +86,7 @@ function label45Layout(){
   product:fit(v.product,397,26,11,2),
   size:fit(v.size,171,26,12,2),
   micron:fit(v.micron||v.spec,397,23,10.5,2),
-  date:fit(v.date,157,22,11,2)
+  date:fit(v.date,145,22,11,2)
  };
  out.overflow=[out.wo,out.code,out.product,out.size,out.micron,out.date].some(x=>!x);
  out.valid=!out.overflow&&Boolean(v.wo&&v.code&&v.product);
