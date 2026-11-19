@@ -1,4 +1,4 @@
-/* CFM V362 — MNC Eagle Slip and Packing Label with historical reprint and dashboard placement.
+/* CFM V372 — original EAGLE lettering in Packing Slip; dispatch ledger unchanged.
  * Opt-in manual shipment confirmation. Never assumes dispatched status equals quantity.
  * Uses the existing CFM versioned Cloud save. Does not change stock, cutting, or status.
  */
@@ -143,6 +143,12 @@ function logoHtml(color='#153968',width=92,height=72){
  const brand=window.CFM_EAGLE_BRAND;
  return brand?.logoSvg?.(width,height,color)||'<strong style="font-size:38px;color:'+color+'">E</strong>';
 }
+function originalWordmarkHtml(){
+ const brand=window.CFM_EAGLE_BRAND;
+ return brand?.wordmarkPath?
+ '<svg class="eagle-wordmark" viewBox="0 0 465 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EAGLE" preserveAspectRatio="xMinYMid meet"><path d="'+brand.wordmarkPath+'" fill="#e92934" fill-rule="evenodd"/></svg>':
+ '<span>EAGLE</span>';
+}
 function printSlip(a4=false,record=null){
  const r=record||verifiedSlip;
  if(!r){say('Select a saved Packing Slip from history or confirm actual dispatch.',true);return}
@@ -150,7 +156,7 @@ function printSlip(a4=false,record=null){
  const page=a4?'@page{size:A4 landscape;margin:10mm}':'@page{size:A5 landscape;margin:7mm}';
  const day=String(r.createdAt||'').slice(0,10);
  const head='<header class="letterhead"><div class="logo">'+logoHtml('#163568',92,72)+'</div>'+
- '<div class="identity"><div class="brandname">EAGLE</div><div class="company">FILTRATION PRODUCT PVT. LTD.</div><div class="iso">An ISO 9001:2015 Certified Company</div></div>'+
+ '<div class="identity"><div class="brandname">'+originalWordmarkHtml()+'</div><div class="company">FILTRATION PRODUCT PVT. LTD.</div><div class="iso">An ISO 9001:2015 Certified Company</div></div>'+
  '<div class="contact"><div class="since">SINCE : 1992</div><div>info@eaglefiltrations.com</div><div>www.eaglefiltrations.com</div><strong>+91 70416 70091</strong></div></header>'+
  '<div class="mfg">Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.</div>';
  const info='<h2>PACKING SLIP</h2><div class="meta">'+
@@ -173,7 +179,7 @@ function printSlip(a4=false,record=null){
  '*{box-sizing:border-box}html,body{margin:0;color:#14171d;background:#fff;font-family:Arial,sans-serif}',
  '.sheet{width:100%;margin:0}.letterhead{display:grid;grid-template-columns:14% 47% 39%;align-items:center;gap:5px;padding:2px 5px 7px}',
  '.logo{display:flex;justify-content:center;align-items:center}.logo svg{max-width:100%;height:auto}',
- '.identity{border-right:2px solid #193a78;padding:4px 8px}.brandname{font:italic 900 42px/1 Arial;color:#153968;letter-spacing:2px}',
+ '.identity{border-right:2px solid #193a78;padding:4px 8px}.brandname{min-height:29px}.brandname .eagle-wordmark{display:block;width:90%;height:38px;max-width:320px}',
  '.company{font:bold 16px Arial;color:#276236}.iso{font:bold 10px Arial;margin-top:3px}',
  '.contact{font:bold 11px/1.55 Arial;padding-left:9px}.contact strong{font-size:15px}',
  '.since{display:table;background:#163968;color:#fff;border-radius:15px;padding:1px 12px;font:bold 12px Arial;margin:0 0 4px}',
@@ -199,7 +205,7 @@ function printSlip(a4=false,record=null){
 function printCartonLabel(record=null){
  const r=record||verifiedSlip;if(!r){say('Select a saved Packing Slip or confirm dispatch first.',true);return}
  const w=window.open('','_blank');if(!w){say('Enable pop-ups for Packing Label print.',true);return}
- const header='<header><div class="mark">'+logoHtml('#000',70,55)+'</div><div><b>EAGLE</b><small>FILTRATION PRODUCT PVT. LTD.</small></div>'+
+ const header='<header><div class="mark">'+logoHtml('#000',70,55)+'</div><div>'+originalWordmarkHtml()+'<small>FILTRATION PRODUCT PVT. LTD.</small></div>'+
  '<div class="kind">PACKING LABEL</div></header>';
  const main='<div class="cell party"><small>SHIP TO / PARTY</small><strong>'+printSafe(r.party)+'</strong></div>'+
  '<div class="twocol"><div class="cell"><small>PACKING SLIP NO.</small><b>'+printSafe(r.slipNo)+'</b></div>'+
@@ -216,7 +222,7 @@ function printCartonLabel(record=null){
  '@page{size:101.6mm 101.6mm;margin:0}*{box-sizing:border-box}html,body{width:101.6mm;height:101.6mm;margin:0;font-family:Arial,sans-serif;color:#111;background:#fff}',
  '.label{width:101.6mm;height:101.6mm;padding:4mm;overflow:hidden}.sheet{border:1px solid #111;padding:2mm;height:100%}',
  'header{display:flex;align-items:center;gap:2mm;border-bottom:2px solid #111;padding-bottom:1mm;margin-bottom:2mm}',
- '.mark svg{width:15mm;height:11mm}header b{display:block;font:bold italic 20px Arial}header small{display:block;font:bold 7px Arial}',
+ '.mark svg{width:15mm;height:11mm}header .eagle-wordmark{display:block;width:78px;height:17px}header small{display:block;font:bold 7px Arial}',
  '.kind{margin-left:auto;font:bold 10px Arial;border:1px solid #111;padding:2px;white-space:nowrap}',
  '.cell{padding:1mm;border-bottom:1px solid #aaa;overflow-wrap:anywhere;min-height:7mm}',
  '.cell small,.qty small{display:block;font-size:7px;color:#555;margin-bottom:1mm}.cell b,.cell strong{font-size:10px;line-height:1.15}.party strong{font-size:12px}',
