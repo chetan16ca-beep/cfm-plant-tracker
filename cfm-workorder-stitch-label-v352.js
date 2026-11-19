@@ -1,4 +1,4 @@
-/* CFM V384. EAGLE label: white boxes, regular headings and 600-weight semi-bold auto-fit values. */
+/* CFM V385. EAGLE label: white boxes, regular headings and 500-weight medium auto-fit values. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -86,7 +86,7 @@ function label45Layout(){
   const value=String(raw||'').trim()||'—',width=550;
   for(let size=info.max;size>=info.min;size-=.5){
    // Single line can be prominent; 2 lines stay within 37-unit row height.
-   const font='600 '+size+'px Arial,Helvetica,sans-serif';
+   const font='500 '+size+'px Arial,Helvetica,sans-serif';
    const lines=wrap(ctx,value,width,font);
    if(lines.length>2||(lines.length>1&&size>16.5))continue;
    ctx.font=font;
@@ -151,7 +151,7 @@ function vectorLabel(){
  a.push('<path d="M157 169L119 204" stroke="#19398e" stroke-width="2"/>');
  a.push(t(174,194,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',
   20,'#111',400,'textLength="635" lengthAdjust="spacingAndGlyphs"'));
- // Six full-width content rows: white non-bold black headings, semi-bold auto-fitted values.
+ // Six full-width content rows: white non-bold headings, medium-weight auto-fitted values.
  const ty=214, left=21, edge=829, split=252, rh=37;
  a.push('<rect x="'+left+'" y="'+ty+'" width="'+(edge-left)+'" height="'+(rh*6)+
   '" rx="6" fill="#fff" stroke="#19398e" stroke-width="3"/>');
@@ -172,7 +172,7 @@ function vectorLabel(){
   const start=fit.lines.length===1?y+27:y+16;
   fit.lines.forEach((line,k)=>{
    const length=Math.min(fit.widths[k],fit.innerWidth-1);
-   a.push(t(267,start+k*fit.step,line,fit.size,'#111',600,
+   a.push(t(267,start+k*fit.step,line,fit.size,'#111',500,
     'textLength="'+length.toFixed(2)+'" lengthAdjust="spacingAndGlyphs"'));
   });
  });
@@ -195,7 +195,7 @@ function draw(){
  image.onload=()=>{if(seq!==drawSequence)return;ctx.clearRect(0,0,C_W,C_H);ctx.drawImage(image,0,0,C_W,C_H)};
  image.onerror=()=>note('Preview could not render. Please refresh.');
  image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
- note('CFM V384 · White boxes, normal headings, semi-bold details · 85×45 mm vector.');
+ note('CFM V385 · White boxes, normal headings, medium-weight details · 85×45 mm vector.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
@@ -269,7 +269,7 @@ function build(){
  '#woLabelDialog .main{display:grid;grid-template-columns:minmax(0,1fr) 325px;gap:14px;padding:12px}',
  '#woLabelDialog .fields{display:grid;grid-template-columns:1fr 1fr;column-gap:9px;row-gap:6px}',
  '#woLabelDialog .wide{grid-column:1/-1}#woLabelDialog label{display:block;font:800 11px Arial;color:#35475c;margin:0}',
- '#woLabelDialog input,#woLabelDialog select,#woLabelDialog textarea{display:block;width:100%;margin-top:4px;border:1px solid #b9c8da;background:#fff;color:#1a3345;border-radius:7px;padding:8px 9px;font:700 13px Arial;min-height:36px}',
+ '#woLabelDialog input,#woLabelDialog select,#woLabelDialog textarea{display:block;width:100%;margin-top:4px;border:1px solid #b9c8da;background:#fff;color:#1a3345;border-radius:7px;padding:8px 9px;font:500 13px Arial;min-height:36px}',
  '#woLabelDialog textarea{resize:vertical;min-height:54px}#woLabelDialog #woLabelDetails{min-height:52px}',
  '#woLabelDialog button{border:1px solid #adc0d6;border-radius:8px;background:#fff;color:#173d78;padding:8px 12px;font:800 12px Arial;cursor:pointer}',
  '#woLabelDialog .primary{background:#153f92;color:#fff;border-color:#153f92}',
@@ -307,7 +307,7 @@ function build(){
  '<button id="woLabelPaste">↳ Apply Pasted Matter</button>'+
  '<label>Or import image (PNG/JPG)<input id="woLabelUpload" type="file" accept="image/png,image/jpeg,image/webp"></label>'+
  '</details>'+
- '<p class="help">Auto from selected Work Order. Confirm the actual manufacturing date. Text is bold and auto-fits each box; too-long values block printing instead of getting cut. Print at 100% Actual Size, Fit to Page OFF.</p>'+
+ '<p class="help">Auto from selected Work Order. Confirm the actual manufacturing date. Details use medium-weight text and auto-fit each box; too-long values block printing instead of getting cut. Print at 100% Actual Size, Fit to Page OFF.</p>'+
  '</div><div class="preview"><strong>LIVE PRINT PREVIEW</strong><canvas id="woLabelCanvas" width="2008" height="1063"></canvas><span id="woLabelNotice" role="status">Select Work Order</span></div></div>'+
  '<div class="tools"><button id="woLabelPrint" class="primary">🖨 Print 85 × 45</button><button id="woLabelA4">🖨 A4 (10)</button>'+
  '<button id="woLabelGenerate">↻ Preview</button><button id="woLabelSave">↓ Save PNG</button><button id="woLabelCopy">⧉ Copy Image</button></div>';
