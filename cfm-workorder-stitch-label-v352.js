@@ -382,9 +382,10 @@ function mount(){
  }
  const target=findPackingSection(dash);
  if(target&&wrap.parentElement!==target)target.append(wrap);
- // Do not create another standalone Dashboard button.
+ else if(!target&&wrap.parentElement!==dash){dash.prepend(wrap)}
+ // Keep one accessible launcher even when Packing Slip section is missing or rendered late.
  linkPackingDialog();
- return !!target;
+ return !!wrap.isConnected;
 }
 function boot(){
  if(!document.body)return;
