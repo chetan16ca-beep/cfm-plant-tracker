@@ -82,17 +82,18 @@ function urlSafe(x){
  return s.startsWith('data:image/png;base64,')||s.startsWith('data:image/jpeg;base64,')||s.startsWith('data:image/webp;base64,')?s:'';
 }
 function documentHtml(r,work,photos){
+ const mapped=window.CFM_PACKING_WO_FIELDS_V405?.(work)||{};
  const from=(a,b)=>str(a)||str(b);
  const party=from(r.party,work?.party),address=from(r.partyAddress,pick(work,['shipToAddress','deliveryAddress','dispatchAddress','partyAddress','customerAddress','consigneeAddress','address']));
  const po=from(r.poNo,work?.poNo),poDate=from(r.poDate,pick(work,['poDate','purchaseOrderDate']));
  const slipNo=str(r.slipNo)||(r.draft?'PREVIEW ONLY':'—');
  const slipDate=str(r.createdAt||r.date).slice(0,10)||new Date().toISOString().slice(0,10);
- const code=from(r.efpplCode,pick(work,['itemCode','efpplCode','eagleCode']));
+ const code=from(r.efpplCode,mapped.efpplCode||pick(work,['itemCode','efpplCode','eagleCode']));
  const description=from(r.description,work?.description);
  const detail=from(r.description2,work?.description2);
  const customerItem=from(r.customerItemNo,pick(work,['buyerItemCode','customerItemCode','customerItemNo','poItemNo','itemNo']));
- const size=from(r.size,pick(work,['size','sizeInch','dimensions']));
- const micron=from(r.micron,pick(work,['micron','micronRating']));
+ const size=from(r.size,mapped.size||pick(work,['size','sizeInch','dimensions']));
+ const micron=from(r.micron,mapped.micron||pick(work,['micron','micronRating']));
  const draft=!!r.draft,legacy=!!r.legacy;
  const items=Array.isArray(r.items)&&r.items.length?r.items:[{
     workNo:r.workNo,customerItemNo:customerItem,efpplCode:code,description,description2:detail,size,micron,qty:r.thisDispatched
