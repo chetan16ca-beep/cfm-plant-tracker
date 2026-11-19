@@ -260,33 +260,57 @@ function printLabel(sheet){
 }
 function build(){
  const style=document.createElement('style');
- style.textContent='#woLabelLaunch{margin:8px 0;padding:10px 12px;border:1px solid #a0bedb;border-radius:9px;background:#edf5ff;color:#16477b;font:700 12px Arial;cursor:pointer}'+
- '#woLabelDialog{width:min(900px,96vw);max-width:900px;max-height:94dvh;overflow:auto;border:1px solid #b8cbe1;border-radius:12px;padding:0;background:#f9fcff;color:#183852}#woLabelDialog::backdrop{background:#142c42b8}'+
- '#woLabelDialog *{box-sizing:border-box;font-family:Arial,sans-serif}#woLabelDialog .top{background:#164478;color:white;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0}'+
- '#woLabelDialog .main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;padding:12px}#woLabelDialog label{display:block;margin:8px 0;font:700 12px Arial;color:#244967}'+
- '#woLabelDialog input,#woLabelDialog select,#woLabelDialog textarea{display:block;width:100%;border:1px solid #b2c9df;border-radius:7px;padding:9px;background:#fff;color:#17344d;margin-top:4px;font:12px Arial}'+
- '#woLabelDialog textarea{resize:vertical;min-height:75px}#woLabelDetails{min-height:100px!important}#woLabelDialog button{padding:9px 10px;border:1px solid #a3bfd6;border-radius:8px;background:white;color:#174676;font:700 12px Arial;cursor:pointer}'+
- '#woLabelDialog .tools{display:flex;flex-wrap:wrap;gap:7px;background:white;padding:10px 12px;position:sticky;bottom:0;border-top:1px solid #d5e3f0}#woLabelDialog .primary{background:#185ca9;color:#fff}'+
- '#woLabelDialog .preview{display:flex;flex-direction:column;align-items:center;gap:7px}#woLabelCanvas{width:320px;height:169px;max-width:100%;background:white;border:1px solid #abbdd2}#woLabelNotice{font:11px Arial;text-align:center;color:#315a77}'+
- '#woLabelDialog .help{font:11px/1.5 Arial;color:#546d80}@media(max-width:650px){#woLabelDialog .main{grid-template-columns:1fr;padding:9px}#woLabelDialog .preview{order:-1}#woLabelCanvas{width:300px;height:159px}}';
+ style.textContent=[
+ '#woLabelLaunch{margin:4px 0;padding:8px 12px;border:1px solid #163985;border-radius:8px;background:#fff;color:#173a7a;font:800 12px Arial;cursor:pointer}',
+ '#woLabelDialog{width:min(940px,98vw);max-height:96dvh;overflow:auto;border:1px solid #bdc9dc;border-radius:14px;padding:0;background:#fff;color:#18334a}',
+ '#woLabelDialog::backdrop{background:#0f2343aa}#woLabelDialog *{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}',
+ '#woLabelDialog .top{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#163988;color:#fff;padding:11px 14px;position:sticky;top:0;z-index:2}',
+ '#woLabelDialog .top strong{font-size:17px;display:block}#woLabelDialog .top small{font-size:11px;color:#eef6ff}',
+ '#woLabelDialog .main{display:grid;grid-template-columns:minmax(0,1fr) 325px;gap:14px;padding:12px}',
+ '#woLabelDialog .fields{display:grid;grid-template-columns:1fr 1fr;column-gap:9px;row-gap:6px}',
+ '#woLabelDialog .wide{grid-column:1/-1}#woLabelDialog label{display:block;font:800 11px Arial;color:#35475c;margin:0}',
+ '#woLabelDialog input,#woLabelDialog select,#woLabelDialog textarea{display:block;width:100%;margin-top:4px;border:1px solid #b9c8da;background:#fff;color:#1a3345;border-radius:7px;padding:8px 9px;font:700 13px Arial;min-height:36px}',
+ '#woLabelDialog textarea{resize:vertical;min-height:54px}#woLabelDialog #woLabelDetails{min-height:52px}',
+ '#woLabelDialog button{border:1px solid #adc0d6;border-radius:8px;background:#fff;color:#173d78;padding:8px 12px;font:800 12px Arial;cursor:pointer}',
+ '#woLabelDialog .primary{background:#153f92;color:#fff;border-color:#153f92}',
+ '#woLabelDialog .workselect{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;margin-bottom:10px}',
+ '#woLabelDialog .workselect button{min-height:36px;white-space:nowrap}',
+ '#woLabelDialog .preview{display:flex;flex-direction:column;align-items:stretch;gap:7px;position:sticky;top:67px;align-self:start}',
+ '#woLabelDialog .preview strong{font-size:11px;color:#355070}#woLabelCanvas{display:block;width:100%;height:auto;aspect-ratio:85/45;background:#fff;border:1px solid #bcc8d6;border-radius:7px}',
+ '#woLabelNotice{font-size:11px;line-height:1.45;color:#375c6e;min-height:24px}',
+ '#woLabelDialog details.advanced{border:1px solid #d5dfea;border-radius:8px;margin-top:10px;padding:7px 9px}',
+ '#woLabelDialog details.advanced summary{font:bold 12px Arial;color:#28476d;cursor:pointer}',
+ '#woLabelDialog details.advanced label{margin-top:9px}#woLabelDialog .help{font:11px/1.45 Arial;color:#566878;margin:7px 0}',
+ '#woLabelDialog .tools{display:flex;flex-wrap:wrap;gap:6px;position:sticky;bottom:0;background:#fff;padding:10px 12px;border-top:1px solid #d8e0e9;z-index:3}',
+ '#woLabelDialog .tools button{flex:1;min-width:105px}#woLabelDialog .tools .primary{order:0}',
+ '@media(max-width:720px){#woLabelDialog .main{grid-template-columns:1fr;padding:9px;gap:11px}',
+ '#woLabelDialog .preview{position:static;order:-1}#woLabelDialog .workselect{grid-template-columns:minmax(0,1fr) auto}',
+ '#woLabelDialog .top strong{font-size:15px}#woLabelDialog .tools{padding:8px;gap:6px}',
+ '#woLabelDialog .tools button{padding:10px 6px;min-width:115px}#woLabelCanvas{max-width:560px}}'
+ ].join('');
  document.head.append(style);
  const d=document.createElement('dialog');d.id='woLabelDialog';
- d.innerHTML='<div class="top"><div><strong>Work Order Stitching Label</strong><div style="font-size:11px">EAGLE Bag Label · 85 × 45 mm · Approved design</div></div><button id="woLabelClose">✕ Close</button></div>'+
- '<div class="main"><div>'+
- '<label>Work Order<select id="woLabelSelect"><option value="">Select Work Order / Manual</option></select></label><button id="woLabelRefresh">↻ Refresh Work Orders</button>'+
- '<label>Work Order No.<input id="woLabelNo" placeholder="CFM-556"></label>'+
- '<label>Product — Work Order Description<textarea id="woLabelHeading" placeholder="Same heading as Work Order"></textarea></label>'+
- '<label>Micron / Specification — Description 2<textarea id="woLabelDetails" placeholder="Same details as Work Order"></textarea></label>'+
- '<label>EFPPL Product Code<input id="woLabelCode" placeholder="EFPPL-2000-CF-48-TLT"></label>'+
- '<label>Size (auto if available)<input id="woLabelSize" placeholder="48″"></label>'+
- '<label>Micron / Full Specification Override<input id="woLabelMicron" placeholder="5 MICRON ANTISTATIC"></label>'+
- '<label>Manufacturing Date (actual date)<input id="woLabelMfgDate" placeholder="19-Nov-2026"></label>'+
- '<p class="help">EAGLE Bag Label 85×45 mm with Work Order, Item Code, Product, Size, Micron / full technical spec and Mfg Date. Batch, Qty, SRL, Material, Stage and QC excluded. Email and Website are in the footer, and Phone is in the header. Missing size and manufacturing date are shown as — (never invented). Generated print is native SVG vector (not bitmap) for clear text. Use Actual Size 100% and disable Fit to Page.</p>'+
- '<label>Paste Matter<textarea id="woLabelMatter" placeholder="Work Order No.: CFM-556&#10;Heading: CF BAG 48 TOP L/T&#10;Details: 2 MICRON ANTISTATIC&#10;EFPPL Code: EFPPL-2000-CF-48-TLT"></textarea></label><button id="woLabelPaste">↳ Apply Pasted Matter</button>'+
- '<label>Or upload/paste image<input id="woLabelUpload" type="file" accept="image/png,image/jpeg,image/webp"></label>'+
- '<p class="help">Ctrl+V can paste an image. If text does not fit, printing is blocked instead of clipping the content.</p>'+
- '</div><div class="preview"><canvas id="woLabelCanvas" width="2008" height="1063"></canvas><span id="woLabelNotice" role="status">Select Work Order</span></div></div>'+
- '<div class="tools"><button id="woLabelGenerate" class="primary">✦ Generate Image</button><button id="woLabelCopy">⧉ Copy Image</button><button id="woLabelSave">↓ Save PNG</button><button id="woLabelPrint">🖨 Print 85 × 45</button><button id="woLabelA4">🖨 A4 (10 labels)</button></div>';
+ d.innerHTML='<div class="top"><div><strong>EAGLE · Stitching Label</strong><small>New approved corporate design · 85 × 45 mm · Work Order Auto-Fill</small></div><button id="woLabelClose">✕ Close</button></div>'+
+ '<div class="main"><div class="editor">'+
+ '<div class="workselect"><label>SELECT WORK ORDER<select id="woLabelSelect"><option value="">Select Work Order / Manual</option></select></label><button id="woLabelRefresh">↻ Refresh</button></div>'+
+ '<div class="fields">'+
+ '<label>WORK ORDER NO.<input id="woLabelNo" placeholder="CFM-556"></label>'+
+ '<label>EFPPL ITEM CODE<input id="woLabelCode" placeholder="EFPPL-2000-CF-48-TLT"></label>'+
+ '<label class="wide">PRODUCT — WORK ORDER DESCRIPTION<textarea id="woLabelHeading" rows="2" placeholder="Auto from Work Order"></textarea></label>'+
+ '<label class="wide">MICRON / SPECIFICATION<input id="woLabelMicron" placeholder="5 MICRON ANTISTATIC"></label>'+
+ '<label>SIZE<input id="woLabelSize" placeholder="48″"></label>'+
+ '<label>MFG. DATE (ACTUAL)<input id="woLabelMfgDate" placeholder="19-Nov-2026"></label>'+
+ '</div>'+
+ '<details class="advanced"><summary>More options · Description 2 / Paste Matter / Image</summary>'+
+ '<label>Work Order Description 2 (reference)<textarea id="woLabelDetails" rows="2" placeholder="Technical details from Work Order"></textarea></label>'+
+ '<label>Paste Work Order matter<textarea id="woLabelMatter" rows="3" placeholder="Work Order No.: CFM-556&#10;Heading: CF BAG 48 TOP L/T&#10;Details: 5 MICRON ANTISTATIC&#10;EFPPL Code: EFPPL-2000-CF-48-TLT"></textarea></label>'+
+ '<button id="woLabelPaste">↳ Apply Pasted Matter</button>'+
+ '<label>Or import image (PNG/JPG)<input id="woLabelUpload" type="file" accept="image/png,image/jpeg,image/webp"></label>'+
+ '</details>'+
+ '<p class="help">Auto from selected Work Order. Confirm the actual manufacturing date. Text is bold and auto-fits each box; too-long values block printing instead of getting cut. Print at 100% Actual Size, Fit to Page OFF.</p>'+
+ '</div><div class="preview"><strong>LIVE PRINT PREVIEW</strong><canvas id="woLabelCanvas" width="2008" height="1063"></canvas><span id="woLabelNotice" role="status">Select Work Order</span></div></div>'+
+ '<div class="tools"><button id="woLabelPrint" class="primary">🖨 Print 85 × 45</button><button id="woLabelA4">🖨 A4 (10)</button>'+
+ '<button id="woLabelGenerate">↻ Preview</button><button id="woLabelSave">↓ Save PNG</button><button id="woLabelCopy">⧉ Copy Image</button></div>';
  document.body.append(d);
  $('woLabelClose').onclick=()=>d.close();
  $('woLabelRefresh').onclick=refresh;$('woLabelSelect').onchange=selectWork;$('woLabelPaste').onclick=pasteMatter;
@@ -299,8 +323,8 @@ function build(){
   try{
    const blob=await new Promise(resolve=>$('woLabelCanvas').toBlob(resolve,'image/png'));
    if(!blob||!navigator.clipboard?.write||typeof ClipboardItem==='undefined')throw Error('Copy unsupported');
-   await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);note('Image copied. Paste into your print layout.');
-  }catch(e){note('Copy unsupported on this device. Use Save PNG instead.')}
+   await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);note('Image copied.');
+  }catch(e){note('Copy unsupported. Use Save PNG instead.')}
  };
  $('woLabelSave').onclick=()=>{
   if(!ok())return;
