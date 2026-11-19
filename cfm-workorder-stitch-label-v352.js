@@ -78,7 +78,7 @@ function label45Layout(){
   {key:'wo',label:'WO NO.',max:34,min:12},
   {key:'code',label:'ITEM CODE',max:30,min:12},
   {key:'product',label:'PRODUCT',max:31,min:12},
-  {key:'micron',label:'MICRON / SPECIFICATION',max:29,min:11},
+  {key:'micron',label:'MICRON',max:29,min:11},
   {key:'size',label:'SIZE',max:32,min:12},
   {key:'date',label:'MFG. DATE',max:32,min:11}
  ];
@@ -297,7 +297,7 @@ function build(){
  '<label>WORK ORDER NO.<input id="woLabelNo" placeholder="CFM-556"></label>'+
  '<label>EFPPL ITEM CODE<input id="woLabelCode" placeholder="EFPPL-2000-CF-48-TLT"></label>'+
  '<label class="wide">PRODUCT — WORK ORDER DESCRIPTION<textarea id="woLabelHeading" rows="2" placeholder="Auto from Work Order"></textarea></label>'+
- '<label class="wide">MICRON / SPECIFICATION<input id="woLabelMicron" placeholder="5 MICRON ANTISTATIC"></label>'+
+ '<label class="wide">MICRON<input id="woLabelMicron" placeholder="5 MICRON ANTISTATIC"></label>'+
  '<label>SIZE<input id="woLabelSize" placeholder="48″"></label>'+
  '<label>MFG. DATE (ACTUAL)<input id="woLabelMfgDate" placeholder="19-Nov-2026"></label>'+
  '</div>'+
