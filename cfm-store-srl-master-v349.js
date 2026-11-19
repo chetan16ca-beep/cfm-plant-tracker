@@ -147,7 +147,19 @@
        note.textContent='Checking next SRL against live Cloud…';
        liveRows=await fetchLive();
        mergeMaster(liveRows);
-       suggest(liveRows);
+       const serverIds=new Set(liveRows.map(r=>up(r.srlNo)));
+       const localOnly=readLocal().filter(r=>/^EFPPL03\/\d+$/.test(up(r.srlNo))&&!serverIds.has(up(r.srlNo)))
+         .sort((a,b)=>Number(up(b.srlNo).split('/').pop())-Number(up(a.srlNo).split('/').pop()));
+       if(localOnly.length){
+         // A previous Save was already made locally, but not in Live Cloud.
+         // Never allocate another number until the operator can see this pending roll.
+         const missing=localOnly[0];
+         serial.value=String(missing.srlNo||'');
+         showRecover(missing);
+         note.textContent='⚠ '+up(missing.srlNo)+' exists on this device, NOT Live Cloud. Use the blue Sync button below before new entries.';
+       }else{
+         hideRecover();suggest(liveRows);
+       }
      }catch(err){
        note.textContent='Live Cloud unavailable. New SRL Save requires online duplicate check.';
        console.warn('CFM Add SRL verification:',err);
@@ -159,7 +171,7 @@
      if(!localOnlyRow||busy)return;
      const local=JSON.parse(JSON.stringify(localOnlyRow));
      const number=up(local.srlNo);
-     if(!window.confirm('SRL '+number+' is on this device but not in Cloud. Sync exactly this saved local record?\\nCloth: '+String(local.quality||'-')+' | Opening MTR: '+String(local.openingMtr??'-')+'\\nOther stock / orders will remain unchanged.'))return;
+     if(!window.confirm('SRL '+number+' is on this device but not in Cloud. Sync exactly this saved local record?\\nCloth: '+String(local.quality||'-')+' | Width: '+String(local.width??'-')+' | Opening MTR: '+String(local.openingMtr??'-')+'\\nOther stock / orders will remain unchanged.'))return;
      busy=true;recoverBtn.disabled=true;save.disabled=true;
      const originalLabel=recoverBtn.textContent;
      recoverBtn.textContent='☁️ Recovering existing SRL…';
