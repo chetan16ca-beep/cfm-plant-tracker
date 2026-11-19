@@ -1,4 +1,4 @@
-/* CFM Packing Slip V380: read-only smoke tests. Never connect to Cloud. */
+/* CFM Packing Slip V384: read-only smoke tests. Never connect to Cloud. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -49,7 +49,7 @@ test('Missing address is marked as missing, never fabricated',()=>{
  const h=harness();h.elements.packSlipPartyAddress.value='';
  h.win.__test.setRemote({payload:{pending:[order],packingSlips:[]}});
  h.win.__test.previewFromWorkOrder();
- assert.match(h.html(),/Address not recorded/);
+ assert.match(h.html(),/Not available in the Work Order/);
  assert.doesNotMatch(h.html(),/A-14 Industrial Estate/);
 });
 
