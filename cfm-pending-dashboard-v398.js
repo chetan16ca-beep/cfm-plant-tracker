@@ -63,8 +63,8 @@ function draw(){
  lastSignature=signature;
  const stats=board.querySelector('.pd-kpis'),list=board.querySelector('.pd-list'),sub=board.querySelector('.pd-sub');
  if(!all){
-  stats.innerHTML='';list.innerHTML='<div class="pd-notice">☁ Verifying Cloud Pending Orders. Unverified work orders will not be displayed.</div>';
-  sub.textContent='Waiting for verified Cloud data';return;
+  stats.innerHTML='';list.innerHTML='<div class="pd-notice">'+(err?'⚠ Cloud Pending verification unavailable. Please reconnect and sync.':'☁ Verifying Cloud Pending Orders. Unverified work orders will not be displayed.')+'</div>';
+  sub.textContent=err?'Cloud verification unavailable':'Waiting for verified Cloud data';return;
  }
  all.sort((a,b)=>String(b.workNo||'').localeCompare(String(a.workNo||''),undefined,{numeric:true}));
  const total=all.reduce((s,r)=>s+n(r.orderQty),0),cut=all.reduce((s,r)=>s+n(r.cutQty),0),bal=all.reduce((s,r)=>s+Math.max(0,n(r.orderQty)-n(r.cutQty)),0);
@@ -92,6 +92,7 @@ function init(){
  if(before)root.insertBefore(board,before);else root.appendChild(board);
  board.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-work'))openWork(b.getAttribute('data-work'));else if(b.hasAttribute('data-all'))openWork('')});
  draw();
+ if(typeof window.cfmPendingVerifyCloud==='function')Promise.resolve(window.cfmPendingVerifyCloud()).then(()=>{lastSignature='';draw()}).catch(()=>{});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden){lastSignature='';draw()}});
  setInterval(()=>{if(root.classList.contains('active'))draw()},4000);
 }
