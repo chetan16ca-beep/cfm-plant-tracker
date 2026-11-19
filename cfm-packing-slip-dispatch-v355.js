@@ -208,6 +208,7 @@ function printSlip(a4=false,record=null){
  '<div class="iso">An ISO 9001:2015 Certified Company</div></div></div>'+
  '<div class="header-right"><div class="doc-title">PACKING SLIP</div>'+
  '<div class="doc-sub">EAGLE · ORIGINAL WORK ORDER REFERENCE</div>'+
+ '<div class="doc-status">'+(draft?'DRAFT / NOT DISPATCHED':legacy?'LEGACY PACKING RECORD':'')+'</div>'+
  '<div class="doc-ref">'+printSafe(r.slipNo)+'</div></div></div>'+
  '<div class="tagline">Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.</div>';
  const refs='<div class="refs">'+cell('PACKING SLIP NO.',r.slipNo)+
@@ -263,7 +264,7 @@ function printSlip(a4=false,record=null){
  '.brand-text{min-width:0}.brandname{height:36px;max-width:270px}.brandname .eagle-wordmark{height:34px;width:100%;display:block}',
  '.company{font-size:13px;font-weight:800;letter-spacing:.1px}.iso{font-size:9px;font-weight:700}',
  '.header-right{text-align:right;min-width:0}.doc-title{font:800 25px Arial;letter-spacing:1px}.doc-sub{font:700 9px Arial;letter-spacing:.5px}',
- '.doc-ref{font:bold 13px Arial;padding-top:5px}.tagline{font:bold 10px Arial;padding:5px 1px;border-bottom:1px solid #111}',
+ '.doc-ref{font:bold 13px Arial;padding-top:5px}.doc-status{font:bold 10px Arial;letter-spacing:.4px;margin-top:3px}.tagline{font:bold 10px Arial;padding:5px 1px;border-bottom:1px solid #111}',
  '.refs,.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid #111;border-right:0;margin-top:9px}',
  '.meta-cell{border-right:1px solid #111;padding:6px 8px;min-width:0;overflow-wrap:anywhere}',
  '.meta-cell small{font-size:8.5px;font-weight:800;display:block;letter-spacing:.3px;margin-bottom:4px}',
