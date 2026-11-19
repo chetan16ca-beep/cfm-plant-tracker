@@ -1,7 +1,7 @@
-/* CFM V368. Option 1 85x25mm full-coverage label; no reserved stitching margins, read-only. */
+/* CFM V369. Branded Eagle 85x45 Bag Label / SVG text / Batch removed / Cloud read-only. */
 (function(){
 'use strict';
-const $=id=>document.getElementById(id),C_W=2008,C_H=591,VIEW_W=850,VIEW_H=250;
+const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
 let loaded=[],pasted=false,printable=false,overflow=false;
 function val(id){return String($(id)?.value||'').trim()}
 function put(id,v){if($(id))$(id).value=String(v??'')}
@@ -36,7 +36,14 @@ function selectWork(){
  const n=val('woLabelSelect'),r=orders().find(x=>String(x.workNo||'').trim()===n);
  if(!r)return;
  put('woLabelNo',n);put('woLabelHeading',r.description||'');put('woLabelDetails',r.description2||'');
- put('woLabelCode',getCode(r));draw();
+ put('woLabelCode',getCode(r));
+ const h=String(r.description||'');
+ const sizeRaw=String(r.size||r.sizeInch||r.dimensions||'').trim();
+ const inch=h.match(/\b\d{1,3}(?:\.\d+)?\s*(?:"|″|INCH(?:ES)?)/i)?.[0]||'';
+ put('woLabelSize',sizeRaw||inch);
+ put('woLabelMicron',String(r.micron||r.micronRating||r.description2||'').trim());
+ put('woLabelMfgDate',String(r.mfgDate||r.manufacturingDate||r.productionDate||'').trim());
+ draw();
  note('Work Order saved heading and details loaded. Verify EFPPL code.');
 }
 function wrap(ctx,s,max,font){
@@ -59,76 +66,91 @@ function wrap(ctx,s,max,font){
  }
  return lines;
 }
-function label25Layout(){
- const ctx=$('woLabelCanvas')?.getContext('2d');
- if(!ctx)return null;
- const values={
-  wo:val('woLabelNo'),desc:val('woLabelHeading'),spec:val('woLabelDetails'),code:val('woLabelCode')
- };
- const fit=(value,max,min,width,limit)=>{
-  const txt=String(value||'').trim()||'—';
-  for(let f=max;f>=min;f-=.5){
-   const font='bold '+f+'px Arial,sans-serif';
-   const lines=wrap(ctx,txt,width,font);
-   const lineHeight=Math.ceil(f*1.15);
-   if(lines.length<=limit)return {lines,font,size:f,lineHeight};
-  }
-  return null;
- };
- const L={
-  work:fit(values.wo,26,15,514,1),
-  desc:fit(values.desc,23,13,514,2),
-  spec:fit(values.spec,19.5,12,514,2),
-  code:fit(values.code,23,14,514,1),
-  values
- };
- L.valid=!!(values.wo&&values.code&&(values.desc||values.spec)&&L.work&&L.desc&&L.spec&&L.code);
- L.overflow=!L.work||!L.desc||!L.spec||!L.code;
- return L;
+function label45Layout(){
+ const ctx=$('woLabelCanvas')?.getContext('2d');if(!ctx)return null;
+ const v={wo:val('woLabelNo'),code:val('woLabelCode'),product:val('woLabelHeading'),spec:val('woLabelDetails'),size:val('woLabelSize'),micron:val('woLabelMicron'),date:val('woLabelMfgDate')};
+ function fit(raw,width,max=24,min=12){
+  const value=String(raw||'').trim()||'—';
+  for(let size=max;size>=min;size-=.5){
+   const lines=wrap(ctx,value,width,'bold '+size+'px Arial,sans-serif');
+   const step=Math.ceil(size*1.16);
+   if(lines.length*step<=46)return{lines,size,step};
+  }return null;
+ }
+ const out={v,wo:fit(v.wo,247,28,15),code:fit(v.code,244,24,12),product:fit(v.product,246,25,12),size:fit(v.size,243,26,13),micron:fit(v.micron||v.spec,246,23,11),date:fit(v.date,246,24,12)};
+ out.overflow=[out.wo,out.code,out.product,out.size,out.micron,out.date].some(x=>!x);
+ out.valid=!out.overflow&&Boolean(v.wo&&v.code&&v.product);
+ return out;
 }
+function vectorLabel(){
+ const L=label45Layout();if(!L?.valid)return null;
+ const escSvg=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+ const txt=(x,y,v,size,color='#111',weight=700,more='')=>'<text x="'+x+'" y="'+y+'" font-family="Arial,Helvetica,sans-serif" font-size="'+size+'" font-weight="'+weight+'" fill="'+color+'" '+more+'>'+escSvg(v)+'</text>';
+ const a=['<svg xmlns="http://www.w3.org/2000/svg" width="85mm" height="45mm" viewBox="0 0 850 450">',
+ '<rect width="850" height="450" fill="#fff"/>',
+ '<rect x="8" y="8" width="834" height="434" rx="16" fill="none" stroke="#112d99" stroke-width="5"/>'];
+ const bird=window.CFM_EAGLE_BRAND;
+ if(bird?.logoBluePath&&bird?.logoGreenPath){
+  a.push('<g transform="translate(27 23) scale(.70 .66)"><path d="'+bird.logoBluePath+'" fill="#193ba1" fill-rule="evenodd"/><path d="'+bird.logoGreenPath+'" fill="#168e42" fill-rule="evenodd"/></g>');
+ }else a.push(txt(63,103,'E',82,'#193ba1',900));
+ a.push('<path d="M187 37V143" stroke="#111" stroke-width="2.5"/>');
+ a.push('<rect x="287" y="17" width="143" height="27" rx="14" fill="#178e42"/>');
+ a.push(txt(304,37,'SINCE : 1992',20,'#fff',800));
+ a.push(txt(200,99,'EAGLE',66,'#eb222e',900,'font-style="italic"'));
+ a.push(txt(207,122,'FILTRATION PRODUCT PVT. LTD.',20,'#189141',700));
+ a.push(txt(207,141,'An ISO 9001:2015 Certified Company',15,'#111',700));
+ a.push('<path d="M18 182H177 M180 182L201 159H836V190H180Z" stroke="#15329a" stroke-width="2" fill="#173393"/>');
+ a.push(txt(217,181,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',15,'#fff',700));
+ // EXACT final format: 3 paired information rows and one contact row. No Batch field.
+ const top=[200,255,310],split=[17,181,447,568,833];
+ a.push('<rect x="17" y="200" width="816" height="165" rx="7" fill="#fff" stroke="#111" stroke-width="2.5"/>');
+ a.push('<path d="M17 255H833 M17 310H833 M181 200V365 M447 200V365 M568 200V365" stroke="#111" stroke-width="2"/>');
+ for(let i=0;i<3;i++)a.push('<rect x="19" y="'+(top[i]+2)+'" width="160" height="51" fill="#f0f0f0"/><rect x="449" y="'+(top[i]+2)+'" width="117" height="51" fill="#f0f0f0"/>');
+ const fs=[
+  ['WORK ORDER NO.',23,192,L.wo,0,16],
+  ['ITEM CODE',454,577,L.code,0,17],
+  ['PRODUCT',23,192,L.product,1,19],
+  ['SIZE',454,577,L.size,1,19],
+  ['MICRON',23,192,L.micron,2,19],
+  ['MFG. DATE',453,577,L.date,2,17]
+ ];
+ for(const [name,x,valueX,fit,row,letterSize] of fs){
+  const middle=top[row]+27.5;
+  a.push(txt(x,middle+6,name,letterSize,'#111',800));
+  const first=middle-(fit.lines.length-1)*fit.step/2+fit.size*.35;
+  fit.lines.forEach((line,n)=>a.push(txt(valueX,first+n*fit.step,line,fit.size,'#000',800)));
+ }
+ // Batch has been replaced by Email / Website / Phone, aligned in a single footer.
+ a.push('<rect x="17" y="374" width="816" height="59" rx="6" fill="#fff" stroke="#111" stroke-width="2.5"/>');
+ a.push('<path d="M308 374V433 M583 374V433" stroke="#111" stroke-width="2"/>');
+ const contacts=[
+  {kind:'email',x:22,label:'info@eaglefiltrations.com',width:277,size:19},
+  {kind:'web',x:318,label:'www.eaglefiltrations.com',width:257,size:19},
+  {kind:'phone',x:591,label:'+91 70416 70091',width:233,size:23}
+ ];
+ const ctx=$('woLabelCanvas').getContext('2d');
+ for(const v of contacts){
+  if(v.kind==='email')a.push('<rect x="'+(v.x+1)+'" y="394" width="26" height="20" rx="2" stroke="#173793" stroke-width="2" fill="none"/><path d="M'+(v.x+2)+' 395l12 10 12 -10" fill="none" stroke="#173793" stroke-width="2"/>');
+  if(v.kind==='web')a.push('<circle cx="'+(v.x+14)+'" cy="404" r="12" stroke="#173793" stroke-width="2" fill="none"/><path d="M'+(v.x+2)+' 404h24 M'+(v.x+14)+' 392v24" stroke="#173793" stroke-width="2"/>');
+  if(v.kind==='phone')a.push('<circle cx="'+(v.x+14)+'" cy="404" r="13" fill="#173793"/>'+txt(v.x+7,410,'+',20,'#fff',900));
+  let size=v.size;for(;size>=14;size-=.5){ctx.font='bold '+size+'px Arial,sans-serif';if(ctx.measureText(v.label).width<v.width-38)break}
+  a.push(txt(v.x+35,404+size*.35,v.label,size,'#111',700));
+ }
+ a.push('</svg>');return a.join('');
+}
+let drawSequence=0;
 function draw(){
  const canvas=$('woLabelCanvas');if(!canvas)return;
- const ctx=canvas.getContext('2d');
- ctx.setTransform(C_W/VIEW_W,0,0,C_H/VIEW_H,0,0);
- const L=label25Layout();if(!L)return;
- ctx.fillStyle='#fff';ctx.fillRect(0,0,VIEW_W,VIEW_H);
- // Final Option 1: all 25mm usable, NO reserved 3mm stitching bands.
- // 0.8mm narrow frame inset is only for print-head clipping tolerance.
- ctx.strokeStyle='#000';ctx.lineWidth=3;
- ctx.beginPath();ctx.roundRect(8,8,834,234,11);ctx.stroke();
- ctx.lineWidth=2.3;
- ctx.beginPath();ctx.moveTo(100,72);ctx.lineTo(831,72);
- ctx.moveTo(100,183);ctx.lineTo(831,183);
- ctx.moveTo(294,18);ctx.lineTo(294,231);ctx.stroke();
- ctx.lineWidth=4;
- for(let i=0;i<3;i++){
-  const x=26+i*20;
-  ctx.beginPath();ctx.moveTo(x+15,16);ctx.lineTo(x,37);
-  ctx.moveTo(x+15,210);ctx.lineTo(x,232);ctx.stroke();
- }
- ctx.fillStyle='#000';ctx.textBaseline='middle';
- for(const [title,y] of [['WORK ORDER NO.',42],['DESCRIPTION',128],['EFPPL CODE',213]]){
-  ctx.font='bold 19.5px Arial,sans-serif';
-  ctx.fillText(title,99,y,184);
- }
- if(!L.work||!L.desc||!L.spec||!L.code){
-  overflow=true;pasted=false;printable=false;
-  note('Description or code is too long for the 85×25 mm label. Printing blocked; shorten text.');
-  return;
- }
- const content=(row,y)=>{
-  ctx.fillStyle='#000';ctx.font=row.font;ctx.textBaseline='middle';
-  const first=y-(row.lines.length-1)*row.lineHeight/2;
-  row.lines.forEach((line,i)=>ctx.fillText(line,311,first+i*row.lineHeight,514));
- };
- content(L.work,42);
- content(L.desc,109);
- content(L.spec,156);
- content(L.code,213);
+ const L=label45Layout();if(!L)return;
+ const ctx=canvas.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#fff';ctx.fillRect(0,0,C_W,C_H);
  overflow=L.overflow;pasted=false;printable=L.valid;
- note(L.overflow?'Text too long for the 25mm label. Shorten details before printing.':
- printable?'Option 1 ready · FULL 85×25 mm design · No reserved stitching margins · sharp vector print':
- 'Select Work Order to generate your 85×25 mm label.');
+ const seq=++drawSequence;
+ if(!L.valid){note(L.overflow?'Details too long for 85×45 mm; print blocked to avoid clipping.':'Select Work Order and check Product and Item Code.');return}
+ const svg=vectorLabel(),pic=new Image();
+ pic.onload=()=>{if(seq!==drawSequence)return;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,C_W,C_H);ctx.drawImage(pic,0,0,C_W,C_H)};
+ pic.onerror=()=>note('Preview not rendered; try Refresh.');
+ pic.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+ note('EAGLE 85×45 mm label ready · SVG vector print · contacts in place of Batch · no blur from image scaling.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
@@ -166,42 +188,21 @@ function imagePaste(file){
 }
 function ok(){if(printable)return true;note('Enter Work Order, heading/details and EFPPL code before printing.');return false}
 // Pure vector for native printing: avoids resampling raster text on Taffeta.
-function vectorLabel(){
- const L=label25Layout();if(!L?.valid)return null;
- const escape=t=>String(t??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[ch]));
- const txt=(x,y,word,size,weight=700)=>'<text x="'+x+'" y="'+y+'" fill="#000" font-family="Arial,Helvetica,sans-serif" font-size="'+size+'" font-weight="'+weight+'">'+escape(word)+'</text>';
- const o=['<svg xmlns="http://www.w3.org/2000/svg" width="85mm" height="25mm" viewBox="0 0 850 250">',
- '<rect width="850" height="250" fill="#fff"/>',
- '<rect x="8" y="8" width="834" height="234" rx="11" stroke="#000" stroke-width="3" fill="none"/>',
- '<path d="M100 72H831 M100 183H831 M294 18V231" stroke="#000" stroke-width="2.3" fill="none"/>'];
- for(let i=0;i<3;i++){
-  const x=26+i*20;
-  o.push('<path d="M'+(x+15)+' 16L'+x+' 37 M'+(x+15)+' 210L'+x+' 232" fill="none" stroke="#000" stroke-width="4"/>');
- }
- [['WORK ORDER NO.',42],['DESCRIPTION',128],['EFPPL CODE',213]].forEach(([name,y])=>o.push(txt(99,y+7,name,19.5)));
- const add=(fit,y)=>{
-  const first=y-(fit.lines.length-1)*fit.lineHeight/2;
-  fit.lines.forEach((line,i)=>o.push(txt(311,first+i*fit.lineHeight+fit.size*.35,line,fit.size)));
- };
- add(L.work,42);add(L.desc,109);add(L.spec,156);add(L.code,213);
- o.push('</svg>');
- return o.join('');
-}
 function printLabel(sheet){
  if(!ok())return;
  const w=window.open('','_blank');if(!w){note('Please enable pop-ups to print.');return}
  // Image import is explicitly raster; all generated Work Order labels print as vectors.
  const art=pasted?'<img src="'+$('woLabelCanvas').toDataURL('image/png')+'" alt="Imported label">':vectorLabel();
  if(!art){w.close();note('Long text may be cut; print blocked until corrected.');return}
- const count=sheet?20:1;
- const page=sheet?'@page{size:A4 portrait;margin:7mm}.grid{display:grid;grid-template-columns:repeat(2,85mm);grid-template-rows:repeat(10,25mm);gap:2mm 4mm;}':
- '@page{size:85mm 25mm;margin:0}';
+ const count=sheet?10:1;
+ const page=sheet?'@page{size:A4 portrait;margin:7mm}.grid{display:grid;grid-template-columns:repeat(2,85mm);grid-template-rows:repeat(5,45mm);gap:3mm 5mm;}':
+ '@page{size:85mm 45mm;margin:0}';
  const content='<!doctype html><html><head><meta charset="utf-8"><title>Eagle Work Order Taffeta Label</title><style>'+page+
- 'html,body{padding:0;margin:0;background:white}.grid>svg,.grid>img{width:85mm;height:25mm;display:block;break-inside:avoid;page-break-inside:avoid}.grid{margin:0}@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="grid">'+
+ 'html,body{padding:0;margin:0;background:white}.grid>svg,.grid>img{width:85mm;height:45mm;display:block;break-inside:avoid;page-break-inside:avoid}.grid{margin:0}@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="grid">'+
  Array.from({length:count},()=>art).join('')+
  '</div><script>addEventListener("load",()=>{focus();print()})<\/script></body></html>';
  w.document.open();w.document.write(content);w.document.close();
- note(sheet?'A4 print: 20 vector-sharp 85×25 mm labels':'Vector print ready: Actual Size 100%, 85×25 mm, no blank stitching margins.');
+ note(sheet?'A4 print: 10 SVG vector 85×45 mm labels':'85×45 mm SVG print ready: Actual Size 100%, Fit to Page OFF.');
 }
 function build(){
  const style=document.createElement('style');
@@ -212,27 +213,30 @@ function build(){
  '#woLabelDialog input,#woLabelDialog select,#woLabelDialog textarea{display:block;width:100%;border:1px solid #b2c9df;border-radius:7px;padding:9px;background:#fff;color:#17344d;margin-top:4px;font:12px Arial}'+
  '#woLabelDialog textarea{resize:vertical;min-height:75px}#woLabelDetails{min-height:100px!important}#woLabelDialog button{padding:9px 10px;border:1px solid #a3bfd6;border-radius:8px;background:white;color:#174676;font:700 12px Arial;cursor:pointer}'+
  '#woLabelDialog .tools{display:flex;flex-wrap:wrap;gap:7px;background:white;padding:10px 12px;position:sticky;bottom:0;border-top:1px solid #d5e3f0}#woLabelDialog .primary{background:#185ca9;color:#fff}'+
- '#woLabelDialog .preview{display:flex;flex-direction:column;align-items:center;gap:7px}#woLabelCanvas{width:320px;height:94px;max-width:100%;background:white;border:1px solid #abbdd2}#woLabelNotice{font:11px Arial;text-align:center;color:#315a77}'+
- '#woLabelDialog .help{font:11px/1.5 Arial;color:#546d80}@media(max-width:650px){#woLabelDialog .main{grid-template-columns:1fr;padding:9px}#woLabelDialog .preview{order:-1}#woLabelCanvas{width:300px;height:88px}}';
+ '#woLabelDialog .preview{display:flex;flex-direction:column;align-items:center;gap:7px}#woLabelCanvas{width:320px;height:169px;max-width:100%;background:white;border:1px solid #abbdd2}#woLabelNotice{font:11px Arial;text-align:center;color:#315a77}'+
+ '#woLabelDialog .help{font:11px/1.5 Arial;color:#546d80}@media(max-width:650px){#woLabelDialog .main{grid-template-columns:1fr;padding:9px}#woLabelDialog .preview{order:-1}#woLabelCanvas{width:300px;height:159px}}';
  document.head.append(style);
  const d=document.createElement('dialog');d.id='woLabelDialog';
- d.innerHTML='<div class="top"><div><strong>Work Order Stitching Label</strong><div style="font-size:11px">Option 1 · B&W Taffeta 85 × 25 mm · No logo/company name</div></div><button id="woLabelClose">✕ Close</button></div>'+
+ d.innerHTML='<div class="top"><div><strong>Work Order Stitching Label</strong><div style="font-size:11px">EAGLE Bag Label · 85 × 45 mm · Approved design</div></div><button id="woLabelClose">✕ Close</button></div>'+
  '<div class="main"><div>'+
  '<label>Work Order<select id="woLabelSelect"><option value="">Select Work Order / Manual</option></select></label><button id="woLabelRefresh">↻ Refresh Work Orders</button>'+
  '<label>Work Order No.<input id="woLabelNo" placeholder="CFM-556"></label>'+
- '<label>Heading — Work Order Description<textarea id="woLabelHeading" placeholder="Same heading as Work Order"></textarea></label>'+
- '<label>Details — Work Order Description 2<textarea id="woLabelDetails" placeholder="Same details as Work Order"></textarea></label>'+
+ '<label>Product — Work Order Description<textarea id="woLabelHeading" placeholder="Same heading as Work Order"></textarea></label>'+
+ '<label>Micron / Specification — Description 2<textarea id="woLabelDetails" placeholder="Same details as Work Order"></textarea></label>'+
  '<label>EFPPL Product Code<input id="woLabelCode" placeholder="EFPPL-2000-CF-48-TLT"></label>'+
- '<p class="help">Full 85 × 25 mm label height is used; there are no reserved top/bottom stitching strips. The outer border is inset about 0.8 mm to reduce clipping. Black ink on WHITE Taffeta: print at 100%, black-only (no color/gray ink). For BLACK Taffeta, use a suitable WHITE thermal-transfer ribbon; normal black ribbon is not readable. Printed fields: Work Order No. + Description (including Description 2 technical details) + EFPPL Code only. No logo, no company name, no Stage/QC.</p>'+
+ '<label>Size (auto if available)<input id="woLabelSize" placeholder="48″"></label>'+
+ '<label>Micron / Full Specification Override<input id="woLabelMicron" placeholder="5 MICRON ANTISTATIC"></label>'+
+ '<label>Manufacturing Date (actual date)<input id="woLabelMfgDate" placeholder="19-Nov-2026"></label>'+
+ '<p class="help">EAGLE Bag Label 85×45 mm with Work Order, Item Code, Product, Size, Micron / full technical spec and Mfg Date. Batch, Qty, SRL, Material, Stage and QC excluded. Approved Email / Website / Phone appear in footer. Missing size and manufacturing date are shown as — (never invented). Generated print is native SVG vector (not bitmap) for clear text. Use Actual Size 100% and disable Fit to Page.</p>'+
  '<label>Paste Matter<textarea id="woLabelMatter" placeholder="Work Order No.: CFM-556&#10;Heading: CF BAG 48 TOP L/T&#10;Details: 2 MICRON ANTISTATIC&#10;EFPPL Code: EFPPL-2000-CF-48-TLT"></textarea></label><button id="woLabelPaste">↳ Apply Pasted Matter</button>'+
  '<label>Or upload/paste image<input id="woLabelUpload" type="file" accept="image/png,image/jpeg,image/webp"></label>'+
  '<p class="help">Ctrl+V can paste an image. If text does not fit, printing is blocked instead of clipping the content.</p>'+
- '</div><div class="preview"><canvas id="woLabelCanvas" width="2008" height="591"></canvas><span id="woLabelNotice" role="status">Select Work Order</span></div></div>'+
- '<div class="tools"><button id="woLabelGenerate" class="primary">✦ Generate Image</button><button id="woLabelCopy">⧉ Copy Image</button><button id="woLabelSave">↓ Save PNG</button><button id="woLabelPrint">🖨 Print 85 × 25</button><button id="woLabelA4">🖨 A4 (20 labels)</button></div>';
+ '</div><div class="preview"><canvas id="woLabelCanvas" width="2008" height="1063"></canvas><span id="woLabelNotice" role="status">Select Work Order</span></div></div>'+
+ '<div class="tools"><button id="woLabelGenerate" class="primary">✦ Generate Image</button><button id="woLabelCopy">⧉ Copy Image</button><button id="woLabelSave">↓ Save PNG</button><button id="woLabelPrint">🖨 Print 85 × 45</button><button id="woLabelA4">🖨 A4 (10 labels)</button></div>';
  document.body.append(d);
  $('woLabelClose').onclick=()=>d.close();
  $('woLabelRefresh').onclick=refresh;$('woLabelSelect').onchange=selectWork;$('woLabelPaste').onclick=pasteMatter;
- for(const id of ['woLabelNo','woLabelHeading','woLabelDetails','woLabelCode'])$(id).addEventListener('input',draw);
+ for(const id of ['woLabelNo','woLabelHeading','woLabelDetails','woLabelCode','woLabelSize','woLabelMicron','woLabelMfgDate'])$(id).addEventListener('input',draw);
  $('woLabelGenerate').onclick=draw;
  $('woLabelUpload').onchange=e=>imagePaste(e.target.files?.[0]);
  d.addEventListener('paste',e=>{const item=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith('image/'));if(item){e.preventDefault();imagePaste(item.getAsFile())}});
@@ -247,7 +251,7 @@ function build(){
  $('woLabelSave').onclick=()=>{
   if(!ok())return;
   const a=document.createElement('a');a.href=$('woLabelCanvas').toDataURL('image/png');
-  a.download='CFM-Stitching-Label-'+(val('woLabelNo').replace(/[^a-z0-9_-]/gi,'-')||'85x25')+'.png';
+  a.download='CFM-Stitching-Label-'+(val('woLabelNo').replace(/[^a-z0-9_-]/gi,'-')||'85x45')+'.png';
   document.body.append(a);a.click();a.remove();note('PNG saved.');
  };
  $('woLabelPrint').onclick=()=>printLabel(false);$('woLabelA4').onclick=()=>printLabel(true);
