@@ -153,7 +153,7 @@ function documentHtml(r,work,photos){
  '.remark{border:1px solid #111;padding:2mm;font:10px Arial;min-height:14mm;overflow-wrap:anywhere}',
  '.remark b{display:block;font:800 9px Arial;margin-bottom:2mm}',
  '.signatures{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm;align-items:end}',
- '.signatures>div{border-top:1px solid #111;padding-top:1.5mm;text-align:center;font:800 9px Arial}',
+ '.signatures>div{border-top:1px solid #111;padding-top:1.5mm;text-align:center;font:800 9px Arial}.signatures span{display:block;font:700 10px Arial;margin-top:1mm}',
  '.footline{font:bold 8px Arial;border-top:1px solid #aaa;margin-top:3mm;padding:1.5mm 1mm}',
  '.draftnote{color:#9b1c1c;font-weight:800}',
  '@media print{html,body{background:#fff!important;margin:0!important}.toolbar{display:none!important}.paper{width:auto;min-height:0;margin:0;border:0;box-shadow:none}.page{break-inside:avoid}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}',
@@ -161,7 +161,7 @@ function documentHtml(r,work,photos){
  '@media screen and (max-width:720px){.paper{transform:scale(.37);transform-origin:top left;margin:12px 0 -115mm}}'
  ].join('');
  const html='<main class="page"><div class="header"><div class="brand">'+originalLogo()+'</div>'+
- '<div class="dochead"><h1>PACKING SLIP</h1><small>EAGLE FILTRATION · Smart Filtration Solutions</small>'+
+ '<div class="dochead"><h1>PACKING SLIP</h1><small>EAGLE FILTRATION PRODUCT PVT. LTD.</small>'+
  '<div class="status">'+E(status)+'</div></div></div>'+
  '<div class="info">'+cell('PACKING SLIP NO.',slipNo)+cell('SLIP DATE',slipDate)+
  cell('WORK ORDER NO.',r.workNo)+cell('CUSTOMER PO NO.',po)+cell('PO DATE',poDate)+'</div>'+
@@ -184,7 +184,7 @@ function documentHtml(r,work,photos){
  qtycell('BALANCE QTY',legacy?'UNVERIFIED':r.balanceAfter)+'</div>'+
  '<div class="photos">'+photo(1)+photo(2)+'</div>'+
  '<div class="bottom"><div class="remark"><b>LR / COURIER / DISPATCH / PACKING REMARKS</b>'+E(show(r.notes))+'</div>'+
- '<div class="signatures"><div>PREPARED BY</div><div>CHECKED BY</div><div>RECEIVED BY</div></div></div>'+
+ '<div class="signatures"><div>PREPARED BY<br><span>'+E(str(r.operator)||'________')+'</span></div><div>PACKED / CHECKED BY<br><span>'+E(str(r.packedBy||r.checkedBy)||'________')+'</span></div><div>RECEIVED BY<br><span>________</span></div></div></div>'+
  '<div class="footline">'+
  (draft?'<span class="draftnote">DRAFT — PRINT PREVIEW ONLY · NO GOODS DISPATCHED OR SAVED</span>':
  legacy?'HISTORICAL PACKING RECORD · QUANTITY HISTORY NOT VERIFIED':
