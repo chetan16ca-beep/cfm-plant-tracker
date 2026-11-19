@@ -25,14 +25,22 @@ const customerItem=row=>field(row,['buyerItemCode','customerItemCode','customerI
 // Extract only explicit values from Work Order; never invent PO date, party address or micron.
 function packingWOFields(row){
  if(!row)return {};
+ const readValue=(keys)=>{
+  for(const key of keys){
+   const value=row[key];
+   if(typeof value==='string'&&value.trim())return value.trim();
+   if(typeof value==='number'&&Number.isFinite(value))return String(value);
+  }
+  return '';
+ };
  const product=field(row,['description','productName','product'])||'';
  const specification=field(row,['description2','specification','productDetails'])||'';
  const code=field(row,['itemCode','efpplCode','eagleCode'])||window.CFM_EFPPL?.codeForRow?.(row)?.code||'';
- const rawSize=field(row,['size','sizeInch','dimensions','productSize']);
+ const rawSize=readValue(['size','sizeInch','dimensions','productSize']);
  const sizeMatch=String(product+' '+specification).match(/\b(?:CF(?:\s+BAG)?|CENTRIFUGE)\s*[-/_ ]\s*(24|36|48|60)\b/i)||
   String(code).match(/\bCF[-/_ ](24|36|48|60)(?:[-/_ ]|$)/i)||
   String(product+' '+specification).match(/\bSIZE\s*[:=-]?\s*(\d+(?:\.\d+)?)\s*(?:INCH(?:ES)?|IN|["″])/i);
- const rawMicron=field(row,['micron','micronRating']);
+ const rawMicron=readValue(['micron','micronRating']);
  const micronMatch=String(product+' '+specification).match(/\b(\d+(?:\.\d+)?)\s*(?:MICRON(?:S)?|µM|UM)\b/i);
  return {
   workNo:field(row,['workNo']),
