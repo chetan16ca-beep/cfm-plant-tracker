@@ -1,4 +1,4 @@
-/* CFM V378 label-design freeze. Read-only: never touches Work Orders or stock.
+/* CFM V379 label-design freeze. Read-only: never touches Work Orders or stock.
  * Changes to the approved 85 x 45 mm printed label or logo require a conscious
  * user-approved replacement of the pin in this test before deployment can pass.
  */
@@ -8,24 +8,25 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 const root=new URL('../',import.meta.url);
 const exactApproved={
-  'cfm-workorder-stitch-label-v352.js':'42cc2013fbf10d5962238206db83ca1bdd74b405',
+  'cfm-workorder-stitch-label-v352.js':'38f0e9924f13117e546d9cebd6fe9d7c069da0d7',
   'cfm-eagle-brand-v361.js':'9489736fe0488b71efa17409064c40ff2bfc74a6'
 };
 function gitBlobSha(buffer){
  return createHash('sha1').update('blob '+buffer.length+'\0').update(buffer).digest('hex');
 }
-test('Approved Eagle Bag Label V378: artwork, layout, font and brand are locked',()=>{
+test('Approved Eagle Bag Label V379: artwork, layout, font and brand are locked',()=>{
  for(const [file,approvedSha] of Object.entries(exactApproved)){
   const content=readFileSync(new URL(file,root));
   assert.equal(gitBlobSha(content),approvedSha,
-    file+' was modified after the approved V371 design freeze. Revert unauthorized artwork changes.');
+    file+' was modified after the approved V379 design freeze. Revert unauthorized artwork changes.');
  }
 });
 test('The ERP still loads the approved 85 x 45 mm label',()=>{
  const html=readFileSync(new URL('index.html',root),'utf8');
  const label=readFileSync(new URL('cfm-workorder-stitch-label-v352.js',root),'utf8');
- assert.ok(html.includes('cfm-workorder-stitch-label-v352.js?v=378'),'Approved label script URL must remain');
+ assert.ok(html.includes('cfm-workorder-stitch-label-v352.js?v=379'),'Approved label script URL must remain');
  assert.ok(html.includes('cfm-eagle-brand-v361.js?v=370'),'Approved logo script URL must remain');
  assert.ok(label.includes('@page{size:85mm 45mm;margin:0}'),'True 85x45 mm printing must remain');
  assert.ok(label.includes('const art=pasted?')&&label.includes('vectorLabel()')&&label.includes('const ink=vector?.replace('),'SVG black-only vector printing must remain');
+ assert.ok(label.includes('out.overflowFields')&&label.includes('lengthAdjust="spacingAndGlyphs"')&&label.includes("const font='800 '+size"),'All six fields must auto-fit within their boxes');
 });
