@@ -5,6 +5,7 @@ const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
 let loaded=[],pasted=false,printable=false,overflow=false;
 function val(id){return String($(id)?.value||'').trim()}
 function put(id,v){if($(id))$(id).value=String(v??'')}
+function onlyNumber(v){return String(v??'').match(/\d+(?:\.\d+)?/)?.[0]||''}
 function note(v){if($('woLabelNotice'))$('woLabelNotice').textContent=v}
 function orders(){try{return loaded.length?loaded:(typeof state!=='undefined'&&Array.isArray(state.pending)?state.pending:[])}catch(e){return loaded}}
 function getCode(row){
@@ -35,13 +36,13 @@ async function refresh(){
 function selectWork(){
  const n=val('woLabelSelect'),r=orders().find(x=>String(x.workNo||'').trim()===n);
  if(!r)return;
- put('woLabelNo',n);put('woLabelHeading',r.description||'');put('woLabelDetails',r.description2||'');
+ put('woLabelNo',onlyNumber(n));put('woLabelHeading',r.description||'');put('woLabelDetails',r.description2||'');
  put('woLabelCode',getCode(r));
  const h=String(r.description||'');
  const sizeRaw=String(r.size||r.sizeInch||r.dimensions||'').trim();
  const inch=h.match(/\b\d{1,3}(?:\.\d+)?\s*(?:"|″|INCH(?:ES)?)/i)?.[0]||'';
  put('woLabelSize',sizeRaw||inch);
- put('woLabelMicron',String(r.micron||r.micronRating||r.description2||'').trim());
+ put('woLabelMicron',onlyNumber(r.micron||r.micronRating||r.description2||''));
  put('woLabelMfgDate',String(r.mfgDate||r.manufacturingDate||r.productionDate||'').trim());
  draw();
  note('Work Order saved heading and details loaded. Verify EFPPL code.');
@@ -69,18 +70,16 @@ function wrap(ctx,s,max,font){
 // V382: user-approved single-column 6-field label, printed natively at 85 × 45 mm.
 function label45Layout(){
  const ctx=$('woLabelCanvas')?.getContext('2d');if(!ctx)return null;
- const v={wo:val('woLabelNo'),code:val('woLabelCode'),product:val('woLabelHeading'),
+ const v={wo:onlyNumber(val('woLabelNo')),code:val('woLabelCode'),product:val('woLabelHeading'),
   spec:val('woLabelDetails'),size:val('woLabelSize'),
-  micron:val('woLabelMicron'),date:val('woLabelMfgDate')};
+  micron:onlyNumber(val('woLabelMicron')),date:val('woLabelMfgDate')};
  // Geometry measured in 0.1 mm, matching the printed SVG. One large value
  // column gives long codes and product details the full width of the label.
  const fields=[
   {key:'wo',label:'WO NO.',max:34,min:12},
   {key:'code',label:'ITEM CODE',max:30,min:12},
   {key:'product',label:'PRODUCT',max:31,min:12},
-  {key:'micron',label:'MICRON',max:29,min:11},
-  {key:'size',label:'SIZE',max:32,min:12},
-  {key:'date',label:'MFG. DATE',max:34,min:11}
+  {key:'micron',label:'MICRON',max:34,min:11}
  ];
  function fit(raw,info){
   const value=String(raw||'').trim()||'—',width=550;
@@ -152,21 +151,21 @@ function vectorLabel(){
  a.push(t(174,194,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',
   24,'#fff',600,'textLength="635" lengthAdjust="spacingAndGlyphs"'));
  // Six full-width content rows: white non-bold headings, medium-weight auto-fitted values.
- const ty=214, left=21, edge=829, split=252, rh=37;
- a.push('<rect x="'+left+'" y="'+ty+'" width="'+(edge-left)+'" height="'+(rh*6)+
+ const ty=214, left=21, edge=829, split=252, rh=55.5;
+ a.push('<rect x="'+left+'" y="'+ty+'" width="'+(edge-left)+'" height="'+(rh*4)+
   '" rx="6" fill="#fff" stroke="#19398e" stroke-width="3"/>');
  a.push('<rect x="'+(left+2)+'" y="'+(ty+2)+'" width="'+(split-left-2)+
-  '" height="'+(rh*6-4)+'" fill="#fff"/>');
- a.push('<path d="M'+split+' '+ty+'V'+(ty+rh*6)+'" stroke="#19398e" stroke-width="3"/>');
- for(let i=1;i<6;i++){
+  '" height="'+(rh*4-4)+'" fill="#fff"/>');
+ a.push('<path d="M'+split+' '+ty+'V'+(ty+rh*4)+'" stroke="#19398e" stroke-width="3"/>');
+ for(let i=1;i<4;i++){
   const y=ty+i*rh;
   a.push('<path d="M'+split+' '+y+'H'+edge+'" stroke="#19398e" stroke-width="2.3"/>');
   a.push('<path d="M'+(left+2)+' '+y+'H'+split+'" stroke="#19398e" stroke-width="2.3"/>');
  }
  L.fields.forEach((f,i)=>{
   const y=ty+i*rh,fit=L[f.key],txt=f.label;
-  a.push(t(36,y+26,txt,f.key==='date'?27:24,'#000',600));
-  const start=fit.lines.length===1?y+27:y+16;
+  a.push(t(36,y+36,txt,27,'#000',600));
+  const start=fit.lines.length===1?y+37:y+22;
   fit.lines.forEach((line,k)=>{
    const length=Math.min(fit.widths[k],fit.innerWidth-1);
    a.push(t(267,start+k*fit.step,line,fit.size,'#000',600,
@@ -192,7 +191,7 @@ function draw(){
  image.onload=()=>{if(seq!==drawSequence)return;ctx.clearRect(0,0,C_W,C_H);ctx.drawImage(image,0,0,C_W,C_H)};
  image.onerror=()=>note('Preview could not render. Please refresh.');
  image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
- note('CFM V387 · White boxes, high-contrast readable text · 85×45 mm vector.');
+ note('CFM V390 · White boxes, high-contrast readable text · 85×45 mm vector.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
@@ -211,7 +210,7 @@ function pasteMatter(){
   if(mode==='h')heading.push(line);else if(mode==='d')details.push(line);else if(line.trim())details.push(line);
  }
  if(!tag){heading=[rawLines[0]||''];details=rawLines.slice(1)}
- if(no)put('woLabelNo',no);if(code)put('woLabelCode',code);
+ if(no)put('woLabelNo',onlyNumber(no));if(code)put('woLabelCode',code);
  if(heading.length)put('woLabelHeading',heading.join('\n').trim());
  if(details.length)put('woLabelDetails',details.join('\n').trim());
  draw();
@@ -291,12 +290,12 @@ function build(){
  '<div class="main"><div class="editor">'+
  '<div class="workselect"><label>SELECT WORK ORDER<select id="woLabelSelect"><option value="">Select Work Order / Manual</option></select></label><button id="woLabelRefresh">↻ Refresh</button></div>'+
  '<div class="fields">'+
- '<label>WORK ORDER NO.<input id="woLabelNo" placeholder="CFM-556"></label>'+
+ '<label>WORK ORDER NO. (NUMBER ONLY)<input id="woLabelNo" inputmode="numeric" placeholder="556"></label>'+
  '<label>EFPPL ITEM CODE<input id="woLabelCode" placeholder="EFPPL-2000-CF-48-TLT"></label>'+
  '<label class="wide">PRODUCT — WORK ORDER DESCRIPTION<textarea id="woLabelHeading" rows="2" placeholder="Auto from Work Order"></textarea></label>'+
- '<label class="wide">MICRON<input id="woLabelMicron" placeholder="5 MICRON ANTISTATIC"></label>'+
- '<label>SIZE<input id="woLabelSize" placeholder="48″"></label>'+
- '<label>MFG. DATE (ACTUAL)<input id="woLabelMfgDate" placeholder="19-Nov-2026"></label>'+
+ '<label class="wide">MICRON (NUMBER ONLY)<input id="woLabelMicron" inputmode="numeric" placeholder="5"></label>'+
+
+
  '</div>'+
  '<details class="advanced"><summary>More options · Description 2 / Paste Matter / Image</summary>'+
  '<label>Work Order Description 2 (reference)<textarea id="woLabelDetails" rows="2" placeholder="Technical details from Work Order"></textarea></label>'+
@@ -304,7 +303,7 @@ function build(){
  '<button id="woLabelPaste">↳ Apply Pasted Matter</button>'+
  '<label>Or import image (PNG/JPG)<input id="woLabelUpload" type="file" accept="image/png,image/jpeg,image/webp"></label>'+
  '</details>'+
- '<p class="help">Auto from selected Work Order. Confirm the actual manufacturing date. Details use medium-weight text and auto-fit each box; too-long values block printing instead of getting cut. Print at 100% Actual Size, Fit to Page OFF.</p>'+
+ '<p class="help">Auto from selected Work Order. Details use medium-weight text and auto-fit each box; too-long values block printing instead of getting cut. Print at 100% Actual Size, Fit to Page OFF.</p>'+
  '</div><div class="preview"><strong>LIVE PRINT PREVIEW</strong><canvas id="woLabelCanvas" width="2008" height="1063"></canvas><span id="woLabelNotice" role="status">Select Work Order</span></div></div>'+
  '<div class="tools"><button id="woLabelPrint" class="primary">🖨 Print 85 × 45</button><button id="woLabelA4">🖨 A4 (10)</button>'+
  '<button id="woLabelGenerate">↻ Preview</button><button id="woLabelSave">↓ Save PNG</button><button id="woLabelCopy">⧉ Copy Image</button></div>';
