@@ -1,4 +1,4 @@
-/* CFM V378. All label text bold; same approved 85x45 geometry and TA220 black-only vector output. */
+/* CFM V379. All six label values auto-fit to fixed boxes; bold 800-weight, no overflow, same 85x45 design. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -69,26 +69,42 @@ function wrap(ctx,s,max,font){
 function label45Layout(){
  const ctx=$('woLabelCanvas')?.getContext('2d');if(!ctx)return null;
  const v={wo:val('woLabelNo'),code:val('woLabelCode'),product:val('woLabelHeading'),spec:val('woLabelDetails'),size:val('woLabelSize'),micron:val('woLabelMicron'),date:val('woLabelMfgDate')};
- // Every line must fit the actual SVG cell width; wrapping prevents overflow at print time.
- function fit(raw,width,max=24,min=12,maxLines=2){
-  const value=String(raw||'').trim()||'—';
-  for(let size=max;size>=min;size-=.5){
-   const font='bold '+size+'px Arial,sans-serif';
+ // The six value cells have fixed physical bounds (SVG units = 0.1 mm).
+ // Use safe inset widths instead of the full box so text never crosses a rule.
+ // Match SVG's 800-weight font for Canvas measurements (old 'bold' was 700).
+ const cells={
+  wo:{from:112,to:316,max:31,min:12,lines:2},
+  code:{from:435,to:833,max:27,min:12,lines:2},
+  product:{from:136,to:653,max:26,min:11,lines:2},
+  size:{from:724,to:833,max:23,min:12,lines:2},
+  micron:{from:126,to:359,max:22,min:10.5,lines:2},
+  date:{from:487,to:833,max:27,min:11,lines:2}
+ };
+ function fit(raw,box){
+  const value=String(raw||'').trim()||'—',width=box.to-box.from-12;
+  for(let size=box.max;size>=box.min;size-=.5){
+   const font='800 '+size+'px Arial,Helvetica,sans-serif';
    const lines=wrap(ctx,value,width,font),step=Math.ceil(size*1.12);
-   if(lines.length<=maxLines&&lines.length*step<=44&&
-      lines.every(line=>{ctx.font=font;return ctx.measureText(line).width<=width}))
-    return{lines,size,step};
+   if(lines.length>box.lines||lines.length*step>44)continue;
+   ctx.font=font;
+   const widths=lines.map(line=>{
+    const m=ctx.measureText(line);
+    return Math.max(m.width,Number.isFinite(m.actualBoundingBoxLeft)&&Number.isFinite(m.actualBoundingBoxRight)?m.actualBoundingBoxLeft+m.actualBoundingBoxRight:0);
+   });
+   if(widths.every(w=>w<=width-1))return{lines,size,step,widths,innerWidth:width};
   }return null;
  }
  const out={v,
-  wo:fit(v.wo,202,31,12,1),
-  code:fit(v.code,392,27,12,2),
-  product:fit(v.product,505,26,11,2),
-  size:fit(v.size,104,23,12,2),
-  micron:fit(v.micron||v.spec,221,22,10.5,2),
-  date:fit(v.date,337,27,11,2)
+  wo:fit(v.wo,cells.wo),
+  code:fit(v.code,cells.code),
+  product:fit(v.product,cells.product),
+  size:fit(v.size,cells.size),
+  micron:fit(v.micron||v.spec,cells.micron),
+  date:fit(v.date,cells.date)
  };
- out.overflow=[out.wo,out.code,out.product,out.size,out.micron,out.date].some(x=>!x);
+ out.overflowFields=Object.entries({wo:out.wo,code:out.code,product:out.product,size:out.size,micron:out.micron,date:out.date})
+  .filter(([,fit])=>!fit).map(([key])=>({wo:'Work Order',code:'Item Code',product:'Product',size:'Size',micron:'Micron',date:'Mfg. Date'}[key]));
+ out.overflow=out.overflowFields.length>0;
  out.valid=!out.overflow&&Boolean(v.wo&&v.code&&v.product);
  return out;
 }
@@ -141,7 +157,13 @@ function vectorLabel(){
   const mid=c.y+27.5;
   a.push(t(c.lx,mid+6,c.label,c.fs,'#111',800));
   const first=mid-(c.fit.lines.length-1)*c.fit.step/2+c.fit.size*.34;
-  c.fit.lines.forEach((line,n)=>a.push(t(c.vx,first+n*c.fit.step,line,c.fit.size,'#111',800)));
+  c.fit.lines.forEach((line,n)=>{
+   // SVG may use slightly different font metrics than Canvas. Set the line's
+   // measured length explicitly, so even a long EFPPL code stays in its box.
+   const measured=Math.min(c.fit.widths[n],c.fit.innerWidth-1);
+   a.push(t(c.vx,first+n*c.fit.step,line,c.fit.size,'#111',800,
+    'textLength="'+measured.toFixed(2)+'" lengthAdjust="spacingAndGlyphs"'));
+  });
  }
  // Three contact details in the lower footer without reducing email or website font size.
  // An upper email+web row and full-width phone row are clearer at 203 dpi.
@@ -168,7 +190,7 @@ function draw(){
  overflow=L.overflow;pasted=false;printable=L.valid;
  const seq=++drawSequence;
  if(!L.valid){
-  note(L.overflow?'Text too long for label. Shorten item details; clipping is blocked.':'Select a Work Order and check Product / Item Code.');
+  note(L.overflow?'Box overflow ('+L.overflowFields.join(', ')+'). Shorten that value before printing; no text will be cut.':'Select Work Order and verify Product / Item Code.');
   return;
  }
  const svg=vectorLabel(),image=new Image();
