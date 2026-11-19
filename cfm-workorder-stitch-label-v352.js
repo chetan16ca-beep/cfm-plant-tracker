@@ -368,7 +368,7 @@ function linkPackingDialog(){
  footer.append(btn);
 }
 function mount(){
- const dash=$('view-dashboard');if(!dash)return false;
+ const dash=$('view-dashboard');
  if(!$('woLabelDialog'))build();
  let wrap=$('cfmBWTaffetaEntry');
  if(!wrap){
@@ -380,9 +380,12 @@ function mount(){
   btn.onclick=()=>{$('woLabelDialog').showModal();draw();refresh()};
   wrap.append(btn);
  }
- const target=findPackingSection(dash);
+ const target=dash?findPackingSection(dash):null;
  if(target&&wrap.parentElement!==target)target.append(wrap);
- else if(!target&&wrap.parentElement!==dash){dash.prepend(wrap)}
+ else if(!target&&wrap.parentElement!==document.body){document.body.append(wrap)}
+ if(!target){
+  wrap.style.cssText='position:fixed;right:12px;bottom:82px;z-index:2147483000;background:#fff;border:2px solid #163985;border-radius:9px;padding:4px;box-shadow:0 3px 14px #0003';
+ }else{wrap.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 0;margin:3px 0'}
  // Keep one accessible launcher even when Packing Slip section is missing or rendered late.
  linkPackingDialog();
  return !!wrap.isConnected;
