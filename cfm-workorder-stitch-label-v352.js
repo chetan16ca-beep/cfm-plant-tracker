@@ -1,4 +1,4 @@
-/* CFM V382. User-approved corporate label: large EAGLE logo, six horizontal blue-key rows and vector mono thermal print. */
+/* CFM V383. User-approved original Eagle header; six white heading boxes with normal-weight black text and bold auto-fit values. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -151,24 +151,24 @@ function vectorLabel(){
  a.push('<path d="M157 169L119 204" stroke="#fff" stroke-width="5"/>');
  a.push(t(174,194,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',
   20,'#fff',800,'textLength="635" lengthAdjust="spacingAndGlyphs"'));
- // Six full-width content rows: bold fixed labels, wide auto-fitted values.
+ // Six full-width content rows: white heading boxes with non-bold black labels and bold auto-fitted values.
  const ty=214, left=21, edge=829, split=252, rh=37;
  a.push('<rect x="'+left+'" y="'+ty+'" width="'+(edge-left)+'" height="'+(rh*6)+
   '" rx="6" fill="#fff" stroke="#19398e" stroke-width="3"/>');
  a.push('<rect x="'+(left+2)+'" y="'+(ty+2)+'" width="'+(split-left-2)+
-  '" height="'+(rh*6-4)+'" fill="#19398e"/>');
+  '" height="'+(rh*6-4)+'" fill="#fff"/>');
  a.push('<path d="M'+split+' '+ty+'V'+(ty+rh*6)+'" stroke="#19398e" stroke-width="3"/>');
  for(let i=1;i<6;i++){
   const y=ty+i*rh;
   a.push('<path d="M'+split+' '+y+'H'+edge+'" stroke="#19398e" stroke-width="2.3"/>');
-  a.push('<path d="M'+(left+2)+' '+y+'H'+split+'" stroke="#fff" stroke-width="2.5"/>');
+  a.push('<path d="M'+(left+2)+' '+y+'H'+split+'" stroke="#19398e" stroke-width="2.3"/>');
  }
  L.fields.forEach((f,i)=>{
   const y=ty+i*rh,fit=L[f.key],txt=f.label;
   if(f.key==='micron'){
-   a.push(t(36,y+16,'MICRON /',20,'#fff',800));
-   a.push(t(36,y+33,'SPECIFICATION',18,'#fff',800));
-  }else a.push(t(36,y+26,txt,24,'#fff',800));
+   a.push(t(36,y+16,'MICRON /',20,'#111',400));
+   a.push(t(36,y+33,'SPECIFICATION',18,'#111',400));
+  }else a.push(t(36,y+26,txt,24,'#111',400));
   const start=fit.lines.length===1?y+27:y+16;
   fit.lines.forEach((line,k)=>{
    const length=Math.min(fit.widths[k],fit.innerWidth-1);
@@ -195,7 +195,7 @@ function draw(){
  image.onload=()=>{if(seq!==drawSequence)return;ctx.clearRect(0,0,C_W,C_H);ctx.drawImage(image,0,0,C_W,C_H)};
  image.onerror=()=>note('Preview could not render. Please refresh.');
  image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
- note('CFM V382 · Approved EAGLE design · Auto-fit six bold fields · 85×45 mm vector label.');
+ note('CFM V383 · White heading boxes, normal labels, bold auto-fit values · 85×45 mm vector.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
