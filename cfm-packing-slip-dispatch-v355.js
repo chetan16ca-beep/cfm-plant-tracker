@@ -378,9 +378,11 @@ function build(){
  '<p style="font-size:11px">Save only after goods are actually sent. Printing an old slip does not create another dispatch record. Order, cutting and stock remain unchanged.</p>'+
  '</div><div><div id="packSlipSummary">Select Work Order.</div><div id="packSlipHistory" style="margin-top:10px;max-height:220px;overflow:auto"></div></div></div>'+
  '<div id="packSlipMsg" role="status">Load live Cloud to begin.</div>'+
- '<div class="pfoot"><button id="packSlipPreview">👁 Preview (No Save)</button><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>🖨 Print Packing Slip</button><button id="packSlipA4" disabled>🖨 A4 Print</button><button id="packSlipCarton" disabled>📦 Print Packing Label 4×4</button></div>';
+ '<div class="pfoot"><button id="packSlipDeleteOne" type="button">🗑 Delete Single</button><button id="packSlipDeleteAll" type="button">🗑 Delete All Demo Slips</button><button id="packSlipPreview">👁 Preview (No Save)</button><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>🖨 Print Packing Slip</button><button id="packSlipA4" disabled>🖨 A4 Print</button><button id="packSlipCarton" disabled>📦 Print Packing Label 4×4</button></div>';
  document.body.append(d);
  $('packSlipClose').onclick=()=>d.close();
+ $('packSlipDeleteOne').onclick=()=>deletePackingSlips(false);
+ $('packSlipDeleteAll').onclick=()=>deletePackingSlips(true);
  // Reprint saved history without creating a second shipment or touching stock.
  $('packSlipHistory').onclick=e=>{
   const b=e.target?.closest?.('button[data-pack-id]');
@@ -397,6 +399,51 @@ function build(){
  $('packSlipThis').oninput=summary;$('packSlipPrior').oninput=summary;
  $('packSlipSave').onclick=saveSlip;$('packSlipPrint').onclick=()=>printSlip(false);$('packSlipA4').onclick=()=>printSlip(true);$('packSlipCarton').onclick=()=>printCartonLabel();
 }
+
+async function deletePackingSlips(all){
+ if(busy)return;
+ if(!remote){say('Refresh Cloud before deleting.',true);return}
+ const existing=slips();
+ if(!existing.length){say('No saved Packing Slips to delete.');return}
+ let ids=[];
+ if(all){ids=existing.map(x=>String(x.id))}
+ else {
+  const wo=$('packSlipWO').value;
+  const candidates=existing.filter(x=>!wo||up(x.workNo)===up(wo));
+  if(!candidates.length){say('No Packing Slips found for this Work Order.',true);return}
+  const choice=prompt('Enter exact Slip No to delete:\\n'+candidates.map(x=>x.slipNo||x.id).join('\\n'));
+  if(choice===null)return;
+  const found=candidates.find(x=>String(x.slipNo||'')===choice.trim()||String(x.id)===choice.trim());
+  if(!found){say('Slip number not found. Nothing deleted.',true);return}
+  ids=[String(found.id)];
+ }
+ if(!confirm('DELETE '+ids.length+' Packing Slip record(s) from Cloud? Work Orders, Stock and Dispatch modules will not be directly edited. This cannot be undone.'))return;
+ if(!confirm('Final confirmation: delete '+ids.length+' saved Packing Slip(s)?'))return;
+ if(typeof cloudFetch!=='function'||typeof cloudPush!=='function'||typeof save!=='function'||typeof state==='undefined'||!cloudReady||cloudBusy||cloudDirty){say('Cloud is not ready. Sync first; nothing deleted.',true);return}
+ busy=true;
+ try{
+  const latest=await cloudFetch();
+  if(!latest||Number(latest.version)!==Number(remote.version)||Number(latest.version)!==Number(cloudVersion))throw Error('Cloud changed. Refresh and try again');
+  const live=Array.isArray(latest.payload?.packingSlips)?latest.payload.packingSlips:[];
+  if(JSON.stringify(live)!==JSON.stringify(existing)||JSON.stringify(state.packingSlips||[])!==JSON.stringify(live))throw Error('Cloud/local Packing Slip history differs. Sync first');
+  const remaining=live.filter(x=>!ids.includes(String(x.id)));
+  if(live.length-remaining.length!==ids.length)throw Error('Selected records changed. Nothing deleted');
+  // Download a local JSON backup before changing the cloud ledger.
+  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),packingSlips:live},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='CFM-Packing-Slips-Backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  state.packingSlips=remaining;
+  clearTimeout(cloudPushTimer);save(false,{poQuick:true});clearTimeout(cloudPushTimer);
+  const ok=await cloudPush(true);
+  if(!ok)throw Error('Cloud did not confirm deletion; refresh before retrying');
+  const confirmed=await cloudFetch();
+  if(!confirmed||JSON.stringify(confirmed.payload?.packingSlips||[])!==JSON.stringify(remaining))throw Error('Cloud deletion could not be verified; refresh to inspect');
+  remote=confirmed;verifiedSlip=null;summary();
+  say('Deleted '+ids.length+' Packing Slip(s) from Cloud. Backup download requested.');
+ }catch(e){say('Delete not verified: '+String(e.message||e)+'. Refresh Cloud to inspect.',true)}
+ finally{busy=false}
+}
+
 function mount(){
  const dash=$('view-dashboard');if(!dash)return;
  if(!$('packSlipDialog'))build();
