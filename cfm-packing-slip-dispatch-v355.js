@@ -69,7 +69,8 @@ function summary(){
    ' · Previous '+esc(x.previousDispatched)+' · Balance '+esc(x.balanceAfter)+
    '<small>'+esc((x.createdAt||'').slice(0,19).replace('T',' '))+'</small>'+
    '<button type="button" data-pack-id="'+esc(x.id)+'" data-kind="slip">🖨 Reprint Slip</button> '+
-   '<button type="button" data-pack-id="'+esc(x.id)+'" data-kind="carton">📦 Packing Label</button></div>').join(''):
+   '<button type="button" data-pack-id="'+esc(x.id)+'" data-kind="carton">📦 Packing Label</button> '+
+   '<button type="button" data-pack-id="'+esc(x.id)+'" data-kind="delete" class="pack-delete-row" title="Delete only this dummy/test Packing Slip">🗑 Delete</button></div>').join(''):
   '<small>No confirmed packing slips in Cloud history for this company yet.</small>';
 }
 async function load(){
@@ -373,6 +374,7 @@ function build(){
  '#packSlipDialog .entry{border-bottom:1px solid #d6e2ed;padding:8px 0;font-size:12px}#packSlipDialog .entry small{display:block;color:#527083;margin-top:3px}'+
  '#packSlipDialog .pfoot{position:sticky;bottom:0;background:#fff;border-top:1px solid #d3e2ee;padding:10px;display:flex;gap:7px;flex-wrap:wrap}'+
  '#packSlipMsg{font-size:12px;line-height:1.5;padding:8px 12px}'+
+ '#packSlipHistory .pack-delete-row{background:#fff1f1!important;border-color:#e7a3a3!important;color:#a52b32!important;margin-left:4px}'+
  '@media(max-width:680px){#packSlipDialog .pbody{grid-template-columns:1fr;padding:9px}}';
  document.head.append(style);
  const d=document.createElement('dialog');d.id='packSlipDialog';
@@ -396,6 +398,7 @@ function build(){
   if(!b)return;
   const item=slips().find(x=>String(x.id)===String(b.dataset.packId));
   if(!item){say('Slip not present in live Cloud history. Refresh first.',true);return}
+  if(b.dataset.kind==='delete'){deletePackingSlips(false,String(item.id));return}
   if(b.dataset.kind==='carton')printCartonLabel(item);
   else printSlip(true,item);
  };
@@ -407,13 +410,18 @@ function build(){
  $('packSlipSave').onclick=saveSlip;$('packSlipPrint').onclick=()=>printSlip(false);$('packSlipA4').onclick=()=>printSlip(true);$('packSlipCarton').onclick=()=>printCartonLabel();
 }
 
-async function deletePackingSlips(all){
+async function deletePackingSlips(all,specificId=null){
  if(busy)return;
  if(!remote){say('Refresh Cloud before deleting.',true);return}
  const existing=slips();
  if(!existing.length){say('No saved Packing Slips to delete.');return}
  let ids=[];
  if(all){ids=existing.map(x=>String(x.id))}
+ else if(specificId!==null){
+  const found=existing.find(x=>String(x.id)===String(specificId));
+  if(!found){say('This Packing Slip is not in verified Cloud history. Refresh first.',true);return}
+  ids=[String(found.id)];
+ }
  else {
   const wo=$('packSlipWO').value;
   const candidates=existing.filter(x=>!wo||up(x.workNo)===up(wo));
@@ -424,8 +432,9 @@ async function deletePackingSlips(all){
   if(!found){say('Slip number not found. Nothing deleted.',true);return}
   ids=[String(found.id)];
  }
- if(!confirm('DELETE '+ids.length+' Packing Slip record(s) from Cloud? Work Orders, Stock and Dispatch modules will not be directly edited. This cannot be undone.'))return;
- if(!confirm('Final confirmation: delete '+ids.length+' saved Packing Slip(s)?'))return;
+ const labels=existing.filter(x=>ids.includes(String(x.id))).map(x=>String(x.slipNo||x.id)).join(', ');
+ if(!confirm('DELETE '+ids.length+' Packing Slip(s) from Cloud?\nSlip: '+labels+'\nWork Orders, Stock and Dispatch modules will NOT be edited. This cannot be undone.'))return;
+ if(!confirm('Final confirmation: permanently delete '+ids.length+' selected dummy/test Packing Slip(s)?\n'+labels))return;
  if(typeof cloudFetch!=='function'||typeof cloudPush!=='function'||typeof save!=='function'||typeof state==='undefined'||!cloudReady||cloudBusy||cloudDirty){say('Cloud is not ready. Sync first; nothing deleted.',true);return}
  busy=true;
  try{
