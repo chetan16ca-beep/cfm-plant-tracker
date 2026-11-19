@@ -1,4 +1,4 @@
-/* CFM V360. Approved EAGLE monochrome logo/chevron label, 600dpi, 5mm sewing margins. */
+/* CFM V361. Authentic EAGLE head and vector-crisp printing with 5mm stitching margins. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -77,12 +77,9 @@ function draw(){
  // Physical sewing margins: 0..50 and 400..450 remain ENTIRELY blank (5mm each).
  // All branding, corner outlines and data live within y=54..395.
  ctx.lineWidth=2.6;roundedPath(13,54,824,341,14);ctx.stroke();
- // A recognizable monochrome eagle/bird from the repo's original vector logo.
- // Vector path is rasterized at 600 dpi; never stretch a low-resolution logo photo.
- ctx.save();ctx.translate(43,82);ctx.scale(.29,.39);ctx.fillStyle='#000';
- const eagle=new Path2D('M125 150C67 151 24 116 7 72c28 18 48 20 66 14-26-16-39-35-44-57 28 18 51 24 72 20-15-16-21-32-21-49 26 23 47 38 68 48 27 13 44 34 51 63 23-9 47-12 72-7-22 11-39 25-53 42-21 25-52 36-93 33 22-5 38-14 48-28-16 5-32 5-48-1z');
- const wing=new Path2D('M197 111c34-2 61-12 82-31-9 27-27 49-55 65-19 11-40 16-64 14 19-9 31-25 37-48z');
- ctx.fill(eagle);ctx.fill(wing);ctx.restore();
+ // The traced authentic eagle HEAD from the user's latest company logo replaces the old water-drop bird.
+ if(window.CFM_EAGLE_BRAND?.drawLogo)window.CFM_EAGLE_BRAND.drawLogo(ctx,40,79,91,79,'#000');
+ else{ctx.fillStyle='#000';ctx.font='bold 50px Arial';ctx.fillText('E',56,129)}
  ctx.lineWidth=2;ctx.strokeStyle='#000';
  ctx.beginPath();ctx.moveTo(144,87);ctx.lineTo(144,158);ctx.moveTo(492,84);ctx.lineTo(492,159);ctx.stroke();
  // Top header reproduces the approved monochrome Eagle industrial label layout.
@@ -187,17 +184,64 @@ function imagePaste(file){
  img.onerror=()=>{URL.revokeObjectURL(url);note('Image could not be loaded.')};img.src=url;
 }
 function ok(){if(printable)return true;note('Enter Work Order, heading/details and EFPPL code before printing.');return false}
+// Pure vector for native printing: avoids resampling raster text on Taffeta.
+function vectorLabel(){
+ const c=$('woLabelCanvas').getContext('2d');
+ const no=val('woLabelNo'),heading=val('woLabelHeading'),detail=val('woLabelDetails'),code=val('woLabelCode');
+ const escape=t=>String(t??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[ch]));
+ const txt=(x,y,str,size,fill='#000',weight=700,extra='')=>'<text x="'+x+'" y="'+y+'" fill="'+fill+'" font-family="Arial,Helvetica,sans-serif" font-size="'+size+'" font-weight="'+weight+'" '+extra+'>'+escape(str)+'</text>';
+ const o=['<svg xmlns="http://www.w3.org/2000/svg" width="85mm" height="45mm" viewBox="0 0 850 450">','<rect width="850" height="450" fill="white"/>'];
+ o.push('<rect x="13" y="54" width="824" height="341" rx="14" fill="none" stroke="#000" stroke-width="2.6"/>');
+ if(window.CFM_EAGLE_BRAND?.logoPath)o.push('<g transform="translate(40 79) scale('+ (91/185)+' '+(79/142)+')" fill="#000"><path d="'+window.CFM_EAGLE_BRAND.logoPath+'" fill-rule="evenodd"/></g>');
+ else o.push(txt(50,125,'E',50));
+ o.push('<path d="M144 87V158 M492 84V159" stroke="#000" stroke-width="2" fill="none"/>');
+ o.push(txt(160,120,'EAGLE',43,'#000',900,'font-style="italic"'));
+ o.push(txt(162,140,'FILTRATION PRODUCT PVT. LTD.',12.7));
+ o.push(txt(162,155,'An ISO 9001:2015 Certified Company',10.8));
+ o.push('<rect x="352" y="59" width="116" height="21" rx="10.5" fill="#000"/>');
+ o.push(txt(365,74,'SINCE : 1992',13.5,'#fff'));
+ o.push(txt(512,101,'info@eaglefiltrations.com',12.6));
+ o.push(txt(512,123,'www.eaglefiltrations.com',12.6));
+ o.push(txt(512,145,'+91 70416 70091',17));
+ o.push('<path d="M16 169H340" fill="none" stroke="#000" stroke-width="2.8"/>');
+ o.push('<rect x="367" y="165" width="468" height="30" fill="#000"/>');
+ for(let i=0;i<3;i++){const x=342+i*9;o.push('<path d="M'+(x+15)+' 167L'+(x-9)+' 191" stroke="#000" stroke-width="2.5"/>')}
+ o.push(txt(379,185,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',12,'#fff'));
+ const rows=[['WORK ORDER NO.',no,21,12],['DESCRIPTION',heading,20,11],['DESCRIPTION 2',detail,20,11],['EFPPL CODE',code,19,10.5]];
+ for(let i=0;i<rows.length;i++){
+  const [name,value,max,min]=rows[i],y=202+i*46,h=42;
+  o.push('<rect x="28" y="'+y+'" width="792" height="42" rx="8" fill="white" stroke="#000" stroke-width="2"/>');
+  o.push('<path d="M29 '+(y+1)+' H245 L259 '+(y+21)+' L245 '+(y+41)+' H29 Z" fill="#000"/>');
+  o.push(txt(42,y+27,name,16.5,'#fff'));
+  let fit=null;
+  const valueText=String(value||'').trim()||'—';
+  for(let f=max;f>=min;f-=.5){
+   const lines=wrap(c,valueText,820-259-24,'bold '+f+'px Arial,sans-serif');
+   const step=Math.ceil(f*1.13);
+   if(lines.length*step<=h-7){fit={lines,f,step};break}
+  }
+  if(!fit)return null;
+  const first=y+h/2-(fit.lines.length-1)*fit.step/2;
+  fit.lines.forEach((line,k)=>o.push(txt(271,first+k*fit.step+fit.f*.36,line,fit.f)));
+ }
+ o.push('</svg>');
+ return o.join('');
+}
 function printLabel(sheet){
  if(!ok())return;
- const w=window.open('','_blank');if(!w){note('Please enable popups to print.');return}
- const src=$('woLabelCanvas').toDataURL('image/png'),n=sheet?12:1;
- const rule=sheet?'@page{size:A4 portrait;margin:8mm}.grid{display:grid;grid-template-columns:repeat(2,85mm);grid-template-rows:repeat(6,45mm);gap:2mm 4mm}'
- :'@page{size:85mm 45mm;margin:0}';
- const html='<!doctype html><html><head><meta charset="utf-8"><title>Work Order Label</title><style>body{margin:0}.grid img{width:85mm;height:45mm;display:block;object-fit:contain;break-inside:avoid}'+rule+'</style></head><body><div class="grid">'+
- Array.from({length:n},()=>'<img src="'+src+'" alt="Work Order Label">').join('')+
- '</div><script>window.addEventListener("load",function(){window.focus();window.print()})<\/script></body></html>';
- w.document.open();w.document.write(html);w.document.close();
- note(sheet?'A4 landscape labels (12) print opened.':'85 × 45 mm print opened.');
+ const w=window.open('','_blank');if(!w){note('Please enable pop-ups to print.');return}
+ // Image import is explicitly raster; all generated Work Order labels print as vectors.
+ const art=pasted?'<img src="'+$('woLabelCanvas').toDataURL('image/png')+'" alt="Imported label">':vectorLabel();
+ if(!art){w.close();note('Long text may be cut; print blocked until corrected.');return}
+ const count=sheet?12:1;
+ const page=sheet?'@page{size:A4 portrait;margin:7mm}.grid{display:grid;grid-template-columns:repeat(2,85mm);grid-template-rows:repeat(6,45mm);gap:2mm 4mm;}':
+ '@page{size:85mm 45mm;margin:0}';
+ const content='<!doctype html><html><head><meta charset="utf-8"><title>Eagle Work Order Taffeta Label</title><style>'+page+
+ 'html,body{padding:0;margin:0;background:white}.grid>svg,.grid>img{width:85mm;height:45mm;display:block;break-inside:avoid;page-break-inside:avoid}.grid{margin:0}@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="grid">'+
+ Array.from({length:count},()=>art).join('')+
+ '</div><script>addEventListener("load",()=>{focus();print()})<\/script></body></html>';
+ w.document.open();w.document.write(content);w.document.close();
+ note(sheet?'A4 print: 12 vector-sharp labels, with stitching margins.':'Vector print ready: Actual Size 100%, 85×45 mm, 5mm sewing margins.');
 }
 function build(){
  const style=document.createElement('style');
