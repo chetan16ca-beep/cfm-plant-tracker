@@ -1,4 +1,4 @@
-/* CFM V375. User-approved white SINCE and Mfg. banners (black outlines/text); otherwise identical V371 label. */
+/* CFM V376. Larger EAGLE wordmark and legible 2-line manufacturing title; phone in lower contact row. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -109,16 +109,14 @@ function vectorLabel(){
  a.push(t(301,36,'SINCE : 1992',20,'#111',800));
  // True original EAGLE letter shapes, traced as SVG paths from the supplied header image.
  if(brand?.wordmarkPath){
-  a.push('<g transform="translate(204 55) scale(.63 .69)" fill="#e72c35" fill-rule="evenodd"><path d="'+brand.wordmarkPath+'"/></g>');
- }else a.push(t(201,103,'EAGLE',60,'#e72c35',900));
+  a.push('<g transform="translate(204 52) scale(.96 .80)" fill="#e72c35" fill-rule="evenodd"><path d="'+brand.wordmarkPath+'"/></g>');
+ }else a.push(t(201,113,'EAGLE',75,'#e72c35',900));
  a.push(t(207,128,'FILTRATION PRODUCT PVT. LTD.',19,'#188c41',500));
  a.push(t(207,146,'An ISO 9001:2015 Certified Company',14.5,'#111',700));
- // Mobile number moved into the ample top-right header area.
- a.push('<circle cx="557" cy="62" r="11" fill="#17349b"/>');
- a.push(t(550,68,'+',19,'#fff',900));
- a.push(t(568,74,'+91 70416 70091',27,'#111',800));
- a.push('<path d="M18 186H179 M180 186L205 163H836V194H180Z" stroke="#111" stroke-width="2" fill="#fff"/>');
- a.push(t(221,184,'Mfg. of All Types of Industrial Filters, Bag Filters, & Automobile Filters.',14,'#111',700));
+ // White banner remains; the full factory description is split only visually to increase the text height.
+ a.push('<path d="M18 198H181 M184 198L210 156H836V198H184Z" stroke="#111" stroke-width="2" fill="#fff"/>');
+ a.push(t(225,176,'Mfg. of All Types of Industrial Filters,',19,'#111',700));
+ a.push(t(225,193,'Bag Filters, & Automobile Filters.',19,'#111',700));
  // Layout V371: bigger WO/date cells; smaller Size/Micron cells; Item Code still wrapped within bounds.
  // Row 1: WO No. (wider) | Item Code, Row 2: Product | small Size, Row 3: small Micron | wide Mfg Date.
  a.push('<rect x="17" y="201" width="816" height="165" rx="6" fill="#fff" stroke="#111" stroke-width="2.3"/>');
@@ -145,15 +143,19 @@ function vectorLabel(){
   const first=mid-(c.fit.lines.length-1)*c.fit.step/2+c.fit.size*.34;
   c.fit.lines.forEach((line,n)=>a.push(t(c.vx,first+n*c.fit.step,line,c.fit.size,'#111',800)));
  }
- // Contact footer now has two clearly spaced cells, phone moved into header.
- a.push('<rect x="17" y="374" width="816" height="59" rx="7" stroke="#111" stroke-width="2.5" fill="#fff"/>');
- a.push('<path d="M423 374V433" stroke="#111" stroke-width="2"/>');
- a.push('<rect x="29" y="392" width="28" height="22" rx="2" stroke="#173793" stroke-width="2" fill="none"/>');
- a.push('<path d="M30 393l13 11 13 -11" stroke="#173793" stroke-width="2" fill="none"/>');
- a.push(t(67,412,'info@eaglefiltrations.com',25,'#111',800));
- a.push('<circle cx="454" cy="403" r="13" stroke="#173793" stroke-width="2" fill="none"/>');
- a.push('<path d="M441 403h26 M454 390v26" stroke="#173793" stroke-width="2" fill="none"/>');
- a.push(t(473,411,'www.eaglefiltrations.com',23,'#111',800));
+ // Three contact details in the lower footer without reducing email or website font size.
+ // An upper email+web row and full-width phone row are clearer at 203 dpi.
+ a.push('<rect x="17" y="371" width="816" height="68" rx="7" stroke="#111" stroke-width="2.5" fill="#fff"/>');
+ a.push('<path d="M423 372V409 M17 409H833" stroke="#111" stroke-width="2"/>');
+ a.push('<rect x="29" y="382" width="28" height="21" rx="2" stroke="#111" stroke-width="2" fill="none"/>');
+ a.push('<path d="M30 384l13 11 13 -11" stroke="#111" stroke-width="2" fill="none"/>');
+ a.push(t(67,402,'info@eaglefiltrations.com',25,'#111',800));
+ a.push('<circle cx="454" cy="393" r="12" stroke="#111" stroke-width="2" fill="none"/>');
+ a.push('<path d="M442 393h24 M454 381v24" stroke="#111" stroke-width="2" fill="none"/>');
+ a.push(t(473,402,'www.eaglefiltrations.com',23,'#111',800));
+ a.push('<circle cx="294" cy="424" r="11" fill="#111"/>');
+ a.push(t(287,431,'+',19,'#fff',900));
+ a.push(t(313,432,'+91 70416 70091',25,'#111',800));
  a.push('</svg>');
  return a.join('');
 }
@@ -173,7 +175,7 @@ function draw(){
  image.onload=()=>{if(seq!==drawSequence)return;ctx.clearRect(0,0,C_W,C_H);ctx.drawImage(image,0,0,C_W,C_H)};
  image.onerror=()=>note('Preview could not render. Please refresh.');
  image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
- note('CFM V371 · WO No./Mfg Date/Mobile/Email larger · Size/Micron smaller · 85×45 mm vector label.');
+ note('CFM V376 · EAGLE + Mfg. larger · phone in bottom row · 85×45 mm crisp vector label.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
