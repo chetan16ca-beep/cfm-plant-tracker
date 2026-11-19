@@ -378,6 +378,8 @@ html,body{background:#f4faff!important;color:#13233b!important}
  src=src.replace('</head>','<script defer src="./cfm-legacy-packing-letterhead-v366.js?v=380"></scr'+'ipt></head>');
  // V398: Cloud-verified dashboard cards, read-only. Does not modify production data.
  src=src.replace('</head>','<script defer src="./cfm-pending-dashboard-v398.js?v=398"></scr'+'ipt></head>');
+ // V399: Approved Pending tab layout, with existing ERP controls retained under More Details.
+ src=src.replace('</head>','<script defer src="./cfm-pending-screen-v399.js?v=399"></scr'+'ipt></head>');
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{
