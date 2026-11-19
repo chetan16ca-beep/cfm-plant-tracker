@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261119-v400',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261119-v400b',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -377,7 +377,7 @@ html,body{background:#f4faff!important;color:#13233b!important}
  // V367: ensure the EXISTING Packing Slip and Reprint buttons use the approved EAGLE letterhead.
  src=src.replace('</head>','<script defer src="./cfm-legacy-packing-letterhead-v366.js?v=380"></scr'+'ipt></head>');
  // V400: Approved Pending Orders corporate TABLE design. Cloud-verified; legacy controls preserved.
- src=src.replace('</head>','<script defer src="./cfm-pending-corporate-table-v400.js?v=400"></scr'+'ipt></head>');
+ src=src.replace('</head>','<script defer src="./cfm-pending-corporate-table-v400.js?v=400b"></scr'+'ipt></head>');
  app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
  setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
 })().catch(e=>{
