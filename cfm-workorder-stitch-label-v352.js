@@ -1,4 +1,4 @@
-/* CFM V356. Final Option-25 monochrome corporate Taffeta label; read-only ERP data. */
+/* CFM V357. White Taffeta corporate label inside Packing Slip & Label; read-only ERP data. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=1004,C_H=531,VIEW_W=850,VIEW_H=450;
@@ -63,72 +63,65 @@ function draw(){
  const can=$('woLabelCanvas');if(!can)return;
  const ctx=can.getContext('2d');ctx.setTransform(C_W/VIEW_W,0,0,C_H/VIEW_H,0,0);
  const no=val('woLabelNo'),heading=val('woLabelHeading'),detail=val('woLabelDetails'),code=val('woLabelCode');
- // Option 25 reference: monochrome 4-row corporate chevron label with racing-stripe trim.
- // Source image aspect 1717:912 ~= 85:45. No logos, vendor/party names, or batch number.
+ // Final V357: white Taffeta, black ink only. Former black-filled chevron panels are white.
+ // No company name, logo, party, batch number, QR or additional decoration fields.
  ctx.fillStyle='#fff';ctx.fillRect(0,0,VIEW_W,VIEW_H);
- function polygon(pts,color='#000'){
-  ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fillStyle=color;ctx.fill();
- }
- function border(x,y,w,h,r=0){
-  const rad=Math.min(r,w/2,h/2);
-  ctx.beginPath();ctx.moveTo(x+rad,y);ctx.lineTo(x+w-rad,y);ctx.quadraticCurveTo(x+w,y,x+w,y+rad);
-  ctx.lineTo(x+w,y+h-rad);ctx.quadraticCurveTo(x+w,y+h,x+w-rad,y+h);
-  ctx.lineTo(x+rad,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-rad);
-  ctx.lineTo(x,y+rad);ctx.quadraticCurveTo(x,y,x+rad,y);ctx.closePath();
+ function poly(points,fill){
+  ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill()}
   ctx.stroke();
  }
- ctx.lineWidth=5;ctx.strokeStyle='#000';border(8,10,834,430,24);
- // Three rising diagonal bars at the top-left, mirrored at the bottom-right.
+ function rounded(x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.stroke();
+ }
+ ctx.strokeStyle='#000';ctx.lineWidth=4;rounded(8,9,834,432,19);
+ ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(110,51);ctx.lineTo(817,51);ctx.moveTo(31,405);ctx.lineTo(734,405);ctx.stroke();
+ // Small diagonal corner marks preserve the selected MNC styling with minimal black ink.
+ ctx.lineWidth=4;
  for(let i=0;i<3;i++){
-  const x=55+i*36;
-  polygon([[x,29],[x+28,29],[x+6,61],[x-22,61]]);
-  const bx=722+i*36;
-  polygon([[bx+17,387],[bx+43,387],[bx+17,416],[bx-9,416]]);
+  const x=35+i*21;
+  ctx.beginPath();ctx.moveTo(x+14,29);ctx.lineTo(x,51);ctx.stroke();
+  const rx=772+i*21;ctx.beginPath();ctx.moveTo(rx+13,405);ctx.lineTo(rx,428);ctx.stroke();
  }
- ctx.lineWidth=3;ctx.strokeStyle='#000';
- ctx.beginPath();ctx.moveTo(177,48);ctx.lineTo(806,48);ctx.moveTo(42,404);ctx.lineTo(692,404);ctx.stroke();
-
  const rows=[
-  {title:'Work Order No.',value:no,bold:true,min:15,max:29},
-  {title:'Description',value:heading,bold:true,min:11,max:22},
-  {title:'Description 2',value:detail,bold:false,min:11,max:21},
-  {title:'EFPPL Product Code',value:code,bold:true,min:12,max:23}
+  {title:'WORK ORDER NO.',value:no,weight:'bold',max:28,min:14},
+  {title:'DESCRIPTION',value:heading,weight:'bold',max:23,min:11},
+  {title:'DESCRIPTION 2',value:detail,weight:'normal',max:22,min:11},
+  {title:'EFPPL PRODUCT CODE',value:code,weight:'bold',max:22,min:11}
  ];
- let anyOverflow=false;
- for(let i=0;i<rows.length;i++){
-  const r=rows[i], y=82+i*71, h=69, x=29, split=342,tip=365,right=817;
-  // White field extends to the far side; left black tab finishes with pointed arrow.
-  ctx.fillStyle='#fff';ctx.fillRect(x,y,right-x,h);
-  ctx.strokeStyle='#000';ctx.lineWidth=2.8;ctx.strokeRect(x,y,right-x,h);
-  polygon([[x,y],[split,y],[tip,y+h/2],[split,y+h],[x,y+h]]);
-  // White title text centered inside the black field label.
-  const labelSize=i===3?19.5:(i===0?23:25);
-  ctx.fillStyle='#fff';ctx.textBaseline='middle';ctx.font='bold '+labelSize+'px Arial';
-  ctx.fillText(r.title,x+16,y+h/2,split-x-25);
-  // Fit full live value inside its row. Never silently clip EFPPL code or specs.
-  let fit=null;
-  const content=String(r.value||'').trim()||'—';
+ let clipped=false;
+ for(let i=0;i<4;i++){
+  const r=rows[i],y=73+i*78,h=73,x=28,labelEnd=348,tip=370,right=821;
+  ctx.strokeStyle='#000';ctx.lineWidth=2.2;
+  // Slim outer field rule with chevron label (WHITE fill, BLACK stroke and text).
+  ctx.strokeRect(x,y,right-x,h);
+  poly([[x,y],[labelEnd,y],[tip,y+h/2],[labelEnd,y+h],[x,y+h]],'#fff');
+  ctx.strokeStyle='#000';ctx.lineWidth=1.1;
+  ctx.beginPath();ctx.moveTo(x+13,y+h-10);ctx.lineTo(x+57,y+h-10);ctx.stroke();
+  ctx.fillStyle='#000';ctx.textBaseline='middle';
+  ctx.font='bold '+(i===3?18.5:23)+'px Arial';
+  ctx.fillText(r.title,x+15,y+h/2-2,labelEnd-x-28);
+  // Auto-wrap real ERP details. Block print if a field cannot fit without clipping.
+  const value=String(r.value||'').trim()||'—',available=right-tip-22;
+  let fitted=null;
   for(let f=r.max;f>=r.min;f-=0.5){
-   const lines=wrap(ctx,content,right-tip-34,(r.bold?'bold ':'')+f+'px Arial');
-   const lineH=Math.ceil(f*1.16);
-   if(lines.length*lineH<=h-10){fit={font:f,lines,lineH};break}
+   const font=(r.weight==='bold'?'bold ':'')+f+'px Arial';
+   const lines=wrap(ctx,value,available,font),lineH=Math.ceil(f*1.2);
+   if(lines.length*lineH<=h-10){fitted={font,lines,lineH};break}
   }
-  if(!fit)anyOverflow=true;
-  if(fit){
-   ctx.fillStyle='#000';ctx.textBaseline='middle';
-   ctx.font=(r.bold?'bold ':'')+fit.font+'px Arial';
-   const y0=y+h/2-(fit.lines.length-1)*fit.lineH/2;
-   fit.lines.forEach((line,n)=>ctx.fillText(line,tip+10,y0+n*fit.lineH));
-  }else{
-   ctx.fillStyle='#000';ctx.font='bold 13px Arial';ctx.textBaseline='middle';
-   ctx.fillText('TEXT TOO LONG — EDIT DETAILS',tip+12,y+h/2);
-  }
+  if(!fitted){clipped=true;ctx.fillStyle='#000';ctx.font='bold 12px Arial';ctx.fillText('DETAILS TOO LONG',tip+9,y+h/2);continue}
+  ctx.fillStyle='#000';ctx.font=fitted.font;
+  const firstY=y+h/2-(fitted.lines.length-1)*fitted.lineH/2;
+  fitted.lines.forEach((line,k)=>ctx.fillText(line,tip+10,firstY+k*fitted.lineH));
  }
- overflow=anyOverflow;
+ overflow=clipped;
  pasted=false;printable=!overflow&&Boolean(no&&code&&(heading||detail));
- note(overflow?'Text too long for final 85 × 45 mm label. Printing disabled until details are shortened.':printable?
- 'Final monochrome MNC label ready • 85 × 45 mm • Option 25 chevron layout.':
- 'Select Work Order / enter heading, details and EFPPL code.');
+ note(overflow?'Label details exceed 85 × 45 mm; printing blocked to prevent cut text.':
+ printable?'White Taffeta MNC Label ready · Black print · 85 × 45 mm':
+ 'Select Work Order and verify the Description, Description 2 and EFPPL Code.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
@@ -190,7 +183,7 @@ function build(){
  '#woLabelDialog .help{font:11px/1.5 Arial;color:#546d80}@media(max-width:650px){#woLabelDialog .main{grid-template-columns:1fr;padding:9px}#woLabelDialog .preview{order:-1}#woLabelCanvas{width:300px;height:159px}}';
  document.head.append(style);
  const d=document.createElement('dialog');d.id='woLabelDialog';
- d.innerHTML='<div class="top"><div><strong>Work Order Stitching Label</strong><div style="font-size:11px">Final B&W MNC Label · 85 × 45 mm · No branding</div></div><button id="woLabelClose">✕ Close</button></div>'+
+ d.innerHTML='<div class="top"><div><strong>Work Order Stitching Label</strong><div style="font-size:11px">White Taffeta MNC Label · 85 × 45 mm · No branding</div></div><button id="woLabelClose">✕ Close</button></div>'+
  '<div class="main"><div>'+
  '<label>Work Order<select id="woLabelSelect"><option value="">Select Work Order / Manual</option></select></label><button id="woLabelRefresh">↻ Refresh Work Orders</button>'+
  '<label>Work Order No.<input id="woLabelNo" placeholder="CFM-556"></label>'+
@@ -227,52 +220,67 @@ function build(){
  $('woLabelPrint').onclick=()=>printLabel(false);$('woLabelA4').onclick=()=>printLabel(true);
  draw();
 }
+function findPackingSection(dash){
+ // This section is created by the dashboard-compact module. Put the launcher
+ // inside the existing "Packing Slip & Label" accordion, not on the main Dashboard.
+ const matched=[...dash.querySelectorAll('details.cfm-mini-section')].find(el=>
+  /packing\s*slip\s*(?:&|and)\s*label/i.test(
+   el.querySelector(':scope > summary')?.textContent||''));
+ if(matched)return matched.querySelector(':scope > .cfm-mini-body')||matched;
+ // Handle early loading, before the compact accordion folds the underlying group.
+ const group=[...dash.querySelectorAll('.exec-group')].find(el=>
+  /packing\s*slip\s*(?:&|and)\s*label/i.test(
+   el.querySelector('.dashboard-section-title h3')?.textContent||''));
+ return group||null;
+}
+function linkPackingDialog(){
+ const d=$('packSlipDialog');
+ if(!d)return;
+ const footer=d.querySelector('.pfoot');
+ if(!footer||$('packSlipStitchLabel'))return;
+ const btn=document.createElement('button');btn.id='packSlipStitchLabel';btn.type='button';
+ btn.textContent='🏷 Print Stitching Label';
+ btn.title='Separate white Taffeta 85 × 45 mm label for this Work Order';
+ btn.onclick=async()=>{
+  const no=$('packSlipWO')?.value||'';
+  if(d.open)d.close();
+  const label=$('woLabelDialog');if(!label)return;
+  label.showModal();await refresh();
+  if(no&&[...$('woLabelSelect').options].some(x=>x.value===no)){
+   $('woLabelSelect').value=no;selectWork();
+  }else if(no)note('Select the matching Work Order in the Label dropdown.');
+ };
+ footer.append(btn);
+}
 function mount(){
  const dash=$('view-dashboard');if(!dash)return false;
  if(!$('woLabelDialog'))build();
  let wrap=$('cfmBWTaffetaEntry');
  if(!wrap){
-  wrap=document.createElement('section');
-  wrap.id='cfmBWTaffetaEntry';
-  wrap.setAttribute('aria-label','Black and white taffeta stitching label');
-  wrap.style.cssText='display:flex!important;align-items:center;gap:8px;padding:7px 8px!important;margin:8px 0!important;background:#fff!important;border:2px solid #111!important;border-radius:10px!important;position:relative!important;visibility:visible!important;opacity:1!important;min-height:48px!important';
-  const btn=document.createElement('button');
-  btn.id='woLabelLaunch';btn.type='button';
-  btn.textContent='🏷 B&W Taffeta Label · 85×45';
-  btn.style.cssText='display:block!important;visibility:visible!important;opacity:1!important;min-height:36px!important;padding:9px 12px!important;border:1px solid #111!important;border-radius:7px!important;background:#111!important;color:#fff!important;font:bold 13px Arial,sans-serif!important;cursor:pointer!important;max-width:100%!important';
+  wrap=document.createElement('div');wrap.id='cfmBWTaffetaEntry';
+  wrap.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 0;margin:3px 0;';
+  const btn=document.createElement('button');btn.id='woLabelLaunch';btn.type='button';
+  btn.textContent='🏷 White Taffeta Stitching Label · 85×45';
+  btn.style.cssText='display:block;min-height:37px;padding:8px 11px;border:1px solid #171717;border-radius:7px;background:#fff;color:#111;font:bold 12px Arial,sans-serif;cursor:pointer;max-width:100%';
   btn.onclick=()=>{$('woLabelDialog').showModal();draw();refresh()};
   wrap.append(btn);
  }
- if(wrap.parentElement!==dash){
-  const head=dash.querySelector(':scope > .section-head');
-  if(head)head.after(wrap);
-  else dash.prepend(wrap);
- }
- return true;
+ const target=findPackingSection(dash);
+ if(target&&wrap.parentElement!==target)target.prepend(wrap);
+ // Do not create another standalone Dashboard button.
+ linkPackingDialog();
+ return !!target;
 }
 function boot(){
- let watching=null;
- const tryMount=()=>{
-  const dash=$('view-dashboard');
-  if(!dash)return false;
-  mount();
-  if(watching!==dash){
-   if(watching&&watching._cfmLabelObserver)watching._cfmLabelObserver.disconnect();
-   const observer=new MutationObserver(()=>{
-    if(!$('cfmBWTaffetaEntry')||$('cfmBWTaffetaEntry').parentElement!==dash)mount();
-   });
-   observer.observe(dash,{childList:true,subtree:false});
-   dash._cfmLabelObserver=observer;watching=dash;
-  }
-  return true;
- };
- if(tryMount())return;
- // Work Order Dashboard can be created later by ERP scripts.
- // Stop polling once mounted; no changes to ERP data or navigation.
- let attempts=0;
- const retry=setInterval(()=>{
-  if(tryMount()||++attempts>=60)clearInterval(retry);
- },500);
+ if(!document.body)return;
+ mount();
+ let queued=false;
+ const observer=new MutationObserver(()=>{
+  if(queued)return;
+  queued=true;
+  requestAnimationFrame(()=>{queued=false;mount()});
+ });
+ observer.observe(document.body,{childList:true,subtree:true});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
 else boot();
