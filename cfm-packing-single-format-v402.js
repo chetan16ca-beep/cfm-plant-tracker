@@ -49,14 +49,35 @@ function installPrintBridge(){
 function ensureHistoryDialog(){
  if(document.getElementById('cfmOldPackingHistoryV402'))return;
  const dialog=document.createElement('dialog');dialog.id='cfmOldPackingHistoryV402';
- dialog.innerHTML='<div class="cfm402-history-head"><strong>Old Packing Slip History — Read-only</strong><button type="button" id="cfm402HistoryClose">✕</button></div>'+
- '<p>Earlier packing records are kept unchanged on this device. Reprints use the same approved A4 Landscape format. Historical dispatch quantities are not Cloud verified.</p>'+
+ dialog.innerHTML='<div class="cfm402-history-head"><strong>Old Packing Slip History — Manage Individual Slips</strong><button type="button" id="cfm402HistoryClose">✕</button></div>'+
+ '<p>Old slips are stored on this device. Reprint or delete one selected dummy/test slip at a time; deleted slips are backed up first. This does not modify Cloud Packing Slips, Stock or Work Orders.</p>'+
  '<div id="cfm402HistoryRows"></div>';
  document.body.appendChild(dialog);
  dialog.querySelector('#cfm402HistoryClose').onclick=()=>dialog.close();
  dialog.querySelector('#cfm402HistoryRows').addEventListener('click',e=>{
-  const b=e.target.closest('button[data-old-slip]');if(b)previewLegacy(b.dataset.oldSlip)
+  const b=e.target.closest('button[data-old-slip]');if(!b)return;
+  if(b.dataset.action==='delete')deleteLegacy(b.dataset.oldSlip);
+  else previewLegacy(b.dataset.oldSlip);
  });
+}
+function deleteLegacy(id){
+ const records=history(),matches=records.filter(x=>text(x.slipNo)===text(id));
+ if(matches.length!==1){alert('Slip missing or duplicate number. No deletion made.');return}
+ const found=matches[0];
+ if(!confirm('Delete ONLY old dummy/test Packing Slip '+text(found.slipNo)+'?\nThis is a local-device record and cannot be restored automatically.'))return;
+ if(!confirm('Final confirmation: remove '+text(found.slipNo)+' from the local Packing Slip History?'))return;
+ // Preserve an export of all old records before changing localStorage.
+ try{
+  const backup=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),source:'CFM old local packing slips',packingSlips:records},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(backup),a=document.createElement('a');
+  a.href=url;a.download='CFM-Old-Packing-Slips-Backup-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  const next=records.filter(x=>text(x.slipNo)!==text(id));
+  if(next.length!==records.length-1)throw Error('Unexpected slip count; no changes made');
+  localStorage.setItem(historyKey,JSON.stringify(next));
+  if(history().length!==next.length)throw Error('Local storage write could not be confirmed');
+  showHistory();
+ }catch(e){alert('Local slip delete could not be verified: '+String(e.message||e))}
 }
 function showHistory(){
  ensureHistoryDialog();const dlg=document.getElementById('cfmOldPackingHistoryV402');
@@ -64,7 +85,8 @@ function showHistory(){
  list.innerHTML=rows.length?rows.map(r=>
   '<article class="cfm402-row"><div><b>'+esc(r.slipNo||'—')+'</b><small>'+esc(r.party||'')+' · '+esc(r.date||'')+' · '+
   (Array.isArray(r.jobs)?r.jobs.length:0)+' Work Order(s)</small></div>'+
-  '<button type="button" data-old-slip="'+esc(r.slipNo||'')+'">A4 Reprint</button></article>').join(''):
+  '<div class="cfm402-row-actions"><button type="button" data-old-slip="'+esc(r.slipNo||'')+'" data-action="reprint">A4 Reprint</button>'+
+  '<button type="button" class="cfm402-delete" data-old-slip="'+esc(r.slipNo||'')+'" data-action="delete">🗑 Delete</button></div></article>').join(''):
   '<p>No previous local packing records found on this device.</p>';
  if(typeof dlg.showModal==='function')dlg.showModal();else dlg.setAttribute('open','');
 }
@@ -98,6 +120,7 @@ function mount(){
   footer.insertBefore(btn,footer.firstChild);
  }
  installPrintBridge();
+ window.cfmPackingHistory=showHistory;
 }
 function init(){
  if(document.getElementById('cfm402Style'))return;
@@ -114,7 +137,9 @@ function init(){
  '#cfm402HistoryRows .cfm402-row{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #dce8ef;padding:10px 2px}'+
  '#cfm402HistoryRows .cfm402-row b{display:block;font:800 13px Arial}'+
  '#cfm402HistoryRows .cfm402-row small{display:block;font:500 11px/1.5 Arial;color:#58738c}'+
- '#cfm402HistoryRows .cfm402-row button{background:#1467a6;color:#fff;border:0;border-radius:8px;padding:8px 10px;font:750 11px Arial;cursor:pointer}';
+ '#cfm402HistoryRows .cfm402-row button{background:#1467a6;color:#fff;border:0;border-radius:8px;padding:8px 10px;font:750 11px Arial;cursor:pointer}'+
+ '#cfm402HistoryRows .cfm402-row-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}'+
+ '#cfm402HistoryRows .cfm402-row button.cfm402-delete{background:#fff0f1;color:#a52732;border:1px solid #e7acb4}';
  document.head.appendChild(style);
  mount();
  // Existing legacy module asynchronously recreates the old card. Re-apply
