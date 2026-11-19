@@ -1,4 +1,4 @@
-/* CFM V353. Taffeta black-and-white-only print, 85x45 landscape; read-only ERP label. */
+/* CFM V354. Taffeta B&W print with visible dashboard shortcut; read-only ERP label. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=1004,C_H=531,VIEW_W=850,VIEW_H=450;
@@ -192,19 +192,52 @@ function build(){
  draw();
 }
 function mount(){
- const dash=$('view-dashboard');if(!dash)return;
+ const dash=$('view-dashboard');if(!dash)return false;
  if(!$('woLabelDialog'))build();
- if($('woLabelLaunch'))return;
- const btn=document.createElement('button');btn.id='woLabelLaunch';btn.type='button';btn.textContent='🏷 B&W Taffeta Label · 85×45';
- btn.onclick=()=>{$('woLabelDialog').showModal();draw();refresh()};
- const target=dash.querySelector('.cfm-main-actions');
- if(target)target.append(btn);
- else{const wrap=document.createElement('div');wrap.style.cssText='display:flex;margin:7px 0';wrap.append(btn);
-  const anchor=$('cfmThemeAKpis')||$('cfmThemeAStock');if(anchor)anchor.after(wrap);else dash.prepend(wrap)}
+ let wrap=$('cfmBWTaffetaEntry');
+ if(!wrap){
+  wrap=document.createElement('section');
+  wrap.id='cfmBWTaffetaEntry';
+  wrap.setAttribute('aria-label','Black and white taffeta stitching label');
+  wrap.style.cssText='display:flex!important;align-items:center;gap:8px;padding:7px 8px!important;margin:8px 0!important;background:#fff!important;border:2px solid #111!important;border-radius:10px!important;position:relative!important;visibility:visible!important;opacity:1!important;min-height:48px!important';
+  const btn=document.createElement('button');
+  btn.id='woLabelLaunch';btn.type='button';
+  btn.textContent='🏷 B&W Taffeta Label · 85×45';
+  btn.style.cssText='display:block!important;visibility:visible!important;opacity:1!important;min-height:36px!important;padding:9px 12px!important;border:1px solid #111!important;border-radius:7px!important;background:#111!important;color:#fff!important;font:bold 13px Arial,sans-serif!important;cursor:pointer!important;max-width:100%!important';
+  btn.onclick=()=>{$('woLabelDialog').showModal();draw();refresh()};
+  wrap.append(btn);
+ }
+ if(wrap.parentElement!==dash){
+  const head=dash.querySelector(':scope > .section-head');
+  if(head)head.after(wrap);
+  else dash.prepend(wrap);
+ }
+ return true;
 }
 function boot(){
- mount();const dash=$('view-dashboard');
- if(dash)new MutationObserver(()=>{if(!$('woLabelLaunch'))mount()}).observe(dash,{childList:true,subtree:false});
+ let watching=null;
+ const tryMount=()=>{
+  const dash=$('view-dashboard');
+  if(!dash)return false;
+  mount();
+  if(watching!==dash){
+   if(watching&&watching._cfmLabelObserver)watching._cfmLabelObserver.disconnect();
+   const observer=new MutationObserver(()=>{
+    if(!$('cfmBWTaffetaEntry')||$('cfmBWTaffetaEntry').parentElement!==dash)mount();
+   });
+   observer.observe(dash,{childList:true,subtree:false});
+   dash._cfmLabelObserver=observer;watching=dash;
+  }
+  return true;
+ };
+ if(tryMount())return;
+ // Work Order Dashboard can be created later by ERP scripts.
+ // Stop polling once mounted; no changes to ERP data or navigation.
+ let attempts=0;
+ const retry=setInterval(()=>{
+  if(tryMount()||++attempts>=60)clearInterval(retry);
+ },500);
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
+else boot();
 })();
