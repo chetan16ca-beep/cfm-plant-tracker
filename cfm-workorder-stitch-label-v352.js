@@ -1,4 +1,4 @@
-/* CFM V377. Approved V376 layout; black-only vector thermal print for TSC TA220, no dither. */
+/* CFM V378. All label text bold; same approved 85x45 geometry and TA220 black-only vector output. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
@@ -95,7 +95,7 @@ function label45Layout(){
 function vectorLabel(){
  const L=label45Layout();if(!L?.valid)return null;
  const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
- const t=(x,y,v,size,color='#111',weight=700,attrs='')=>'<text x="'+x+'" y="'+y+'" font-family="Arial,Helvetica,sans-serif" font-size="'+size+'" font-weight="'+weight+'" fill="'+color+'" '+attrs+'>'+E(v)+'</text>';
+ const t=(x,y,v,size,color='#111',weight=800,attrs='')=>'<text x="'+x+'" y="'+y+'" font-family="Arial,Helvetica,sans-serif" font-size="'+size+'" font-weight="'+weight+'" fill="'+color+'" '+attrs+'>'+E(v)+'</text>';
  const a=['<svg xmlns="http://www.w3.org/2000/svg" width="85mm" height="45mm" viewBox="0 0 850 450">',
  '<rect width="850" height="450" fill="#fff"/>',
  '<rect x="8" y="8" width="834" height="434" rx="16" fill="none" stroke="#112d99" stroke-width="5"/>'];
@@ -111,12 +111,12 @@ function vectorLabel(){
  if(brand?.wordmarkPath){
   a.push('<g transform="translate(204 52) scale(.96 .80)" fill="#e72c35" fill-rule="evenodd"><path d="'+brand.wordmarkPath+'"/></g>');
  }else a.push(t(201,113,'EAGLE',75,'#e72c35',900));
- a.push(t(207,128,'FILTRATION PRODUCT PVT. LTD.',19,'#188c41',500));
- a.push(t(207,146,'An ISO 9001:2015 Certified Company',14.5,'#111',700));
+ a.push(t(207,128,'FILTRATION PRODUCT PVT. LTD.',19,'#188c41',800));
+ a.push(t(207,146,'An ISO 9001:2015 Certified Company',14.5,'#111',800));
  // White banner remains; the full factory description is split only visually to increase the text height.
  a.push('<path d="M18 198H181 M184 198L210 156H836V198H184Z" stroke="#111" stroke-width="2" fill="#fff"/>');
- a.push(t(225,176,'Mfg. of All Types of Industrial Filters,',19,'#111',700));
- a.push(t(225,193,'Bag Filters, & Automobile Filters.',19,'#111',700));
+ a.push(t(225,176,'Mfg. of All Types of Industrial Filters,',19,'#111',800));
+ a.push(t(225,193,'Bag Filters, & Automobile Filters.',19,'#111',800));
  // Layout V371: bigger WO/date cells; smaller Size/Micron cells; Item Code still wrapped within bounds.
  // Row 1: WO No. (wider) | Item Code, Row 2: Product | small Size, Row 3: small Micron | wide Mfg Date.
  a.push('<rect x="17" y="201" width="816" height="165" rx="6" fill="#fff" stroke="#111" stroke-width="2.3"/>');
