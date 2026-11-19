@@ -124,9 +124,9 @@ async function saveSlip(){
   const confirmed=await cloudFetch();
   if(!confirmed?.payload?.packingSlips?.some(x=>x.id===record.id))throw Error('Cloud acknowledgment received but receipt not verified. Refresh before retrying');
   remote=confirmed;verifiedSlip=record;
-  say('✓ SAVED TO LIVE CLOUD: '+record.slipNo+' · This dispatch '+amount+' · Total sent '+record.totalDispatched+' · Balance '+record.balanceAfter);
-  $('packSlipPrint').disabled=false;$('packSlipA4').disabled=false;
+  $('packSlipThis').value='';$('packSlipPrior').value='';
   summary();
+  say('✓ SAVED TO LIVE CLOUD: '+record.slipNo+' · This dispatch '+amount+' · Total sent '+record.totalDispatched+' · Balance '+record.balanceAfter);
   verifiedSlip=record;$('packSlipPrint').disabled=false;$('packSlipA4').disabled=false;
  }catch(e){
   verifiedSlip=null;
