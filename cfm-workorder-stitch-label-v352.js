@@ -1,4 +1,4 @@
-/* CFM V357. White Taffeta corporate label inside Packing Slip & Label; read-only ERP data. */
+/* CFM V358. Taffeta label with 5mm unprinted top/bottom stitching margins; read-only ERP. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=1004,C_H=531,VIEW_W=850,VIEW_H=450;
@@ -63,13 +63,13 @@ function draw(){
  const can=$('woLabelCanvas');if(!can)return;
  const ctx=can.getContext('2d');ctx.setTransform(C_W/VIEW_W,0,0,C_H/VIEW_H,0,0);
  const no=val('woLabelNo'),heading=val('woLabelHeading'),detail=val('woLabelDetails'),code=val('woLabelCode');
- // Final V357: white Taffeta, black ink only. Former black-filled chevron panels are white.
- // No company name, logo, party, batch number, QR or additional decoration fields.
+ // V358: 85 × 45 mm physical Taffeta. ONE unit = 0.1 mm.
+ // Stitching safe zone: top [0,50] and bottom [400,450] = 5 mm each.
+ // All printed artwork including rules and strokes fits inside y=54..396.
+ const STITCH_TOP=50,STITCH_BOTTOM=400;
  ctx.fillStyle='#fff';ctx.fillRect(0,0,VIEW_W,VIEW_H);
- function poly(points,fill){
-  ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
-  if(fill){ctx.fillStyle=fill;ctx.fill()}
-  ctx.stroke();
+ function poly(points){
+  ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.stroke();
  }
  function rounded(x,y,w,h,r){
   ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
@@ -77,51 +77,57 @@ function draw(){
   ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
   ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.stroke();
  }
- ctx.strokeStyle='#000';ctx.lineWidth=4;rounded(8,9,834,432,19);
- ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(110,51);ctx.lineTo(817,51);ctx.moveTo(31,405);ctx.lineTo(734,405);ctx.stroke();
- // Small diagonal corner marks preserve the selected MNC styling with minimal black ink.
- ctx.lineWidth=4;
+ ctx.strokeStyle='#000';ctx.lineWidth=2.8;rounded(17,56,816,338,13);
+ // Delicate top/bottom MNC-style trim entirely INSIDE the stitching-safe region.
+ ctx.lineWidth=1.8;ctx.beginPath();
+ ctx.moveTo(105,67);ctx.lineTo(806,67);
+ ctx.moveTo(43,384);ctx.lineTo(735,384);
+ ctx.stroke();
+ ctx.lineWidth=2.3;
  for(let i=0;i<3;i++){
-  const x=35+i*21;
-  ctx.beginPath();ctx.moveTo(x+14,29);ctx.lineTo(x,51);ctx.stroke();
-  const rx=772+i*21;ctx.beginPath();ctx.moveTo(rx+13,405);ctx.lineTo(rx,428);ctx.stroke();
+  const x=40+i*17;ctx.beginPath();ctx.moveTo(x+10,58);ctx.lineTo(x,69);ctx.stroke();
+  const rx=772+i*17;ctx.beginPath();ctx.moveTo(rx+10,383);ctx.lineTo(rx,393);ctx.stroke();
  }
  const rows=[
-  {title:'WORK ORDER NO.',value:no,weight:'bold',max:28,min:14},
-  {title:'DESCRIPTION',value:heading,weight:'bold',max:23,min:11},
-  {title:'DESCRIPTION 2',value:detail,weight:'normal',max:22,min:11},
-  {title:'EFPPL PRODUCT CODE',value:code,weight:'bold',max:22,min:11}
+  {title:'WORK ORDER NO.',value:no,weight:'bold',max:26,min:13},
+  {title:'DESCRIPTION',value:heading,weight:'bold',max:21,min:10},
+  {title:'DESCRIPTION 2',value:detail,weight:'normal',max:21,min:10},
+  {title:'EFPPL PRODUCT CODE',value:code,weight:'bold',max:21,min:10}
  ];
  let clipped=false;
- for(let i=0;i<4;i++){
-  const r=rows[i],y=73+i*78,h=73,x=28,labelEnd=348,tip=370,right=821;
-  ctx.strokeStyle='#000';ctx.lineWidth=2.2;
-  // Slim outer field rule with chevron label (WHITE fill, BLACK stroke and text).
-  ctx.strokeRect(x,y,right-x,h);
-  poly([[x,y],[labelEnd,y],[tip,y+h/2],[labelEnd,y+h],[x,y+h]],'#fff');
-  ctx.strokeStyle='#000';ctx.lineWidth=1.1;
-  ctx.beginPath();ctx.moveTo(x+13,y+h-10);ctx.lineTo(x+57,y+h-10);ctx.stroke();
+ for(let i=0;i<rows.length;i++){
+  const r=rows[i],y=78+i*74,h=69,x=31,labelEnd=344,tip=366,right=818;
+  ctx.strokeStyle='#000';ctx.lineWidth=2.1;ctx.strokeRect(x,y,right-x,h);
+  // WHITE chevron panel, black outlines and lettering. No solid black ink blocks.
+  poly([[x,y],[labelEnd,y],[tip,y+h/2],[labelEnd,y+h],[x,y+h]]);
   ctx.fillStyle='#000';ctx.textBaseline='middle';
-  ctx.font='bold '+(i===3?18.5:23)+'px Arial';
-  ctx.fillText(r.title,x+15,y+h/2-2,labelEnd-x-28);
-  // Auto-wrap real ERP details. Block print if a field cannot fit without clipping.
-  const value=String(r.value||'').trim()||'—',available=right-tip-22;
+  ctx.font='bold '+(i===3?17.5:21)+'px Arial';
+  ctx.fillText(r.title,x+13,y+h/2,labelEnd-x-24);
+  const value=String(r.value||'').trim()||'—';
   let fitted=null;
   for(let f=r.max;f>=r.min;f-=0.5){
    const font=(r.weight==='bold'?'bold ':'')+f+'px Arial';
-   const lines=wrap(ctx,value,available,font),lineH=Math.ceil(f*1.2);
-   if(lines.length*lineH<=h-10){fitted={font,lines,lineH};break}
+   const lines=wrap(ctx,value,right-tip-21,font);
+   const lineH=Math.ceil(f*1.16);
+   if(lines.length*lineH<=h-12){fitted={font,lines,lineH};break}
   }
-  if(!fitted){clipped=true;ctx.fillStyle='#000';ctx.font='bold 12px Arial';ctx.fillText('DETAILS TOO LONG',tip+9,y+h/2);continue}
+  if(!fitted){
+   clipped=true;ctx.fillStyle='#000';ctx.font='bold 12px Arial';
+   ctx.fillText('DETAILS TOO LONG',tip+9,y+h/2);continue;
+  }
   ctx.fillStyle='#000';ctx.font=fitted.font;
-  const firstY=y+h/2-(fitted.lines.length-1)*fitted.lineH/2;
-  fitted.lines.forEach((line,k)=>ctx.fillText(line,tip+10,firstY+k*fitted.lineH));
+  const centerY=y+h/2, firstY=centerY-(fitted.lines.length-1)*fitted.lineH/2;
+  fitted.lines.forEach((line,k)=>ctx.fillText(line,tip+9,firstY+k*fitted.lineH));
  }
+ // Ensure blank print space even if this function is extended in the future.
+ ctx.fillStyle='#fff';
+ ctx.fillRect(0,0,VIEW_W,STITCH_TOP);
+ ctx.fillRect(0,STITCH_BOTTOM,VIEW_W,VIEW_H-STITCH_BOTTOM);
  overflow=clipped;
  pasted=false;printable=!overflow&&Boolean(no&&code&&(heading||detail));
- note(overflow?'Label details exceed 85 × 45 mm; printing blocked to prevent cut text.':
- printable?'White Taffeta MNC Label ready · Black print · 85 × 45 mm':
- 'Select Work Order and verify the Description, Description 2 and EFPPL Code.');
+ note(overflow?'Text is too long for the safe printing area. Shorten the details before printing.':
+ printable?'Print-ready 85 × 45 mm · White Taffeta · 5 mm blank stitch margin TOP & BOTTOM':
+ 'Select Work Order and verify Description, Description 2 and EFPPL Code.');
 }
 function pasteMatter(){
  const raw=val('woLabelMatter');if(!raw){note('Paste Work Order matter first.');return}
@@ -183,14 +189,14 @@ function build(){
  '#woLabelDialog .help{font:11px/1.5 Arial;color:#546d80}@media(max-width:650px){#woLabelDialog .main{grid-template-columns:1fr;padding:9px}#woLabelDialog .preview{order:-1}#woLabelCanvas{width:300px;height:159px}}';
  document.head.append(style);
  const d=document.createElement('dialog');d.id='woLabelDialog';
- d.innerHTML='<div class="top"><div><strong>Work Order Stitching Label</strong><div style="font-size:11px">White Taffeta MNC Label · 85 × 45 mm · No branding</div></div><button id="woLabelClose">✕ Close</button></div>'+
+ d.innerHTML='<div class="top"><div><strong>Work Order Stitching Label</strong><div style="font-size:11px">White Taffeta · 85 × 45 mm · 5 mm top/bottom stitching space</div></div><button id="woLabelClose">✕ Close</button></div>'+
  '<div class="main"><div>'+
  '<label>Work Order<select id="woLabelSelect"><option value="">Select Work Order / Manual</option></select></label><button id="woLabelRefresh">↻ Refresh Work Orders</button>'+
  '<label>Work Order No.<input id="woLabelNo" placeholder="CFM-556"></label>'+
  '<label>Heading — Work Order Description<textarea id="woLabelHeading" placeholder="Same heading as Work Order"></textarea></label>'+
  '<label>Details — Work Order Description 2<textarea id="woLabelDetails" placeholder="Same details as Work Order"></textarea></label>'+
  '<label>EFPPL Product Code<input id="woLabelCode" placeholder="EFPPL-2000-CF-48-TLT"></label>'+
- '<p class="help">Black ink on WHITE Taffeta: print at 100%, black-only (no color/gray ink). For BLACK Taffeta, use a suitable WHITE thermal-transfer ribbon; normal black ribbon is not readable. Printed fields: Work Order No. + Description + Description 2 + EFPPL Code only.</p>'+
+ '<p class="help">Top & bottom 5 mm stays COMPLETELY BLANK for stitching (no text, rules or border). Black ink on WHITE Taffeta: print at 100%, black-only (no color/gray ink). For BLACK Taffeta, use a suitable WHITE thermal-transfer ribbon; normal black ribbon is not readable. Printed fields: Work Order No. + Description + Description 2 + EFPPL Code only.</p>'+
  '<label>Paste Matter<textarea id="woLabelMatter" placeholder="Work Order No.: CFM-556&#10;Heading: CF BAG 48 TOP L/T&#10;Details: 2 MICRON ANTISTATIC&#10;EFPPL Code: EFPPL-2000-CF-48-TLT"></textarea></label><button id="woLabelPaste">↳ Apply Pasted Matter</button>'+
  '<label>Or upload/paste image<input id="woLabelUpload" type="file" accept="image/png,image/jpeg,image/webp"></label>'+
  '<p class="help">Ctrl+V can paste an image. If text does not fit, printing is blocked instead of clipping the content.</p>'+
