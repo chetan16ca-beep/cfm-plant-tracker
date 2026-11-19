@@ -324,6 +324,12 @@ function previewFromWorkOrder(){
 }
 function printCartonLabel(record=null){
  const r=record||verifiedSlip;if(!r){say('Select a saved Packing Slip or confirm dispatch first.',true);return}
+ // V404: Use one clear 4×4 label preview for confirmed/reprint records.
+ // Label preview NEVER records another shipment or changes production data.
+ if(window.CFM_PACKING_LABEL_V404?.open){
+  const wo=remote?.payload?.pending?.find(x=>up(x.workNo)===up(r.workNo)&&up(x.party)===up(r.party)&&up(x.poNo)===up(r.poNo));
+  window.CFM_PACKING_LABEL_V404.open(r,wo||{});return;
+ }
  const w=window.open('','_blank');if(!w){say('Enable pop-ups for Packing Label print.',true);return}
  const header='<header><div class="mark">'+logoHtml('#000',70,55)+'</div><div>'+originalWordmarkHtml()+'<small>FILTRATION PRODUCT PVT. LTD.</small></div>'+
  '<div class="kind">PACKING LABEL</div></header>';
