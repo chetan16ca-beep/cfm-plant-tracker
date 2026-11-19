@@ -21,6 +21,36 @@ const field=(row,names)=>{
  return '';
 };
 const customerItem=row=>field(row,['buyerItemCode','customerItemCode','customerItemNo','buyerItemNo','poItemNo','itemNo']);
+// V405: one field mapping shared by Packing Slip, print preview and Packing Label.
+// Extract only explicit values from Work Order; never invent PO date, party address or micron.
+function packingWOFields(row){
+ if(!row)return {};
+ const product=field(row,['description','productName','product'])||'';
+ const specification=field(row,['description2','specification','productDetails'])||'';
+ const code=field(row,['itemCode','efpplCode','eagleCode'])||window.CFM_EFPPL?.codeForRow?.(row)?.code||'';
+ const rawSize=field(row,['size','sizeInch','dimensions','productSize']);
+ const sizeMatch=String(product+' '+specification).match(/\b(?:CF(?:\s+BAG)?|CENTRIFUGE)\s*[-/_ ]\s*(24|36|48|60)\b/i)||
+  String(code).match(/\bCF[-/_ ](24|36|48|60)(?:[-/_ ]|$)/i)||
+  String(product+' '+specification).match(/\bSIZE\s*[:=-]?\s*(\d+(?:\.\d+)?)\s*(?:INCH(?:ES)?|IN|["″])/i);
+ const rawMicron=field(row,['micron','micronRating']);
+ const micronMatch=String(product+' '+specification).match(/\b(\d+(?:\.\d+)?)\s*(?:MICRON(?:S)?|µM|UM)\b/i);
+ return {
+  workNo:field(row,['workNo']),
+  party:field(row,['party','companyName']),
+  poNo:field(row,['poNo','customerPoNo']),
+  poDate:field(row,['poDate','purchaseOrderDate']),
+  partyAddress:field(row,['shipToAddress','deliveryAddress','dispatchAddress','partyAddress','customerAddress','consigneeAddress','address']),
+  customerItemNo:customerItem(row),
+  efpplCode:code,
+  description:product,
+  description2:specification,
+  size:rawSize||(sizeMatch?sizeMatch[1]+'"':''),
+  micron:rawMicron||(micronMatch?micronMatch[1]:''),
+  orderQty:row.orderQty??'',
+  cutQty:row.cutQty??''
+ };
+}
+window.CFM_PACKING_WO_FIELDS_V405=packingWOFields;
 const partyShipAddress=row=>{
  const direct=field(row,['shipToAddress','deliveryAddress','dispatchAddress','partyAddress','customerAddress','shipTo','consigneeAddress','address']);
  if(direct)return direct;
@@ -57,6 +87,11 @@ function summary(){
   '<p><small>SHIP-TO ADDRESS:</small> '+esc($('packSlipPartyAddress')?.value||'Not in Work Order — enter and verify')+'</p>'+
   '<p><small>CUSTOMER ITEM NO.:</small> '+esc(customerItem(row)||'—')+' · <small>EFPPL CODE:</small> '+esc(row.itemCode||row.efpplCode||'—')+'</p>'+
   '<p class="packdesc">'+esc(row.description||'')+' · '+esc(row.description2||'')+'</p>'+
+  '<div class="pack-wo-fields"><b>WORK ORDER AUTO DATA</b>'+
+  '<div>PO: '+esc(packingWOFields(row).poNo||'—')+' · Item: '+esc(packingWOFields(row).customerItemNo||'—')+'</div>'+
+  '<div>EFPPL: '+esc(packingWOFields(row).efpplCode||'—')+'</div>'+
+  '<div>Size: '+esc(packingWOFields(row).size||'Not recorded')+' · Micron: '+esc(packingWOFields(row).micron||'Not recorded')+'</div>'+
+  '<div>Order Qty: '+esc(packingWOFields(row).orderQty)+' · Cut Qty: '+esc(packingWOFields(row).cutQty)+'</div></div>'+
   (history.length?'<p>Verified recorded slips: '+history.length+' · Last '+esc(history.at(-1).createdAt?.slice(0,10)||'')+'</p>':
     '<p>Previous shipped quantity is only confirmed from slips saved through this ledger.</p>')+
   (baselineNeeded?'<p class="warning">This order has an earlier DISPATCHED status or dispatch document but no item-wise dispatch history. Enter the VERIFIED previously shipped quantity (0 only if none was sent). Do not assume full Order Qty was shipped.</p>':'')+
@@ -134,10 +169,10 @@ async function saveSlip(){
    id:uuid(),slipNo:'PK/'+wo+'/'+String(rows.length+1).padStart(3,'0'),
    workNo:wo,party:liveRow.party||'',partyAddress:address,poNo:liveRow.poNo||'',
    poDate:field(liveRow,['poDate','purchaseOrderDate']),orderDate:liveRow.orderDate||'',
-   customerItemNo:customerItem(liveRow),size:field(liveRow,['size','sizeInch','dimensions']),
-   micron:field(liveRow,['micron','micronRating']),
-   description:liveRow.description||'',description2:liveRow.description2||'',
-   efpplCode:liveRow.itemCode||liveRow.efpplCode||window.CFM_EFPPL?.codeForRow?.(liveRow)?.code||'',
+   customerItemNo:packingWOFields(liveRow).customerItemNo,size:packingWOFields(liveRow).size,
+   micron:packingWOFields(liveRow).micron,
+   description:packingWOFields(liveRow).description,description2:packingWOFields(liveRow).description2,
+   efpplCode:packingWOFields(liveRow).efpplCode,
    orderQty:ordered,previousDispatched:prev,manualPreviousBaseline:baseline,
    thisDispatched:amount,totalDispatched:prev+amount,balanceAfter:balance,
    createdAt:new Date().toISOString(),notes:String($('packSlipRemarks').value||'').trim(),
@@ -195,8 +230,8 @@ function printSlip(a4=false,record=null){
  const address=pick(r.partyAddress,wo?partyShipAddress(wo):'');
  const item=pick(r.customerItemNo,wo?customerItem(wo):'');
  const code=pick(r.efpplCode,wo?.itemCode||wo?.efpplCode||'');
- const size=pick(r.size,field(wo,['size','sizeInch','dimensions']));
- const micron=pick(r.micron,field(wo,['micron','micronRating']));
+ const size=pick(r.size,packingWOFields(wo).size);
+ const micron=pick(r.micron,packingWOFields(wo).micron);
  const poDate=pick(r.poDate,field(wo,['poDate','purchaseOrderDate']));
  const draft=!!r.draft,legacy=!!r.legacy;
  const fmt=x=>x===null||x===undefined||String(x).trim()===''?'—':String(x);
@@ -313,10 +348,10 @@ function previewFromWorkOrder(){
   draft:true,slipNo:'PREVIEW ONLY',workNo:row.workNo,party:row.party,
   partyAddress:String($('packSlipPartyAddress')?.value||'').trim(),
   poNo:row.poNo,poDate:field(row,['poDate','purchaseOrderDate']),
-  customerItemNo:customerItem(row),
-  efpplCode:row.itemCode||row.efpplCode||window.CFM_EFPPL?.codeForRow?.(row)?.code||'',
-  size:field(row,['size','sizeInch','dimensions']),micron:field(row,['micron','micronRating']),
-  description:row.description,description2:row.description2,
+  customerItemNo:packingWOFields(row).customerItemNo,
+  efpplCode:packingWOFields(row).efpplCode,
+  size:packingWOFields(row).size,micron:packingWOFields(row).micron,
+  description:packingWOFields(row).description,description2:packingWOFields(row).description2,
   orderQty:ordered,previousDispatched:prev,thisDispatched:n,
   totalDispatched:prev+n,balanceAfter:ordered-prev-n,createdAt:new Date().toISOString(),
   notes:$('packSlipRemarks')?.value||'',operator:'',source:'DRAFT — READ ONLY'
@@ -376,6 +411,7 @@ function build(){
  '#packSlipDialog button.action{background:#105c96;color:#fff}#packSlipDialog button:disabled{opacity:.5;cursor:not-allowed}'+
  '#packSlipDialog .packgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}#packSlipDialog .packgrid div{padding:10px;border:1px solid #b5c6d9;background:#fff;border-radius:8px}'+
  '#packSlipDialog .packgrid small{font-size:10px;display:block;color:#4a6780}#packSlipDialog .packgrid b{font-size:20px}'+
+ '#packSlipDialog .pack-wo-fields{border:1px solid #bfd6e8;background:#eef7fd;border-radius:8px;padding:10px;margin-top:8px;font:600 11px/1.6 Arial;color:#1b4565}'+
  '#packSlipDialog .packdesc,#packSlipDialog .warning{font-size:12px;line-height:1.5}#packSlipDialog .warning{color:#a12626;font-weight:700}'+
  '#packSlipDialog .entry{border-bottom:1px solid #d6e2ed;padding:8px 0;font-size:12px}#packSlipDialog .entry small{display:block;color:#527083;margin-top:3px}'+
  '#packSlipDialog .pfoot{position:sticky;bottom:0;background:#fff;border-top:1px solid #d3e2ee;padding:10px;display:flex;gap:7px;flex-wrap:wrap}'+
