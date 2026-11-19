@@ -1,4 +1,4 @@
-/* CFM V366 — Modern Eagle letterhead for the EXISTING "Create Packing" / Reprint button.
+/* CFM V372 — Original vector EAGLE wordmark in legacy Packing Slip and parcel label. for the EXISTING "Create Packing" / Reprint button.
  * DISPLAY ONLY, preserves legacy packing-slip records, job cards, quantities,
  * package labels and print count; no save, stock, or dispatch-state writes.
  */
@@ -7,14 +7,17 @@
 function enhance(){
  const root=document.getElementById('v167Print');if(!root)return;
  const brand=window.CFM_EAGLE_BRAND;
- const logo=brand?.logoSvg?.(76,67,'#153968')||'<span style="font:bold 22px Arial">E</span>';
+ const logo=brand?.logoSvg?.(76,67,'#153968')||'<span style="font:22px Arial">E</span>';
+ const eagleWordmark=brand?.wordmarkPath?
+   '<svg class="eagle-wordmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 465 80" role="img" aria-label="EAGLE" preserveAspectRatio="xMinYMid meet"><path d="'+brand.wordmarkPath+'" fill="#ed2630" fill-rule="evenodd"/></svg>':
+   '<b class="eagle-wordmark">EAGLE</b>';
  for(const slip of root.querySelectorAll('.v168-slip,.v167-slip')){
   if(slip.dataset.eagleLetterhead==='1')continue;
   const old=slip.querySelector('h2');
   if(!old)continue;
   const head=document.createElement('header');head.className='cfm-eagle-print-head';
   head.innerHTML='<span class="eagle-symbol">'+logo+'</span><div class="eagle-company">'+
-   '<b>EAGLE</b><strong>FILTRATION PRODUCT PVT. LTD.</strong>'+
+   eagleWordmark+'<strong>FILTRATION PRODUCT PVT. LTD.</strong>'+
    '<small>An ISO 9001:2015 Certified Company</small></div>'+
    '<div class="eagle-contact"><span>SINCE : 1992</span><div>info@eaglefiltrations.com</div>'+
    '<div>www.eaglefiltrations.com</div><b>+91 70416 70091</b></div>';
@@ -29,7 +32,7 @@ function enhance(){
   const h=label.querySelector('h3,h2');
   if(!h)continue;
   const brandline=document.createElement('div');brandline.className='cfm-eagle-carton-logo';
-  brandline.innerHTML=logo+'<div><b>EAGLE</b><small>FILTRATION PRODUCT PVT. LTD.</small>'+
+  brandline.innerHTML=logo+'<div>'+eagleWordmark+'<small>FILTRATION PRODUCT PVT. LTD.</small>'+
     '<strong>PACKING LABEL</strong></div>';
   h.replaceWith(brandline);
   label.dataset.eagleLetterhead='1';
@@ -42,7 +45,7 @@ function setup(){
  '@media print{#v167Print .cfm-eagle-print-head{display:grid!important;grid-template-columns:14% 49% 37%!important;align-items:center!important;gap:2px!important;border-bottom:2px solid #1b3971!important;padding:0 2px 2px!important;height:16mm!important}',
  '#v167Print .cfm-eagle-print-head .eagle-symbol svg{width:100%!important;height:15mm!important;max-width:25mm!important}',
  '#v167Print .eagle-company{line-height:1.1!important;min-width:0!important}',
- '#v167Print .eagle-company b{display:block!important;color:#de2833!important;font:italic 900 27px Arial!important;letter-spacing:1px!important}',
+ '#v167Print .eagle-company .eagle-wordmark{display:block!important;width:100%!important;max-width:59mm!important;height:10mm!important;max-height:10mm!important;color:#de2833!important}',
  '#v167Print .eagle-company strong{display:block!important;color:#2c9351!important;font:bold 9px Arial!important}',
  '#v167Print .eagle-company small{display:block!important;color:#111!important;font:bold 7px Arial!important}',
  '#v167Print .eagle-contact{color:#151515!important;font:bold 8px/1.45 Arial!important;overflow-wrap:anywhere!important;padding-left:4px!important}',
@@ -52,7 +55,7 @@ function setup(){
  '#v167Print .v168-slip h3{font:bold 10px Arial!important;text-align:center!important;letter-spacing:.5px!important}',
  '#v167Print .cfm-eagle-carton-logo{display:flex!important;align-items:center!important;gap:4px!important;border-bottom:1px solid #111!important;margin-bottom:3px!important}',
  '#v167Print .cfm-eagle-carton-logo svg{width:16mm!important;height:12mm!important}',
- '#v167Print .cfm-eagle-carton-logo b{font:bold italic 16px Arial!important;display:block!important}',
+ '#v167Print .cfm-eagle-carton-logo .eagle-wordmark{display:block!important;width:24mm!important;height:5mm!important}',
  '#v167Print .cfm-eagle-carton-logo small{display:block!important;font:bold 6px Arial!important}',
  '#v167Print .cfm-eagle-carton-logo strong{display:block!important;font:bold 8px Arial!important}',
  '#v167Print .v168-slip,#v167Print .v168-label{color:#111!important}',
