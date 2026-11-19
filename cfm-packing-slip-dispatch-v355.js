@@ -1,4 +1,4 @@
-/* CFM V361 — MNC Eagle Packing Slip, Carton Label and dispatch ledger.
+/* CFM V362 — MNC Eagle Slip and Packing Label with historical reprint and dashboard placement.
  * Opt-in manual shipment confirmation. Never assumes dispatched status equals quantity.
  * Uses the existing CFM versioned Cloud save. Does not change stock, cutting, or status.
  */
@@ -22,7 +22,7 @@ function legacy(row){return !!row&&(
 )}
 function summary(){
  const row=current(),panel=$('packSlipSummary');
- verifiedSlip=null;$('packSlipPrint').disabled=true;$('packSlipA4').disabled=true;
+ verifiedSlip=null;$('packSlipPrint').disabled=true;$('packSlipA4').disabled=true;$('packSlipCarton').disabled=true;
  if(!row){panel.textContent='Choose a Work Order.';return}
  selected=row;
  const history=forWork(row.workNo),previous=shipped(history),ordered=Number(row.orderQty),baselineNeeded=legacy(row)&&history.length===0;
@@ -45,9 +45,13 @@ function summary(){
  const historyPanel=$('packSlipHistory');
  const company=slips().filter(x=>up(x.party)===up(row.party)).slice(-10).reverse();
  historyPanel.innerHTML=company.length?
-  '<strong>Same Company · Recent Packing Slips (Work Order-wise)</strong>'+
-  company.map(x=>'<div class="entry"><b>'+esc(x.slipNo)+' • '+esc(x.workNo)+'</b> · Sent '+esc(x.thisDispatched)+' · Previous '+esc(x.previousDispatched)+' · Balance '+esc(x.balanceAfter)+'<small>'+esc((x.createdAt||'').slice(0,19).replace('T',' '))+'</small></div>').join(''):
-  '<small>No new-system packing slip history yet for this company.</small>';
+  '<strong>Same Company · Saved Packing Slips (Work Order-wise)</strong>'+
+  company.map(x=>'<div class="entry"><b>'+esc(x.slipNo)+' • '+esc(x.workNo)+'</b> · Sent '+esc(x.thisDispatched)+
+   ' · Previous '+esc(x.previousDispatched)+' · Balance '+esc(x.balanceAfter)+
+   '<small>'+esc((x.createdAt||'').slice(0,19).replace('T',' '))+'</small>'+
+   '<button type="button" data-pack-id="'+esc(x.id)+'" data-kind="slip">🖨 Reprint Slip</button> '+
+   '<button type="button" data-pack-id="'+esc(x.id)+'" data-kind="carton">📦 Packing Label</button></div>').join(''):
+  '<small>No confirmed packing slips in Cloud history for this company yet.</small>';
 }
 async function load(){
  if(busy)return;
@@ -127,7 +131,7 @@ async function saveSlip(){
   $('packSlipThis').value='';$('packSlipPrior').value='';
   summary();
   say('✓ SAVED TO LIVE CLOUD: '+record.slipNo+' · This dispatch '+amount+' · Total sent '+record.totalDispatched+' · Balance '+record.balanceAfter);
-  verifiedSlip=record;$('packSlipPrint').disabled=false;$('packSlipA4').disabled=false;
+  verifiedSlip=record;$('packSlipPrint').disabled=false;$('packSlipA4').disabled=false;$('packSlipCarton').disabled=false;
  }catch(e){
   verifiedSlip=null;
   say('⚠ '+String(e.message||e)+'. If save may have reached Cloud, press Refresh and inspect history. Do not duplicate dispatch.',true);
@@ -255,32 +259,52 @@ function build(){
  '<p style="font-size:11px">Save only after goods are actually sent. Printing an old slip does not create another dispatch record. Order, cutting and stock remain unchanged.</p>'+
  '</div><div><div id="packSlipSummary">Select Work Order.</div><div id="packSlipHistory" style="margin-top:10px;max-height:220px;overflow:auto"></div></div></div>'+
  '<div id="packSlipMsg" role="status">Load live Cloud to begin.</div>'+
- '<div class="pfoot"><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>🖨 Print Packing Slip</button><button id="packSlipA4" disabled>🖨 A4 Print</button></div>';
+ '<div class="pfoot"><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>🖨 Print Packing Slip</button><button id="packSlipA4" disabled>🖨 A4 Print</button><button id="packSlipCarton" disabled>📦 Print Packing Label 100×75</button></div>';
  document.body.append(d);
  $('packSlipClose').onclick=()=>d.close();
+ // Reprint saved history without creating a second shipment or touching stock.
+ $('packSlipHistory').onclick=e=>{
+  const b=e.target?.closest?.('button[data-pack-id]');
+  if(!b)return;
+  const item=slips().find(x=>String(x.id)===String(b.dataset.packId));
+  if(!item){say('Slip not present in live Cloud history. Refresh first.',true);return}
+  if(b.dataset.kind==='carton')printCartonLabel(item);
+  else printSlip(true,item);
+ };
  $('packSlipWO').onchange=()=>{$('packSlipThis').value='';$('packSlipPrior').value='';summary()};
  $('packSlipReload').onclick=load;
  $('packSlipThis').oninput=summary;$('packSlipPrior').oninput=summary;
- $('packSlipSave').onclick=saveSlip;$('packSlipPrint').onclick=()=>printSlip(false);$('packSlipA4').onclick=()=>printSlip(true);
+ $('packSlipSave').onclick=saveSlip;$('packSlipPrint').onclick=()=>printSlip(false);$('packSlipA4').onclick=()=>printSlip(true);$('packSlipCarton').onclick=()=>printCartonLabel();
 }
 function mount(){
  const dash=$('view-dashboard');if(!dash)return;
  if(!$('packSlipDialog'))build();
- if($('packSlipTop'))return;
- const wrap=document.createElement('section');wrap.id='packSlipTop';
- const btn=document.createElement('button');btn.id='packSlipOpen';btn.type='button';btn.textContent='📦 Packing Slip · Dispatch Balance';
- btn.onclick=()=>{$('packSlipDialog').showModal();load()};
- wrap.append(btn);
- const heading=dash.querySelector(':scope > .section-head'),bw=$('cfmBWTaffetaEntry');
- if(bw)bw.after(wrap);else if(heading)heading.after(wrap);else dash.prepend(wrap);
+ let wrap=$('packSlipTop');
+ if(!wrap){
+  wrap=document.createElement('section');wrap.id='packSlipTop';
+  const btn=document.createElement('button');btn.id='packSlipOpen';btn.type='button';
+  btn.textContent='📦 Packing Slip · Dispatch Balance';
+  btn.onclick=()=>{$('packSlipDialog').showModal();load()};
+  wrap.append(btn);
+ }
+ const target=dash.querySelector('#v167Pack')||
+  [...dash.querySelectorAll('details.cfm-mini-section')].find(x=>/packing\s*slip\s*(?:&|and)\s*label/i.test(x.querySelector('summary')?.textContent||''))?.querySelector('.cfm-mini-body');
+ if(target&&wrap.parentElement!==target)target.append(wrap);
 }
 function init(){
- const dash=$('view-dashboard');if(dash){
-  mount();
-  new MutationObserver(()=>{if(!$('packSlipTop'))mount()}).observe(dash,{childList:true,subtree:false});
- }else{
-  let tries=0;const poll=setInterval(()=>{if($('view-dashboard')){clearInterval(poll);init()}else if(++tries>60)clearInterval(poll)},500);
- }
+ let attempts=0;const poll=setInterval(()=>{
+  if($('view-dashboard')){mount();if($('v167Pack')?.contains($('packSlipTop')))clearInterval(poll)}
+  if(++attempts>45)clearInterval(poll);
+ },500);
+ if($('view-dashboard'))mount();
+ // Watch Dashboard-only structural changes, not every input edit.
+ const dash=$('view-dashboard');
+ if(dash){let queued=false;new MutationObserver(()=>{
+   if(queued)return;queued=true;
+   requestAnimationFrame(()=>{queued=false;const target=$('v167Pack');
+    if(target&&$('packSlipTop')?.parentElement!==target)mount()
+   })
+ }).observe(dash,{childList:true,subtree:false})}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
