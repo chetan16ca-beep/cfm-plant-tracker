@@ -1,4 +1,4 @@
-/* CFM V383 stitching label smoke tests. Read-only; no actual cloud/storage. */
+/* CFM V384 stitching label smoke tests. Read-only; no actual cloud/storage. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -18,7 +18,7 @@ function harness(){
   woLabelNotice:{textContent:''},
  };
  const ctx={
-  font:'800 20px Arial',setTransform(){},fillRect(){},clearRect(){},drawImage(){},
+  font:'600 20px Arial',setTransform(){},fillRect(){},clearRect(){},drawImage(){},
   measureText(value){
    const size=Number((this.font.match(/(\d+(?:\.\d+)?)px/)||[])[1]||20);
    return{width:[...String(value)].reduce((n,c)=>
@@ -70,7 +70,7 @@ test('Approved 85x45 layout uses original EAGLE logo and six white non-bold head
  assert.match(svg, /font-weight="400"[^>]*>WO NO\.<\/text>/);
  assert.match(svg, /font-weight="400"[^>]*>ITEM CODE<\/text>/);
  assert.match(svg, /font-weight="400"[^>]*>PRODUCT<\/text>/);
- assert.match(svg, /font-weight="800"[^>]*>CFM-556<\/text>/);
+ assert.match(svg, /font-weight="600"[^>]*>CFM-556<\/text>/);
  assert.doesNotMatch(svg, /<rect[^>]*fill="#19398e"/);
  assert.doesNotMatch(svg, /<path[^>]*fill="#19398e"/);
 });
