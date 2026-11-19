@@ -88,7 +88,7 @@ function showHistory(){
   '<div class="cfm402-row-actions"><button type="button" data-old-slip="'+esc(r.slipNo||'')+'" data-action="reprint">A4 Reprint</button>'+
   '<button type="button" class="cfm402-delete" data-old-slip="'+esc(r.slipNo||'')+'" data-action="delete">🗑 Delete</button></div></article>').join(''):
   '<p>No previous local packing records found on this device.</p>';
- if(typeof dlg.showModal==='function')dlg.showModal();else dlg.setAttribute('open','');
+ if(typeof dlg.showModal==='function'){if(!dlg.open)dlg.showModal()}else dlg.setAttribute('open','');
 }
 function mount(){
  const root=document.getElementById('view-dashboard');
@@ -103,6 +103,10 @@ function mount(){
   }
   const label=[...old.children].find(c=>c.matches?.('b')&&/Packing Slip/i.test(c.textContent||''));
   if(label)label.textContent='📦 Packing Slip · One A4 Landscape Format';
+ }
+ // Per-row Delete replaces the two older prompt/bulk-delete buttons.
+ for(const id of ['packSlipDeleteOne','packSlipDeleteAll']){
+  const b=document.getElementById(id);if(b){b.style.setProperty('display','none','important');b.setAttribute('aria-hidden','true')}
  }
  const dup=document.getElementById('packSlipPrint');
  if(dup){dup.style.setProperty('display','none','important');dup.setAttribute('aria-hidden','true')}
@@ -128,6 +132,7 @@ function init(){
  style.textContent='#v167Pack>button[onclick*="cfmPackingOpen"]{display:none!important}'+
  '#v167Pack>small{display:none!important}'+
  '#packSlipPrint{display:none!important}'+
+ '#packSlipDeleteOne,#packSlipDeleteAll{display:none!important}'+
  '#cfmOldPackingHistoryV402{width:min(750px,96vw);max-height:90vh;overflow:auto;border:1px solid #c6d9e8;border-radius:12px;padding:0;background:white;color:#143b57}'+
  '#cfmOldPackingHistoryV402::backdrop{background:#0b263d99}'+
  '#cfmOldPackingHistoryV402 .cfm402-history-head{background:#0b3d6c;color:#fff;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;font:800 15px Arial}'+
