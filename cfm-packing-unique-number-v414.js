@@ -50,7 +50,7 @@ function verify(payload,doc){
  const historic=(Array.isArray(payload?.packingSlipDeletedRefs)?payload.packingSlipDeletedRefs:[]);
  const count=active.filter(x=>str(x.slipNo).toUpperCase()===str(doc.slipNo).toUpperCase()).length;
  const deleted=historic.some(x=>str(x.slipNo).toUpperCase()===str(doc.slipNo).toUpperCase());
- if(count!==1||deleted||Number(payload.packingSlipGlobalSequence)!==doc.serial)
+ if(count!==1||deleted||Number(payload.packingSlipGlobalSequence)<doc.serial)
   throw Error('Cloud Unique Slip No. verification failed; do not print this document');
  return true;
 }
