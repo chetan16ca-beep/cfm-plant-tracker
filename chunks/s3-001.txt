@@ -90,7 +90,9 @@ window.openPendingForm=function(i=null){
     saveCustomParty(o.party);
     const p=findProductFromFields({...o,productPick:$('pendingProductPick')?.value||''});
     if(p){
-      o.eagleCode=p.eagleCode||o.eagleCode||'';
+      // V416: preserve the operator's chosen Eagle Code from Measurement dropdown.
+      // Item/Description lookup may suggest a product, but must not silently replace that Code.
+      if(!String(o.eagleCode||'').trim())o.eagleCode=p.eagleCode||'';
       if(!o.itemCode)o.itemCode=p.itemCode||'';
       if(!o.cloth)o.cloth=p.standardCloth||'';
       if(!o.width)o.width=p.standardWidth||'';
