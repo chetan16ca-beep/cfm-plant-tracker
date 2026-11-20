@@ -42,14 +42,25 @@ function defaultBundles(qty,count){
  const base=Math.floor(qty/count),rem=qty%count;
  return Array.from({length:count},(_,i)=>String(base+(i<rem?1:0)));
 }
-function renderBundles(tr){
+function rememberInputs(){
+ const parent=$('cfm409Lines');if(!parent)return;
+ for(const tr of parent.querySelectorAll('tr[data-manual-id]')){
+  const entry=lines.find(x=>x.order.id===tr.dataset.manualId);if(!entry)continue;
+  entry.shipQty=tr.querySelector('[data-send]')?.value||'';
+  entry.count=tr.querySelector('[data-count]')?.value||'1';
+  entry.bundleQtys=[...tr.querySelectorAll('[data-bundle-qty]')].map(x=>x.value);
+  entry.verified=!!tr.querySelector('[data-verified]')?.checked;
+ }
+}
+function renderBundles(tr,restore=false){
  const row=lines.find(x=>x.order.id===tr.dataset.manualId);if(!row)return;
  const n=positive(tr.querySelector('[data-count]')?.value),q=positive(tr.querySelector('[data-send]')?.value);
  const place=tr.querySelector('[data-bundles]'),check=tr.querySelector('[data-verified-wrap]');
  if(!n||n>200){place.textContent='Choose 1–200 bundles';check.hidden=true;return}
- const portions=defaultBundles(q,n);
+ const portions=restore&&Array.isArray(row.bundleQtys)&&row.bundleQtys.length===n?
+  row.bundleQtys:defaultBundles(q,n);
  place.innerHTML=portions.map((x,i)=>'<label>Bundle '+(i+1)+' Qty (Nos)<input type="number" min="1" step="1" data-bundle-qty value="'+esc(x)+'" '+(n===1?'readonly':'')+'></label>').join('');
- check.hidden=n===1;check.querySelector('input').checked=false;
+ check.hidden=n===1;check.querySelector('input').checked=!!(restore&&row.verified);
 }
 function itemRow(x){
  const o=x.order,prev=sendHistory(o.id),pending=Math.max(0,Number(o.orderQty)-prev);
@@ -67,8 +78,9 @@ function itemRow(x){
 }
 function renderLines(){
  const body=$('cfm409Lines');if(!body)return;
+ rememberInputs();
  body.innerHTML=lines.map(itemRow).join('')||'<tr><td colspan="7">Add one or more items from the same company. No Work Order is needed.</td></tr>';
- for(const tr of body.querySelectorAll('tr[data-manual-id]'))renderBundles(tr);
+ for(const tr of body.querySelectorAll('tr[data-manual-id]'))renderBundles(tr,true);
  existingOptions();summary();
 }
 function summary(){
@@ -404,12 +416,15 @@ function mount(){
  $('cfm409AddExisting').onclick=addExisting;$('cfm409AddNew').onclick=addNew;
  $('cfm409Lines').addEventListener('click',e=>{
   const btn=e.target.closest('button[data-remove]');if(!btn)return;
-  lines=lines.filter(x=>x.order.id!==btn.dataset.remove);renderLines();
+  rememberInputs();lines=lines.filter(x=>x.order.id!==btn.dataset.remove);renderLines();
  });
  $('cfm409Lines').addEventListener('input',e=>{
-  if(e.target.matches('[data-count],[data-send]'))renderBundles(e.target.closest('tr'));
+  if(e.target.matches('[data-count],[data-send]')){
+   rememberInputs();
+   renderBundles(e.target.closest('tr'));
+  }
   if(e.target.matches('[data-bundle-qty]'))e.target.closest('tr').querySelector('[data-verified]').checked=false;
-  summary();
+  rememberInputs();summary();
  });
  $('cfm409Preview').onclick=preview;$('cfm409Save').onclick=saveSlip;
  $('cfm409Last').onclick=()=>{if(!lastSaved){msg('Save a Manual Slip first, or choose one from Cloud History.',true);return}window.CFM_PACK_COMBINED_V407?.open(lastSaved,{workOrder:{}})};
