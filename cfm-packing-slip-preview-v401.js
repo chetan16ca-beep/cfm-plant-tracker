@@ -218,6 +218,6 @@ function init(){
  let attempts=0;const timer=setInterval(()=>{addInputs();if(document.getElementById('cfmPackPhotosV401')||++attempts>80)clearInterval(timer)},450);
  addInputs();
 }
-window.CFM_PACKING_PREVIEW_V401=Object.freeze({open,html:documentHtml});
+window.CFM_PACKING_PREVIEW_V401=Object.freeze({open,html:documentHtml,photosFor:workNo=>({...files.get(str(workNo))})});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
