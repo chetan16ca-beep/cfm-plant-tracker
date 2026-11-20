@@ -75,6 +75,8 @@ function mount(){
  if($('cfm407BundlesPanel'))return true;
  const panel=document.createElement('section');panel.id='cfm407BundlesPanel';
  panel.innerHTML='<div class="cfm407-title">PACKING BUNDLES & LABEL PRINT COUNT</div>'+
+ '<div class="cfm412-help">For 1 Work Order + 1 Bundle: <b>1 Packing Slip + 1 Label</b>. For two or more POs / WOs of the SAME company packed in ONE physical Bundle, use the option below.</div>'+
+ '<button type="button" id="cfm412SameCompanyOneBundle">＋ Add Same Company PO / WO in ONE Bundle</button>'+
  '<label class="cfm407-count">Total Packing Bundles'+
  '<input id="'+elCount+'" type="number" value="1" min="1" max="200" step="1"></label>'+
  '<div class="cfm407-hint">1 label per Bundle. Bundle Qty must equal the actual packing (not estimated).</div>'+
@@ -82,6 +84,22 @@ function mount(){
  '<div class="cfm407-status" id="'+elStatus+'"></div>'+
  '<label class="cfm407-check"><input type="checkbox" id="'+elCheck+'"> Bundle quantities checked against actual packed goods</label>';
  (qty.closest('label')||qty).after(panel);
+ $('cfm412SameCompanyOneBundle').onclick=()=>{
+  const wo=str($('packSlipWO')?.value);
+  const party=str($('packSlipPartyAddress')?.value);
+  if(!wo){alert('Select the first Work Order before adding another PO / Work Order to this Bundle.');return}
+  if(typeof window.CFM_PACK_MULTI_V408?.openFor!=='function'){
+   alert('Same Company Multi PO / WO module is not loaded. Reopen ERP V412.');return
+  }
+  // Direct handoff from the standard Bundle panel; no dispatch save here.
+  const selected=$('packSlipWO')?.selectedOptions?.[0]?.textContent||'';
+  const name=selected.split(' · ').slice(1).join(' · ').trim();
+  const existing=window.CFM_PACKING_SELECTED_WO?.()||{};
+  window.CFM_PACK_MULTI_V408.openFor({
+    workNo:wo,party:str(existing.party)||name,
+    qty:str($('packSlipThis')?.value),address:party
+  });
+ };
  const cnt=$(elCount);cnt.addEventListener('change',drawInputs);cnt.addEventListener('input',drawInputs);
  qty.addEventListener('input',drawInputs);
  $('packSlipWO')?.addEventListener('change',audit);
@@ -89,6 +107,8 @@ function mount(){
  const css=document.createElement('style');css.id='cfm407Style';
  css.textContent='#cfm407BundlesPanel{border:1px solid #b9d5e9;border-radius:10px;background:#eff8ff;padding:11px;margin:10px 0;color:#173d61;font:600 12px Arial}'+
  '#cfm407BundlesPanel .cfm407-title{font:800 13px Arial;color:#0b4576;margin-bottom:9px}'+
+ '#cfm407BundlesPanel .cfm412-help{font:600 11px/1.6 Arial;color:#205679;margin:7px 0}'+
+ '#cfm412SameCompanyOneBundle{display:block;width:100%;padding:10px 12px;margin:8px 0 12px;background:#114c79;color:#fff;border:1px solid #124c7b;border-radius:7px;font:800 12px Arial;cursor:pointer}'+
  '#cfm407BundlesPanel .cfm407-count{max-width:245px;font-size:12px}'+
  '#cfm407BundlesPanel .cfm407-count input{min-height:38px;font-size:15px;font-weight:800}'+
  '#cfm407BundlesPanel .cfm407-hint{font:500 11px/1.4 Arial;color:#56718a;margin:5px 0 9px}'+
