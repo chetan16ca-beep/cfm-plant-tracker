@@ -180,7 +180,7 @@ async function saveSlip(){
   const liveLog=Array.isArray(latest.payload.packingSlips)?latest.payload.packingSlips:[];
   const localLog=Array.isArray(state.packingSlips)?state.packingSlips:[];
   if(JSON.stringify(liveLog)!==JSON.stringify(localLog))throw Error('Unverified local packing slips differ from Cloud. Sync before saving');
-  const rows=liveLog.filter(x=>up(x.workNo)===up(wo));
+  const rows=liveLog.filter(x=>up(x.workNo)===up(wo)||(Array.isArray(x.items)&&x.items.some(i=>up(i.workNo)===up(wo))));
   const deletedRefs=Array.isArray(latest.payload.packingSlipDeletedRefs)?latest.payload.packingSlipDeletedRefs:[];
   const allNumbers=[...rows,...deletedRefs.filter(x=>up(x.workNo)===up(wo))]
    .map(x=>Number(String(x.slipNo||'').match(/\/(\d+)$/)?.[1]||0));
@@ -510,7 +510,7 @@ async function deletePackingSlips(all,specificId=null){
   selected=[one];
  }else{
   const wo=$('packSlipWO')?.value||'';
-  const choices=existing.filter(x=>!wo||up(x.workNo)===up(wo));
+  const choices=existing.filter(x=>!wo||up(x.workNo)===up(wo)||(Array.isArray(x.items)&&x.items.some(i=>up(i.workNo)===up(wo))));
   const input=prompt('Enter exact Cloud Packing Slip No.:\n'+choices.map(x=>x.slipNo||x.id).join('\n'));
   if(input===null)return;
   selected=choices.filter(x=>String(x.slipNo||'')===input.trim()||String(x.id)===input.trim());
