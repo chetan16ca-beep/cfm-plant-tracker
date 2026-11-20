@@ -9,8 +9,14 @@ const qty=x=>Number(x), fmt=x=>String(Number(x)),esc=x=>String(x??'').replace(/[
 let remote=null,selected=null,verifiedSlip=null,busy=false;
 function say(s,err=false){const el=$('packSlipMsg');if(el){el.textContent=s;el.style.color=err?'#a12626':'#24567a'}}
 function slips(){return Array.isArray(remote?.payload?.packingSlips)?remote.payload.packingSlips:[]}
-function forWork(wo){return slips().filter(x=>up(x.workNo)===up(wo))}
-function shipped(rows){return rows.reduce((a,x)=>a+(Number(x.thisDispatched)||0)+(Number(x.manualPreviousBaseline)||0),0)}
+function forWork(wo){return slips().filter(x=>up(x.workNo)===up(wo)||(Array.isArray(x.items)&&x.items.some(i=>up(i.workNo)===up(wo))))}
+function shipped(rows,wo){
+ return rows.reduce((a,x)=>{
+  const multi=Array.isArray(x.items)&&x.items.some(i=>up(i.workNo)===up(wo));
+  if(multi){const i=x.items.find(i=>up(i.workNo)===up(wo));return a+(Number(i.qty)||0)+(Number(i.manualPreviousBaseline)||0)}
+  return a+(up(x.workNo)===up(wo)?(Number(x.thisDispatched)||0)+(Number(x.manualPreviousBaseline)||0):0);
+ },0);
+}
 function current(){
  const no=$('packSlipWO')?.value;
  return remote?.payload?.pending?.find(x=>String(x.workNo||'')===no)||null;
@@ -80,7 +86,7 @@ function summary(){
  verifiedSlip=null;$('packSlipPrint').disabled=true;$('packSlipA4').disabled=true;$('packSlipCarton').disabled=true;
  if(!row){panel.textContent='Choose a Work Order.';return}
  selected=row;
- const history=forWork(row.workNo),previous=shipped(history),ordered=Number(row.orderQty),baselineNeeded=legacy(row)&&history.length===0;
+ const history=forWork(row.workNo),previous=shipped(history,row.workNo),ordered=Number(row.orderQty),baselineNeeded=legacy(row)&&history.length===0;
  $('packSlipBaselineWrap').hidden=!baselineNeeded;
  if(!baselineNeeded)$('packSlipPrior').value='';
  const extra=baselineNeeded?(Number($('packSlipPrior').value)||0):0;
@@ -159,7 +165,7 @@ async function saveSlip(){
  const address=String($('packSlipPartyAddress')?.value||'').trim();
  if(!address){say('Ship-to / Party Address missing. Enter and verify it against the customer PO before saving.',true);return}
  const ordered=Number(original.orderQty);
- if(!Number.isSafeInteger(ordered)||ordered<=0||shipped(history)+baseline+amount>ordered){say('Dispatch exceeds Work Order Qty, or order quantity is invalid.',true);return}
+ if(!Number.isSafeInteger(ordered)||ordered<=0||shipped(history,wo)+baseline+amount>ordered){say('Dispatch exceeds Work Order Qty, or order quantity is invalid.',true);return}
  if(typeof cloudFetch!=='function'||typeof cloudPush!=='function'||typeof save!=='function'||typeof state==='undefined'){say('CFM Cloud Save not available.',true);return}
  if(!cloudReady||cloudBusy||cloudDirty){say('CFM Cloud is syncing or not ready. Complete Cloud Sync and refresh before saving.',true);return}
  if(!confirm('Confirm ACTUALLY DISPATCHED '+amount+' nos for '+wo+'? This will record an auditable packing slip, not change stock.'))return;
@@ -179,7 +185,7 @@ async function saveSlip(){
   const allNumbers=[...rows,...deletedRefs.filter(x=>up(x.workNo)===up(wo))]
    .map(x=>Number(String(x.slipNo||'').match(/\/(\d+)$/)?.[1]||0));
   const nextSerial=Math.max(0,...allNumbers)+1;
-  const prev=shipped(rows)+baseline,balance=ordered-prev-amount;
+  const prev=shipped(rows,wo)+baseline,balance=ordered-prev-amount;
   if(balance<0)throw Error('New shipment exceeds remaining Work Order Qty');
   record={
    id:uuid(),slipNo:'PK/'+wo+'/'+String(nextSerial).padStart(3,'0'),
@@ -369,7 +375,7 @@ function previewFromWorkOrder(){
   bundleData=window.CFM_PACK_COMBINED_V407.collect(Number($('packSlipThis')?.value)||0,false);
  }catch(e){say(String(e.message||e),true);return}
  const history=forWork(row.workNo);
- const prev=shipped(history)+(legacy(row)&&!history.length?(Number($('packSlipPrior')?.value)||0):0);
+ const prev=shipped(history,row.workNo)+(legacy(row)&&!history.length?(Number($('packSlipPrior')?.value)||0):0);
  const n=Number($('packSlipThis')?.value)||0;
  const ordered=Number(row.orderQty)||0;
  printSlip(true,{
