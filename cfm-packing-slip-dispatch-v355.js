@@ -181,14 +181,12 @@ async function saveSlip(){
   const localLog=Array.isArray(state.packingSlips)?state.packingSlips:[];
   if(JSON.stringify(liveLog)!==JSON.stringify(localLog))throw Error('Unverified local packing slips differ from Cloud. Sync before saving');
   const rows=liveLog.filter(x=>up(x.workNo)===up(wo)||(Array.isArray(x.items)&&x.items.some(i=>up(i.workNo)===up(wo))));
-  const deletedRefs=Array.isArray(latest.payload.packingSlipDeletedRefs)?latest.payload.packingSlipDeletedRefs:[];
-  const allNumbers=[...rows,...deletedRefs.filter(x=>up(x.workNo)===up(wo))]
-   .map(x=>Number(String(x.slipNo||'').match(/\/(\d+)$/)?.[1]||0));
-  const nextSerial=Math.max(0,...allNumbers)+1;
+  if(typeof window.CFM_PACK_UNIQUE_V414?.next!=='function')throw Error('Unique Packing Slip number service unavailable. Refresh ERP V414.');
+  const documentNo=window.CFM_PACK_UNIQUE_V414.next(latest.payload);
   const prev=shipped(rows,wo)+baseline,balance=ordered-prev-amount;
   if(balance<0)throw Error('New shipment exceeds remaining Work Order Qty');
   record={
-   id:uuid(),slipNo:'PK/'+wo+'/'+String(nextSerial).padStart(3,'0'),
+   id:uuid(),slipNo:documentNo.slipNo,packingSlipSerial:documentNo.serial,
    workNo:wo,party:liveRow.party||'',partyAddress:address,poNo:liveRow.poNo||'',
    poDate:field(liveRow,['poDate','purchaseOrderDate']),orderDate:liveRow.orderDate||'',
    customerItemNo:packingWOFields(liveRow).customerItemNo,size:packingWOFields(liveRow).size,
@@ -204,6 +202,7 @@ async function saveSlip(){
   // Atomic Cloud CAS is performed by the ERP's own versioned cloudPush.
   // No direct database write, stock movement, or Work Order status modification.
   state.packingSlips=[...liveLog,record];
+  state.packingSlipGlobalSequence=documentNo.serial;
   clearTimeout(cloudPushTimer);
   save(false,{poQuick:true});
   clearTimeout(cloudPushTimer);
@@ -211,6 +210,7 @@ async function saveSlip(){
   if(!committed)throw Error('Cloud save could not be confirmed. Do not save the same shipment again; check Cloud Sync');
   const confirmed=await cloudFetch();
   if(!confirmed?.payload?.packingSlips?.some(x=>x.id===record.id))throw Error('Cloud acknowledgment received but receipt not verified. Refresh before retrying');
+  window.CFM_PACK_UNIQUE_V414.verify(confirmed.payload,documentNo);
   remote=confirmed;verifiedSlip=record;
   $('packSlipThis').value='';$('packSlipPrior').value='';
   summary();
