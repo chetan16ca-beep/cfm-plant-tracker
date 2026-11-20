@@ -111,8 +111,7 @@ function summary(){
   company.map(x=>'<div class="entry"><b>'+esc(x.slipNo)+' • '+esc(x.workNo)+'</b> · Sent '+esc(x.thisDispatched)+
    ' · Previous '+esc(x.previousDispatched)+' · Balance '+esc(x.balanceAfter)+
    '<small>'+esc((x.createdAt||'').slice(0,19).replace('T',' '))+'</small>'+
-   '<button type="button" data-pack-id="'+esc(x.id)+'" data-kind="slip">🖨 Reprint Slip</button> '+
-   '<button type="button" data-pack-id="'+esc(x.id)+'" data-kind="carton">📦 Packing Label</button> '+
+   '<button type="button" data-pack-id="'+esc(x.id)+'" data-kind="slip">🖨 Reprint Slip + '+esc(x.bundleCount||x.packages||1)+' Bundle Label(s)</button> '+
    '<button type="button" data-pack-id="'+esc(x.id)+'" data-kind="delete" class="pack-delete-row" title="Delete only this dummy/test Packing Slip">🗑 Delete</button></div>').join(''):
   '<small>No confirmed packing slips in Cloud history for this company yet.</small>';
 }
@@ -148,6 +147,11 @@ async function saveSlip(){
  const wo=$('packSlipWO').value;const original=current(),amount=qty($('packSlipThis').value);
  if(!original||!remote){say('Select live Work Order first.',true);return}
  if(!Number.isSafeInteger(amount)||amount<=0){say('This Dispatch Qty must be a positive whole number.',true);return}
+ let bundleData;
+ try{
+  if(!window.CFM_PACK_COMBINED_V407?.collect)throw Error('Bundle print module not loaded. Refresh ERP and retry.');
+  bundleData=window.CFM_PACK_COMBINED_V407.collect(amount,true);
+ }catch(e){say(String(e.message||e),true);return}
  const history=forWork(wo),requiresBaseline=legacy(original)&&history.length===0;
  const baselineValue=$('packSlipPrior').value.trim(),baseline=requiresBaseline?Number(baselineValue):0;
  if(requiresBaseline&&baselineValue===''){say('Previous dispatched qty must be verified for this older dispatch order.',true);return}
@@ -187,6 +191,7 @@ async function saveSlip(){
    efpplCode:packingWOFields(liveRow).efpplCode,
    orderQty:ordered,previousDispatched:prev,manualPreviousBaseline:baseline,
    thisDispatched:amount,totalDispatched:prev+amount,balanceAfter:balance,
+   bundleCount:bundleData.bundleCount,bundleQtys:bundleData.bundleQtys,packages:bundleData.packages,
    createdAt:new Date().toISOString(),notes:String($('packSlipRemarks').value||'').trim(),
    source:'MANUAL CONFIRMED SHIPMENT',operator:typeof deviceLabel==='function'?deviceLabel():''
   };
@@ -229,6 +234,12 @@ function originalWordmarkHtml(){
 function printSlip(a4=false,record=null){
  const r=record||verifiedSlip;
  if(!r){say('Choose a Work Order, saved slip or legacy packing record.',true);return}
+ // V407: one A4 Landscape print job = one Slip + one label per physical Bundle.
+ if(window.CFM_PACK_COMBINED_V407?.open){
+  const wo=remote?.payload?.pending?.find(x=>up(x.workNo)===up(r.workNo)&&up(x.party)===up(r.party)&&up(x.poNo)===up(r.poNo));
+  window.CFM_PACK_COMBINED_V407.open(r,{workOrder:wo||{}});
+  return;
+ }
  // V401 uses the exact Cloud-confirmed snapshot, or a clearly marked read-only draft.
  // This only opens a print preview; it NEVER records dispatch or alters stock.
  if(window.CFM_PACKING_PREVIEW_V401?.open){
@@ -352,6 +363,11 @@ function printSlip(a4=false,record=null){
 function previewFromWorkOrder(){
  const row=current();
  if(!row){say('Choose a Work Order to preview the Packing Slip.',true);return}
+ let bundleData;
+ try{
+  if(!window.CFM_PACK_COMBINED_V407?.collect)throw Error('Combined Slip/Label module not loaded. Refresh ERP.');
+  bundleData=window.CFM_PACK_COMBINED_V407.collect(Number($('packSlipThis')?.value)||0,false);
+ }catch(e){say(String(e.message||e),true);return}
  const history=forWork(row.workNo);
  const prev=shipped(history)+(legacy(row)&&!history.length?(Number($('packSlipPrior')?.value)||0):0);
  const n=Number($('packSlipThis')?.value)||0;
@@ -365,12 +381,20 @@ function previewFromWorkOrder(){
   size:packingWOFields(row).size,micron:packingWOFields(row).micron,
   description:packingWOFields(row).description,description2:packingWOFields(row).description2,
   orderQty:ordered,previousDispatched:prev,thisDispatched:n,
-  totalDispatched:prev+n,balanceAfter:ordered-prev-n,createdAt:new Date().toISOString(),
+  totalDispatched:prev+n,balanceAfter:ordered-prev-n,
+  bundleCount:bundleData.bundleCount,bundleQtys:bundleData.bundleQtys,packages:bundleData.packages,
+  createdAt:new Date().toISOString(),
   notes:$('packSlipRemarks')?.value||'',operator:'',source:'DRAFT — READ ONLY'
  });
 }
 function printCartonLabel(record=null){
  const r=record||verifiedSlip;if(!r){say('Select a saved Packing Slip or confirm dispatch first.',true);return}
+ // Legacy button redirects to the SAME combined Packing Slip + Bundle Label print.
+ if(window.CFM_PACK_COMBINED_V407?.open){
+  const wo=remote?.payload?.pending?.find(x=>up(x.workNo)===up(r.workNo)&&up(x.party)===up(r.party)&&up(x.poNo)===up(r.poNo));
+  window.CFM_PACK_COMBINED_V407.open(r,{workOrder:wo||{}});
+  return;
+ }
  // V404: Use one clear 4×4 label preview for confirmed/reprint records.
  // Label preview NEVER records another shipment or changes production data.
  if(window.CFM_PACKING_LABEL_V404?.open){
