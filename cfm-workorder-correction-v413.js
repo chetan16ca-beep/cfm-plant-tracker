@@ -95,7 +95,7 @@ function validate(old,values,payload){
  if(str(values.actualProductType)&&!types.includes(str(values.actualProductType))&&
     str(values.actualProductType)!==str(old.actualProductType))
   throw Error('Choose an Actual Product Type from the list.');
- if(str(values.width)&&(!Number.isFinite(Number(values.width))||Number(values.width)<=0||Number(values.width)>500))
+ if((str(values.width)||change.some(x=>x.key==='width'))&&(!str(values.width)||!Number.isFinite(Number(values.width))||Number(values.width)<=0||Number(values.width)>500))
   throw Error('Cloth Width must be a positive number (up to 500).');
  const ordered=str(values.orderQty);
  if(ordered!==''&&(!Number.isSafeInteger(Number(ordered))||Number(ordered)<=0))
@@ -135,7 +135,7 @@ function render(){
   let field='';
   if(key==='actualProductType'||key==='priority'){
    const options=key==='priority'?['LOW','NORMAL','HIGH','URGENT']:types;
-   const all=[...new Set([...options,value].filter((v,i,a)=>v!==''||key==='actualProductType'))];
+   const all=[...new Set(['',...options,value])];
    field='<select id="cfm413Field_'+key+'" data-correct-key="'+key+'" '+readonly+'>'+
     all.map(x=>'<option value="'+esc(x)+'" '+(x===value?'selected':'')+'>'+esc(x||'Not specified')+'</option>').join('')+'</select>';
   }else if(key==='description'||key==='description2'||key==='remark'||key==='accountsRemark'){
@@ -149,7 +149,7 @@ function render(){
    (locked?' <small>Locked: production started</small>':'')+'</span>'+field+'</label>';
  }).join('');
  $('cfm413Preview').textContent='No changes entered.';
- $('cfm413Save').disabled=d.linked===undefined;
+ $('cfm413Save').disabled=false;
  status('Cloud Work Order '+original.workNo+' loaded. Correct wrong details and review Changes before saving.');
 }
 async function loadWO(wo){
