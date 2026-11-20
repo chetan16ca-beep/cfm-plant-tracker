@@ -21,16 +21,18 @@ function getList(){
  for(const r of rows){
   const code=N(r?.eagleCode);
   if(!/^EFP-P[0-9]{2,8}$/.test(code))continue;
-  const measurement=window.eagleMeasurementResult?.({eagleCode:code});
-  const status=measurement?.status==='READY'?'READY':measurement?.status==='VERIFY'?'VERIFY':'MISSING';
-  if(!map.has(code))map.set(code,{code,product:T(r.description||r.oldProductName),party:T(r.party),status});
-  else{
-   const item=map.get(code);
-   if(!item.product&&r.description)item.product=T(r.description);
-   if(!item.party&&r.party)item.party=T(r.party);
-  }
+  if(!map.has(code))map.set(code,{code,product:T(r.description||r.oldProductName),party:T(r.party),values:new Set()});
+  const item=map.get(code);
+  if(!item.product&&r.description)item.product=T(r.description);
+  if(!item.party&&r.party)item.party=T(r.party);
+  const measured=[r.finalMeasurement,r.measurement3,r.measurement2,r.measurement1,r.previousMeasurement]
+   .map(T).find(x=>x&&!/NEW PRODUCT\\s*[-–]\\s*NO PREVIOUS|MEASUREMENT REQUIRED|NO PREVIOUS MEASUREMENT|NO MATCHING/i.test(x));
+  if(measured)item.values.add(N(measured));
  }
- const list=[...map.values()].sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true}));
+ const list=[...map.values()].map(x=>{
+  const {values,...other}=x;
+  return {...other,status:values.size>1?'VERIFY':values.size===1?'READY':'MISSING'};
+ }).sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true}));
  indexCache={ref:rows,size:rows.length,list};
  return list;
 }
@@ -127,7 +129,7 @@ document.addEventListener('click',e=>{
 },true);
 function init(){
  mount();
- const root=document.getElementById('editDialog')||document.body;
+ const root=document.body; // also observe Multiple PO panel, not just single Work Order dialog
  if(root&&typeof MutationObserver==='function'){
   const observer=new MutationObserver(records=>{
    if(records.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&
