@@ -35,8 +35,14 @@ function previewLegacy(id){
  if(!window.CFM_PACKING_PREVIEW_V401?.open){
   alert('New A4 packing preview is still loading. Please reopen ERP once.');return
  }
- // Historical local record: print only. Never treat prior shipments as verified Cloud quantities.
- window.CFM_PACKING_PREVIEW_V401.open(legacyToSlip(rec));
+ // Historical local record: use one combined print preview. Missing bundle-wise
+ // quantities are flagged as unverified instead of invented.
+ const snapshot=legacyToSlip(rec);
+ snapshot.bundleCount=Number(rec.packages)||1;
+ if(window.CFM_PACK_COMBINED_V407?.open){
+  window.CFM_PACK_COMBINED_V407.open(snapshot);return;
+ }
+ window.CFM_PACKING_PREVIEW_V401.open(snapshot);
 }
 function installPrintBridge(){
  if(window.cfmPackingPrint?._singleA4V402)return;
