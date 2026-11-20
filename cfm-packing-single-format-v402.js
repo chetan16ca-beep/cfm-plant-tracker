@@ -108,7 +108,7 @@ function mount(){
    if(child.matches?.('small')&&/Multiple Job Cards|2 slip copies/i.test(child.textContent||''))child.style.display='none';
   }
   const label=[...old.children].find(c=>c.matches?.('b')&&/Packing Slip/i.test(c.textContent||''));
-  if(label)label.textContent='📦 Packing Slip · One A4 Landscape Format';
+  if(label)label.textContent=window.CFM_PACK_COMBINED_V407?'📦 One Print: Packing Slip + Bundle Labels':'📦 Packing Slip · One A4 Landscape Format';
  }
  // Per-row Delete replaces the two older prompt/bulk-delete buttons.
  for(const id of ['packSlipDeleteOne','packSlipDeleteAll']){
@@ -117,11 +117,11 @@ function mount(){
  const dup=document.getElementById('packSlipPrint');
  if(dup){dup.style.setProperty('display','none','important');dup.setAttribute('aria-hidden','true')}
  const a4=document.getElementById('packSlipA4');
- if(a4)a4.textContent='🖨 A4 Landscape Reprint / PDF';
+ if(a4)a4.textContent=window.CFM_PACK_COMBINED_V407?'🖨 Reprint Slip + Bundle Labels':'🖨 A4 Landscape Reprint / PDF';
  const draft=document.getElementById('packSlipPreview');
- if(draft)draft.textContent='👁 A4 Landscape Preview (No Save)';
+ if(draft)draft.textContent=window.CFM_PACK_COMBINED_V407?'👁 Preview Slip + Bundle Labels':'👁 A4 Landscape Preview (No Save)';
  const newButton=document.getElementById('packSlipOpen');
- if(newButton)newButton.textContent='📦 Packing Slip · A4 Landscape';
+ if(newButton)newButton.textContent=window.CFM_PACK_COMBINED_V407?'📦 Packing Slip + Bundle Labels':'📦 Packing Slip · A4 Landscape';
  const footer=document.querySelector('#packSlipDialog .pfoot');
  if(footer&&!document.getElementById('cfm402OldHistoryButton')){
   const btn=document.createElement('button');btn.type='button';btn.id='cfm402OldHistoryButton';
