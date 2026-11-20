@@ -10,7 +10,8 @@ const str=x=>String(x??'').trim(),key=x=>str(x).toUpperCase();
 const pos=x=>Number.isSafeInteger(Number(x))&&Number(x)>0?Number(x):0;
 const whole=x=>str(x)!==''&&Number.isSafeInteger(Number(x))&&Number(x)>=0?Number(x):null;
 const field=(r,keys)=>{for(const k of keys){const v=r?.[k];if(v!==undefined&&v!==null&&str(v))return str(v)}return ''};
-let snap=null,busy=false,lastSaved=null;
+let snap=null,busy=false,lastSaved=null,transfer=null;
+const mixed=()=>!!$('cfm408OneMixed')?.checked;
 function msg(s,error=false){const e=$('cfm408Message');if(e){e.textContent=s;e.style.color=error?'#a42323':'#174c68'}}
 function history(){return Array.isArray(snap?.payload?.packingSlips)?snap.payload.packingSlips:[]}
 function linesFor(wo,slips=history()){
@@ -79,10 +80,10 @@ function refreshTotals(){
   if(!tr.querySelector('[data-select]').checked)continue;
   selected++;
   const amount=pos(tr.querySelector('[data-send]').value),n=pos(tr.querySelector('[data-count]').value);
-  qty+=amount;bundles+=n;
-  if(!amount||amount>rest||baseline===null||n<1||n>amount)invalid.push(tr.dataset.workNo);
+  qty+=amount;bundles+=mixed()?0:n;
+  if(!amount||amount>rest||baseline===null||(!mixed()&&(n<1||n>amount)))invalid.push(tr.dataset.workNo);
  }
- $('cfm408Totals').textContent=selected+' Work Orders selected · '+qty+' Nos this dispatch · '+bundles+' bundle labels'+(invalid.length?' · CHECK: '+invalid.join(', '):'');
+ $('cfm408Totals').textContent=selected+' Work Orders selected · '+qty+' Nos this dispatch · '+(mixed()?(selected?'1 MIXED BUNDLE + 1 LABEL':'Select 2+ Work Orders for 1 mixed bundle'):bundles+' bundle labels')+(invalid.length?' · CHECK: '+invalid.join(', '):'');
 }
 function collect(){
  if(!snap)throw Error('Load live Cloud first.');
@@ -104,27 +105,36 @@ function collect(){
   const baseline=baselineInput?whole(baselineInput.value):0;
   if(baseline===null)throw Error('Verify earlier dispatched quantity for '+wo+' (zero only if none was dispatched).');
   if(!n||!ordered||prev+baseline+n>ordered)throw Error(wo+': dispatch Qty is invalid or exceeds pending balance.');
-  const count=pos(tr.querySelector('[data-count]').value);
-  const q=[...tr.querySelectorAll('[data-bundle-qty]')].map(e=>Number(e.value));
-  if(!count||count>200||q.length!==count||q.some(x=>!Number.isSafeInteger(x)||x<=0)||q.reduce((a,b)=>a+b,0)!==n)
+  const count=mixed()?1:pos(tr.querySelector('[data-count]').value);
+  const q=mixed()?[]:[...tr.querySelectorAll('[data-bundle-qty]')].map(e=>Number(e.value));
+  if(!mixed()&&(!count||count>200||q.length!==count||q.some(x=>!Number.isSafeInteger(x)||x<=0)||q.reduce((a,b)=>a+b,0)!==n))
    throw Error(wo+': bundle quantities must add up exactly to this dispatch Qty '+n+'.');
-  if(count>1&&!tr.querySelector('[data-verified]').checked)throw Error(wo+': tick physically checked bundle quantities.');
+  if(!mixed()&&count>1&&!tr.querySelector('[data-verified]').checked)throw Error(wo+': tick physically checked bundle quantities.');
   const m=mapped(r);
   items.push({workNo:wo,poNo:str(r.poNo),poDate:m.poDate||'',customerItemNo:m.customerItemNo||'',
    efpplCode:m.efpplCode||'',description:m.description||'',description2:m.description2||'',micron:m.micron||'',size:m.size||'',
    orderQty:ordered,previousDispatched:prev+baseline,manualPreviousBaseline:baseline,qty:n,thisDispatched:n,
    totalDispatched:prev+baseline+n,balanceAfter:ordered-prev-baseline-n,bundleQtys:q});
-  for(const amount of q)bundleDetails.push({itemIndex:idx,qty:amount});
+  if(!mixed())for(const amount of q)bundleDetails.push({itemIndex:idx,qty:amount});
+ }
+ let bundleContents=[];
+ if(mixed()){
+  if(!$('cfm408OneMixedVerified')?.checked)throw Error('Confirm all selected PO/WO materials are physically packed in the SAME bundle.');
+  const allocations=items.map((item,itemIndex)=>({itemIndex,qty:item.qty}));
+  const total=allocations.reduce((n,x)=>n+x.qty,0);
+  if(!Number.isSafeInteger(total)||total<=0)throw Error('Mixed bundle quantity is invalid.');
+  bundleContents=[{qty:total,items:allocations}];
+  bundleDetails=[{itemIndex:0,qty:total}];
  }
  if(bundleDetails.length>200)throw Error('No more than 200 physical bundles in one print job.');
- return {party,address,items,bundleDetails};
+ return {party,address,items,bundleDetails,bundleContents};
 }
 function draftRecord(data){
  const items=data.items,add=name=>items.reduce((a,i)=>a+(Number(i[name])||0),0);
  return {id:'',draft:true,slipNo:'PREVIEW ONLY',workNo:'MULTI',party:data.party,partyAddress:data.address,
   poNo:'MULTIPLE POs',orderQty:add('orderQty'),previousDispatched:add('previousDispatched'),
   thisDispatched:add('qty'),totalDispatched:add('totalDispatched'),balanceAfter:add('balanceAfter'),
-  items,bundleDetails:data.bundleDetails,bundleCount:data.bundleDetails.length,packages:data.bundleDetails.length,
+  items,bundleDetails:data.bundleDetails,bundleContents:data.bundleContents||[],bundleCount:data.bundleDetails.length,packages:data.bundleDetails.length,
   bundleQtys:data.bundleDetails.map(x=>x.qty),createdAt:new Date().toISOString(),
   notes:str($('cfm408Remarks').value),source:'COMBINED DRAFT · NOT DISPATCHED',operator:''};
 }
@@ -189,13 +199,38 @@ async function load(){
  try{
   const s=await cloudFetch();
   if(!s||!Array.isArray(s.payload?.pending))throw Error('Cloud response invalid.');
-  snap=s;render();msg('Live Cloud verified · Select company, then 2 or more Work Orders.');
+  snap=s;render();
+  if(transfer){
+   const incoming=transfer;transfer=null;
+   const selectedWO=allOrders().find(x=>key(x.workNo)===key(incoming.workNo)&&key(x.party)===key(incoming.party));
+   if(selectedWO){
+    const companyInput=$('cfm408Company');
+    const actual=[...companyInput.options].find(o=>key(o.value)===key(selectedWO.party));
+    if(actual){companyInput.value=actual.value;renderOrders()}
+    const tr=trOf(str(selectedWO.workNo));
+    if(tr){
+     tr.querySelector('[data-select]').checked=true;
+     const amount=pos(incoming.qty);
+     if(amount)tr.querySelector('[data-send]').value=String(amount);
+     if(str(incoming.address)&&!$('cfm408Address').value)$('cfm408Address').value=str(incoming.address);
+     bundleInput(tr);
+    }
+    $('cfm408OneMixed').checked=true;
+    $('cfm408OneMixedVerified').checked=false;
+    $('cfm408Dialog').classList.add('cfm408-one-mixed');
+    refreshTotals();
+    msg('Company and first Work Order loaded from Packing Slip. Tick another PO/WO of the SAME company, enter Dispatch Qty for each, verify one physical bundle, then Preview.');
+   }else msg('Original Work Order was not found in current Cloud. Select company and verify before packing.',true);
+  }else msg('Live Cloud verified · Select company, then 2 or more Work Orders.');
  }catch(e){snap=null;msg('Cloud unavailable: '+String(e.message||e),true)}
 }
-function open(){
+function openFor(params={}){
+ const wo=st=>str(st);
+ transfer=params?.workNo?{workNo:wo(params.workNo),party:wo(params.party),qty:params.qty,address:wo(params.address)}:null;
  $('packSlipDialog')?.close();
  $('cfm408Dialog').showModal();load();
 }
+function open(){openFor({})}
 function mount(){
  if(!$('packSlipDialog'))return false;
  if($('cfm408Dialog'))return true;
@@ -207,6 +242,9 @@ function mount(){
  '<div class="cfm408-body"><p>Multiple PO numbers & Work Orders, each with separate previous dispatch, today dispatch, pending balance and physical bundle labels. No mixing different companies.</p>'+
  '<label>Company <select id="cfm408Company"><option value="">Select company</option></select></label>'+
  '<label>Ship-to / Delivery Address *<textarea id="cfm408Address" rows="2" placeholder="Verified destination from Work Order / PO"></textarea></label>'+
+ '<section id="cfm408MixedPanel" class="cfm408-mixed-panel"><label><input type="checkbox" id="cfm408OneMixed"> ONE PHYSICAL BUNDLE — same company, multiple PO / Work Orders, ONE packing slip + ONE label</label>'+
+ '<p>Enter This Dispatch Qty separately against each WO. Bundle Qty = sum of those PO/WO quantities; no second bundle or label will be created.</p>'+
+ '<label id="cfm408MixedVerifiedRow"><input type="checkbox" id="cfm408OneMixedVerified"> Physically checked: all selected PO/WO materials are together in this ONE bundle</label></section>'+
  '<div class="cfm408-tablewrap"><table><thead><tr><th>Select</th><th>WO / PO / Product</th><th>Order</th><th>Prev Sent</th><th>Pending</th><th>Send Now</th><th>Bundles & quantities</th></tr></thead><tbody id="cfm408Orders"></tbody></table></div>'+
  '<label>Remarks / LR<input id="cfm408Remarks" placeholder="Optional dispatch reference"></label>'+
  '<p class="cfm408-totals" id="cfm408Totals">No Work Order selected</p><p id="cfm408Message" role="status"></p></div>'+
@@ -226,18 +264,28 @@ function mount(){
  '#cfm408Dialog td small{display:block;font-size:10px;margin-top:3px;max-width:230px}#cfm408Dialog td input[type=checkbox]{width:18px;height:18px}'+
  '#cfm408Dialog .cfm408-bundles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}#cfm408Dialog .cfm408-bundles input{padding:4px!important}'+
  '#cfm408Dialog .cfm408-bundles label{font-size:10px;margin:1px}#cfm408Dialog [hidden]{display:none!important}'+
+ '#cfm408Dialog .cfm408-mixed-panel{border:1px solid #8cb5d4;background:#edf8ff;padding:10px;margin:10px 0;border-radius:9px}'+
+ '#cfm408Dialog .cfm408-mixed-panel label{display:flex!important;align-items:center;gap:8px;font-size:12px!important;font-weight:800!important}'+
+ '#cfm408Dialog .cfm408-mixed-panel input[type=checkbox]{width:19px!important;min-width:19px;height:19px}'+
+ '#cfm408Dialog .cfm408-mixed-panel p{font-size:11px;line-height:1.5;margin:6px 0}'+
+ '#cfm408Dialog #cfm408MixedVerifiedRow{display:none!important}'+
+ '#cfm408Dialog.cfm408-one-mixed #cfm408MixedVerifiedRow{display:flex!important}'+
+ '#cfm408Dialog.cfm408-one-mixed #cfm408Orders tr td:last-child>*{display:none!important}'+
+ '#cfm408Dialog.cfm408-one-mixed #cfm408Orders tr td:last-child:after{content:"This WO material will be inside ONE combined physical bundle";display:block;color:#0e557c;font-weight:750;font-size:11px}'+
  '#cfm408Dialog .cfm408-totals{background:#e8f5ed;padding:12px;font-weight:800}'+
  '#cfm408Dialog .cfm408-foot{position:sticky;bottom:0;background:#edf5fa;display:flex;gap:6px;flex-wrap:wrap;padding:10px;border-top:1px solid #a8c4d8}'+
  '#cfm408Save{background:#0d6040!important;color:#fff!important}#cfm408Dialog .cfm408-head button{color:#173b57}';
  document.head.append(style);
  $('cfm408Close').onclick=()=>d.close();
- $('cfm408Company').onchange=renderOrders;
+ $('cfm408Company').onchange=()=>{renderOrders();$('cfm408OneMixedVerified').checked=false};
+ $('cfm408OneMixed').onchange=()=>{$('cfm408Dialog').classList.toggle('cfm408-one-mixed',mixed());$('cfm408OneMixedVerified').checked=false;refreshTotals()};
  $('cfm408Orders').addEventListener('input',e=>{
   const tr=e.target.closest('tr[data-work-no]');if(!tr)return;
   if(e.target.matches('[data-count],[data-send]'))bundleInput(tr);
+  if(mixed())$('cfm408OneMixedVerified').checked=false;
   refreshTotals();
  });
- $('cfm408Orders').addEventListener('change',refreshTotals);
+ $('cfm408Orders').addEventListener('change',e=>{if(mixed()&&e.target.matches('[data-select],[data-baseline]'))$('cfm408OneMixedVerified').checked=false;refreshTotals()});
  $('cfm408Refresh').onclick=load;$('cfm408Preview').onclick=preview;$('cfm408Save').onclick=saveCombined;
  $('cfm408Last').onclick=()=>{
   if(!lastSaved){msg('Save a combined Packing Slip first, or use normal Packing Slip history for older slips.',true);return}
@@ -247,5 +295,5 @@ function mount(){
 }
 let attempts=0;const wait=setInterval(()=>{if(mount()||++attempts>90)clearInterval(wait)},400);
 if(document.readyState!=='loading')mount();else document.addEventListener('DOMContentLoaded',mount,{once:true});
-window.CFM_PACK_MULTI_V408=Object.freeze({open,mount});
+window.CFM_PACK_MULTI_V408=Object.freeze({open,openFor,mount});
 })();
