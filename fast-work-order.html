@@ -21,6 +21,7 @@ label.full{grid-column:1/-1}
 .eagle-lookup{border:1px solid #a8cada;border-radius:9px;background:#eef8fc;padding:10px;margin-top:2px}
 .eagle-lookup input,.eagle-lookup select{margin-top:6px}
 .eagle-hint{font:600 11px/1.5 system-ui;color:#52758b;margin-top:4px}
+.eagle-show-all{margin-top:6px;padding:7px 10px!important;background:#fff!important;color:#145d79!important;border:1px solid #b6d7e5!important;font-size:12px!important}
 .measure-preview{grid-column:1/-1;border:1px solid #b6d6e2;border-radius:9px;padding:10px;background:#f1f9fd;color:#205779;font:650 12px/1.5 system-ui;overflow-wrap:anywhere}
 .measure-preview b{display:block;font-size:12px;margin-bottom:4px}
 .measure-preview[data-status="READY"]{background:#edf9f1;border-color:#93c5a5;color:#175c36}
@@ -99,22 +100,23 @@ function rowHtml(i){
  return '<div class="item" data-item><div class="rowhead"><span>Item '+(i+1)+' / Work No. <b data-num>—</b></span><button type="button" data-remove>×</button></div>'+
  '<div class="grid"><label class="full">Product / Description *<input data-desc required placeholder="e.g. CF BAG 48 ORDINARY 5 MICRON"></label>'+
  '<label class="full">Description 2 / Extra Spec<input data-extra placeholder="Optional"></label>'+
- '<label class="full">EFPPL Numbered Product Code<select data-code><option value="">Select / Not mapped</option></select></label>'+
+ '<label class="full">EFPPL Product Family Code (standard types)<select data-code><option value="">Select / Not mapped</option></select></label>'+
  '<label>Cloth *<input data-cloth required placeholder="333 AS / 9024"></label>'+
  '<label>Width (inch) *<input data-width required type="number" min="1" step="any" placeholder="50"></label>'+
  '<label>Order Qty *<input data-qty required type="number" min="1" step="1" placeholder="2"></label>'+
- '<label class="full eagle-lookup">Eagle Code · Auto Measurement'+
+ '<label class="full eagle-lookup">Eagle Item Code · Auto Measurements (company-wise search)'+
  '<input type="search" data-eagle-search placeholder="Search Eagle Code / Company / Product" autocomplete="off">'+
- '<select data-eagle-select aria-label="Select Eagle Code from Measurement Master"><option value="">▼ Choose Eagle Code</option></select>'+
+ '<select data-eagle-select aria-label="Select Eagle Code from Measurement Master"><option value="">▼ Choose Eagle Code</option></select>'+ 
+ '<button class="eagle-show-all" data-eagle-all type="button">Show all Eagle Codes</button>'+
  '<input data-eagle placeholder="Selected Eagle Code (EFP-P…); manual entry also allowed" autocomplete="off">'+
  '<div class="eagle-hint" data-eagle-count>Measurement Master loading…</div></label>'+
- '<div class="measure-preview" data-measurement data-status="REQUIRED" role="status"><b>Measurement (Auto · Eagle Code Only)</b>Choose an Eagle Code to load measurement</div>'+
+ '<div class="measure-preview" data-measurement data-status="REQUIRED" role="status"><b>Auto Measurements · Selected Eagle Item Code</b>Select an Eagle Code above. Verified size appears here.</div>'+
  '<label>Buyer PO Item Code<input data-buyer placeholder="Optional"></label>'+
  '<label class="full">Active SRL (optional, multiple allowed)<select data-srl multiple size="3"><option value="">Select after Cloth + Width</option></select></label></div></div>';
 }
 const eagleMaster=()=>window.CFM_FAST_EAGLE_MASTER_V417?.rows||[];
 const eagleVersion=()=>window.CFM_FAST_EAGLE_MASTER_V417?.source||'';
-const EAGLE_LIMIT=70;
+const EAGLE_LIMIT=70; // Keeps mobile dropdown fast; users can expand all 717 verified codes.
 function measurementForCode(code){
  const eagle=norm(code);
  if(!eagle)return {measurementAuto:'MEASUREMENT REQUIRED',measurementSource:'Eagle Code not selected',measurementStatus:'REQUIRED'};
@@ -140,10 +142,20 @@ function populateEagleCodes(row){
  const select=row.querySelector('[data-eagle-select]'),search=row.querySelector('[data-eagle-search]'),counter=row.querySelector('[data-eagle-count]');
  if(!select)return;
  const all=eagleMaster(),query=norm(search?.value||''),current=norm(row.querySelector('[data-eagle]')?.value||'');
- const matching=query?all.filter(x=>norm(x.code+' '+x.product+' '+x.party).includes(query)):all;
- let show=matching.slice(0,EAGLE_LIMIT);
+ const showAll=row.dataset.eagleAll==='1',party=norm($('party')?.value||'');
+ // Historical Eagle codes are party-specific. Put selected customer's codes first,
+ // including documented REGAL/REGL and REGAL U-2 naming variants, without changing any code.
+ const partyKey=party.replace(/[^A-Z0-9 ]/g,' ').split(/\s+/)[0]||'';
+ const partyCodes=partyKey.length>=4?all.filter(x=>{
+  const name=norm(x.party+' '+x.product);
+  return name.includes(partyKey)||(partyKey==='REGAL'&&name.includes('REGL'));
+ }):[];
+ const matching=query?all.filter(x=>norm(x.code+' '+x.product+' '+x.party).includes(query)):
+  (!showAll&&partyCodes.length?partyCodes:all);
+ const limit=showAll?all.length:EAGLE_LIMIT;
+ let show=matching.slice(0,limit);
  const original=all.find(x=>norm(x.code)===current);
- if(original&&!show.some(x=>norm(x.code)===current))show=[original,...show.slice(0,EAGLE_LIMIT-1)];
+ if(original&&!show.some(x=>norm(x.code)===current))show=[original,...show.slice(0,Math.max(0,limit-1))];
  select.replaceChildren(new Option('▼ Choose Eagle Code',''));
  for(const x of show){
   const title=x.code+' · '+(x.product||'Product not specified').slice(0,47)+
@@ -151,9 +163,13 @@ function populateEagleCodes(row){
     (x.status==='VERIFY'?' [VERIFY]':x.status==='REQUIRED'?' [MEASUREMENT REQUIRED]':'');
   const opt=new Option(title,x.code);if(norm(x.code)===current)opt.selected=true;select.append(opt);
  }
+ const expand=row.querySelector('[data-eagle-all]');
+ if(expand){expand.textContent=showAll?'↩ Show company codes first':'Show all '+all.length+' Eagle Codes';expand.disabled=!all.length}
  counter.textContent=all.length?
-  all.length+' Eagle Codes · '+matching.length+' matching'+(matching.length>EAGLE_LIMIT?' · type to filter':'')+
-  ' · '+eagleVersion():'Measurement Master not loaded. Refresh Fast Work Order.';
+  all.length+' Eagle Codes in Master · '+matching.length+' matching · '+show.length+' displayed'+
+  (!query&&partyCodes.length&&!showAll?' · '+party+' codes first':'')+
+  (matching.length>show.length?' · search or Show all':'')+' · '+eagleVersion():
+  'Measurement Master not loaded. Refresh Fast Work Order.';
  updateMeasurement(row);
 }
 function wireEagle(row){
@@ -161,6 +177,9 @@ function wireEagle(row){
  row.dataset.eagleBound='1';
  const search=row.querySelector('[data-eagle-search]'),select=row.querySelector('[data-eagle-select]'),code=row.querySelector('[data-eagle]');
  if(!search||!select||!code)return;
+ row.querySelector('[data-eagle-all]')?.addEventListener('click',()=>{
+  row.dataset.eagleAll=row.dataset.eagleAll==='1'?'0':'1';populateEagleCodes(row);
+ });
  search.addEventListener('input',()=>populateEagleCodes(row));
  search.addEventListener('focus',()=>populateEagleCodes(row));
  select.addEventListener('change',()=>{if(!select.value)return;code.value=select.value;populateEagleCodes(row)});
@@ -191,6 +210,10 @@ function fillProducts(row){
 }
 function addItem(){if(locked)return;const i=document.querySelectorAll('[data-item]').length;$('items').insertAdjacentHTML('beforeend',rowHtml(i));const row=$('items').lastElementChild;fillProducts(row);wireEagle(row);renumber()}
 $('addItem').onclick=addItem;
+// Refresh the company-specific Eagle code choices while Party / Company is typed.
+$('party').addEventListener('input',()=>{
+ for(const row of document.querySelectorAll('[data-item]'))populateEagleCodes(row);
+});
 $('items').addEventListener('click',e=>{if(e.target.matches('[data-remove]')&&!locked){e.target.closest('[data-item]').remove();renumber()}});
 $('items').addEventListener('change',e=>{
  if(!e.target.matches('[data-cloth],[data-width]')||locked)return;
