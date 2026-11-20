@@ -206,8 +206,9 @@ function slip(p){
  '<div class="cfm407-qty">'+qty('ORDER QTY',p.orderQty)+qty('PREVIOUS SENT',legacy?'UNVERIFIED':p.prevQty)+
  qty('THIS DISPATCH',p.shippedQty)+qty('BALANCE',legacy?'UNVERIFIED':p.balance)+'</div>'+
  '<div class="cfm407-bundle-title">PACKING BUNDLES: '+p.bundle.count+' &nbsp; | &nbsp; ONE LABEL PER BUNDLE</div>'+
- '<div class="cfm407-bundle-rows">'+p.bundle.quantities.map((q,i)=>'<span>Bundle '+(i+1)+' / '+p.bundle.count+': <b>'+
- esc(itemNumber(q))+' Nos</b></span>').join('')+'</div>'+
+ '<div class="cfm407-bundle-rows">'+p.bundle.quantities.slice(0,12).map((q,i)=>'<span>Bundle '+(i+1)+' / '+p.bundle.count+': <b>'+
+ esc(itemNumber(q))+' Nos</b></span>').join('')+
+ (p.bundle.count>12?'<span>Remaining '+(p.bundle.count-12)+' Bundle quantities are printed on their own labels</span>':'')+'</div>'+
  (!p.bundle.verified?'<div class="cfm407-unverified">Bundle Qty not verified — check actual packing before printing.</div>':'')+
  '<div class="cfm407-remark"><b>PACKING / LR / DISPATCH REMARKS</b><p>'+esc(show(p.note))+'</p></div>'+
  '<div class="cfm407-sign"><span>PREPARED BY <b>'+esc(show(p.operator))+'</b></span><span>PACKED / CHECKED BY <b>____________</b></span><span>RECEIVED BY <b>____________</b></span></div>'+
@@ -310,10 +311,11 @@ function documentHtml(record,work,photos){
  'if(sheet.scrollHeight>sheet.clientHeight+4||sheet.scrollWidth>sheet.clientWidth+4){'+
  'alert("A4 page "+(i+1)+" content overflows. Please shorten the description or reduce bundle details before printing.");return}}'+
  'var labels=document.querySelectorAll(".cfm407-label");if(labels.length!=='+n+'){alert("Bundle label count mismatch; do not print");return}'+
+ 'if('+(!p.bundle.verified)+'){alert("Bundle Qty is not verified. Complete physical Bundle quantities before printing.");return}'+
  'for(var j=0;j<labels.length;j++){if(labels[j].scrollHeight>labels[j].clientHeight+3){alert("Bundle "+(j+1)+" label exceeds 4x4 inch; check product details.");return}}'+
  'window.print()}</scr'+'ipt>';
  return head+'<div class="cfm407-toolbar"><span>ONE PRINT JOB · 1 Packing Slip + '+n+' Bundle Label'+(n===1?'':'s')+
- ' · A4 Landscape</span><div><button onclick="printVerified()" type="button">🖨 Print / Save PDF</button> '+
+ ' · A4 Landscape · 100% scale</span><div><button onclick="printVerified()" type="button">🖨 Print / Save PDF</button> '+
  '<button onclick="window.close()" type="button">Close</button></div></div>'+
  '<div class="cfm407-scroll">'+first+extraPages.join('')+'</div>'+script+'</body></html>';
 }
