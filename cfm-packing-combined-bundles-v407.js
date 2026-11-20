@@ -134,20 +134,28 @@ function prep(record,work){
  const choose=(v,f)=>str(v)||str(f);
  const bundle=verifySavedBundles(record);
  const items=Array.isArray(record.items)&&record.items.length?record.items.map(x=>({
-  workNo:choose(x.workNo,record.workNo),name:choose(x.description,choose(record.description,mapped.description)),
+  workNo:choose(x.workNo,record.workNo),poNo:choose(x.poNo,record.poNo),customerItemNo:choose(x.customerItemNo,record.customerItemNo),
+  name:choose(x.description,choose(record.description,mapped.description)),
   spec:choose(x.description2,choose(record.description2,mapped.description2)),
   code:choose(x.efpplCode,choose(record.efpplCode,mapped.efpplCode)),
   micron:choose(x.micron,choose(record.micron,mapped.micron)),
-  size:choose(x.size,choose(record.size,mapped.size)),qty:x.qty??record.thisDispatched
+  size:choose(x.size,choose(record.size,mapped.size)),qty:x.qty??record.thisDispatched,
+  orderQty:x.orderQty??record.orderQty,previousDispatched:x.previousDispatched??record.previousDispatched,
+  balanceAfter:x.balanceAfter??record.balanceAfter
  })):[{
-  workNo:choose(record.workNo,mapped.workNo),
-  name:choose(record.description,mapped.description),
-  spec:choose(record.description2,mapped.description2),
-  code:choose(record.efpplCode,mapped.efpplCode),
-  micron:choose(record.micron,mapped.micron),size:choose(record.size,mapped.size),qty:record.thisDispatched
+  workNo:choose(record.workNo,mapped.workNo),poNo:choose(record.poNo,mapped.poNo),customerItemNo:choose(record.customerItemNo,mapped.customerItemNo),
+  name:choose(record.description,mapped.description),spec:choose(record.description2,mapped.description2),
+  code:choose(record.efpplCode,mapped.efpplCode),micron:choose(record.micron,mapped.micron),
+  size:choose(record.size,mapped.size),qty:record.thisDispatched,orderQty:record.orderQty,
+  previousDispatched:record.previousDispatched,balanceAfter:record.balanceAfter
  }];
+ const bundleDetails=Array.isArray(record.bundleDetails)?record.bundleDetails.map(x=>({
+  itemIndex:Number(x.itemIndex),qty:Number(x.qty)})):[];
+ if(items.length>1&&(bundleDetails.length!==bundle.count||bundleDetails.some((x,i)=>
+   !Number.isSafeInteger(x.itemIndex)||x.itemIndex<0||x.itemIndex>=items.length||x.qty!==bundle.quantities[i])))
+  throw Error('Combined Packing Slip bundle assignments are missing or invalid.');
  return {
-  bundle,items,
+  bundle,items,bundleDetails,
   slip:choose(record.slipNo,record.draft?'PREVIEW ONLY':''),
   date:str(record.createdAt||record.date).slice(0,10),
   party:choose(record.party,mapped.party),
@@ -173,15 +181,22 @@ function prep(record,work){
 }
 function label(p,i){
  const count=p.bundle.count,q=p.bundle.quantities[i];
+ const assigned=p.bundleDetails?.[i],item=assigned?p.items[assigned.itemIndex]:p.items[0];
+ const labelPO=p.items.length>1?item?.poNo:p.po,labelWO=p.items.length>1?item?.workNo:p.wo;
+ const labelCode=p.items.length>1?item?.code:(p.code||item?.code);
+ const labelName=p.items.length>1?item?.name:(p.name||item?.name);
+ const labelSpec=p.items.length>1?item?.spec:p.spec;
+ const labelMicron=p.items.length>1?item?.micron:(p.micron||item?.micron);
+ const labelSize=p.items.length>1?item?.size:(p.size||item?.size);
  return '<section class="cfm407-label" aria-label="Bundle '+(i+1)+' of '+count+'">'+
  '<div class="cfm407-label-head">'+eagle()+'<div class="cfm407-label-title">PACKING<br>LABEL</div></div>'+
  '<div class="cfm407-label-state">'+(p.draft?'DRAFT / NOT DISPATCHED':p.legacy?'HISTORICAL':'PACKED GOODS')+'</div>'+
  '<div class="cfm407-line"><small>PARTY / COMPANY</small><strong>'+esc(show(p.party))+'</strong></div>'+
- '<div class="cfm407-label-two"><div><small>CUSTOMER PO NO.</small><b>'+esc(show(p.po))+'</b></div><div><small>WORK ORDER NO.</small><b>'+esc(show(p.wo))+'</b></div></div>'+
- '<div class="cfm407-line"><small>EFPPL ITEM CODE</small><strong>'+esc(show(p.code||p.items[0]?.code))+'</strong></div>'+
- '<div class="cfm407-product"><small>PRODUCT / SPECIFICATION</small><strong>'+esc(show(p.name||p.items[0]?.name))+'</strong>'+
- (p.spec?'<p>'+esc(p.spec)+'</p>':'')+'</div>'+
- '<div class="cfm407-label-two"><div><small>MICRON</small><b>'+esc(show(p.micron||p.items[0]?.micron))+'</b></div><div><small>SIZE</small><b>'+esc(show(p.size||p.items[0]?.size))+'</b></div></div>'+
+ '<div class="cfm407-label-two"><div><small>CUSTOMER PO NO.</small><b>'+esc(show(labelPO))+'</b></div><div><small>WORK ORDER NO.</small><b>'+esc(show(labelWO))+'</b></div></div>'+
+ '<div class="cfm407-line"><small>EFPPL ITEM CODE</small><strong>'+esc(show(labelCode))+'</strong></div>'+
+ '<div class="cfm407-product"><small>PRODUCT / SPECIFICATION</small><strong>'+esc(show(labelName))+'</strong>'+
+ (labelSpec?'<p>'+esc(labelSpec)+'</p>':'')+'</div>'+
+ '<div class="cfm407-label-two"><div><small>MICRON</small><b>'+esc(show(labelMicron))+'</b></div><div><small>SIZE</small><b>'+esc(show(labelSize))+'</b></div></div>'+
  '<div class="cfm407-label-totals"><div><small>BUNDLE NO.</small><strong>'+(i+1)+' / '+count+'</strong></div>'+
  '<div><small>QTY IN BUNDLE (NOS)</small><strong>'+esc(itemNumber(q))+'</strong></div></div>'+
  '<div class="cfm407-label-bottom"><span>'+esc(show(p.slip))+'</span><span>'+esc(show(p.date))+'</span></div></section>';
@@ -189,8 +204,14 @@ function label(p,i){
 function slip(p){
  const ref=(label,v)=>'<div class="cfm407-info-cell"><small>'+esc(label)+'</small><b>'+esc(show(v))+'</b></div>';
  const td=(txt,cls='')=>'<td class="'+cls+'">'+esc(show(txt))+'</td>';
- const table=p.items.map((x,i)=>'<tr>'+td(String(i+1),'num')+td(x.workNo)+td(x.code)+
- td(x.name)+td(x.spec)+td(x.micron)+td(x.size)+td(itemNumber(x.qty),'num')+'</tr>').join('');
+ const multi=p.items.length>1;
+ const table=p.items.map((x,i)=>multi?
+  '<tr>'+td(String(i+1),'num')+td(x.workNo)+td(x.poNo)+td(x.code)+
+   td([x.name,x.spec,x.size?'Size '+x.size:'',x.micron?'Micron '+x.micron:''].filter(Boolean).join(' · '))+
+   td(itemNumber(x.orderQty),'num')+td(itemNumber(x.previousDispatched),'num')+
+   td(itemNumber(x.qty),'num')+td(itemNumber(x.balanceAfter),'num')+'</tr>':
+  '<tr>'+td(String(i+1),'num')+td(x.workNo)+td(x.code)+td(x.name)+td(x.spec)+td(x.micron)+td(x.size)+
+   td(itemNumber(x.qty),'num')+'</tr>').join('');
  const qty=(text,val)=>'<div><small>'+esc(text)+'</small><strong>'+esc(itemNumber(val))+'</strong></div>';
  const legacy=p.legacy;
  return '<section class="cfm407-slip" aria-label="Packing Slip">'+
@@ -201,8 +222,10 @@ function slip(p){
  '<small>SHIP-TO / DELIVERY ADDRESS</small><p>'+esc(p.address||'Not recorded in Work Order — verify with customer')+'</p></div>'+
  '<div><small>PO DATE</small><b>'+esc(show(p.poDate))+'</b><small>CUSTOMER ITEM CODE</small><b>'+esc(show(p.item))+'</b></div></div>'+
  '<h3>PRODUCT DETAILS · AS PER WORK ORDER</h3>'+
- '<table class="cfm407-products"><colgroup><col style="width:5%"><col style="width:13%"><col style="width:17%"><col style="width:24%"><col style="width:20%"><col style="width:7%"><col style="width:7%"><col style="width:7%"></colgroup>'+
- '<thead><tr><th>#</th><th>WORK NO.</th><th>EFPPL CODE</th><th>PRODUCT</th><th>SPECIFICATION</th><th>MICRON</th><th>SIZE</th><th>QTY</th></tr></thead><tbody>'+table+'</tbody></table>'+
+ (multi?'<table class="cfm407-products cfm407-multi"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:12%"><col style="width:15%"><col style="width:28%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:7%"></colgroup>'+
+  '<thead><tr><th>#</th><th>WO</th><th>PO NO.</th><th>EFPPL</th><th>PRODUCT / SPEC</th><th>ORDER</th><th>PREV</th><th>NOW</th><th>PENDING</th></tr></thead><tbody>'+table+'</tbody></table>':
+  '<table class="cfm407-products"><colgroup><col style="width:5%"><col style="width:13%"><col style="width:17%"><col style="width:24%"><col style="width:20%"><col style="width:7%"><col style="width:7%"><col style="width:7%"></colgroup>'+
+  '<thead><tr><th>#</th><th>WORK NO.</th><th>EFPPL CODE</th><th>PRODUCT</th><th>SPECIFICATION</th><th>MICRON</th><th>SIZE</th><th>QTY</th></tr></thead><tbody>'+table+'</tbody></table>')+
  '<div class="cfm407-qty">'+qty('ORDER QTY',p.orderQty)+qty('PREVIOUS SENT',legacy?'UNVERIFIED':p.prevQty)+
  qty('THIS DISPATCH',p.shippedQty)+qty('BALANCE',legacy?'UNVERIFIED':p.balance)+'</div>'+
  '<div class="cfm407-bundle-title">PACKING BUNDLES: '+p.bundle.count+' &nbsp; | &nbsp; ONE LABEL PER BUNDLE</div>'+
@@ -258,6 +281,7 @@ function documentHtml(record,work,photos){
  '.cfm407-products{width:100%;table-layout:fixed;border-collapse:collapse}',
  '.cfm407-products th,.cfm407-products td{border:1px solid #111;padding:1.6mm 1mm;overflow-wrap:anywhere;vertical-align:top}',
  '.cfm407-products th{font:bold 7pt Arial;text-align:center}.cfm407-products td{font:7.8pt/1.25 Arial}.cfm407-products .num{text-align:center;font-weight:800}',
+ '.cfm407-products.cfm407-multi th{font-size:6.5pt}.cfm407-products.cfm407-multi td{font-size:7pt;padding:1.2mm .8mm}',
  '.cfm407-qty{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #111;border-right:0}',
  '.cfm407-qty>div{padding:2mm 1mm;text-align:center;border-right:1px solid #111}',
  '.cfm407-qty small{display:block;font:bold 7pt Arial}.cfm407-qty strong{display:block;font:bold 14pt Arial}',
