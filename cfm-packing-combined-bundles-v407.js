@@ -151,7 +151,7 @@ function prep(record,work){
  }];
  const bundleDetails=Array.isArray(record.bundleDetails)?record.bundleDetails.map(x=>({
   itemIndex:Number(x.itemIndex),qty:Number(x.qty)})):[];
- if(items.length>1&&(bundleDetails.length!==bundle.count||bundleDetails.some((x,i)=>
+ if((items.length>1||record.manualNoWO===true)&&(bundleDetails.length!==bundle.count||bundleDetails.some((x,i)=>
    !Number.isSafeInteger(x.itemIndex)||x.itemIndex<0||x.itemIndex>=items.length||x.qty!==bundle.quantities[i])))
   throw Error('Combined Packing Slip bundle assignments are missing or invalid.');
  return {
@@ -176,13 +176,13 @@ function prep(record,work){
   totalQty:record.totalDispatched,
   note:record.notes,
   operator:record.operator,
-  draft:!!record.draft,legacy:!!record.legacy
+  draft:!!record.draft,legacy:!!record.legacy,manualNoWO:!!record.manualNoWO
  };
 }
 function label(p,i){
  const count=p.bundle.count,q=p.bundle.quantities[i];
  const assigned=p.bundleDetails?.[i],item=assigned?p.items[assigned.itemIndex]:p.items[0];
- const labelPO=p.items.length>1?item?.poNo:p.po,labelWO=p.items.length>1?item?.workNo:p.wo;
+ const labelPO=p.items.length>1?item?.poNo:p.po,labelWO=p.manualNoWO?'NOT ISSUED':p.items.length>1?item?.workNo:p.wo;
  const labelCode=p.items.length>1?item?.code:(p.code||item?.code);
  const labelName=p.items.length>1?item?.name:(p.name||item?.name);
  const labelSpec=p.items.length>1?item?.spec:p.spec;
@@ -204,7 +204,7 @@ function label(p,i){
 function slip(p){
  const ref=(label,v)=>'<div class="cfm407-info-cell"><small>'+esc(label)+'</small><b>'+esc(show(v))+'</b></div>';
  const td=(txt,cls='')=>'<td class="'+cls+'">'+esc(show(txt))+'</td>';
- const multi=p.items.length>1;
+ const multi=p.items.length>1||p.manualNoWO===true;
  const table=p.items.map((x,i)=>multi?
   '<tr>'+td(String(i+1),'num')+td(x.workNo)+td(x.poNo)+td(x.code)+
    td([x.name,x.spec,x.size?'Size '+x.size:'',x.micron?'Micron '+x.micron:''].filter(Boolean).join(' · '))+
@@ -219,9 +219,9 @@ function slip(p){
  (p.draft?'DRAFT — NOT DISPATCHED':legacy?'LEGACY / UNVERIFIED':'CONFIRMED DISPATCH')+'</small></div></div>'+
  '<div class="cfm407-refs">'+ref('SLIP NO.',p.slip)+ref('DATE',p.date)+ref('WORK ORDER NO.',multi?'Multiple ('+p.items.length+')':p.wo)+ref('CUSTOMER PO NO.',multi?'See PO column':p.po)+'</div>'+
  '<div class="cfm407-dest"><div><small>PARTY / COMPANY</small><b>'+esc(show(p.party))+'</b>'+
- '<small>SHIP-TO / DELIVERY ADDRESS</small><p>'+esc(p.address||'Not recorded in Work Order — verify with customer')+'</p></div>'+
+ '<small>SHIP-TO / DELIVERY ADDRESS</small><p>'+esc(p.address||'Not recorded — verify customer PO')+'</p></div>'+
  '<div><small>PO DATE</small><b>'+esc(show(p.poDate))+'</b><small>CUSTOMER ITEM CODE</small><b>'+esc(show(p.item))+'</b></div></div>'+
- '<h3>PRODUCT DETAILS · AS PER WORK ORDER</h3>'+
+ '<h3>PRODUCT DETAILS · '+(p.manualNoWO?'AS PER CUSTOMER PO (NO WORK ORDER)':'AS PER WORK ORDER')+'</h3>'+
  (multi?'<table class="cfm407-products cfm407-multi"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:12%"><col style="width:15%"><col style="width:28%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:7%"></colgroup>'+
   '<thead><tr><th>#</th><th>WO</th><th>PO NO.</th><th>EFPPL</th><th>PRODUCT / SPEC</th><th>ORDER</th><th>PREV</th><th>NOW</th><th>PENDING</th></tr></thead><tbody>'+table+'</tbody></table>':
   '<table class="cfm407-products"><colgroup><col style="width:5%"><col style="width:13%"><col style="width:17%"><col style="width:24%"><col style="width:20%"><col style="width:7%"><col style="width:7%"><col style="width:7%"></colgroup>'+
