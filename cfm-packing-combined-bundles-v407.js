@@ -228,7 +228,7 @@ function mixedLabel(p,i){
   const item=p.items[x.itemIndex];
   return '<div class="cfm411-label-item">'+
    '<div class="cfm411-label-top"><strong>PO: '+esc(show(item.poNo))+'</strong><b>'+x.qty+' Nos</b></div>'+
-   '<div class="cfm411-label-code">ITEM: '+esc(show(item.code))+
+   '<div class="cfm411-label-code">'+(p.manualNoWO?'':'WO: '+esc(show(item.workNo))+' · ')+'ITEM: '+esc(show(item.code))+
     (item.customerItemNo?' · CUSTOMER: '+esc(item.customerItemNo):'')+'</div>'+
    '<div class="cfm411-label-product">'+esc(show(item.name))+'</div>'+
    (item.spec?'<div class="cfm411-label-spec">'+esc(item.spec)+'</div>':'')+
