@@ -57,10 +57,26 @@ function renderBundles(tr,restore=false){
  const n=positive(tr.querySelector('[data-count]')?.value),q=positive(tr.querySelector('[data-send]')?.value);
  const place=tr.querySelector('[data-bundles]'),check=tr.querySelector('[data-verified-wrap]');
  if(!n||n>200){place.textContent='Choose 1–200 bundles';check.hidden=true;return}
- const portions=restore&&Array.isArray(row.bundleQtys)&&row.bundleQtys.length===n?
-  row.bundleQtys:defaultBundles(q,n);
- place.innerHTML=portions.map((x,i)=>'<label>Bundle '+(i+1)+' Qty (Nos)<input type="number" min="1" step="1" data-bundle-qty value="'+esc(x)+'" '+(n===1?'readonly':'')+'></label>').join('');
+ // Physical bundle quantities are always MANUAL, never silently split.
+ // Preserve existing typed values when changing count or dispatch Qty.
+ const portions=Array.isArray(row.bundleQtys)?row.bundleQtys:[];
+ place.innerHTML=Array.from({length:n},(_,i)=>{
+  const x=restore?str(portions[i]??''):'';
+  return '<label><b>Bundle '+(i+1)+' / '+n+'</b> · Qty (Nos)<input type="number" min="1" step="1" data-bundle-qty placeholder="Actual packed Qty" value="'+esc(x)+'"></label>';
+ }).join('');
  check.hidden=n===1;check.querySelector('input').checked=!!(restore&&row.verified);
+ bundleStatus(tr);
+}
+function bundleStatus(tr){
+ const values=[...tr.querySelectorAll('[data-bundle-qty]')].map(x=>positive(x.value));
+ const thisQty=positive(tr.querySelector('[data-send]')?.value);
+ const qtySum=values.reduce((total,q)=>total+(q||0),0);
+ const counter=tr.querySelector('[data-bundle-status]');
+ if(counter)counter.textContent= !thisQty?
+  'Enter This Dispatch Qty, then manual Qty in every Bundle':
+  values.every(Boolean)&&qtySum===thisQty?
+  '✓ Manual Bundle Qty total '+qtySum+' matches This Dispatch Qty':
+  '⚠ Bundle total '+qtySum+' / Dispatch '+thisQty+' · Fill / correct actual bundle Qty';
 }
 function itemRow(x){
  const o=x.order,prev=sendHistory(o.id),pending=Math.max(0,Number(o.orderQty)-prev);
@@ -71,9 +87,12 @@ function itemRow(x){
  '<small>'+esc(o.description)+'</small><small>'+esc(o.description2||'')+'</small></td>'+
  '<td>'+esc(o.orderQty)+'</td><td>'+prev+'</td><td class="cfm409-pending">'+pending+'</td>'+
  '<td><input data-send type="number" min="1" step="1" placeholder="Today Qty" aria-label="Today dispatch quantity" value="'+esc(x.shipQty||'')+'"></td>'+
- '<td><input data-count type="number" min="1" max="200" step="1" value="'+esc(x.count||1)+'" aria-label="Bundle Count">'+
+ '<td><div class="cfm409-bundle-title">MANUAL PACKING BUNDLES</div>'+
+ '<label>Number of Bundles<input data-count type="number" min="1" max="200" step="1" value="'+esc(x.count||1)+'" aria-label="Manual Bundle Count"></label>'+
+ '<div class="cfm409-bundle-buttons"><button type="button" data-add-bundle>+ Add Bundle</button><button type="button" data-minus-bundle>− Remove Bundle</button></div>'+
  '<div data-bundles class="cfm409-qtys"></div>'+
- '<label data-verified-wrap hidden><input type="checkbox" data-verified> Bundles physically checked</label></td>'+
+ '<div class="cfm409-bundle-status" data-bundle-status></div>'+
+ '<label data-verified-wrap hidden><input type="checkbox" data-verified> I checked each Bundle quantity physically</label></td>'+
  '<td><button type="button" data-remove="'+esc(o.id)+'" title="Remove from this draft only">✕</button></td></tr>';
 }
 function renderLines(){
@@ -397,6 +416,11 @@ function mount(){
  '#cfm409Dialog td .cfm409-pending{font-weight:900;color:#b32236}'+
  '#cfm409Dialog .cfm409-qtys{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}'+
  '#cfm409Dialog .cfm409-qtys label{font-size:10px}#cfm409Dialog .cfm409-qtys input{padding:5px!important}'+
+ '#cfm409Dialog .cfm409-qtys{grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}'+
+ '#cfm409Dialog .cfm409-bundle-title{font:900 11px Arial;color:#115680;letter-spacing:.2px}'+
+ '#cfm409Dialog .cfm409-bundle-buttons{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}'+
+ '#cfm409Dialog .cfm409-bundle-buttons button{background:#e7f4fc;color:#094772;border:1px solid #92c3df;padding:6px 9px;font-weight:800}'+
+ '#cfm409Dialog .cfm409-bundle-status{font:750 11px/1.45 Arial;color:#185677;margin:7px 0;max-width:265px}'+
  '#cfm409Dialog .cfm409-summary{border:1px solid #b5e2c3;background:#e8f7ed;color:#1b5d3b;border-radius:8px;padding:12px;font-weight:800;margin:10px 0}'+
  '#cfm409Dialog #cfm409Message{font-size:12px;margin:10px 0}#cfm409Dialog .cfm409-history{border-top:1px solid #bcd1dd;padding-top:10px}'+
  '#cfm409Dialog .cfm409-history-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1px solid #dfebf2;padding:8px 0}'+
@@ -415,15 +439,31 @@ function mount(){
  });
  $('cfm409AddExisting').onclick=addExisting;$('cfm409AddNew').onclick=addNew;
  $('cfm409Lines').addEventListener('click',e=>{
+  const tr=e.target.closest('tr[data-manual-id]');
+  const add=e.target.closest('button[data-add-bundle]');
+  const minus=e.target.closest('button[data-minus-bundle]');
+  if(tr&&(add||minus)){
+   rememberInputs();
+   const countInput=tr.querySelector('[data-count]');
+   const current=positive(countInput.value)||1;
+   const updated=add?Math.min(200,current+1):Math.max(1,current-1);
+   countInput.value=String(updated);
+   const record=lines.find(x=>x.order.id===tr.dataset.manualId);
+   if(record){record.count=String(updated);record.verified=false;record.bundleQtys=(record.bundleQtys||[]).slice(0,updated)}
+   renderBundles(tr,true);summary();return;
+  }
   const btn=e.target.closest('button[data-remove]');if(!btn)return;
   rememberInputs();lines=lines.filter(x=>x.order.id!==btn.dataset.remove);renderLines();
  });
  $('cfm409Lines').addEventListener('input',e=>{
   if(e.target.matches('[data-count],[data-send]')){
    rememberInputs();
-   renderBundles(e.target.closest('tr'));
+   const tr=e.target.closest('tr');
+   tr.querySelector('[data-verified]').checked=false;
+   renderBundles(tr,true);
   }
   if(e.target.matches('[data-bundle-qty]'))e.target.closest('tr').querySelector('[data-verified]').checked=false;
+  if(e.target.matches('[data-bundle-qty]'))bundleStatus(e.target.closest('tr'));
   rememberInputs();summary();
  });
  $('cfm409Preview').onclick=preview;$('cfm409Save').onclick=saveSlip;
