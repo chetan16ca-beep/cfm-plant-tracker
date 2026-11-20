@@ -175,18 +175,19 @@ async function saveCombined(){
    if(sentNow!==item.previousDispatched-item.manualPreviousBaseline||sentNow+item.manualPreviousBaseline+item.qty>pos(cloudRow.orderQty))
     throw Error(item.workNo+': pending Qty changed. Nothing saved.');
   }
-  const deleted=Array.isArray(latest.payload.packingSlipDeletedRefs)?latest.payload.packingSlipDeletedRefs:[];
-  const allIds=[...log,...deleted].map(x=>Number(String(x.slipNo||'').match(/^PK\/COMBO\/(\d+)$/)?.[1]||0));
-  const serial=Math.max(0,...allIds)+1;
+  if(typeof window.CFM_PACK_UNIQUE_V414?.next!=='function')throw Error('Unique Slip number service missing. Refresh ERP V414.');
+  const docNo=window.CFM_PACK_UNIQUE_V414.next(latest.payload);
   record={...draftRecord(data),id:typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'combined-'+Date.now()+'-'+Math.random().toString(36).slice(2),
-   draft:false,slipNo:'PK/COMBO/'+String(serial).padStart(4,'0'),source:'MANUAL CONFIRMED COMBINED SHIPMENT',
+   draft:false,slipNo:docNo.slipNo,packingSlipSerial:docNo.serial,source:'MANUAL CONFIRMED COMBINED SHIPMENT',
    operator:typeof deviceLabel==='function'?deviceLabel():''};
   state.packingSlips=[...log,record];
+  state.packingSlipGlobalSequence=docNo.serial;
   clearTimeout(cloudPushTimer);save(false,{poQuick:true});clearTimeout(cloudPushTimer);
   const committed=await cloudPush(true);
   if(!committed)throw Error('Cloud save not confirmed. Inspect history before retrying.');
   const confirmed=await cloudFetch();
   if(!confirmed?.payload?.packingSlips?.some(x=>x.id===record.id))throw Error('Cloud receipt not verified. Refresh before retrying.');
+  window.CFM_PACK_UNIQUE_V414.verify(confirmed.payload,docNo);
   snap=confirmed;lastSaved=record;render();
   msg('✓ CLOUD VERIFIED: '+record.slipNo+' · '+record.items.length+' Work Orders · This dispatch '+record.thisDispatched+
    ' Nos · Pending '+record.balanceAfter+' Nos · '+record.bundleCount+' Bundle Labels.');
