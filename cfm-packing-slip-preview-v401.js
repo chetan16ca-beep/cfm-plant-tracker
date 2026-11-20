@@ -14,6 +14,8 @@ const format=x=>str(x)===''?'—':String(x);
 const files=new Map();let activeWork='';
 const inputId=i=>'cfmPackPhoto'+i+'V401';
 function addInputs(){
+ // V414: Do not show image-upload widgets. Packing print no longer has photos.
+ return;
  const dlg=document.getElementById('packSlipDialog');
  if(!dlg||document.getElementById('cfmPackPhotosV401'))return;
  const remark=document.getElementById('packSlipRemarks');
@@ -183,7 +185,7 @@ function documentHtml(r,work,photos){
  '<div class="quantities">'+qtycell('ORDER QTY',r.orderQty)+qtycell('PREVIOUS DISPATCH',legacy?'UNVERIFIED':r.previousDispatched)+
  qtycell('THIS DISPATCH QTY',r.thisDispatched)+qtycell('TOTAL DISPATCHED',legacy?'UNVERIFIED':r.totalDispatched)+
  qtycell('BALANCE QTY',legacy?'UNVERIFIED':r.balanceAfter)+'</div>'+
- '<div class="photos">'+photo(1)+photo(2)+'</div>'+
+
  '<div class="bottom"><div class="remark"><b>LR / COURIER / DISPATCH / PACKING REMARKS</b>'+E(show(r.notes))+'</div>'+
  '<div class="signatures"><div>PREPARED BY<br><span>'+E(str(r.operator)||'________')+'</span></div><div>PACKED / CHECKED BY<br><span>'+E(str(r.packedBy||r.checkedBy)||'________')+'</span></div><div>RECEIVED BY<br><span>________</span></div></div></div>'+
  '<div class="footline">'+
