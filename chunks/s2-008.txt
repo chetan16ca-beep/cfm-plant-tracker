@@ -40,23 +40,39 @@ function ensureExcelMasterData(){
   return true;
 }
 function trackerForSrl(srl){return (state.srlTracker||[]).find(x=>normalize(x.srlNo)===normalize(srl))||null}
-function measurementForWork(r){
-  const a=(state.measurements||[]), work=normalize(r?.workNo), eagle=normalize(r?.eagleCode), desc=normalize(r?.description), party=normalize(r?.party);
-  let m=work?a.find(x=>normalize(x.workNo)===work):null;
-  if(!m&&eagle)m=a.find(x=>normalize(x.eagleCode)===eagle);
-  if(!m&&desc){
-    const exact=a.filter(x=>normalize(x.description)===desc && (!party||!x.party||normalize(x.party)===party));
-    if(exact.length===1)m=exact[0];
+// V415 — Eagle Code ONLY: no Work No., party, description or EFPPL code
+// used as a measurement lookup key. Ambiguous variants are NEVER guessed.
+function eagleMeasurementCandidates(r){
+  const eagle=normalize(r?.eagleCode);
+  if(!eagle)return [];
+  const rows=Array.isArray(state.measurements)&&state.measurements.length?
+    state.measurements:(window.CFM_EXCEL_MASTER?.measurements||[]);
+  return rows.filter(x=>normalize(x?.eagleCode)===eagle);
+}
+function eagleMeasurementValue(m){
+  const v=[m?.finalMeasurement,m?.measurement3,m?.measurement2,m?.measurement1,m?.previousMeasurement]
+    .map(x=>String(x??'').trim())
+    .find(x=>x&&!/NEW PRODUCT\s*[-–]\s*NO PREVIOUS|MEASUREMENT REQUIRED|NO PREVIOUS MEASUREMENT|NO MATCHING/i.test(x));
+  return v||'';
+}
+function eagleMeasurementResult(r){
+  const eagle=normalize(r?.eagleCode);
+  if(!eagle)return {text:'MEASUREMENT REQUIRED',status:'REQUIRED',source:'Enter Eagle Code (EFP-P...) for auto measurement',record:null};
+  const matching=eagleMeasurementCandidates(r);
+  if(!matching.length)return {text:'MEASUREMENT REQUIRED',status:'REQUIRED',source:'Eagle '+eagle+': no matching Measurement Master record',record:null};
+  const unique=new Map();
+  for(const row of matching){
+    const value=eagleMeasurementValue(row),normalized=normalize(value);
+    if(normalized&&!unique.has(normalized))unique.set(normalized,{value,row});
   }
-  return m||null;
+  if(!unique.size)return {text:'MEASUREMENT REQUIRED',status:'REQUIRED',source:'Eagle '+eagle+': measurement not available in Master',record:null};
+  if(unique.size!==1)return {text:'MEASUREMENT REQUIRED',status:'VERIFY',source:'Eagle '+eagle+': '+unique.size+' different measurement sets; verify in Master',record:null};
+  const match=[...unique.values()][0];
+  // A single exact Eagle Code measurement is the only valid auto result.
+  return {text:match.value,status:'READY',source:'Auto from Eagle Code '+eagle,record:match.row};
 }
-function measurementInfo(r){
-  const m=measurementForWork(r);
-  if(!m)return {text:'MEASUREMENT REQUIRED',status:'REQUIRED',source:'No matching Work No / Eagle Code',record:null};
-  const raw=m.finalMeasurement||m.previousMeasurement||m.measurement1||'';
-  const text=(raw && !normalize(raw).includes('NEW PRODUCT - NO PREVIOUS'))?raw:'MEASUREMENT REQUIRED';
-  return {text,status:text==='MEASUREMENT REQUIRED'?'REQUIRED':(m.status||'READY'),source:m.workNo?`Work ${m.workNo}`:`Eagle ${m.eagleCode||''}`,record:m};
-}
+function measurementForWork(r){return eagleMeasurementResult(r).record}
+function measurementInfo(r){return eagleMeasurementResult(r)}
 
 // Multi-Mobile cloud sync (3-4 phones supported)
 const CLOUD_URL='https://soluxixriexliipfnznc.supabase.co';
