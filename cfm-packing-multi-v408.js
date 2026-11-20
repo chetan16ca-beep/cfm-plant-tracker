@@ -93,6 +93,7 @@ function collect(){
  if(!address)throw Error('Verify Ship-to Address before saving or printing.');
  const chosen=selected.map(tr=>all.find(r=>str(r.workNo)===tr.dataset.workNo));
  if(chosen.some(r=>!r||key(r.party)!==company()))throw Error('Selected Work Orders are not from the same company.');
+ if(chosen.some(r=>all.filter(x=>key(x.workNo)===key(r.workNo)).length!==1))throw Error('Duplicate Work Order number found in Cloud. Correct duplicate records before combined dispatch.');
  const known=addresses(chosen);
  if(known.length>1)throw Error('These Work Orders have different delivery addresses. Create separate slips per destination.');
  if(known.length===1&&key(known[0])!==key(address))throw Error('Ship-to differs from Work Orders. Verify the delivery address before combining.');
