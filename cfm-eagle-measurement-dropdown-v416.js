@@ -26,7 +26,7 @@ function getList(){
   if(!item.product&&r.description)item.product=T(r.description);
   if(!item.party&&r.party)item.party=T(r.party);
   const measured=[r.finalMeasurement,r.measurement3,r.measurement2,r.measurement1,r.previousMeasurement]
-   .map(T).find(x=>x&&!/NEW PRODUCT\\s*[-–]\\s*NO PREVIOUS|MEASUREMENT REQUIRED|NO PREVIOUS MEASUREMENT|NO MATCHING/i.test(x));
+   .map(T).find(x=>x&&!/NEW PRODUCT\s*[-–]\s*NO PREVIOUS|MEASUREMENT REQUIRED|NO PREVIOUS MEASUREMENT|NO MATCHING/i.test(x));
   if(measured)item.values.add(N(measured));
  }
  const list=[...map.values()].map(x=>{
