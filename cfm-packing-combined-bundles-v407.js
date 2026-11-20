@@ -151,11 +151,34 @@ function prep(record,work){
  }];
  const bundleDetails=Array.isArray(record.bundleDetails)?record.bundleDetails.map(x=>({
   itemIndex:Number(x.itemIndex),qty:Number(x.qty)})):[];
- if((items.length>1||record.manualNoWO===true)&&(bundleDetails.length!==bundle.count||bundleDetails.some((x,i)=>
+ const hasMixed=Array.isArray(record.bundleContents)&&record.bundleContents.length>0;
+ const bundleContents=hasMixed?record.bundleContents.map(bundle=>({
+  qty:Number(bundle.qty),
+  items:Array.isArray(bundle.items)?bundle.items.map(x=>({itemIndex:Number(x.itemIndex),qty:Number(x.qty)})):[]
+ })):[];
+ if(hasMixed){
+  if(bundleContents.length!==bundle.count)throw Error('Mixed Bundle count mismatch. Recheck saved Packing Slips.');
+  const itemSums=Array(items.length).fill(0);
+  for(let i=0;i<bundleContents.length;i++){
+   const b=bundleContents[i],used=new Set();
+   if(!b.items.length)throw Error('Mixed physical Bundle '+(i+1)+' is empty.');
+   let sum=0;
+   for(const entry of b.items){
+    if(!Number.isSafeInteger(entry.itemIndex)||entry.itemIndex<0||entry.itemIndex>=items.length||
+       !Number.isSafeInteger(entry.qty)||entry.qty<=0||used.has(entry.itemIndex))
+     throw Error('Invalid mixed PO/Item Qty in Bundle '+(i+1));
+    used.add(entry.itemIndex);sum+=entry.qty;itemSums[entry.itemIndex]+=entry.qty;
+   }
+   if(sum!==b.qty||sum!==bundle.quantities[i])
+    throw Error('Mixed physical Bundle '+(i+1)+' total does not match its label Qty.');
+  }
+  for(let i=0;i<items.length;i++)if(itemSums[i]!==Number(items[i].qty))
+    throw Error('PO '+items[i].poNo+' has mismatched dispatch Qty and mixed-bundle Qty.');
+ }else if((items.length>1||record.manualNoWO===true)&&(bundleDetails.length!==bundle.count||bundleDetails.some((x,i)=>
    !Number.isSafeInteger(x.itemIndex)||x.itemIndex<0||x.itemIndex>=items.length||x.qty!==bundle.quantities[i])))
   throw Error('Combined Packing Slip bundle assignments are missing or invalid.');
  return {
-  bundle,items,bundleDetails,
+  bundle,items,bundleDetails,bundleContents,
   slip:choose(record.slipNo,record.draft?'PREVIEW ONLY':''),
   date:str(record.createdAt||record.date).slice(0,10),
   party:choose(record.party,mapped.party),
@@ -179,7 +202,32 @@ function prep(record,work){
   draft:!!record.draft,legacy:!!record.legacy,manualNoWO:!!record.manualNoWO
  };
 }
+function mixedLabel(p,i){
+ const b=p.bundleContents[i],count=p.bundle.count;
+ const contents=b.items.map(x=>{
+  const item=p.items[x.itemIndex];
+  return '<div class="cfm411-label-item">'+
+   '<div class="cfm411-label-top"><strong>PO: '+esc(show(item.poNo))+'</strong><b>'+x.qty+' Nos</b></div>'+
+   '<div class="cfm411-label-code">ITEM: '+esc(show(item.code))+
+    (item.customerItemNo?' · CUSTOMER: '+esc(item.customerItemNo):'')+'</div>'+
+   '<div class="cfm411-label-product">'+esc(show(item.name))+'</div>'+
+   (item.spec?'<div class="cfm411-label-spec">'+esc(item.spec)+'</div>':'')+
+   (item.size||item.micron?'<div class="cfm411-label-spec">'+
+    (item.size?'Size '+esc(item.size)+' ':'')+(item.micron?'Micron '+esc(item.micron):'')+'</div>':'')+
+   '</div>';
+ }).join('');
+ return '<section class="cfm407-label cfm411-mixed-label" aria-label="Mixed Bundle '+(i+1)+' of '+count+'">'+
+ '<div class="cfm407-label-head">'+eagle()+'<div class="cfm407-label-title">MIXED<br>BUNDLE LABEL</div></div>'+
+ '<div class="cfm407-label-state">'+(p.draft?'DRAFT · NOT DISPATCHED':'PHYSICAL BUNDLE · MULTIPLE PO ITEMS')+'</div>'+
+ '<div class="cfm407-line"><small>PARTY / COMPANY</small><strong>'+esc(show(p.party))+'</strong></div>'+
+ '<div class="cfm411-label-columns">PO NUMBER · ITEM CODE · MATERIAL DETAILS · QTY</div>'+
+ '<div class="cfm411-label-list">'+contents+'</div>'+
+ '<div class="cfm407-label-totals"><div><small>ONE PHYSICAL BUNDLE</small><strong>'+(i+1)+' / '+count+'</strong></div>'+
+ '<div><small>TOTAL QTY IN BUNDLE</small><strong>'+b.qty+' NOS</strong></div></div>'+
+ '<div class="cfm407-label-bottom"><span>'+esc(show(p.slip))+'</span><span>'+esc(show(p.date))+'</span></div></section>';
+}
 function label(p,i){
+ if(p.bundleContents?.length)return mixedLabel(p,i);
  const count=p.bundle.count,q=p.bundle.quantities[i];
  const assigned=p.bundleDetails?.[i],item=assigned?p.items[assigned.itemIndex]:p.items[0];
  const labelPO=p.items.length>1?item?.poNo:p.po,labelWO=p.manualNoWO?'NOT ISSUED':p.items.length>1?item?.workNo:p.wo;
@@ -217,7 +265,7 @@ function slip(p){
  return '<section class="cfm407-slip" aria-label="Packing Slip">'+
  '<div class="cfm407-slip-head">'+eagle()+'<div class="cfm407-slip-name"><b>PACKING SLIP</b><small>'+
  (p.draft?'DRAFT — NOT DISPATCHED':legacy?'LEGACY / UNVERIFIED':'CONFIRMED DISPATCH')+'</small></div></div>'+
- '<div class="cfm407-refs">'+ref('SLIP NO.',p.slip)+ref('DATE',p.date)+ref('WORK ORDER NO.',multi?'Multiple ('+p.items.length+')':p.wo)+ref('CUSTOMER PO NO.',multi?'See PO column':p.po)+'</div>'+
+ '<div class="cfm407-refs">'+ref('SLIP NO.',p.slip)+ref('DATE',p.date)+ref('WORK ORDER NO.',p.manualNoWO?'NOT ISSUED':multi?'Multiple ('+p.items.length+')':p.wo)+ref('CUSTOMER PO NO.',multi?'See PO column':p.po)+'</div>'+
  '<div class="cfm407-dest"><div><small>PARTY / COMPANY</small><b>'+esc(show(p.party))+'</b>'+
  '<small>SHIP-TO / DELIVERY ADDRESS</small><p>'+esc(p.address||'Not recorded — verify customer PO')+'</p></div>'+
  '<div><small>PO DATE</small><b>'+esc(show(p.poDate))+'</b><small>CUSTOMER ITEM CODE</small><b>'+esc(show(p.item))+'</b></div></div>'+
@@ -230,7 +278,10 @@ function slip(p){
  qty('THIS DISPATCH',p.shippedQty)+qty('BALANCE',legacy?'UNVERIFIED':p.balance)+'</div>'+
  '<div class="cfm407-bundle-title">PACKING BUNDLES: '+p.bundle.count+' &nbsp; | &nbsp; ONE LABEL PER BUNDLE</div>'+
  '<div class="cfm407-bundle-rows">'+p.bundle.quantities.slice(0,12).map((q,i)=>'<span>Bundle '+(i+1)+' / '+p.bundle.count+': <b>'+
- esc(itemNumber(q))+' Nos</b></span>').join('')+
+ esc(itemNumber(q))+' Nos</b>'+
+ (p.bundleContents?.[i]?.items?.length?'<small>'+p.bundleContents[i].items.map(x=>
+   esc(show(p.items[x.itemIndex]?.poNo))+' '+x.qty+' Nos').join(' + ')+'</small>':'')+
+ '</span>').join('')+
  (p.bundle.count>12?'<span>Remaining '+(p.bundle.count-12)+' Bundle quantities are printed on their own labels</span>':'')+'</div>'+
  (!p.bundle.verified?'<div class="cfm407-unverified">Bundle Qty not verified — check actual packing before printing.</div>':'')+
  '<div class="cfm407-remark"><b>PACKING / LR / DISPATCH REMARKS</b><p>'+esc(show(p.note))+'</p></div>'+
@@ -314,6 +365,16 @@ function documentHtml(record,work,photos){
  '.cfm407-label-totals>div{padding:1.8mm;text-align:center}.cfm407-label-totals>div+div{border-left:1px solid #111}',
  '.cfm407-label-totals strong{display:block;font:bold 15pt Arial}',
  '.cfm407-label-bottom{display:flex;justify-content:space-between;gap:2mm;font:bold 7pt Arial}',
+ '.cfm411-mixed-label .cfm407-label-title{font:bold 9pt/1.07 Arial}',
+ '.cfm411-label-columns{font:bold 7pt Arial;text-align:center;padding:1mm;background:#eee;border-bottom:1px solid #999}',
+ '.cfm411-label-list{display:flex;flex-direction:column;overflow:visible;gap:.4mm;flex:1}',
+ '.cfm411-label-item{border-bottom:1px solid #aaa;padding:1mm 0;overflow-wrap:anywhere}',
+ '.cfm411-label-top{display:flex;align-items:baseline;justify-content:space-between;gap:2mm;font:800 8.5pt Arial}',
+ '.cfm411-label-top b{white-space:nowrap;font:bold 11pt Arial}',
+ '.cfm411-label-code{font:800 7pt Arial;overflow-wrap:anywhere}',
+ '.cfm411-label-product{font:750 7.5pt/1.15 Arial;overflow-wrap:anywhere}',
+ '.cfm411-label-spec{font:7pt/1.15 Arial;overflow-wrap:anywhere}',
+ '.cfm411-mixed-label .cfm407-label-totals{margin-top:auto}',
  '.cfm407-photos{height:79mm;display:grid;grid-template-rows:1fr 1fr;gap:2mm}',
  '.cfm407-photos section{border:1px solid #111;display:flex;flex-direction:column;align-items:center;overflow:hidden}',
  '.cfm407-photos section>b{align-self:stretch;padding:1mm 2mm;border-bottom:1px solid #aaa;font:bold 7.2pt Arial}',
