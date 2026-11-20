@@ -10,6 +10,7 @@ const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const str=x=>String(x??'').trim();
 const show=x=>str(x)||'—';
+const itemNumber=x=>x===undefined||x===null||str(x)===''?'—':String(x);
 const integer=x=>Number.isSafeInteger(Number(x))&&Number(x)>0?Number(x):null;
 const icon='<span class="cfm407-paper-symbol">◈</span>';
 const elCount='cfm407BundlesCount',elList='cfm407BundleQtyList',elCheck='cfm407BundleVerified',elStatus='cfm407BundleStatus';
