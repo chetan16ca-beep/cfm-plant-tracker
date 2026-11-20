@@ -202,7 +202,8 @@ async function load(){
   snap=s;render();
   if(transfer){
    const incoming=transfer;transfer=null;
-   const selectedWO=allOrders().find(x=>key(x.workNo)===key(incoming.workNo)&&key(x.party)===key(incoming.party));
+   const matches=allOrders().filter(x=>key(x.workNo)===key(incoming.workNo));
+   const selectedWO=matches.length===1?matches[0]:null; // full verified Cloud company name; never rely on truncated option text
    if(selectedWO){
     const companyInput=$('cfm408Company');
     const actual=[...companyInput.options].find(o=>key(o.value)===key(selectedWO.party));
