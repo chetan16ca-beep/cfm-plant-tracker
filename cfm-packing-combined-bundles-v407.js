@@ -309,6 +309,7 @@ function slip(p){
  '<div class="cfm407-foot">A4 LANDSCAPE · SLIP PRINTED ONCE · TOTAL '+p.bundle.count+' LABEL(S) IN THIS JOB'+(p.draft?' · DRAFT / NO DISPATCH SAVED':'')+'</div>'+
  '</section>';
 }
+// V414: Photos removed by request; Packing Slip and 4x4 labels only.
 function extraPhotos(photos){
  return '<div class="cfm407-photos">'+[1,2].map(i=>{
   const src=str(photos?.[i]);const valid=/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/i.test(src);
@@ -410,7 +411,7 @@ function documentHtml(record,work,photos){
  '<title>EAGLE · Slip + '+n+' Bundle Labels · '+esc(show(p.slip))+'</title>'+
  '<style>'+css+'</style></head><body>';
  const first='<section class="cfm407-sheet cfm407-first">'+slip(p)+
- '<div class="cfm407-right">'+label(p,0)+extraPhotos(photos)+'</div></section>';
+ '<div class="cfm407-right">'+label(p,0)+'</div></section>';
  const script='<script>function printVerified(){var sheets=document.querySelectorAll(".cfm407-sheet");'+
  'for(var i=0;i<sheets.length;i++){var sheet=sheets[i];'+
  'if(sheet.scrollHeight>sheet.clientHeight+4||sheet.scrollWidth>sheet.clientWidth+4){'+
