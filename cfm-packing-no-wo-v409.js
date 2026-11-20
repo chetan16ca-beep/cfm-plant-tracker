@@ -262,6 +262,7 @@ async function updateCloud(transform,confirmedCheck){
   // Reconcile ONLY Packing Master and Slip ledgers; preserve Work Orders, Store, Cutting.
   state.packingManualOrders=(verified.payload.packingManualOrders||[]).slice();
   state.packingSlips=(verified.payload.packingSlips||[]).slice();
+  state.packingSlipGlobalSequence=Number(verified.payload.packingSlipGlobalSequence)||0;
   state.packingSlipDeletedIds=(verified.payload.packingSlipDeletedIds||[]).slice();
   state.packingSlipDeletedRefs=(verified.payload.packingSlipDeletedRefs||[]).slice();
   cloudVersion=Number(verified.version);cloudUpdatedAt=verified.updated_at||new Date().toISOString();
@@ -298,12 +299,17 @@ async function saveSlip(){
     if(prior!==item.previousDispatched||prior+item.qty>Number(master.orderQty))
      throw Error('PO '+item.poNo+': pending Qty changed on Cloud. Refresh.');
    }
+   if(typeof window.CFM_PACK_UNIQUE_V414?.next!=='function')throw Error('Unique Packing Slip ID service missing. Refresh ERP V414.');
+   const docNo=window.CFM_PACK_UNIQUE_V414.next(latest.payload);
    record={...draftRecord(data),id:uuid(),draft:false,source:'MANUAL CONFIRMED NO-WO SHIPMENT',
-    slipNo:'PK/NOWO/'+String(serial(log,deleted)).padStart(4,'0'),
+    slipNo:docNo.slipNo,packingSlipSerial:docNo.serial,
     operator:typeof deviceLabel==='function'?deviceLabel():'CFM Operator'};
    receiptId=record.id;
-   return {...latest.payload,packingManualOrders:[...existing,...data.newOrders],packingSlips:[...log,record]};
-  },row=>!!row?.payload?.packingSlips?.some(x=>x.id===receiptId)&&data.newOrders.every(o=>(row.payload.packingManualOrders||[]).some(x=>x.id===o.id)));
+   return {...latest.payload,packingManualOrders:[...existing,...data.newOrders],packingSlips:[...log,record],packingSlipGlobalSequence:docNo.serial};
+  },row=>!!row?.payload?.packingSlips?.some(x=>x.id===receiptId)&&
+    Number(row.payload.packingSlipGlobalSequence)>=Number(record?.packingSlipSerial)&&
+    window.CFM_PACK_UNIQUE_V414?.verify?.(row.payload,{slipNo:record.slipNo,serial:record.packingSlipSerial})&&
+    data.newOrders.every(o=>(row.payload.packingManualOrders||[]).some(x=>x.id===o.id)));
   lastSaved=snap.payload.packingSlips.find(x=>x.id===receiptId);
   lines=[];window.CFM_PACK_MIX_V411?.reset?.();renderLines();renderHistory();
   msg('✓ CLOUD SAVED: '+lastSaved.slipNo+' · Sent '+total+' Nos · Pending '+lastSaved.balanceAfter+' Nos · '+lastSaved.bundleCount+' Labels.');
