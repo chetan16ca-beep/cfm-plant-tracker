@@ -8,7 +8,7 @@ const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const str=x=>String(x??'').trim(),key=x=>str(x).toUpperCase();
 const pos=x=>Number.isSafeInteger(Number(x))&&Number(x)>0?Number(x):0;
-const whole=x=>Number.isSafeInteger(Number(x))&&Number(x)>=0?Number(x):null;
+const whole=x=>str(x)!==''&&Number.isSafeInteger(Number(x))&&Number(x)>=0?Number(x):null;
 const field=(r,keys)=>{for(const k of keys){const v=r?.[k];if(v!==undefined&&v!==null&&str(v))return str(v)}return ''};
 let snap=null,busy=false,lastSaved=null;
 function msg(s,error=false){const e=$('cfm408Message');if(e){e.textContent=s;e.style.color=error?'#a42323':'#174c68'}}
