@@ -103,7 +103,7 @@ input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;c
 <body>
 <div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
 <iframe id="app" title="CFM Plant Tracker" allow="microphone; autoplay"></iframe>
-<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V410 · Loading</div>
+<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM ERP • V411 · Loading</div>
 <script src="./backup-safe.js?v=3"></script>
 <button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
 <button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261120-v410',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261120-v411',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -176,14 +176,14 @@ window.addEventListener('message',e=>{
 registerSW().then(reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw410-reload'))return;
-  sessionStorage.setItem('cfm-sw410-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw411-reload'))return;
+  sessionStorage.setItem('cfm-sw411-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261120-v410';
+ const urls=groups.flat(), ver='20261120-v411';
  // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
  // Never clear browser storage or replace Cloud data while recovering from a network failure.
  let nextChunk=0;
@@ -222,7 +222,7 @@ if('serviceWorker' in navigator){
  let src=texts.join('')+'\n';
   // One canonical displayed version. Old inline modules have repeated timers
   // that can otherwise force a stale header label after deployment.
-  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V410 LIVE');
+  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V411 LIVE');
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V167');
@@ -383,11 +383,13 @@ html,body{background:#f4faff!important;color:#13233b!important}
  // V402: One approved A4 slip format; hide old Create Packing, preserve old reprint history.
  src=src.replace('</head>','<script defer src="./cfm-packing-single-format-v402.js?v=407"></scr'+'ipt></head>');
  // V407: one A4 print job = Packing Slip plus numbered 4×4 labels per physical bundle.
- src=src.replace('</head>','<script defer src="./cfm-packing-combined-bundles-v407.js?v=409"></scr'+'ipt></head>');
+ src=src.replace('</head>','<script defer src="./cfm-packing-combined-bundles-v407.js?v=411"></scr'+'ipt></head>');
  // V408: combine multiple POs and work orders from the same company with individual balances.
  src=src.replace('</head>','<script defer src="./cfm-packing-multi-v408.js?v=408"></scr'+'ipt></head>');
  // V409: Manual Customer PO Packing Slips without a Work Order, Cloud partial balances and bundle labels.
- src=src.replace('</head>','<script defer src="./cfm-packing-no-wo-v409.js?v=410"></scr'+'ipt></head>');
+ src=src.replace('</head>','<script defer src="./cfm-packing-no-wo-v409.js?v=411"></scr'+'ipt></head>');
+ // V411: physically mixed bundles (multiple PO items inside one labeled bundle).
+ src=src.replace('</head>','<script defer src="./cfm-packing-mixed-bundle-v411.js?v=411"></scr'+'ipt></head>');
  // V400: Approved Pending Orders corporate TABLE design. Cloud-verified; legacy controls preserved.
  src=src.replace('</head>','<script defer src="./cfm-pending-corporate-table-v400.js?v=400b"></scr'+'ipt></head>');
 
@@ -401,17 +403,18 @@ html,body{background:#f4faff!important;color:#13233b!important}
   'Combined Slip + Bundles':w=>typeof w.CFM_PACK_COMBINED_V407?.open==='function',
   'Multi PO / WO Partial Dispatch':w=>typeof w.CFM_PACK_MULTI_V408?.open==='function',
   'Without WO Packing Slip':w=>typeof w.CFM_PACK_NO_WO_V409?.open==='function',
+  'Mixed PO Physical Bundles':w=>typeof w.CFM_PACK_MIX_V411?.collect==='function',
   'Pending Orders':w=>!!w.document?.getElementById('cfmPendingFinal400')
  };
  function refreshRuntimeVersion(){
   if(!shellBadge)return;
   try{
    const w=app.contentWindow;
-   if(!w||!w.document?.body){shellBadge.textContent='CFM ERP • V410 · Loading';return}
+   if(!w||!w.document?.body){shellBadge.textContent='CFM ERP • V411 · Loading';return}
    const absent=Object.entries(requiredModules).filter(([name,test])=>{try{return !test(w)}catch(_){return true}}).map(([name])=>name);
-   shellBadge.textContent=absent.length?'CFM ERP • V410 · Check Modules':'CFM ERP • V410 LIVE';
+   shellBadge.textContent=absent.length?'CFM ERP • V411 · Check Modules':'CFM ERP • V411 LIVE';
    shellBadge.title=absent.length?'Module load pending/failed: '+absent.join(', '):'V408 runtime verified · Packing Slip, Label, Multi-WO and Pending Orders loaded';
-  }catch(e){shellBadge.textContent='CFM ERP • V410 · Check Modules';shellBadge.title='Runtime status could not be read: '+String(e?.message||e)}
+  }catch(e){shellBadge.textContent='CFM ERP • V411 · Check Modules';shellBadge.title='Runtime status could not be read: '+String(e?.message||e)}
  }
  app.addEventListener('load',()=>{refreshRuntimeVersion();setTimeout(refreshRuntimeVersion,1400)});
 
