@@ -100,7 +100,7 @@ function renderLines(){
  rememberInputs();
  body.innerHTML=lines.map(itemRow).join('')||'<tr><td colspan="7">Add one or more items from the same company. No Work Order is needed.</td></tr>';
  for(const tr of body.querySelectorAll('tr[data-manual-id]'))renderBundles(tr,true);
- existingOptions();summary();
+ existingOptions();summary();window.CFM_PACK_MIX_V411?.render?.();
 }
 function summary(){
  const sum=lines.reduce((acc,l)=>{
@@ -155,16 +155,17 @@ function collect(){
   const tr=[...$('cfm409Lines').querySelectorAll('tr[data-manual-id]')].find(x=>x.dataset.manualId===order.id);
   if(!tr)throw Error('PO item '+order.poNo+' is missing from the form.');
   const amount=positive(tr.querySelector('[data-send]').value);
-  const count=positive(tr.querySelector('[data-count]').value);
+  const mixed=window.CFM_PACK_MIX_V411?.enabled?.()===true;
+  const count=mixed?1:positive(tr.querySelector('[data-count]').value);
   const ordered=positive(order.orderQty),previous=sendHistory(order.id);
   const pending=(ordered||0)-previous;
   if(!amount||amount>pending)throw Error('PO '+order.poNo+': enter This Dispatch Qty between 1 and Pending '+pending+'.');
-  if(!count||count>200||count>amount)throw Error('PO '+order.poNo+': Bundle count must be 1–200, not more than Dispatch Qty.');
-  const bundleQtys=[...tr.querySelectorAll('[data-bundle-qty]')].map(input=>positive(input.value));
-  if(bundleQtys.length!==count||bundleQtys.some(x=>!x)||bundleQtys.reduce((sum,x)=>sum+x,0)!==amount)
+  if(!mixed&&(!count||count>200||count>amount))throw Error('PO '+order.poNo+': Bundle count must be 1–200, not more than Dispatch Qty.');
+  const bundleQtys=mixed?[]:[...tr.querySelectorAll('[data-bundle-qty]')].map(input=>positive(input.value));
+  if(!mixed&&(bundleQtys.length!==count||bundleQtys.some(x=>!x)||bundleQtys.reduce((sum,x)=>sum+x,0)!==amount))
    throw Error('PO '+order.poNo+': physical Bundle quantities must total exactly '+amount+'.');
-  if(count>1&&!tr.querySelector('[data-verified]').checked)
-   throw Error('PO '+order.poNo+': confirm physically checked Bundle quantities.');
+  if(!mixed&&count>1&&!tr.querySelector('[data-verified]').checked)
+   throw Error('PO '+order.poNo+': confirm physically checked bundle quantities.');
   if(row.newOrder)newOrders.push(order);
   items.push({
    manualOrderId:order.id,manualNoWO:true,workNo:'NOT ISSUED',
@@ -176,10 +177,12 @@ function collect(){
    qty:amount,thisDispatched:amount,totalDispatched:previous+amount,balanceAfter:pending-amount,
    bundleQtys
   });
-  for(const qty of bundleQtys)bundleDetails.push({itemIndex:idx,qty});
+  if(!window.CFM_PACK_MIX_V411?.enabled?.())for(const qty of bundleQtys)bundleDetails.push({itemIndex:idx,qty});
  }
- if(bundleDetails.length>200)throw Error('Maximum 200 Bundle Labels per Packing Slip.');
- return {party,address,items,bundleDetails,newOrders};
+ const mix=window.CFM_PACK_MIX_V411?.enabled?.()?window.CFM_PACK_MIX_V411.collect(items):null;
+ if(mix)bundleDetails=mix.bundleDetails;
+ if(bundleDetails.length>200)throw Error('Maximum 200 physical Bundle Labels per Packing Slip.');
+ return {party,address,items,bundleDetails,bundleContents:mix?.bundleContents||[],newOrders};
 }
 function draftRecord(data){
  const sum=k=>data.items.reduce((a,x)=>a+(Number(x[k])||0),0);
@@ -197,7 +200,7 @@ function draftRecord(data){
   micron:data.items.length===1?data.items[0].micron:'',
   orderQty:sum('orderQty'),previousDispatched:sum('previousDispatched'),
   thisDispatched:sum('qty'),totalDispatched:sum('totalDispatched'),balanceAfter:sum('balanceAfter'),
-  items:data.items,bundleDetails:data.bundleDetails,
+  items:data.items,bundleDetails:data.bundleDetails,bundleContents:data.bundleContents||[],
   bundleCount:data.bundleDetails.length,packages:data.bundleDetails.length,
   bundleQtys:data.bundleDetails.map(x=>x.qty),
   createdAt:new Date().toISOString(),notes:str($('cfm409Remarks')?.value),
@@ -302,7 +305,7 @@ async function saveSlip(){
    return {...latest.payload,packingManualOrders:[...existing,...data.newOrders],packingSlips:[...log,record]};
   },row=>!!row?.payload?.packingSlips?.some(x=>x.id===receiptId)&&data.newOrders.every(o=>(row.payload.packingManualOrders||[]).some(x=>x.id===o.id)));
   lastSaved=snap.payload.packingSlips.find(x=>x.id===receiptId);
-  lines=[];renderLines();renderHistory();
+  lines=[];window.CFM_PACK_MIX_V411?.reset?.();renderLines();renderHistory();
   msg('✓ CLOUD SAVED: '+lastSaved.slipNo+' · Sent '+total+' Nos · Pending '+lastSaved.balanceAfter+' Nos · '+lastSaved.bundleCount+' Labels.');
  }catch(e){msg('⚠ '+String(e.message||e)+' Check Cloud History before retry.',true)}
  finally{busy=false;$('cfm409Save').disabled=false}
@@ -434,7 +437,7 @@ function mount(){
  $('cfm409Refresh').onclick=load;
  $('cfm409Party').addEventListener('change',()=>{
   const p=str($('cfm409Party').value);
-  if(lines.some(x=>!sameParty(x.order.party,p))){lines=[];renderLines()}
+  if(lines.some(x=>!sameParty(x.order.party,p))){lines=[];window.CFM_PACK_MIX_V411?.reset?.();renderLines()}
   existingOptions();renderHistory();
  });
  $('cfm409AddExisting').onclick=addExisting;$('cfm409AddNew').onclick=addNew;
@@ -464,7 +467,7 @@ function mount(){
   }
   if(e.target.matches('[data-bundle-qty]'))e.target.closest('tr').querySelector('[data-verified]').checked=false;
   if(e.target.matches('[data-bundle-qty]'))bundleStatus(e.target.closest('tr'));
-  rememberInputs();summary();
+  rememberInputs();window.CFM_PACK_MIX_V411?.invalidate?.();summary();
  });
  $('cfm409Preview').onclick=preview;$('cfm409Save').onclick=saveSlip;
  $('cfm409Last').onclick=()=>{if(!lastSaved){msg('Save a Manual Slip first, or choose one from Cloud History.',true);return}window.CFM_PACK_COMBINED_V407?.open(lastSaved,{workOrder:{}})};
