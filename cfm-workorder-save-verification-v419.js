@@ -51,7 +51,9 @@ function getDraft(){
  if(!$('editDialog')?.open||!form||!$('pendingMeasurementPreview'))return null;
  const wo=input(form,'workNo');if(!/^CFM-\d+$/.test(N(wo)))return null;
  const rows=localPending(wo);
- return {workNo:wo,party:input(form,'party'),poNo:input(form,'poNo'),
+ const selectedParty=input(form,'party');
+ const party=selectedParty==='__NEW_PARTY__'?T($('newPartyInput')?.value):selectedParty;
+ return {workNo:wo,party,poNo:input(form,'poNo'),
    description:input(form,'description'),itemCode:input(form,'itemCode'),
    qty:input(form,'orderQty'),hadRow:rows.length===1,priorUpdatedAt:rows.length===1?T(rows[0].updatedAt):''};
 }
