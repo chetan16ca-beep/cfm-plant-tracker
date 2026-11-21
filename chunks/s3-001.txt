@@ -72,7 +72,7 @@ window.cfmShowManualWoReceipt=function(rec){
 };
 
 window.openPendingForm=function(i=null){
-  const r=i==null?{workNo:((state.pending||[]).some(x=>normalize(x.workNo)==='CFM-654')?nextWorkNo():'CFM-654'),party:'',poNo:'',orderDate:todayISO(),deliveryDate:'',eagleCode:'',itemCode:'',description:'',description2:'',cloth:'',width:'',orderQty:'',cutQty:0,priority:'NORMAL',status:'PENDING',billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''}:clone(state.pending[i]);
+  const r=i==null?{workNo:nextWorkNo(),party:'',poNo:'',orderDate:todayISO(),deliveryDate:'',eagleCode:'',itemCode:'',description:'',description2:'',cloth:'',width:'',orderQty:'',cutQty:0,priority:'NORMAL',status:'PENDING',billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:''}:clone(state.pending[i]);
   const mi=measurementInfo(r);
   const html=field('workNo','Work No.',r.workNo)+partySelectHTML(r.party)+field('poNo','PO / Reference (New order)',r.poNo)+field('orderDate','Order Date',r.orderDate,'date')+field('deliveryDate','Delivery Date',r.deliveryDate,'date')+
     productPickerHTML(r)+
@@ -87,6 +87,24 @@ window.openPendingForm=function(i=null){
     if(!chosenParty){toast('Party Name required • select or enter Customer Name');return false}
     o.party=chosenParty;delete o.newParty;
     if(!String(o.actualProductType||'').trim()){toast('Actual Product Type select karo');return false}
+    // V419: lock identity and never permit an edited Order Qty below actual
+    // saved dispatches. No historical Packing Slip is silently rewritten.
+    if(i!=null){
+      const existing=state.pending[i];
+      if(!existing||normalize(existing.workNo)!==normalize(r.workNo)||
+         normalize(o.workNo)!==normalize(existing.workNo)){
+        toast('Work Order No. is locked. Reload existing Work Order before saving.');return false;
+      }
+      const sent=(Array.isArray(state.packingSlips)?state.packingSlips:[]).reduce((total,slip)=>{
+        const items=Array.isArray(slip.items)?slip.items.filter(it=>normalize(it.workNo)===normalize(r.workNo)):[];
+        return total+(items.length?items.reduce((sum,it)=>sum+(Number(it.qty)||0),0):
+          normalize(slip.workNo)===normalize(r.workNo)?(Number(slip.thisDispatched)||0):0);
+      },0);
+      const entered=Number(o.orderQty);
+      if(sent>0&&(!Number.isSafeInteger(entered)||entered<sent)){
+        toast('SAVE BLOCKED: '+r.workNo+' has '+sent+' dispatched in saved slips. Order Qty cannot be less.');return false;
+      }
+    }
     saveCustomParty(o.party);
     const p=findProductFromFields({...o,productPick:$('pendingProductPick')?.value||''});
     if(p){
@@ -101,7 +119,7 @@ window.openPendingForm=function(i=null){
       o.eagleCode=cfmNextProductCode();
     }
     ['width','orderQty','cutQty'].forEach(k=>o[k]=o[k]===''?'':num(o[k]));
-    const m=measurementInfo(o);o.measurementAuto=m.text;o.measurementSource=m.source;
+    const m=measurementInfo(o);o.measurementAuto=m.text;o.measurementSource=m.source;o.measurementStatus=m.status;
     const wasArchived=i!=null&&isArchived(state.pending[i]);o.status=wasArchived?'ARCHIVED':(!hasOrderQty(o)?'QTY REQUIRED':(pendingQty(o)<=0?'COMPLETED':'PENDING'));stampRecord(o);
     const isNewWork=i==null;
     if(isNewWork){
