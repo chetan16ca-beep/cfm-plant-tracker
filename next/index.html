@@ -33,7 +33,7 @@ details summary{cursor:pointer;color:#1769ac}pre{white-space:pre-wrap;max-width:
 <section id="erp" class="hide">
 <div class="actions" style="justify-content:space-between"><p class="muted" id="sessionLabel"></p><div class="actions"><span id="sync" class="small">Cloud connected</span><button id="refresh">↻ Refresh</button><button id="logout">Sign out</button></div></div>
 <nav id="nav"></nav>
-<section id="dashboard" class="panel"><h2>Dashboard</h2><div class="pills" id="stats"></div><p class="muted small">Each record has its own database row. This screen reads the new isolated data copy, not the old shared snapshot.</p></section>
+<section id="dashboard" class="panel"><h2>Dashboard</h2><div class="actions" style="margin:9px 0 15px"><button type="button" class="primary" id="entryCenterShortcut">＋ New Department Entry</button></div><div class="pills" id="stats"></div><p class="muted small">Each record has its own database row. This screen reads the new isolated data copy, not the old shared snapshot.</p></section>
 <section class="panel hide" id="workflowPanel">
  <h2>Department Entry Center <small class="muted">• Staging Cloud Logs</small></h2>
  <p class="muted">Work Order Requests, Store Inward, Cutting Review, Production Stages, QC, Packing, Dispatch, SOP, Maintenance and Follow-ups. Live stock, work order status and dispatch are not modified.</p>
@@ -74,10 +74,10 @@ const outbox=createSafeOutbox(window.indexedDB);
 const db=createClient('https://soluxixriexliipfnznc.supabase.co','sb_publishable_hay-tW1slhbk-QXnql7pSg_I0Lh-0N0',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=x=>document.getElementById(x);
 const FAMILIES=[
-['pending','Work Orders'],['store','Store / Cloth Stock'],['cutting','Cutting'],['departmentWork','Daily Worker Report'],
+['workflow','✍ Department Entries'],['pending','Work Orders'],['store','Store / Cloth Stock'],['cutting','Cutting'],['departmentWork','Daily Worker Report'],
 ['packingSlips','Packing Slips'],['packingManualOrders','Manual Packing'],['sopRecords','SOP Register'],
 ['pendingWorkAudit','Pending Audit'],['reconstructedBatchReports','Batch History'],['reconstructedPersonWork','Person Work History'],
-['workflow','✍ Department Entries'],['customParties','Party Master'],['packingSlipDeletedIds','Packing Slip Delete Audit'],['packingSlipDeletedRefs','Packing Reference Audit']];
+['customParties','Party Master'],['packingSlipDeletedIds','Packing Slip Delete Audit'],['packingSlipDeletedRefs','Packing Reference Audit']];
 const LABELS=Object.fromEntries(FAMILIES);
 const COLS={pending:['workNo','party','description','orderQty','cutQty','status','poNo','eagleCode'],store:['srlNo','efpplCode','width','physicalMtr','excelLiveBalanceMtr','status'],cutting:['date','workNo','party','description','cutQty','srlNo','cuttingBy'],departmentWork:['date','person','department','description','workNo','givenQty','doneQty','pendingQty'],packingSlips:['slipNo','party','workNo','thisDispatched','poNo'],sopRecords:['timestamp','code','workNo','operator']};
 let user=null,role=null,family='pending',offset=0,total=0,records=[],refreshing=false,processing=false;
@@ -246,12 +246,15 @@ $('authMsg').textContent='Creating account…';const {error}=await db.auth.signU
 $('authMsg').textContent=error?error.message:'Check your email for confirmation. ERP access will require administrator approval.';});
 async function signOut(){await db.auth.signOut();user=null;role=null;show('login');$('status').textContent='Signed out';}
 $('logout').onclick=signOut;$('lockedLogout').onclick=signOut;
+$('entryCenterShortcut').addEventListener('click',()=>{family='workflow';offset=0;buildNav();void load()});
 function buildNav(){$('nav').innerHTML='<button data-f="dashboard" class="'+(family==='dashboard'?'active':'')+'">Dashboard</button>'+FAMILIES.map(x=>'<button data-f="'+x[0]+'" class="'+(family===x[0]?'active':'')+'">'+esc(x[1])+'</button>').join('');
 $('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{family=b.dataset.f;offset=0;$('search').value='';buildNav();void load()});}
 async function counts(){
 const main=['pending','store','cutting','departmentWork','packingSlips','sopRecords'];
 const nums=await Promise.all(main.map(async f=>{const {count,error}=await db.from('cfm_next_records').select('id',{head:true,count:'exact'}).eq('family',f);return [LABELS[f],error?'—':count]}));
 if(nums.some(x=>x[1]==='—'))throw new Error('Dashboard count unavailable on one or more data groups');
+const {count:entryCount,error:entryError}=await db.from('cfm_next_activity_log').select('id',{head:true,count:'exact'});
+nums.unshift(['New Department Entries',entryError?'—':entryCount]);
 $('stats').innerHTML=nums.map(x=>'<div class="stat">'+esc(x[0])+'<b>'+esc(x[1])+'</b></div>').join('');
 }
 function viewRow(row,keys){const d=row.data||{};return '<tr>'+keys.map(k=>'<td>'+esc(d[k]??'—')+'</td>').join('')+
