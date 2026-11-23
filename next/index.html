@@ -34,6 +34,16 @@ details summary{cursor:pointer;color:#1769ac}pre{white-space:pre-wrap;max-width:
 <div class="actions" style="justify-content:space-between"><p class="muted" id="sessionLabel"></p><div class="actions"><span id="sync" class="small">Cloud connected</span><button id="refresh">↻ Refresh</button><button id="logout">Sign out</button></div></div>
 <nav id="nav"></nav>
 <section id="dashboard" class="panel"><h2>Dashboard</h2><div class="pills" id="stats"></div><p class="muted small">Each record has its own database row. This screen reads the new isolated data copy, not the old shared snapshot.</p></section>
+<section class="panel hide" id="workflowPanel">
+ <h2>Department Entry Center <small class="muted">• Staging Cloud Logs</small></h2>
+ <p class="muted">Work Order Requests, Store Inward, Cutting Review, Production Stages, QC, Packing, Dispatch, SOP, Maintenance and Follow-ups. Live stock, work order status and dispatch are not modified.</p>
+ <div id="workflowTabs" class="actions" style="margin:12px 0"></div>
+ <div id="workflowNotice" class="notice"></div>
+ <form id="workflowForm"></form>
+ <p id="workflowReceipt" role="status" class="small"></p>
+ <button id="workflowSync" type="button">Cloud Entries</button>
+ <div id="workflowLog" class="scroll" style="margin-top:15px"></div>
+</section>
 <section class="panel hide" id="dailyForm">
 <h2>Daily Person Work — New Entry</h2><p class="muted">Report-only entry; it does not automatically change stock or SOP production handover.</p>
 <form id="workForm"><div class="form">
@@ -59,6 +69,7 @@ details summary{cursor:pointer;color:#1769ac}pre{white-space:pre-wrap;max-width:
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.3?bundle';
 import { createSafeOutbox, verifyDailyReceipt } from './safe-outbox.mjs';
+import { setupCFMNextEntryCenter } from './entry-center.mjs?v=1';
 const outbox=createSafeOutbox(window.indexedDB);
 const db=createClient('https://soluxixriexliipfnznc.supabase.co','sb_publishable_hay-tW1slhbk-QXnql7pSg_I0Lh-0N0',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=x=>document.getElementById(x);
@@ -66,7 +77,7 @@ const FAMILIES=[
 ['pending','Work Orders'],['store','Store / Cloth Stock'],['cutting','Cutting'],['departmentWork','Daily Worker Report'],
 ['packingSlips','Packing Slips'],['packingManualOrders','Manual Packing'],['sopRecords','SOP Register'],
 ['pendingWorkAudit','Pending Audit'],['reconstructedBatchReports','Batch History'],['reconstructedPersonWork','Person Work History'],
-['customParties','Party Master'],['packingSlipDeletedIds','Packing Slip Delete Audit'],['packingSlipDeletedRefs','Packing Reference Audit']];
+['workflow','✍ Department Entries'],['customParties','Party Master'],['packingSlipDeletedIds','Packing Slip Delete Audit'],['packingSlipDeletedRefs','Packing Reference Audit']];
 const LABELS=Object.fromEntries(FAMILIES);
 const COLS={pending:['workNo','party','description','orderQty','cutQty','status','poNo','eagleCode'],store:['srlNo','efpplCode','width','physicalMtr','excelLiveBalanceMtr','status'],cutting:['date','workNo','party','description','cutQty','srlNo','cuttingBy'],departmentWork:['date','person','department','description','workNo','givenQty','doneQty','pendingQty'],packingSlips:['slipNo','party','workNo','thisDispatched','poNo'],sopRecords:['timestamp','code','workNo','operator']};
 let user=null,role=null,family='pending',offset=0,total=0,records=[],refreshing=false,processing=false;
@@ -211,6 +222,8 @@ async function loadWorkOrders(){
 $('workOrderSearch').addEventListener('input',renderWorkOrderSelect);
 $('workOrderSelect').addEventListener('change',toggleManualWorkOrder);
 renderWorkOrderSelect();
+const entryCenter=setupCFMNextEntryCenter({db,getUser:()=>user,getRole:()=>role,
+ getWorkOrders:()=>availableWorkOrders,getWorkers:()=>[...knownWorkers.values()]});
 
 function tell(msg,err=false){$('globalNote').textContent=msg;$('globalNote').className='notice'+(err?' error':'');}
 function status(s){$('status').textContent=s;$('sync').textContent=s;}
@@ -246,7 +259,12 @@ function viewRow(row,keys){const d=row.data||{};return '<tr>'+keys.map(k=>'<td>'
 async function load(){if(!user||!role||refreshing)return;refreshing=true;status('Refreshing Cloud…');
 try{
 $('dashboard').classList.toggle('hide',family!=='dashboard');$('dailyForm').classList.toggle('hide',family!=='departmentWork');
-$('recordsPanel').classList.toggle('hide',family==='dashboard');$('familyTitle').textContent=LABELS[family]||'Records';
+$('recordsPanel').classList.toggle('hide',family==='dashboard'||family==='workflow');
+if(family==='workflow'){
+ $('dashboard').classList.add('hide');$('dailyForm').classList.add('hide');
+ entryCenter.show();status('Entry Center • Cloud Sync');return;
+}
+entryCenter.hide();$('familyTitle').textContent=LABELS[family]||'Records';
 if(family==='dashboard'){await counts();status('Cloud up to date');return}
 const {data,error,count}=await db.from('cfm_next_records').select('id,family,record_key,data,revision,updated_at',{count:'exact'}).eq('family',family).order('created_at',{ascending:false}).order('id',{ascending:true}).range(offset,offset+LIMIT-1);
 if(error)throw error;records=data||[];total=count||0;renderRows();status('Cloud list refreshed · '+total+' records');
