@@ -255,9 +255,23 @@ export function setupCFMNextEntryCenter({db,getUser,getRole,getWorkOrders,getWor
   btn.disabled=true;let phoneSaved=false;
   try{
    const prior=await outbox.list(user.id);
-   const same=prior.some(x=>activitySignature(x)===activitySignature(entry));
-   if(same&&!confirm('Matching entry already pending on this phone. Save another intentionally?')){
-     hint('Existing phone entry kept; no duplicate added.');void flush();return
+   let same=prior.some(x=>activitySignature(x)===activitySignature(entry));
+   // A successful save from the other phone may already exist in Cloud.
+   // Warn before producing a duplicate, without blocking legitimate repeat work.
+   if(!same&&navigator.onLine!==false){
+    try{
+     const {data:recent,error:checkError}=await db.from('cfm_next_activity_log')
+       .select('module,work_no,happened_on,details,created_at')
+       .eq('module',entry.module).order('created_at',{ascending:false}).limit(80);
+     if(!checkError){
+      const fifteenMinAgo=Date.now()-15*60*1000;
+      same=(recent||[]).some(x=>Date.parse(x.created_at)>=fifteenMinAgo
+        && activitySignature(x)===activitySignature(entry));
+     }
+    }catch(_){/* Optional duplicate lookup. Do not block safe offline work. */}
+   }
+   if(same&&!confirm('Matching entry already saved or pending within 15 minutes. Save ANOTHER intentional entry?')){
+     hint('Existing work retained; no duplicate added. Refresh Cloud History.');void flush();return
    }
    await outbox.put(user.id,entry);
    phoneSaved=true;
