@@ -355,12 +355,41 @@ async function cloudPush(force=false){
   if(cloudBusy)return false;
   cloudBusy=true;
   const seqAtStart=localMutationSeq;
-  const snapshot=clone(state);
-  setCloudBadge('☁️ Syncing…','amber');
+  setCloudBadge('☁️ Checking Cloud records…','amber');
   try{
-    // Compare-and-swap: never increment from a newer version fetched by an older device.
+    // V420: inspect the actual current Cloud state BEFORE building the write snapshot.
+    // Never upload a phone snapshot that omits a protected Work No or Store SRL.
+    const remote=await cloudFetch();
+    if(!remote||!validState(remote.payload))throw new Error('Cloud read unavailable; device records remain safe');
     const baseVersion=num(cloudVersion);
     if(!baseVersion)throw new Error('Unknown cloud version; refusing unsafe save');
+    if(num(remote.version)!==baseVersion){
+      throw new Error('Another device saved a newer Cloud version. Local edits preserved; review before syncing');
+    }
+    const restored={pending:0,store:0};
+    for(const [part,key] of [['pending','workNo'],['store','srlNo']]){
+      const localRows=state[part];
+      if(!Array.isArray(localRows))throw new Error('Local '+part+' records unavailable');
+      const known=new Set(localRows.map(x=>normalize(x?.[key])).filter(Boolean));
+      for(const item of remote.payload[part]||[]){
+        const id=normalize(item?.[key]);
+        if(id&&!known.has(id)){
+          localRows.push(clone(item));known.add(id);restored[part]++;
+        }
+      }
+    }
+    // Historical cutting/customer rows must NEVER be silently replaced or truncated.
+    if((state.cutting||[]).length<(remote.payload.cutting||[]).length||
+       (state.customParties||[]).length<(remote.payload.customParties||[]).length){
+      throw new Error('Historical Cutting/Customer data differs; local entries protected. Review sync');
+    }
+    if(restored.pending||restored.store){
+      try{safeStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+      catch(e){console.warn('Restored Cloud data held in memory; device storage full',e)}
+      setCloudBadge('☁️ Restored '+restored.store+' missing Store SRLs and '+restored.pending+' Work Nos • syncing','amber');
+    }
+    const snapshot=clone(state);
+    // Compare-and-swap: require this exact Cloud version for the write.
     const nextVersion=baseVersion+1;
     const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+baseVersion;
     // V336: a stalled mobile request must not leave Cloud Save spinning forever.
@@ -392,10 +421,12 @@ async function cloudPush(force=false){
     try{document.dispatchEvent(new CustomEvent('cfm:po-cloud-result',{detail:{ok:true,workNos:(snapshot.pending||[]).map(x=>String(x.workNo||'')),version:cloudVersion}}))}catch(_){}
     return true;
   }catch(e){
-    console.warn(e);
+    console.warn('CFM protected Cloud save:',e);
     cloudDirty=true;
-    setCloudBadge('☁️ Sync failed • tap Sync','red');
-    try{document.dispatchEvent(new CustomEvent('cfm:po-cloud-result',{detail:{ok:false,workNos:(snapshot.pending||[]).map(x=>String(x.workNo||'')),reason:String(e?.message||e)}}))}catch(_){}
+    const reason=String(e?.message||e).slice(0,170);
+    const conflict=/newer Cloud version|local entries protected|Historical Cutting|Cloud version conflict|safety|400/i.test(reason);
+    setCloudBadge('☁️ '+(conflict?'Protected Sync Hold: ':'Sync failed: ')+reason,conflict?'amber':'red');
+    try{document.dispatchEvent(new CustomEvent('cfm:po-cloud-result',{detail:{ok:false,workNos:(state.pending||[]).map(x=>String(x.workNo||'')),reason}}))}catch(_){}
     return false;
   }finally{
     cloudBusy=false;
@@ -431,7 +462,11 @@ window.manualCloudSync=async function(){
     toast('3-4 Mobile sync complete');
     setCloudBadge('☁️ 3-4 Mobile LIVE','green');
   }catch(e){
-    console.warn(e);setCloudBadge('☁️ Sync failed','red');toast('Sync failed • internet check karo');
+    console.warn('CFM manual sync:',e);
+    const detail=String(e?.message||e).slice(0,155);
+    const protectedHold=/conflict|differ|newer Cloud|protected|missing|safety/i.test(detail);
+    setCloudBadge('☁️ '+(protectedHold?'Data protected: ':'Sync issue: ')+detail,protectedHold?'amber':'red');
+    toast(protectedHold?'Local data safe • Cloud sync needs review':'Cloud sync failed • check connection');
   }
 };
 
