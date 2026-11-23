@@ -22,7 +22,7 @@ test('Live shell and service worker use the same cache namespace',()=>{
   const match=html.match(/const urls=groups\.flat\(\), ver='([^']+)'/);
   assert.ok(match,'Shell declares a chunk-cache version');
   assert.ok(sw.includes("const CACHE='cfm-plant-ui-"+match[1]+"-cached-chunks'"),'Service Worker cache version matches shell');
-  assert.match(html,/V424 LIVE/,'Shell identifies latest deployed release');
+  assert.match(html,/V425 LIVE/,'Shell identifies latest deployed release');
 });
 
 test('V421 manual recovery shows device Work Orders and safeguards Cloud sections',()=>{
