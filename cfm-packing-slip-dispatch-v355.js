@@ -369,11 +369,13 @@ function printSlip(a4=false,record=null){
 function previewFromWorkOrder(){
  const row=current();
  if(!row){say('Choose a Work Order to preview the Packing Slip.',true);return}
- let bundleData;
- try{
-  if(!window.CFM_PACK_COMBINED_V407?.collect)throw Error('Combined Slip/Label module not loaded. Refresh ERP.');
-  bundleData=window.CFM_PACK_COMBINED_V407.collect(Number($('packSlipThis')?.value)||0,false);
- }catch(e){say(String(e.message||e),true);return}
+ // A draft preview must work even when the optional combined-bundle renderer is offline.
+ // Dispatch confirmation still uses the strict production checks; this fallback only prints.
+ let bundleData={bundleCount:1,bundleQtys:[Number($('packSlipThis')?.value)||0],packages:[]};
+ if(typeof window.CFM_PACK_COMBINED_V407?.collect==='function'){
+  try{bundleData=window.CFM_PACK_COMBINED_V407.collect(Number($('packSlipThis')?.value)||0,false)}
+  catch(e){say(String(e.message||e),true);return}
+ }
  const history=forWork(row.workNo);
  const prev=shipped(history,row.workNo)+(legacy(row)&&!history.length?(Number($('packSlipPrior')?.value)||0):0);
  const n=Number($('packSlipThis')?.value)||0;
