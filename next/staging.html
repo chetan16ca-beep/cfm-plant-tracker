@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CFM Next — Safe Plant ERP</title><meta name="theme-color" content="#15345d">
+<style>
+:root{font:14px system-ui,-apple-system,sans-serif;color:#182638;background:#f4f7fb}
+*{box-sizing:border-box}body{margin:0}.top{background:#15345d;color:white;padding:14px 16px;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.top strong{font-size:19px}.shell{max-width:1300px;margin:auto;padding:14px}.panel{background:#fff;border:1px solid #dbe4ed;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 4px 16px #26395a0b}
+.muted{color:#65748a}.notice{padding:10px 12px;border:1px solid #bfd7f2;background:#edf5ff;border-radius:10px;margin:12px 0}
+.notice.error{background:#fff3f3;border-color:#f2b5b5;color:#902727}
+nav{display:flex;gap:7px;overflow-x:auto;padding:3px 0 8px}nav button{flex:0 0 auto}button,input,select,textarea{font:inherit}
+button{background:#fff;color:#214c7a;border:1px solid #b5cee4;border-radius:9px;padding:9px 12px;cursor:pointer}button.primary,button.active{background:#1769ac;color:white;border-color:#1769ac}
+button:disabled{opacity:.55;cursor:wait}.actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+input,select,textarea{border:1px solid #c7d3df;border-radius:8px;padding:10px;width:100%;background:#fff}
+label{display:block;font-size:12px;font-weight:700;color:#4a5d71;margin-bottom:5px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:14px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 9px;text-align:left;border-bottom:1px solid #e6edf4;max-width:320px;word-break:break-word}th{color:#56708b;background:#f7faff;position:sticky;top:0} .scroll{overflow:auto;max-height:65vh}
+.pills{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.stat{border:1px solid #d8e7f5;padding:14px;border-radius:10px;background:#f8fbff}.stat b{font-size:22px;display:block;margin-top:7px}
+details summary{cursor:pointer;color:#1769ac}pre{white-space:pre-wrap;max-width:850px;overflow:auto}
+.small{font-size:12px}.status{font-weight:700}.hide{display:none!important}
+@media(max-width:650px){.shell{padding:8px}.panel{padding:12px}th,td{white-space:nowrap;padding:8px}nav{position:sticky;top:0;background:#f4f7fb;z-index:4}}
+</style></head><body>
+<header class="top"><strong>CFM NEXT · PLANT ERP</strong><span id="status" class="status">Connecting…</span></header>
+<main class="shell">
+<div class="notice" id="globalNote">New data-safe ERP (staging). Original ERP remains unchanged. Production cutover is not enabled.</div>
+<section class="panel" id="login">
+<h2>Secure employee login</h2><p class="muted">Same Cloud records across authorized phones. New staff accounts require administrator approval.</p>
+<form id="authForm" class="form"><div><label>Email</label><input id="email" type="email" autocomplete="email" required></div>
+<div><label>Password (minimum 6 characters)</label><input id="password" type="password" minlength="6" autocomplete="current-password" required></div>
+<div class="actions" style="align-self:end"><button class="primary" type="submit">Sign in</button><button id="signup" type="button">Create account</button></div></form>
+<p id="authMsg" role="status" class="muted"></p>
+</section>
+<section id="locked" class="panel hide"><h2>Approval needed</h2><p>Your account is signed in, but ERP records remain locked until an administrator grants access. No data is exposed or changed.</p><p id="accountId" class="small"></p><button id="lockedLogout">Sign out</button></section>
+<section id="erp" class="hide">
+<div class="actions" style="justify-content:space-between"><p class="muted" id="sessionLabel"></p><div class="actions"><span id="sync" class="small">Cloud connected</span><button id="refresh">↻ Refresh</button><button id="logout">Sign out</button></div></div>
+<nav id="nav"></nav>
+<section id="dashboard" class="panel"><h2>Dashboard</h2><div class="actions" style="margin:9px 0 15px"><button type="button" class="primary" id="entryCenterShortcut">＋ New Department Entry</button></div><div class="pills" id="stats"></div><p class="muted small">Each record has its own database row. This screen reads the new isolated data copy, not the old shared snapshot.</p></section>
+<section class="panel hide" id="workflowPanel">
+ <h2>Department Entry Center <small class="muted">• Staging Cloud Logs</small></h2>
+ <p class="muted">Work Order Requests, Store Inward, Cutting Review, Production Stages, QC, Packing, Dispatch, SOP, Maintenance and Follow-ups. Live stock, work order status and dispatch are not modified.</p>
+ <div id="workflowTabs" class="actions" style="margin:12px 0"></div>
+ <div id="workflowNotice" class="notice"></div>
+ <form id="workflowForm"></form>
+ <p id="workflowReceipt" role="status" class="small"></p>
+ <button id="workflowSync" type="button">Cloud Entries</button>
+ <div id="workflowLog" class="scroll" style="margin-top:15px"></div>
+</section>
+<section class="panel hide" id="dailyForm">
+<h2>Daily Person Work — New Entry</h2><p class="muted">Report-only entry; it does not automatically change stock or SOP production handover.</p>
+<form id="workForm"><div class="form">
+<div><label>Date *</label><input name="date" id="workDate" type="date" required></div>
+<div><label>Department *</label><select name="department" id="workerDept" required><option value="">Select Department</option><option>Cutting</option><option>Stitching</option><option>Thread Cutting</option><option>Gun Finishing</option><option>Packing</option><option>QC</option><option>Store</option><option>Dispatch</option><option>Maintenance</option><option>Housekeeping</option></select></div>
+<div><label>Worker *</label><select name="person" id="workerSelect" required><option value="">Select Worker</option></select><input id="workerOther" type="text" maxlength="80" class="hide" style="margin-top:8px" autocomplete="off" placeholder="New worker name"></div>
+<div><label>Work Order (optional)</label>
+<input id="workOrderSearch" type="search" placeholder="Search Work No / Party / Product" autocomplete="off" style="margin-bottom:6px">
+<select name="workNo" id="workOrderSelect"><option value="">Manual / No Work Order</option></select>
+<input id="workOrderManual" type="text" class="hide" maxlength="80" placeholder="Type CFM-764 / 764" autocomplete="off" style="margin-top:6px">
+<div id="workOrderHint" class="muted small" style="margin-top:5px">Work Orders loading from CFM Next Cloud…</div></div>
+<div><label>Work details *</label><input name="description" required placeholder="Collar stitching / cutting / packing"></div>
+<div><label>Given Qty</label><input name="givenQty" type="number" min="0" step="any"></div>
+<div><label>Done Qty *</label><input name="doneQty" type="number" min="0" step="any" required></div>
+<div><label>Remarks</label><input name="remark"></div>
+</div><button type="submit" class="primary" id="saveBtn">Save Work Entry</button></form><p role="status" id="saveStatus"></p>
+</section>
+<section class="panel" id="recordsPanel"><div class="actions" style="justify-content:space-between"><h2 id="familyTitle">Records</h2>
+<label style="max-width:300px"><span>Search</span><input type="search" id="search" placeholder="Work No / person / SRL"></label></div>
+<p id="readNote" class="muted small"></p><div class="scroll" id="rows"></div><div class="actions"><button id="prev">Previous</button><span id="page"></span><button id="next">Next</button></div>
+</section>
+</section></main>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.3?bundle';
+import { createSafeOutbox, verifyDailyReceipt } from './safe-outbox.mjs';
+import { setupCFMNextEntryCenter } from './entry-center.mjs?v=1';
+const outbox=createSafeOutbox(window.indexedDB);
+const db=createClient('https://soluxixriexliipfnznc.supabase.co','sb_publishable_hay-tW1slhbk-QXnql7pSg_I0Lh-0N0',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const $=x=>document.getElementById(x);
+const FAMILIES=[
+['workflow','✍ Department Entries'],['pending','Work Orders'],['store','Store / Cloth Stock'],['cutting','Cutting'],['departmentWork','Daily Worker Report'],
+['packingSlips','Packing Slips'],['packingManualOrders','Manual Packing'],['sopRecords','SOP Register'],
+['pendingWorkAudit','Pending Audit'],['reconstructedBatchReports','Batch History'],['reconstructedPersonWork','Person Work History'],
+['customParties','Party Master'],['packingSlipDeletedIds','Packing Slip Delete Audit'],['packingSlipDeletedRefs','Packing Reference Audit']];
+const LABELS=Object.fromEntries(FAMILIES);
+const COLS={pending:['workNo','party','description','orderQty','cutQty','status','poNo','eagleCode'],store:['srlNo','efpplCode','width','physicalMtr','excelLiveBalanceMtr','status'],cutting:['date','workNo','party','description','cutQty','srlNo','cuttingBy'],departmentWork:['date','person','department','description','workNo','givenQty','doneQty','pendingQty'],packingSlips:['slipNo','party','workNo','thisDispatched','poNo'],sopRecords:['timestamp','code','workNo','operator']};
+let user=null,role=null,family='pending',offset=0,total=0,records=[],refreshing=false,processing=false;
+const LIMIT=100;
+
+/* V1: Existing CFM staff master, plus worker names from authorized Cloud records.
+   Worker/Department selection only changes form options. It does not edit ERP data. */
+const STAFF_NAMES=[
+ 'SUMIT','VIJAY SM-01','ANKIT SM-03','SATISH SM-04','RAHUL SM-05',
+ 'BHAVNA','RADHA','KAILASH','LAKUSH','SANGITA','JITU','CHETAN','LALA'
+];
+const DEPARTMENT_WORKERS={
+ 'Cutting':['SUMIT'],
+ 'Stitching':['VIJAY SM-01','ANKIT SM-03','SATISH SM-04','RAHUL SM-05','LAKUSH'],
+ 'Thread Cutting':['SANGITA','BHAVNA','RADHA','KAILASH','JITU'],
+ 'Gun Finishing':['SANGITA','BHAVNA','RADHA','KAILASH','JITU'],
+ 'Packing':['SANGITA','BHAVNA','RADHA','KAILASH'],
+ 'QC':['CHETAN','LALA'],
+ 'Store':['CHETAN','LALA'],
+ 'Dispatch':['LALA','CHETAN'],
+ 'Maintenance':['CHETAN'],
+ 'Housekeeping':['SANGITA','BHAVNA','RADHA','KAILASH']
+};
+const knownWorkers=new Map(STAFF_NAMES.map(n=>[n.toUpperCase(),n]));
+function addKnownWorker(name){
+ const n=String(name||'').trim();
+ if(n&&n.length<=80)knownWorkers.set(n.toUpperCase(),n);
+}
+function toggleNewWorker(){
+ const other=$('workerOther');
+ const isNew=$('workerSelect')?.value==='__NEW_WORKER__';
+ if(!other)return;
+ other.classList.toggle('hide',!isNew);
+ other.required=isNew;
+ if(!isNew)other.value='';
+}
+function renderWorkerSelect(){
+ const select=$('workerSelect');if(!select)return;
+ const previous=select.value,department=$('workerDept')?.value||'';
+ select.replaceChildren();
+ select.add(new Option('Select Worker',''));
+ const suggested=(DEPARTMENT_WORKERS[department]||[]).filter(n=>knownWorkers.has(n.toUpperCase()));
+ const selectedKeys=new Set(suggested.map(n=>n.toUpperCase()));
+ function appendGroup(title,names){
+  if(!names.length)return;
+  const group=document.createElement('optgroup');group.label=title;
+  names.forEach(name=>group.appendChild(new Option(name,name)));
+  select.appendChild(group);
+ }
+ if(department)appendGroup('Suggested — '+department,suggested);
+ appendGroup(department?'All other workers':'CFM Worker Master',
+   [...knownWorkers.values()].filter(n=>!selectedKeys.has(n.toUpperCase())));
+ select.add(new Option('＋ Add New Worker','__NEW_WORKER__'));
+ if(previous&&[...select.options].some(o=>o.value===previous))select.value=previous;
+ toggleNewWorker();
+}
+async function loadWorkerNames(){
+ if(!user||!role)return;
+ try{
+  const {data,error}=await db.from('cfm_next_records').select('family,data')
+    .in('family',['customPersons','departmentWork']).limit(1000);
+  if(error)throw error;
+  (data||[]).forEach(r=>addKnownWorker(r.family==='customPersons'
+    ?(r.data?.name||r.data?.person):r.data?.person));
+ }catch(e){console.warn('Worker master fallback: using original CFM names',e)}
+ renderWorkerSelect();
+}
+$('workerDept').addEventListener('change',renderWorkerSelect);
+$('workerSelect').addEventListener('change',toggleNewWorker);
+renderWorkerSelect();
+
+/* Daily Work Work Order dropdown: read-only CFM Next Work Orders, preserves manual entry.
+   Dispatched/completed jobs remain selectable for historical worker reports. */
+let availableWorkOrders=[];
+let workOrdersLoading=false;
+function renderWorkOrderSelect(){
+ const select=$('workOrderSelect'),search=$('workOrderSearch');
+ if(!select||!search)return;
+ const previous=select.value;
+ const q=search.value.trim().toLowerCase();
+ select.replaceChildren();
+ select.add(new Option('Manual / No Work Order',''));
+ let shown=0;
+ const source=availableWorkOrders.slice().sort((a,b)=>{
+  const aNum=Number(String(a.workNo||'').match(/\d+$/)?.[0]||0);
+  const bNum=Number(String(b.workNo||'').match(/\d+$/)?.[0]||0);
+  return bNum-aNum;
+ });
+ for(const wo of source){
+  const name=String(wo.workNo||'').trim();
+  const party=String(wo.party||'').trim();
+  const description=String(wo.description||wo.product||'').trim();
+  const target=[name,party,description,wo.eagleCode].join(' ').toLowerCase();
+  if(q&&!target.includes(q))continue;
+  const title=[name,party,description.slice(0,60)].filter(Boolean).join(' • ');
+  select.add(new Option(title,name));
+  shown++;
+ }
+ select.add(new Option('＋ Enter Work No manually','__MANUAL__'));
+ if(previous&&[...select.options].some(x=>x.value===previous))select.value=previous;
+ else if(previous==='__MANUAL__')select.value=previous;
+ toggleManualWorkOrder();
+ $('workOrderHint').textContent=availableWorkOrders.length
+   ? 'Showing '+shown+' of '+availableWorkOrders.length+' Work Orders from CFM Next Cloud copy'
+   : 'No Cloud Work Orders loaded. Manual entry remains available.';
+}
+function toggleManualWorkOrder(){
+ const select=$('workOrderSelect'),manual=$('workOrderManual'),hint=$('workOrderHint');
+ if(!select||!manual||!hint)return;
+ const val=select.value;
+ manual.classList.toggle('hide',val!=='__MANUAL__');
+ if(val==='__MANUAL__'){hint.textContent='Manual Work No • reports only (stock and orders unchanged)';return}
+ if(val){
+  const selected=availableWorkOrders.find(x=>String(x.workNo||'').trim()===val);
+  if(selected){
+   hint.textContent=[selected.party,selected.description,
+     'Order Qty '+String(selected.orderQty??'-'),
+     'Status '+String(selected.status||'-')].filter(Boolean).join(' • ');
+  }
+ }
+}
+async function loadWorkOrders(){
+ if(!user||!role||workOrdersLoading)return;
+ workOrdersLoading=true;
+ try{
+  const {data,error}=await db.from('cfm_next_records').select('data')
+    .eq('family','pending').limit(1000);
+  if(error)throw error;
+  const unique=new Map();
+  (data||[]).forEach(item=>{
+   const record=item.data||{};
+   const name=String(record.workNo||'').trim();
+   if(name&&!unique.has(name.toUpperCase()))unique.set(name.toUpperCase(),record);
+  });
+  availableWorkOrders=[...unique.values()];
+  renderWorkOrderSelect();
+ }catch(e){
+  console.warn('Work Order list failed; manual option remains',e);
+  $('workOrderHint').textContent='Cloud Work Order list unavailable; choose Enter Work No manually.';
+ }finally{workOrdersLoading=false}
+}
+$('workOrderSearch').addEventListener('input',renderWorkOrderSelect);
+$('workOrderSelect').addEventListener('change',toggleManualWorkOrder);
+renderWorkOrderSelect();
+const entryCenter=setupCFMNextEntryCenter({db,getUser:()=>user,getRole:()=>role,
+ getWorkOrders:()=>availableWorkOrders,getWorkers:()=>[...knownWorkers.values()]});
+
+function tell(msg,err=false){$('globalNote').textContent=msg;$('globalNote').className='notice'+(err?' error':'');}
+function status(s){$('status').textContent=s;$('sync').textContent=s;}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function today(){return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});}
+function show(id){['login','locked','erp'].forEach(n=>$(n).classList.toggle('hide',n!==id));}
+async function authUi(){const {data:{session}}=await db.auth.getSession();user=session?.user||null;
+if(!user){role=null;show('login');$('status').textContent='Sign in required';return}
+const {data,error}=await db.from('cfm_next_members').select('role,active').eq('user_id',user.id).maybeSingle();
+if(error||!data||!data.active){show('locked');$('accountId').textContent=user.email+' — awaiting ERP access';$('status').textContent='Approval required';return}
+role=data.role;show('erp');$('sessionLabel').textContent=user.email+' · '+role+' · CFM Next staging';buildNav();
+try { const n=await outbox.importLegacy(user.id,window.localStorage); if(n) tell('Recovered '+n+' older phone entries into the safe queue. They are pending Cloud verification.'); }
+catch(e){tell('Phone pending-entry recovery needs attention: '+e.message+'. Do not clear browser storage.',true)}
+await load();void loadWorkerNames();void loadWorkOrders();void flushQueue();}
+$('authForm').addEventListener('submit',async e=>{e.preventDefault();$('authMsg').textContent='Signing in…';
+const {error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+$('authMsg').textContent=error?error.message:'Signed in';if(!error)await authUi();});
+$('signup').addEventListener('click',async()=>{if(!$('email').value||!$('password').value)return $('authMsg').textContent='Enter email and password';
+$('authMsg').textContent='Creating account…';const {error}=await db.auth.signUp({email:$('email').value.trim(),password:$('password').value});
+$('authMsg').textContent=error?error.message:'Check your email for confirmation. ERP access will require administrator approval.';});
+async function signOut(){await db.auth.signOut();user=null;role=null;show('login');$('status').textContent='Signed out';}
+$('logout').onclick=signOut;$('lockedLogout').onclick=signOut;
+$('entryCenterShortcut').addEventListener('click',()=>{family='workflow';offset=0;buildNav();void load()});
+function buildNav(){$('nav').innerHTML='<button data-f="dashboard" class="'+(family==='dashboard'?'active':'')+'">Dashboard</button>'+FAMILIES.map(x=>'<button data-f="'+x[0]+'" class="'+(family===x[0]?'active':'')+'">'+esc(x[1])+'</button>').join('');
+$('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{family=b.dataset.f;offset=0;$('search').value='';buildNav();void load()});}
+async function counts(){
+const main=['pending','store','cutting','departmentWork','packingSlips','sopRecords'];
+const nums=await Promise.all(main.map(async f=>{const {count,error}=await db.from('cfm_next_records').select('id',{head:true,count:'exact'}).eq('family',f);return [LABELS[f],error?'—':count]}));
+if(nums.some(x=>x[1]==='—'))throw new Error('Dashboard count unavailable on one or more data groups');
+const {count:entryCount,error:entryError}=await db.from('cfm_next_activity_log').select('id',{head:true,count:'exact'});
+nums.unshift(['New Department Entries',entryError?'—':entryCount]);
+$('stats').innerHTML=nums.map(x=>'<div class="stat">'+esc(x[0])+'<b>'+esc(x[1])+'</b></div>').join('');
+}
+function viewRow(row,keys){const d=row.data||{};return '<tr>'+keys.map(k=>'<td>'+esc(d[k]??'—')+'</td>').join('')+
+'<td><details><summary>View</summary><pre>'+esc(JSON.stringify(d,null,2))+'</pre></details></td></tr>';}
+async function load(){if(!user||!role||refreshing)return;refreshing=true;status('Refreshing Cloud…');
+try{
+$('dashboard').classList.toggle('hide',family!=='dashboard');$('dailyForm').classList.toggle('hide',family!=='departmentWork');
+$('recordsPanel').classList.toggle('hide',family==='dashboard'||family==='workflow');
+if(family==='workflow'){
+ $('dashboard').classList.add('hide');$('dailyForm').classList.add('hide');
+ entryCenter.show();status('Entry Center • Cloud Sync');return;
+}
+entryCenter.hide();$('familyTitle').textContent=LABELS[family]||'Records';
+if(family==='dashboard'){await counts();status('Cloud up to date');return}
+const {data,error,count}=await db.from('cfm_next_records').select('id,family,record_key,data,revision,updated_at',{count:'exact'}).eq('family',family).order('created_at',{ascending:false}).order('id',{ascending:true}).range(offset,offset+LIMIT-1);
+if(error)throw error;records=data||[];total=count||0;renderRows();status('Cloud list refreshed · '+total+' records');
+}catch(e){tell('Cloud read failed: '+e.message+'. Keep existing data; retry without clearing storage.',true);status('Cloud unavailable')}finally{refreshing=false}}
+function renderRows(){const term=$('search').value.trim().toLowerCase();const rows=term?records.filter(r=>JSON.stringify(r.data).toLowerCase().includes(term)):records;
+const keys=COLS[family]||['workNo','date','person','party','description'];
+$('readNote').textContent='Old data is preserved. This staging screen is read-only except for new Daily Work entries. Search filters the current page.';
+$('rows').innerHTML='<table><thead><tr>'+keys.map(x=>'<th>'+esc(x)+'</th>').join('')+'<th>Details</th></tr></thead><tbody>'+rows.map(r=>viewRow(r,keys)).join('')+'</tbody></table>';
+$('page').textContent=(total?offset+1:0)+'–'+Math.min(offset+LIMIT,total)+' of '+total;
+$('prev').disabled=offset===0;$('next').disabled=offset+LIMIT>=total}
+$('search').addEventListener('input',renderRows);$('prev').onclick=()=>{offset=Math.max(0,offset-LIMIT);void load()};$('next').onclick=()=>{offset+=LIMIT;void load()};$('refresh').onclick=()=>void load();
+async function flushQueue() {
+  if(processing||!user||!role) return;
+  processing=true;
+  const owner=user.id;
+  try {
+    // Each entry has its own atomic IndexedDB transaction. NEVER rewrite
+    // a stale array snapshot: a second entry may arrive during Cloud sync.
+    for(let i=0;i<200;i++){
+      const pending=await outbox.list(owner);
+      if(!pending.length){status('Cloud work verified');break}
+      status('Sync pending · '+pending.length+' entr'+(pending.length===1?'y':'ies'));
+      if(typeof navigator!=='undefined'&&navigator.onLine===false) break;
+      const item=pending[0];
+      const {error:writeError}=await db.from('cfm_next_records').upsert(item,{onConflict:'id',ignoreDuplicates:true});
+      if(writeError) throw new Error('Cloud write: '+writeError.message);
+      const {data:receipt,error:readError}=await db.from('cfm_next_records')
+        .select('id,family,record_key,data,updated_by').eq('id',item.id).maybeSingle();
+      if(readError) throw new Error('Cloud receipt: '+readError.message);
+      if(!verifyDailyReceipt(receipt,item))
+        throw new Error('Cloud confirmation does not match this entry. Nothing was removed from the phone.');
+      await outbox.remove(owner,item.id);
+      $('saveStatus').textContent='✓ Daily Work verified in Cloud. Other records unchanged.';
+    }
+    const remaining=(await outbox.list(owner)).length;
+    if(remaining) status('Sync pending · '+remaining+' entr'+(remaining===1?'y':'ies'));
+    else {status('Cloud work verified');if(family==='departmentWork')void load()}
+  } catch(e) {
+    $('saveStatus').textContent='⚠️ Cloud not verified: '+e.message+'. Entry remains on this phone; retry after connection returns.';
+    status('Sync pending — not verified');
+  } finally {processing=false}
+}
+$('workForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ // Capture the form NOW: browser event.currentTarget becomes null after the first await.
+ const form=e.currentTarget;
+ if(!form||!user||!role)return;
+ const button=$('saveBtn');
+ if(button.disabled)return;
+ const v=Object.fromEntries(new FormData(form));
+ const done=Number(v.doneQty),given=Number(v.givenQty||0);
+ const person=v.person==='__NEW_WORKER__'?$('workerOther').value.trim():String(v.person||'').trim();
+ if(!person||!v.department||!v.description.trim()||!Number.isFinite(done)||done<0||
+    !Number.isFinite(given)||given<0){
+   $('saveStatus').textContent='Select worker, department, work and valid quantity';return;
+ }
+ const idUser=user.id;
+ const workNo=v.workNo==='__MANUAL__'?$('workOrderManual').value.trim():String(v.workNo||'').trim();
+ const normalizedWo=workNo.toUpperCase().replace(/^CFM-/,'');
+ const signature=data=>JSON.stringify([
+    String(data.date||'').trim(),String(data.person||'').trim().toUpperCase(),
+    String(data.department||'').trim().toUpperCase(),
+    String(data.workNo||'').trim().toUpperCase().replace(/^CFM-/,''),
+    String(data.description||'').trim().toUpperCase(),
+    Number(data.givenQty||0),Number(data.doneQty||0)
+ ]);
+ const requested={date:v.date,person,department:v.department,workNo:normalizedWo,
+   description:v.description,givenQty:given,doneQty:done};
+ button.disabled=true;
+ let phoneCommitted=false;
+ try{
+   // Reject accidental rapid re-Save while permitting intentional repeated work.
+   const prior=await outbox.list(idUser);
+   const duplicates=prior.filter(p=>signature(p?.data||{})===signature(requested));
+   if(navigator.onLine!==false){
+     try{
+       const {data:recent,error}=await db.from('cfm_next_records')
+         .select('created_at,data').eq('family','departmentWork')
+         .order('created_at',{ascending:false}).limit(100);
+       if(!error){
+         const since=Date.now()-15*60*1000;
+         for(const row of recent||[]){
+           if(Date.parse(row.created_at)>=since&&signature(row.data||{})===signature(requested))
+             duplicates.push(row);
+         }
+       }
+     }catch(error){console.warn('Optional duplicate check unavailable',error)}
+   }
+   if(duplicates.length){
+     const again=confirm('A matching Daily Work entry was saved recently / is pending on this phone. '+
+       'Creating another would count the work twice. Save a SECOND entry intentionally?');
+     if(!again){
+       $('saveStatus').textContent='Existing entry kept. No duplicate added. Refresh Daily Worker Report to check Cloud records.';
+       void flushQueue();return;
+     }
+   }
+   const uuid=crypto.randomUUID(),entryId='CFM-DW-'+uuid;
+   const data={cfmDailyEntryId:entryId,reportOnly:true,date:v.date,person,
+     department:v.department,description:v.description.trim(),
+     workNo,givenQty:given,doneQty:done,
+     pendingQty:Math.max(0,given-done),remark:v.remark.trim(),
+     updatedAt:new Date().toISOString(),updatedBy:user.email};
+   const item={id:uuid,family:'departmentWork',record_key:entryId,data,updated_by:idUser};
+   await outbox.put(idUser,item); // IndexedDB commits before clearing form.
+   phoneCommitted=true;
+   $('saveStatus').textContent='✓ Saved securely on phone. Checking Cloud receipt…';
+   addKnownWorker(person);
+   form.reset(); // use captured form, NEVER e.currentTarget after an await
+   renderWorkerSelect();
+   renderWorkOrderSelect();
+   $('workDate').value=today();
+   await flushQueue();
+ }catch(err){
+   $('saveStatus').textContent=phoneCommitted
+     ?'⚠️ Saved on phone, but Cloud verification still pending: '+err.message+
+       '. Do NOT save again; refresh or wait for automatic retry.'
+     :'⚠️ Phone save not confirmed: '+err.message+
+       '. Keep your form filled; do not clear browser data.';
+   if(phoneCommitted)void flushQueue();
+ }finally{button.disabled=false}
+});
+window.addEventListener('online',()=>void flushQueue());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){void flushQueue();void load()}});
+setInterval(()=>{if(user&&role&&navigator.onLine){void flushQueue();void load()}},25000);
+db.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT'){show('login');return}if(event==='SIGNED_IN')setTimeout(()=>void authUi(),0)});
+$('workDate').value=today();family='dashboard';try{await authUi()}catch(e){tell('Sign-in or network connection failed: '+e.message,true);$('status').textContent='Check network';show('login')}
+</script></body></html>
