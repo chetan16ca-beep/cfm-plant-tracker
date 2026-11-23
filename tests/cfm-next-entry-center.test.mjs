@@ -37,8 +37,8 @@ test('Cloud receipt must match every immutable field',()=>{
  assert.equal(verifyActivityReceipt({...row,entered_by:'other'},row),false);
  assert.deepEqual(row,original);
 });
-test('Entry Center is integrated into ERP navigation and login',()=>{
- const html=read('next/index.html');
+test('Archived Entry Center and earlier Daily Work entries remain accessible',()=>{
+ const html=read('next/staging.html');
  assert.match(html,/id="workflowPanel"/);
  assert.match(html,/id="workflowForm"/);
  assert.match(html,/entry-center\.mjs\?v=1/);
