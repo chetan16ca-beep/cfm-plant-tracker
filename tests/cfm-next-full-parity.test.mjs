@@ -32,3 +32,20 @@ test('Original records, SOP, packing and historic NEXT staging remain in place',
  for(const asset of ['cfm-plant-production-sop.js','cfm-packing-slip-dispatch-v355.js','cfm-packing-history-all-v418.js','cfm-eagle-measurement-dropdown-v416.js','cfm-workorder-save-verification-v419.js'])assert.ok(existsSync(new URL('../'+asset,import.meta.url)),asset);
  assert.match(read('index.html'),/app\.srcdoc=src/,'Original engine and data logic preserved');
 });
+
+test('CFM NEXT has safe independent Cloud and department shortcuts',()=>{
+ const next=read('next/index.html');
+ assert.match(next,/id="stagingFrame"/);
+ assert.match(next,/src='\.\/staging\.html\?v=next-secure-2'/);
+ assert.match(next,/id="cloudHealth"/);
+ assert.match(next,/function updateCloudHealth\(\)/);
+ assert.match(next,/id="moduleSafety"/);
+ assert.match(next,/w\.showView\(modules\[id\]\?\.view\|\|id\)/);
+ for(const mod of ['securecloud','stitching','threadcut','gunfinish','packingdept','qcdept','sopdept','maintdept','dispatchhistory']){
+   assert.ok(next.includes("id:'"+mod+"'"),'CFM NEXT module present '+mod);
+ }
+ assert.match(next,/STAGING ONLY/);
+ assert.match(read('next/staging.html'),/auth\.signInWithPassword/);
+ assert.match(read('next/staging.html'),/cfm_next_members/);
+ assert.match(read('next/entry-center.mjs'),/STAGING_REVIEW/);
+});

@@ -103,6 +103,13 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #14a5
  .bottom button.active{color:#087e90}
  .bottom span{display:block;font-size:19px;margin-bottom:4px}
 }
+
+.cloud-chip{display:inline-flex;align-items:center;max-width:290px;border:1px solid #ead6a5;background:#fff9e9;color:#855b13;border-radius:10px;padding:8px 10px;font-size:11px;font-weight:750;line-height:1.35}
+.cloud-chip.good{border-color:#aad9c3;background:#eaf9f0;color:#1c6749}
+.cloud-chip.bad{border-color:#f1b7b7;background:#fff0f0;color:#a22e36}
+#stagingFrame{display:block;width:100%;height:calc(100dvh - 173px);border:0;background:#fff}
+.work-hint{font-size:11px;color:#7b536e;background:#fff8ed;border:1px solid #eddfc0;border-radius:9px;padding:8px 11px;line-height:1.5;margin:0 0 8px}
+@media(max-width:730px){#stagingFrame{height:calc(100dvh - 204px)}.cloud-chip{max-width:137px;padding:7px 8px;font-size:9px}.work-hint{margin:0 4px 7px}.top-right{gap:5px}}
 </style>
 </head>
 <body>
@@ -119,6 +126,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #14a5
   <button class="softbtn menu-btn" id="toggleMenu" aria-label="Open modules">☰</button>
   <div><h1 id="topTitle">Plant Dashboard</h1><p id="topSub">CFM NEXT · Unified plant operations</p></div>
   <div class="top-right">
+   <span id="cloudHealth" class="cloud-chip" role="status" aria-live="polite">Cloud verification pending</span>
+   <button class="softbtn secondary" data-go="securecloud" title="Authenticated per-record Cloud records">☁ NEXT Cloud</button>
    <button class="softbtn secondary" id="labelBtn">🏷 Stitch Label</button>
    <button class="softbtn" id="refreshBtn" title="Refresh ERP">↻ Refresh</button>
   </div>
@@ -128,7 +137,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #14a5
    <div class="eyebrow">CFM NEXT / EAGLE FILTRATION</div>
    <h2>One ERP. Every department.</h2>
    <p>Work Orders, Store, Cutting, Daily Worker Reports, Packing, Dispatch, SOP and printing from one clean workspace.</p>
-   <div class="hero-actions"><button class="primary" data-go="pending">＋ Work Order</button><button class="ghost" data-go="deptwork">Daily Work Entry</button></div>
+   <div class="hero-actions"><button class="primary" data-go="pending">＋ Work Order</button><button class="ghost" data-go="deptwork">Daily Work Entry</button><button class="ghost" data-go="securecloud">☁ Secure NEXT Records</button></div>
   </section>
   <div class="section-head"><h3>Quick operations</h3><p>Tap to open a live module</p></div>
   <div class="quick-grid" id="quickGrid"></div>
@@ -138,7 +147,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #14a5
  </main>
  <section class="workpage hidden" id="workPage" aria-label="Selected module">
   <div class="workhead"><div><strong id="moduleTitle">Work Orders</strong><small id="moduleDescription">Production records</small></div><div class="actions"><button class="softbtn" id="backHome">⌂ Home</button></div></div>
-  <div class="frame-wrap"><div class="frame-loading" id="frameLoading"><div><strong>Opening CFM records…</strong><p>Loading the existing production modules securely.</p></div></div><iframe id="legacyEngine" src="../index.html?cfm-next-shell=1" title="CFM operational forms" allow="microphone; autoplay"></iframe></div>
+  <div class="work-hint" id="moduleSafety">Live production form: uses the existing CFM Cloud. Verify that the Save / Sync acknowledgement appears before changing devices.</div>
+  <div class="frame-wrap"><div class="frame-loading" id="frameLoading"><div><strong>Opening CFM records…</strong><p>Loading the existing production modules securely.</p></div></div><iframe id="legacyEngine" src="../index.html?cfm-next-shell=1" title="CFM production operational forms" allow="microphone; autoplay"></iframe><iframe id="stagingFrame" class="hidden" title="CFM Next authenticated record-level Cloud" loading="lazy"></iframe></div>
  </section>
 </div>
 </div>
@@ -154,11 +164,20 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #14a5
 'use strict';
 const MODULES=[
  {id:'dashboard',label:'Dashboard',ico:'⌂',group:'Main',desc:'All operations in one place'},
+ {id:'securecloud',label:'Secure NEXT Cloud',ico:'☁️',group:'Main',desc:'Protected record-by-record Cloud and department activity logs — staging only'},
  {id:'pending',label:'Work Orders',ico:'📋',group:'Production',desc:'New order, status and pending quantity'},
  {id:'planning',label:'Daily Planning',ico:'🗓️',group:'Production',desc:'Plan work by date'},
  {id:'store',label:'Store / Cloth Stock',ico:'📦',group:'Production',desc:'SRL inward, issue and balance'},
  {id:'cutting',label:'Cutting Details',ico:'✂️',group:'Production',desc:'Cut quantity, serial and progress'},
  {id:'deptwork',label:'Daily Worker Report',ico:'👷',group:'Production',desc:'Stitching, finishing and packing work'},
+ {id:'stitching',view:'deptwork',label:'Stitching',ico:'🧵',group:'Departments',desc:'Open Daily Worker Report for stitching entries'},
+ {id:'threadcut',view:'deptwork',label:'Thread Cutting',ico:'✂️',group:'Departments',desc:'Open Daily Worker Report for thread cutting entries'},
+ {id:'gunfinish',view:'deptwork',label:'Gun Finishing',ico:'🔧',group:'Departments',desc:'Open Daily Worker Report for gun finishing entries'},
+ {id:'packingdept',view:'docs',label:'Packing Department',ico:'📦',group:'Departments',desc:'Open packing slips and documents'},
+ {id:'qcdept',view:'issues',label:'QC / Inspection',ico:'✅',group:'Departments',desc:'Open quality and issues register'},
+ {id:'sopdept',view:'more',label:'Department SOP',ico:'📋',group:'Departments',desc:'Open all SOP tools'},
+ {id:'maintdept',view:'more',label:'Maintenance / Cleaning',ico:'🧹',group:'Departments',desc:'Open plant cleaning and maintenance tools'},
+ {id:'dispatchhistory',view:'readydispatch',label:'Dispatch History',ico:'🚚',group:'Departments',desc:'Open dispatch and completion register'},
  {id:'readydispatch',label:'Ready Dispatch',ico:'🚚',group:'Production',desc:'Dispatch status and completed work'},
  {id:'docs',label:'Packing / Documents',ico:'🧾',group:'Production',desc:'Packing slip, bills and challans'},
  {id:'print',label:'Print / Labels',ico:'🖨️',group:'Production',desc:'Job sheets, tags and printing'},
@@ -180,7 +199,7 @@ const MODULES=[
 ];
 const $=id=>document.getElementById(id);
 const modules=Object.fromEntries(MODULES.map(m=>[m.id,m]));
-let active='dashboard', operational=null;
+let active='dashboard', operational=null,secureFrameLoaded=false;
 function menuButton(m){const b=document.createElement('button');b.className='navbtn';b.type='button';b.dataset.go=m.id;b.innerHTML='<span class="sym">'+m.ico+'</span><span>'+m.label+'</span>';return b}
 function renderNav(term){
  const host=$('moduleNav');host.replaceChildren();
@@ -194,7 +213,7 @@ function renderNav(term){
  updateActive();
 }
 function addShortcut(host,id){const m=modules[id],b=document.createElement('button');b.type='button';b.className='quick-card';b.dataset.go=id;b.innerHTML='<span class="big">'+m.ico+'</span><b>'+m.label+'</b><small>'+m.desc+'</small>';host.appendChild(b)}
-['pending','store','cutting','deptwork','docs','readydispatch','srltracker','measurements','print'].forEach(id=>addShortcut($('quickGrid'),id));
+['pending','store','cutting','deptwork','docs','readydispatch','srltracker','measurements','print','securecloud'].forEach(id=>addShortcut($('quickGrid'),id));
 ['cutting','deptwork','issues','docs','readydispatch'].forEach((id,i)=>{const m=modules[id],b=document.createElement('button');b.type='button';b.dataset.go=id;b.innerHTML='<span>0'+(i+1)+'</span><b>'+m.ico+' '+(id==='deptwork'?'Stitch & Finish':id==='docs'?'Packing':m.label)+'</b>';$('processFlow').appendChild(b)});
 function updateActive(){
  document.querySelectorAll('[data-go]').forEach(b=>{const on=b.dataset.go===active;b.classList.toggle('active',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
@@ -202,23 +221,47 @@ function updateActive(){
 function closeMenu(){$('sidebar').classList.remove('open');$('scrim').classList.remove('open')}
 function selectRoute(id){
  if(!modules[id])return;
- active=id;const m=modules[id],home=id==='dashboard';
- $('shellHome').classList.toggle('hidden',!home);$('workPage').classList.toggle('hidden',home);
+ active=id;
+ const m=modules[id],home=id==='dashboard',secure=id==='securecloud';
+ $('shellHome').classList.toggle('hidden',!home);
+ $('workPage').classList.toggle('hidden',home);
+ $('legacyEngine').classList.toggle('hidden',secure);
+ $('stagingFrame').classList.toggle('hidden',!secure);
  $('topTitle').textContent=home?'Plant Dashboard':m.label;
  $('topSub').textContent=home?'CFM NEXT · Unified plant operations':m.desc;
- $('moduleTitle').textContent=m.label;$('moduleDescription').textContent=m.desc;
+ $('moduleTitle').textContent=m.label;
+ $('moduleDescription').textContent=m.desc;
+ $('moduleSafety').textContent=secure
+   ?'Protected NEXT Cloud is STAGING ONLY. Reviews and entries here do not change the original Work Order, Physical Stock, Cutting or Dispatch.'
+   :'LIVE CFM production form. Always check Cloud Save/Sync acknowledgement before switching to another phone.';
  updateActive();closeMenu();
- if(!home){$('frameLoading').classList.toggle('hidden',!!operational);if(operational)showModule(id)}
+ if(secure){
+   if(!secureFrameLoaded){
+     $('frameLoading').classList.remove('hidden');
+     $('stagingFrame').src='./staging.html?v=next-secure-2';
+     secureFrameLoaded=true;
+   }else $('frameLoading').classList.add('hidden');
+ }else if(!home){
+   $('frameLoading').classList.toggle('hidden',!!operational);
+   if(operational)showModule(id);
+ }
 }
 function showModule(id){
+ if(id==='securecloud'||id==='dashboard')return;
  try{
   const inner=operational?.contentWindow?.document?.getElementById('app');
   const w=inner?.contentWindow;
-  if(!w||typeof w.showView!=='function'){operational=null;$('frameLoading').classList.remove('hidden');return}
-  w.showView(id);
+  if(!w||typeof w.showView!=='function'){
+   operational=null;$('frameLoading').classList.remove('hidden');return;
+  }
+  w.showView(modules[id]?.view||id);
   try{w.scrollTo(0,0)}catch(_){}
   $('frameLoading').classList.add('hidden');
- }catch(e){$('engineState').textContent='Module needs refresh';$('frameLoading').textContent='Module could not be opened. Use Refresh.';console.error(e)}
+ }catch(e){
+  $('engineState').textContent='Production form needs refresh';
+  $('frameLoading').textContent='Unable to open production form. You can use the original ERP link below.';
+  console.error(e);
+ }
 }
 function goto(id){if(!modules[id])return;if(location.hash!=='#'+id)location.hash=id;else selectRoute(id)}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b){e.preventDefault();goto(b.dataset.go)}});
@@ -238,7 +281,7 @@ function connectEngine(){
  try{
   const outer=$('legacyEngine'),doc=outer.contentDocument,inner=doc?.getElementById('app'),windowInner=inner?.contentWindow;
   if(!inner||typeof windowInner?.showView!=='function'||!inner.contentDocument?.getElementById('view-pending'))return;
-  if(operational===outer)return;
+  if(operational===outer){updateCloudHealth();return;}
   const outerStyle=doc.createElement('style');
   outerStyle.textContent='#cfmLabelOuter394,#cfmEmergencyExport,#cfmWorkRefresh,#cfmResolveWoButton,#cfmDashboardHome,#cfmUpdateVersion{display:none!important}';
   outerStyle.id='cfm-next-outer-style';if(!doc.getElementById(outerStyle.id))doc.head.appendChild(outerStyle);
@@ -248,13 +291,37 @@ function connectEngine(){
     s.textContent='.topbar,#nav{display:none!important}main{max-width:none!important;margin:0!important;padding:13px!important}body{padding-left:0!important;margin-left:0!important}#view-dashboard{display:none!important}@media(max-width:760px){main{padding:8px!important}.panel{padding:12px!important}}';
     innerDoc.head.appendChild(s);
   }
-  operational=outer;$('engineState').textContent='Production modules loaded';$('engineDot').classList.add('ready');
-  if(active!=='dashboard')showModule(active);
-  $('frameLoading').classList.add('hidden');
+  operational=outer;$('engineState').textContent='Forms loaded · check Cloud status';$('engineDot').classList.add('ready');
+  if(active!=='dashboard'&&active!=='securecloud')showModule(active);
+  if(active!=='securecloud')$('frameLoading').classList.add('hidden');
+  updateCloudHealth();
  }catch(e){/* App chunks are still loading. Keep prior records and retry safely. */}
 }
+function updateCloudHealth(){
+ const chip=$('cloudHealth');
+ if(navigator.onLine===false){chip.className='cloud-chip bad';chip.textContent='Offline — do not refresh';return}
+ try{
+  const outer=operational?.contentDocument,frame=outer?.getElementById('app');
+  const label=frame?.contentDocument?.getElementById('cloudSyncBadge')?.textContent?.trim();
+  if(!label){chip.className='cloud-chip';chip.textContent='Cloud save not yet verified';return}
+  const short=label.replace(/\s+/g,' ').slice(0,76);
+  chip.textContent=short;
+  chip.className=/error|failed|paused|conflict|blocked|offline|unsynced|mismatch|risk/i.test(short)?'cloud-chip bad':
+     /synced|saved|verified|connected|ready/i.test(short)?'cloud-chip good':'cloud-chip';
+ }catch(_){chip.className='cloud-chip';chip.textContent='Check Cloud inside ERP'}
+}
+$('stagingFrame').addEventListener('load',()=>{if(active==='securecloud')$('frameLoading').classList.add('hidden')});
 $('legacyEngine').addEventListener('load',connectEngine);
-setInterval(connectEngine,850);
+window.addEventListener('online',updateCloudHealth);
+window.addEventListener('offline',updateCloudHealth);
+setInterval(connectEngine,1300);
+setInterval(updateCloudHealth,4500);
+setTimeout(()=>{
+ if(operational||active==='securecloud')return;
+ $('engineState').textContent='Old CFM forms not ready';
+ const loading=$('frameLoading');
+ loading.innerHTML='<div><strong>Production forms are taking longer than expected.</strong><p>No data was deleted or migrated. Use Refresh or open the original ERP in a separate tab.</p><p><a target="_blank" rel="noopener" href="../index.html">Open original CFM ERP</a></p></div>';
+},18000);
 renderNav('');
 selectRoute(modules[location.hash.slice(1)]?location.hash.slice(1):'dashboard');
 })();
