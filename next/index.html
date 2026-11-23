@@ -38,8 +38,8 @@ details summary{cursor:pointer;color:#1769ac}pre{white-space:pre-wrap;max-width:
 <h2>Daily Person Work — New Entry</h2><p class="muted">Report-only entry; it does not automatically change stock or SOP production handover.</p>
 <form id="workForm"><div class="form">
 <div><label>Date *</label><input name="date" id="workDate" type="date" required></div>
-<div><label>Worker *</label><input name="person" placeholder="Worker name" required></div>
-<div><label>Department *</label><select name="department" required><option value="">Select</option><option>Cutting</option><option>Stitching</option><option>Thread Cutting</option><option>Gun Finishing</option><option>Packing</option><option>QC</option><option>Store</option><option>Dispatch</option><option>Maintenance</option><option>Housekeeping</option></select></div>
+<div><label>Department *</label><select name="department" id="workerDept" required><option value="">Select Department</option><option>Cutting</option><option>Stitching</option><option>Thread Cutting</option><option>Gun Finishing</option><option>Packing</option><option>QC</option><option>Store</option><option>Dispatch</option><option>Maintenance</option><option>Housekeeping</option></select></div>
+<div><label>Worker *</label><select name="person" id="workerSelect" required><option value="">Select Worker</option></select><input id="workerOther" type="text" maxlength="80" class="hide" style="margin-top:8px" autocomplete="off" placeholder="New worker name"></div>
 <div><label>Work Order</label><input name="workNo" placeholder="764"></div>
 <div><label>Work details *</label><input name="description" required placeholder="Collar stitching / cutting / packing"></div>
 <div><label>Given Qty</label><input name="givenQty" type="number" min="0" step="any"></div>
@@ -67,6 +67,73 @@ const LABELS=Object.fromEntries(FAMILIES);
 const COLS={pending:['workNo','party','description','orderQty','cutQty','status','poNo','eagleCode'],store:['srlNo','efpplCode','width','physicalMtr','excelLiveBalanceMtr','status'],cutting:['date','workNo','party','description','cutQty','srlNo','cuttingBy'],departmentWork:['date','person','department','description','workNo','givenQty','doneQty','pendingQty'],packingSlips:['slipNo','party','workNo','thisDispatched','poNo'],sopRecords:['timestamp','code','workNo','operator']};
 let user=null,role=null,family='pending',offset=0,total=0,records=[],refreshing=false,processing=false;
 const LIMIT=100;
+
+/* V1: Existing CFM staff master, plus worker names from authorized Cloud records.
+   Worker/Department selection only changes form options. It does not edit ERP data. */
+const STAFF_NAMES=[
+ 'SUMIT','VIJAY SM-01','ANKIT SM-03','SATISH SM-04','RAHUL SM-05',
+ 'BHAVNA','RADHA','KAILASH','LAKUSH','SANGITA','JITU','CHETAN','LALA'
+];
+const DEPARTMENT_WORKERS={
+ 'Cutting':['SUMIT'],
+ 'Stitching':['VIJAY SM-01','ANKIT SM-03','SATISH SM-04','RAHUL SM-05','LAKUSH'],
+ 'Thread Cutting':['SANGITA','BHAVNA','RADHA','KAILASH','JITU'],
+ 'Gun Finishing':['SANGITA','BHAVNA','RADHA','KAILASH','JITU'],
+ 'Packing':['SANGITA','BHAVNA','RADHA','KAILASH'],
+ 'QC':['CHETAN','LALA'],
+ 'Store':['CHETAN','LALA'],
+ 'Dispatch':['LALA','CHETAN'],
+ 'Maintenance':['CHETAN'],
+ 'Housekeeping':['SANGITA','BHAVNA','RADHA','KAILASH']
+};
+const knownWorkers=new Map(STAFF_NAMES.map(n=>[n.toUpperCase(),n]));
+function addKnownWorker(name){
+ const n=String(name||'').trim();
+ if(n&&n.length<=80)knownWorkers.set(n.toUpperCase(),n);
+}
+function toggleNewWorker(){
+ const other=$('workerOther');
+ const isNew=$('workerSelect')?.value==='__NEW_WORKER__';
+ if(!other)return;
+ other.classList.toggle('hide',!isNew);
+ other.required=isNew;
+ if(!isNew)other.value='';
+}
+function renderWorkerSelect(){
+ const select=$('workerSelect');if(!select)return;
+ const previous=select.value,department=$('workerDept')?.value||'';
+ select.replaceChildren();
+ select.add(new Option('Select Worker',''));
+ const suggested=(DEPARTMENT_WORKERS[department]||[]).filter(n=>knownWorkers.has(n.toUpperCase()));
+ const selectedKeys=new Set(suggested.map(n=>n.toUpperCase()));
+ function appendGroup(title,names){
+  if(!names.length)return;
+  const group=document.createElement('optgroup');group.label=title;
+  names.forEach(name=>group.appendChild(new Option(name,name)));
+  select.appendChild(group);
+ }
+ if(department)appendGroup('Suggested — '+department,suggested);
+ appendGroup(department?'All other workers':'CFM Worker Master',
+   [...knownWorkers.values()].filter(n=>!selectedKeys.has(n.toUpperCase())));
+ select.add(new Option('＋ Add New Worker','__NEW_WORKER__'));
+ if(previous&&[...select.options].some(o=>o.value===previous))select.value=previous;
+ toggleNewWorker();
+}
+async function loadWorkerNames(){
+ if(!user||!role)return;
+ try{
+  const {data,error}=await db.from('cfm_next_records').select('family,data')
+    .in('family',['customPersons','departmentWork']).limit(1000);
+  if(error)throw error;
+  (data||[]).forEach(r=>addKnownWorker(r.family==='customPersons'
+    ?(r.data?.name||r.data?.person):r.data?.person));
+ }catch(e){console.warn('Worker master fallback: using original CFM names',e)}
+ renderWorkerSelect();
+}
+$('workerDept').addEventListener('change',renderWorkerSelect);
+$('workerSelect').addEventListener('change',toggleNewWorker);
+renderWorkerSelect();
+
 function tell(msg,err=false){$('globalNote').textContent=msg;$('globalNote').className='notice'+(err?' error':'');}
 function status(s){$('status').textContent=s;$('sync').textContent=s;}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -79,7 +146,7 @@ if(error||!data||!data.active){show('locked');$('accountId').textContent=user.em
 role=data.role;show('erp');$('sessionLabel').textContent=user.email+' · '+role+' · CFM Next staging';buildNav();
 try { const n=await outbox.importLegacy(user.id,window.localStorage); if(n) tell('Recovered '+n+' older phone entries into the safe queue. They are pending Cloud verification.'); }
 catch(e){tell('Phone pending-entry recovery needs attention: '+e.message+'. Do not clear browser storage.',true)}
-await load();void flushQueue();}
+await load();void loadWorkerNames();void flushQueue();}
 $('authForm').addEventListener('submit',async e=>{e.preventDefault();$('authMsg').textContent='Signing in…';
 const {error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
 $('authMsg').textContent=error?error.message:'Signed in';if(!error)await authUi();});
@@ -147,15 +214,16 @@ async function flushQueue() {
 $('workForm').addEventListener('submit',async e=>{
 e.preventDefault();if(!user||!role)return;
 const v=Object.fromEntries(new FormData(e.currentTarget));const done=Number(v.doneQty),given=Number(v.givenQty||0);
-if(!v.person.trim()||!v.department||!v.description.trim()||!Number.isFinite(done)||done<0||!Number.isFinite(given)||given<0){$('saveStatus').textContent='Enter valid worker, department, work and quantity';return}
+const person=v.person==='__NEW_WORKER__'?$('workerOther').value.trim():String(v.person||'').trim();
+if(!person||!v.department||!v.description.trim()||!Number.isFinite(done)||done<0||!Number.isFinite(given)||given<0){$('saveStatus').textContent='Select worker, department, work and valid quantity';return}
 const uuid=crypto.randomUUID(),entryId='CFM-DW-'+uuid;
-const data={cfmDailyEntryId:entryId,reportOnly:true,date:v.date,person:v.person.trim(),department:v.department,description:v.description.trim(),workNo:v.workNo.trim(),givenQty:given,doneQty:done,pendingQty:Math.max(0,given-done),remark:v.remark.trim(),updatedAt:new Date().toISOString(),updatedBy:user.email};
+const data={cfmDailyEntryId:entryId,reportOnly:true,date:v.date,person,department:v.department,description:v.description.trim(),workNo:v.workNo.trim(),givenQty:given,doneQty:done,pendingQty:Math.max(0,given-done),remark:v.remark.trim(),updatedAt:new Date().toISOString(),updatedBy:user.email};
 const item={id:uuid,family:'departmentWork',record_key:entryId,data,updated_by:user.id};
 const button=$('saveBtn');button.disabled=true;
 try {
   await outbox.put(user.id,item); // commit to phone before clearing the form
   $('saveStatus').textContent='✓ Saved securely on this phone. Sending to Cloud…';
-  e.currentTarget.reset();$('workDate').value=today();await flushQueue();
+  addKnownWorker(person);e.currentTarget.reset();renderWorkerSelect();$('workDate').value=today();await flushQueue();
 } catch(err) {
   $('saveStatus').textContent='⚠️ Phone save failed: '+err.message+'. Form retained; copy the details before leaving.';
 } finally {button.disabled=false}});
