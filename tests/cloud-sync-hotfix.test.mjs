@@ -16,11 +16,11 @@ test('Cloud write reconciles protected SRL and Work No before snapshot',()=>{
   assert.match(src,/Historical Cutting\/Customer data differs/,'Cutting history must not be discarded');
   assert.match(src,/version=eq\./,'Cloud CAS must remain enabled');
 });
-test('V420 shell deploy uses new cache namespace',()=>{
+test('V421 shell deploy uses new cache namespace',()=>{
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
   const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
-  assert.match(html,/20261123-v420/);
-  assert.match(sw,/20261123-v420/);
+  assert.match(html,/20261123-v421/);
+  assert.match(sw,/20261123-v421/);
 });
 
 test('V421 manual recovery shows device Work Orders and safeguards Cloud sections',()=>{
