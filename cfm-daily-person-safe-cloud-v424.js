@@ -1,4 +1,4 @@
-/* CFM V424 — Daily Person Work append-only Cloud save.
+/* CFM V425 — Daily Person Work verified append and safe multi-phone recovery.
    Conflicted phone Work Orders are NEVER uploaded by this module.
    Existing Cloud records, Stock, Cutting and Dispatch are untouched. */
 (function(){
@@ -74,8 +74,16 @@ async function appendOnly(record){
       .find(x=>x?.cfmDailyEntryId===record.cfmDailyEntryId);
     if(!accepted||JSON.stringify(accepted)!==JSON.stringify(record))
       throw Error('Cloud receipt was not verified. Recheck before retrying');
-    if(typeof cloudVersion!=='undefined')cloudVersion=Number(verified.version)||base+1;
-    if(typeof cloudUpdatedAt!=='undefined')cloudUpdatedAt=verified.updated_at||'';
+    // V425: Never advance the shared full-snapshot version unless the phone's
+    // entire uploadable state really equals the verified Cloud copy. Otherwise
+    // an old phone could overwrite newer orders on its next normal sync.
+    try{
+      if(typeof cloudStatePayload==='function' && typeof cloudDirty!=='undefined' &&
+         !cloudDirty && JSON.stringify(cloudStatePayload())===JSON.stringify(verified.payload)){
+        cloudVersion=Number(verified.version)||base+1;
+        cloudUpdatedAt=verified.updated_at||'';
+      }
+    }catch(error){console.warn('Daily Work receipt: full-state alignment deferred',error)}
     return Number(verified.version);
   }
   throw Error('Other device updated Cloud during save. Retry safely');
@@ -103,15 +111,40 @@ async function flush(){
     }
   }finally{busy=false}
 }
+// Independent Daily Work delivery also runs when normal full-state Sync is ready.
+// The normal full-state save may already be in progress; the append path checks
+// the current server first and will deduplicate by immutable entry ID.
 window.cfmSafeDailyPersonCloudSave=function(entry){
   if(!eligible(entry)){notice('Daily Work cannot sync: missing worker, activity or entry ID');return}
-  if(typeof cloudReady!=='undefined' && cloudReady){
-    notice('✓ Daily Work entered on device • Regular Cloud Sync pending. If status fails, use Daily Work-only retry.');
-    return;
-  }
   pending.set(entry.cfmDailyEntryId,copy(entry));
-  void flush();
+  notice('✓ Daily Work entered on phone • Checking Cloud receipt…');
+  // Allow the normal debounced save a chance to finish, but never depend on it.
+  setTimeout(()=>{void flush()},900);
 };
+async function recoverLocalDailyWork(){
+  if(busy||typeof state==='undefined'||!Array.isArray(state.departmentWork))return;
+  if(typeof navigator!=='undefined'&&navigator.onLine===false)return;
+  try{
+    const cloud=await cloudFetch();
+    if(!cloud||!validState(cloud.payload))return;
+    const byId=new Map((cloud.payload.departmentWork||[])
+      .filter(r=>r&&r.cfmDailyEntryId).map(r=>[r.cfmDailyEntryId,r]));
+    let changed=0,conflicts=0;
+    for(const record of state.departmentWork){
+      if(!eligible(record))continue;
+      const server=byId.get(record.cfmDailyEntryId);
+      if(!server){pending.set(record.cfmDailyEntryId,copy(record));changed++}
+      else if(JSON.stringify(server)!==JSON.stringify(record))conflicts++;
+    }
+    if(conflicts)notice('⚠️ '+conflicts+' Daily Work edits differ between phone and Cloud. Nothing was overwritten; review before editing again.');
+    if(changed)void flush();
+  }catch(error){console.warn('Daily Work resume check unavailable',error)}
+}
+window.addEventListener('online',()=>{setTimeout(()=>void recoverLocalDailyWork(),300)});
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden)setTimeout(()=>void recoverLocalDailyWork(),400);
+});
+setTimeout(()=>void recoverLocalDailyWork(),2800);
 window.cfmRetryDailyPersonCloud424=async function(){
   if(busy){notice('Daily Work Cloud save is already running');return}
   let rows=[];
@@ -126,4 +159,5 @@ window.cfmRetryDailyPersonCloud424=async function(){
   rows.forEach(rec=>pending.set(rec.cfmDailyEntryId,copy(rec)));
   void flush();
 };
+window.cfmRetryDailyPersonCloud425=window.cfmRetryDailyPersonCloud424;
 })();
