@@ -19,8 +19,8 @@ test('Cloud write reconciles protected SRL and Work No before snapshot',()=>{
 test('V421 shell deploy uses new cache namespace',()=>{
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
   const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
-  assert.match(html,/20261123-v421/);
-  assert.match(sw,/20261123-v421/);
+  assert.match(html,/20261123-v422/);
+  assert.match(sw,/20261123-v422/);
 });
 
 test('V421 manual recovery shows device Work Orders and safeguards Cloud sections',()=>{
@@ -39,4 +39,16 @@ test('V421 manual recovery shows device Work Orders and safeguards Cloud section
  assert.match(recovery,/cloudReady=false;cloudDirty=false/, 'do not silently resume unsafe full state upload');
  assert.match(recovery,/if\(!cloudReady\)\{await cloudInit\(\);if\(!cloudReady\)\{await window\.cfmReviewUnsyncedWorkOrders\(\)/, 'manual Sync must surface recovery UI');
  assert.doesNotMatch(recovery,/state=clone\(fresh\.payload\)/, 'must preserve unsynced device data');
+});
+
+test('Batch / Person Reports panel script parses and button exists',()=>{
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const start='<script id="cfm-v275-reconstructed-reports">';
+ const a=html.indexOf(start), b=html.indexOf('</script>',a+start.length);
+ assert.ok(a>=0&&b>a,'Report panel module must be present in index');
+ const js=html.slice(a+start.length,b);
+ assert.doesNotThrow(()=>new Function(js),'Report panel JavaScript should parse without syntax errors');
+ assert.match(js,/open\.id='cfmResultOpen'/,'Batch report entrypoint exists');
+ assert.match(html,/Batch \/ Person Reports/,'Dashboard button exists');
+ assert.match(html,/const outer=document\.getElementById\('cfmResultOpen'\)/,'Dashboard button targets report panel');
 });
