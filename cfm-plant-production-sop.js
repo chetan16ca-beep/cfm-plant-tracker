@@ -1,4 +1,4 @@
-/* CFM Plant Production SOP V253 - 11 Nov 2026
+/* CFM Plant Production SOP V423 - 23 Nov 2026
    Adds operator-side approval and production handover guards.
    Does not mutate historic records, auto-deduct meters, or write to Cloud by itself.
    The existing ERP Save & Cloud Sync remain the only persistence mechanism. */
@@ -40,7 +40,7 @@
   };
   const stageDone = (s, work, process, excludeIndex = null) =>
     arr(s?.departmentWork).reduce((sum, r, i) =>
-      sum + ((i !== excludeIndex && norm(r.workNo) === norm(work) && canonicalStage(r.process) === process)
+      sum + ((i !== excludeIndex && r.reportOnly !== true && norm(r.workNo) === norm(work) && canonicalStage(r.process) === process)
         ? Math.max(0, number(r.doneQty)) : 0), 0);
   const goodCutting = (s, work) => arr(s?.cutting).some((r) => {
     if (norm(r.workNo) !== norm(work) || r.wastage || norm(r.srlNo) === 'W' ||
@@ -108,7 +108,7 @@
     if (!fields || !kind) return;
     fields.querySelector('[data-sop-signoff]')?.remove();
     $('cfmSopError')?.remove();
-    if (kind === 'order') return;
+    if (kind === 'order' || kind === 'department') return; // Daily worker logs are not production handovers.
     const holder = document.createElement('section');
     holder.dataset.sopSignoff = kind;
     holder.style.cssText = 'grid-column:1/-1;padding:12px;border:1px solid #a9cbd5;border-radius:10px;background:#f3fbff;color:#123c54;font:13px/1.5 system-ui';
@@ -330,7 +330,7 @@
       workDescription:baseRemark||wo.description||'',person:person.trim(),process,
       department:process,givenQty:number(wo.orderQty),orderQty:number(wo.orderQty),
       doneQty:Number(qty),pendingQty:Math.max(0,number(wo.orderQty)-Number(qty)),
-      checklist:true,date,remark:stamped,supervisor:supervisor.trim(),
+      checklist:true,date,remark:stamped,supervisor:supervisor.trim(),reportOnly:false,
       updatedAt:new Date().toISOString(),
       updatedBy:typeof deviceLabel === 'function' ? deviceLabel() : 'CFM SOP'
     };
@@ -407,6 +407,7 @@
       const form = $('editForm');
       const kind = formKind(form);
       if (!kind) return;
+      if (kind === 'department') return; // Person work reports always save; SOP checks verified Batch handovers only.
       const s = getState();
       if (!s) { e.preventDefault(); e.stopImmediatePropagation(); display('ERP data is not loaded. Refresh safely and retry.'); return; }
       let issue = '';
@@ -485,6 +486,6 @@
     attach(); dashboard();
     setInterval(() => { try { attach(); dashboard(); } catch(e) { console.warn('CFM SOP status',e); } }, 12000);
   }
-  window.CFM_PLANT_SOP = {version:'253',effectiveDate:SOP_DATE,validate:(kind,obj) => check(kind, obj, getState())};
+  window.CFM_PLANT_SOP = {version:'423',effectiveDate:SOP_DATE,validate:(kind,obj) => check(kind, obj, getState())};
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
 })();

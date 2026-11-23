@@ -13,7 +13,7 @@ for(const p of chunks)ok(existsSync(file(p)),'Source chunk present: '+p);
 const scripts=[
  'backup-safe.js','backup-guardian.js','cfm-sap-workorder-ui.js',
  'cfm-workno-reconcile.js','cfm-efppl-master-v330.js',
- 'cfm-sop-register.js','cfm-department-sop-v319.js',
+ 'cfm-sop-register.js','cfm-department-sop-v319.js','cfm-plant-production-sop.js',
  'cfm-dashboard-compact-v343.js','cfm-theme-a-v344.js',
  'cfm-dashboard-bottom-v345.js','cfm-operator-safety-v347.js','cfm-cutting-reconciliation.js',
  'cfm-intelligence-core.js'
@@ -40,5 +40,13 @@ has('cfm-operator-safety-v347.js','cfmOperatorSafetyCheck');
 has('index.html','cfm-operator-safety-v347.js?v=347');
 for(const p of ['cfm-theme-a-v344.js','cfm-dashboard-bottom-v345.js','cfm-dashboard-compact-v343.js'])
  has('index.html',p);
+const sop=read('cfm-plant-production-sop.js'), worker=read('chunks/s3-000.txt');
+ok(sop.includes("if (kind === 'department') return; // Person work reports always save"), 'Daily Person Work save bypasses SOP hold');
+ok(sop.includes("kind === 'order' || kind === 'department'"), 'Daily Work form does not require production SOP approval');
+ok(worker.includes('rec.reportOnly=true;'), 'Daily Worker entries are logged as report-only');
+ok(sop.includes('r.reportOnly !== true'), 'SOP production handover excludes report-only worker logs');
+ok(worker.includes('x.reportOnly!==true'), 'Stage availability previews exclude unverified worker logs');
+ok(sop.includes('supervisor:supervisor.trim(),reportOnly:false'), 'Verified Batch stage entries remain handover eligible');
+has('index.html','cfm-plant-production-sop.js?v=423');
 ok(!index.includes('cfm-jessi-voice.js'),'Removed Jessi is not loaded again');
 console.log('CFM read-only deployment safety checks passed: '+checks);

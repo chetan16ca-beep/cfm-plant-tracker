@@ -330,7 +330,7 @@ function deptStageDone(workNo,process,skipIndex=null){
   if(key==='CUTTING'){
     return (state.cutting||[]).filter(x=>normalize(x.workNo)===normalize(workNo)).reduce((a,x)=>a+num(x.cutQty),0);
   }
-  return (state.departmentWork||[]).reduce((a,x,idx)=>a+(idx!==skipIndex&&normalize(x.workNo)===normalize(workNo)&&deptProcessKey(x.process)===key?num(x.doneQty):0),0);
+  return (state.departmentWork||[]).reduce((a,x,idx)=>a+(idx!==skipIndex&&x.reportOnly!==true&&normalize(x.workNo)===normalize(workNo)&&deptProcessKey(x.process)===key?num(x.doneQty):0),0);
 }
 function deptStageLimit(workNo,process){
   const p=getPending(workNo);if(!p)return Infinity;
@@ -440,6 +440,8 @@ window.openDeptWorkForm=function(i=null){
       updatedBy:deviceLabel()
     };
     rec.pendingQty=deptEntryPending(rec);
+    // Daily person entries record actual work without asserting SOP stage handover.
+    rec.reportOnly=true;
     if(!rec.person){toast('Person select karo');return false}
     if(!String(rec.description||'').trim()){toast('Activity / Work Details enter karo');return false}
     /* Department daily entry stays open even when legacy/previous-process totals differ.
@@ -476,6 +478,7 @@ function deptWorkCard(r){
     <div class="chips" style="margin-top:8px">${r.workNo?`<span class="chip">Work ${esc(r.workNo)}</span>`:''}${r.party?`<span class="chip">${esc(r.party)}</span>`:''}<span class="chip">${esc(dateDisplay(r.date))}</span>${r.shift?`<span class="chip">${esc(r.shift)}</span>`:''}</div>
     <div class="dept-qty"><div><span>Given</span><b>${fmt(r.givenQty)}</b></div><div><span>Done</span><b>${fmt(r.doneQty)}</b></div><div><span>Pending</span><b>${fmt(p)}</b></div></div>
     ${r.remark?`<div class="notice" style="margin-top:9px;padding:8px 10px"><b>Remark:</b> ${esc(r.remark)}</div>`:''}
+    ${r.reportOnly===true?'<div class="inline-help" style="margin-top:6px">Daily work logged • SOP stage approval separate</div>':''}
     <div class="chips" style="margin-top:9px">${r.supervisor?`<span class="chip">Supervisor: ${esc(r.supervisor)}</span>`:''}<span class="chip">By ${esc(r.updatedBy||'')}</span></div>
     <div class="card-actions"><button class="btn btn-sm" onclick="openDeptWorkForm(${i})">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteDeptWork(${i})">Delete</button></div>
   </div>`;
