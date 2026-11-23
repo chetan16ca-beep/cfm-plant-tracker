@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#123154"><title>CFM NEXT • Native Work Orders</title>
+<style>
+:root{font:14px Inter,system-ui,Arial,sans-serif;color:#182c45;background:#f4f7fb}
+*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}
+button{cursor:pointer;background:#fff;color:#143e5a;border:1px solid #b9c9dc;border-radius:10px;padding:10px 14px;font-weight:750}
+button.primary{background:#14758c;color:white;border-color:#14758c}
+button:disabled{opacity:.6;cursor:wait}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #28afbf;outline-offset:2px}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cad7e3;border-radius:9px;background:#fff;min-width:0}
+textarea{min-height:65px;resize:vertical}
+label{display:block;font-size:12px;font-weight:800;margin:0 0 5px;color:#465e78}
+h1{font-size:20px;margin:0}h2{font-size:16px;margin:0 0 12px}.sub{color:#647891;font-size:12px;margin:5px 0 0}
+.top{background:#123154;color:white;padding:14px 18px;display:flex;align-items:center;gap:12px;justify-content:space-between}
+.top p{color:#b3d2df}.shell{max-width:1200px;margin:0 auto;padding:13px}
+.panel{background:white;border:1px solid #dce6f0;border-radius:15px;padding:18px;margin-bottom:14px;box-shadow:0 6px 25px #18344b0c}
+.hidden{display:none!important}
+.notice{border:1px solid #e8d6b9;background:#fff9ed;color:#785927;border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.55;margin-bottom:12px}
+.state{font-size:12px;font-weight:800;border:1px solid #d8e3ed;background:#eef4fa;border-radius:10px;padding:9px 12px}
+.state.good{background:#eaf8f0;border-color:#addbc1;color:#246c49}
+.state.bad{background:#fff1f0;border-color:#f1bfb6;color:#aa342d}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:13px}
+.formgrid .wide{grid-column:1/-1}
+.actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:13px}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.stat{border:1px solid #d5e3ef;background:#f9fbfe;border-radius:10px;padding:9px 12px;min-width:125px;font-size:12px}
+.stat b{font-size:19px;display:block;margin-top:3px}
+.tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+.tabs button.selected{background:#195e7c;color:white;border-color:#195e7c}
+.gridcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:9px}
+.wo{border:1px solid #e1eaf2;border-radius:12px;padding:13px;background:#fff}
+.wo strong{color:#0f567b;font-size:14px}.wo p{margin:7px 0;font-size:12px;line-height:1.45;color:#3e5268}
+.wo small{color:#72849b}.wo button{font-size:11px;padding:7px 10px}
+.wo aside{display:flex;justify-content:space-between;gap:10px;align-items:center}
+#search{max-width:400px}
+@media(max-width:650px){.shell{padding:8px}.panel{padding:12px}.top{padding:11px}.gridcards{grid-template-columns:1fr}h1{font-size:17px}.wo{padding:11px}}
+</style>
+</head>
+<body>
+<header class="top"><div><h1>CFM NEXT • Work Orders</h1><p class="sub">Individual Cloud records • Revision checked • EFPPL codes</p></div><span id="cloudStatus" class="state">Connecting…</span></header>
+<main class="shell">
+<div class="notice">New ERP Work Orders receive <b>NEXT-00001</b> style numbers, separate from live CFM numbering. Imported CFM orders are visible for reference, not editable here. No stock, cutting, dispatch or original ERP records are changed by this page.</div>
+<section class="panel" id="login">
+<h2>Secure Staff Login</h2>
+<form id="loginForm" class="formgrid"><div><label>Email</label><input id="email" type="email" autocomplete="email" required></div><div><label>Password</label><input id="password" type="password" autocomplete="current-password" required></div><div style="align-self:end"><button type="submit" class="primary">Sign In</button></div></form>
+<p id="loginMsg" class="sub"></p>
+</section>
+<section id="locked" class="panel hidden"><h2>Approval needed</h2><p>Admin approval is required before Cloud Work Orders can be shown or edited.</p><button id="signOutLocked" type="button">Sign out</button></section>
+<div id="work" class="hidden">
+<section class="panel">
+<div class="actions" style="margin:0 0 12px"><h2 style="margin:0">New / Edit NEXT Work Order</h2><button id="resetBtn" type="button">＋ New</button><button id="refreshBtn" type="button">↻ Refresh Cloud</button><button id="signOut" type="button">Sign Out</button></div>
+<p id="formHint" class="sub">A new order number is assigned by Cloud only after successful save.</p>
+<form id="orderForm">
+<div class="formgrid">
+<div><label>Company / Party *</label><input name="party" maxlength="140" required placeholder="Company name"></div>
+<div><label>PO Number</label><input name="po_no" maxlength="100" placeholder="Customer PO No"></div>
+<div class="wide"><label>Product / Work Details *</label><input name="product_name" maxlength="280" required placeholder="Example: CF 48 L / 2 Micron AS"></div>
+<div><label>EFPPL Product Code</label><input name="product_code" maxlength="140" list="codeOptions" placeholder="EFPPL-..."></div>
+<datalist id="codeOptions"></datalist>
+<div><label>Order Qty *</label><input name="order_qty" type="number" min="0.01" max="1000000" step="0.01" required></div>
+<div><label>Priority</label><select name="priority"><option>NORMAL</option><option>LOW</option><option>HIGH</option><option>URGENT</option></select></div>
+<div><label>Status</label><select name="status"><option>OPEN</option><option>IN_PROCESS</option><option>HOLD</option></select></div>
+<div><label>Order Date</label><input name="order_date" type="date" required></div>
+<div><label>Delivery Date</label><input name="delivery_date" type="date"></div>
+<div class="wide"><label>Remarks / Specifications</label><textarea name="notes" maxlength="1000"></textarea></div>
+</div>
+<div class="actions"><button id="saveBtn" type="submit" class="primary">Save & Verify in Cloud</button><span id="saveMsg" role="status" class="sub"></span></div>
+</form>
+</section>
+<section class="panel"><div class="actions" style="margin:0 0 13px"><h2 style="margin:0">Cloud Work Order History</h2><input id="search" type="search" placeholder="Search No / Party / PO / Product" aria-label="Search work orders"><span id="historyStatus" class="sub"></span></div>
+<div class="stats" id="stats"></div>
+<div class="tabs"><button type="button" id="nativeTab" class="selected">NEXT Orders</button><button type="button" id="archiveTab">Old CFM References</button></div>
+<div id="cards" class="gridcards"></div>
+</section>
+</div>
+</main>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.3?bundle';
+const db=createClient('https://soluxixriexliipfnznc.supabase.co','sb_publishable_hay-tW1slhbk-QXnql7pSg_I0Lh-0N0',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const $=id=>document.getElementById(id);
+let user=null,role=null,orders=[],reference=[],activeTab='native',editing=null,pendingCreateId=null,busy=false;
+const fields=['party','po_no','product_name','product_code','order_qty','priority','status','order_date','delivery_date','notes'];
+const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
+const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
+const status=(text,bad=false,good=false)=>{const e=$('cloudStatus');e.textContent=text;e.className='state'+(bad?' bad':good?' good':'')};
+const msg=(text,bad=false)=>{$('saveMsg').textContent=text;$('saveMsg').style.color=bad?'#a33e2b':'#276c4c'};
+const signedIn=()=>!!(user&&role);
+function setFormEmpty(){
+ editing=null;pendingCreateId=null;$('orderForm').reset();
+ $('orderForm').elements.namedItem('order_date').value=today();
+ $('formHint').textContent='New Work Order • Cloud allocates a unique NEXT number on successful Save.';
+ $('saveBtn').textContent='Save New NEXT Work Order';
+ msg('');
+}
+function readForm(){
+ const v=Object.fromEntries(new FormData($('orderForm')));
+ v.party=String(v.party||'').trim();
+ v.product_name=String(v.product_name||'').trim();
+ v.po_no=String(v.po_no||'').trim();
+ v.product_code=String(v.product_code||'').trim();
+ v.notes=String(v.notes||'').trim();
+ v.order_qty=Number(v.order_qty);
+ v.delivery_date=v.delivery_date||null;
+ if(!v.party||!v.product_name||!v.order_date||!Number.isFinite(v.order_qty)||v.order_qty<=0)return null;
+ return v;
+}
+function sameData(row,v){
+ if(!row||!v)return false;
+ return fields.every(k=>k==='order_qty'?Number(row[k])===Number(v[k]):String(row[k]??'')===String(v[k]??''));
+}
+async function confirmCloud(id,v,minRevision){
+ const {data,error}=await db.from('cfm_next_work_orders').select('*').eq('id',id).maybeSingle();
+ if(error)throw error;
+ if(!data||Number(data.revision)<minRevision||!sameData(data,v))throw Error('Cloud receipt not confirmed; do not create a second entry');
+ return data;
+}
+async function load(){
+ if(!signedIn())return;
+ status('Loading Cloud…');
+ const [own,old]=await Promise.all([
+  db.from('cfm_next_work_orders').select('*').order('created_at',{ascending:false}).limit(500),
+  db.from('cfm_next_records').select('data').eq('family','pending').limit(600)
+ ]);
+ if(own.error||old.error){status('Cloud read problem',true);$('historyStatus').textContent=(own.error||old.error).message;return}
+ orders=own.data||[];reference=(old.data||[]).map(x=>x.data||{});
+ $('stats').replaceChildren();
+ const addStat=(label,num)=>{const box=document.createElement('div');box.className='stat';box.textContent=label;const b=document.createElement('b');b.textContent=num;box.append(b);$('stats').append(box)};
+ addStat('NEXT Cloud Orders',orders.length);addStat('Existing CFM References',reference.length);
+ addStat('NEXT Open',orders.filter(x=>x.status==='OPEN').length);
+ const codes=new Set(reference.map(r=>String(r.eagleCode||r.itemCode||r.efpplCode||'').trim()).filter(Boolean));
+ $('codeOptions').replaceChildren();
+ [...codes].sort().slice(0,400).forEach(c=>$('codeOptions').append(new Option(c,c)));
+ render();
+ status('Cloud history verified',false,true);
+}
+function render(){
+ const q=$('search').value.trim().toLowerCase(),box=$('cards');box.replaceChildren();
+ const list=activeTab==='native'?orders:reference;
+ const matches=list.filter(r=>[
+  r.work_no||r.workNo,r.party,r.po_no||r.poNo,r.product_name||r.description,r.product_code||r.eagleCode
+ ].some(x=>String(x||'').toLowerCase().includes(q))).slice(0,250);
+ $('historyStatus').textContent='Showing '+matches.length+' of '+list.length+' Cloud records';
+ if(!matches.length){box.textContent='No matching Work Orders.';return}
+ for(const row of matches){
+  const native=activeTab==='native',article=document.createElement('article');article.className='wo';
+  const heading=document.createElement('aside');
+  const name=document.createElement('strong');name.textContent=String(native?row.work_no:row.workNo||'—');
+  const qty=document.createElement('small');qty.textContent='Qty '+String(native?row.order_qty:row.orderQty||'—');
+  heading.append(name,qty);
+  const title=document.createElement('p');title.textContent=(row.party||'—')+' · '+String(native?row.product_name:row.description||'—');
+  const details=document.createElement('p');details.textContent='PO '+String(native?row.po_no||'—':row.poNo||'—')+
+   ' · EFPPL '+String(native?row.product_code||'—':row.eagleCode||row.itemCode||'—')+
+   ' · '+String(row.status||'OPEN')+(native?' · Rev '+row.revision:' · Imported read-only');
+  article.append(heading,title,details);
+  if(native&&['admin','supervisor'].includes(role)){
+   const edit=document.createElement('button');edit.type='button';edit.textContent='Edit • '+row.work_no;
+   edit.onclick=()=>startEdit(row);article.append(edit);
+  }
+  box.append(article);
+ }
+}
+function startEdit(r){
+ if(busy)return;
+ editing={id:r.id,revision:r.revision};
+ for(const k of fields)$('orderForm').elements.namedItem(k).value=r[k]??'';
+ $('orderForm').elements.namedItem('order_qty').value=r.order_qty;
+ $('formHint').textContent='Editing '+r.work_no+' • Revision '+r.revision+'. Saves reject stale values from another phone.';
+ $('saveBtn').textContent='Update '+r.work_no+' & Verify';
+ msg('Existing Work Order selected. Stock and cutting quantities are not changed here.');
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+$('resetBtn').onclick=setFormEmpty;
+$('refreshBtn').onclick=()=>void load();
+$('search').addEventListener('input',render);
+$('nativeTab').onclick=()=>{activeTab='native';$('nativeTab').classList.add('selected');$('archiveTab').classList.remove('selected');render()};
+$('archiveTab').onclick=()=>{activeTab='archive';$('archiveTab').classList.add('selected');$('nativeTab').classList.remove('selected');render()};
+$('orderForm').addEventListener('submit',async evt=>{
+ evt.preventDefault();
+ if(busy)return;
+ if(!signedIn()||!['admin','supervisor'].includes(role)){msg('Account does not have Work Order edit permission.',true);return}
+ const v=readForm();if(!v){msg('Check Party, Product, Order Date and Order Qty.',true);return}
+ if(navigator.onLine===false){msg('Offline: Work Order was NOT saved. Keep the form open until online.',true);return}
+ busy=true;$('saveBtn').disabled=true;status('Saving Cloud…');
+ let receipt=null;
+ try{
+  if(!editing){
+   if(!pendingCreateId)pendingCreateId=crypto.randomUUID();
+   const id=pendingCreateId;
+   const payload=Object.assign({id,created_by:user.id,updated_by:user.id},v);
+   const {error}=await db.from('cfm_next_work_orders').insert(payload);
+   if(error&&error.code!=='23505')throw error;
+   receipt=await confirmCloud(id,v,1);
+  }else{
+   const before=editing;
+   const changes=Object.assign({},v,{revision:Number(before.revision)+1,updated_by:user.id});
+   const {data,error}=await db.from('cfm_next_work_orders')
+    .update(changes).eq('id',before.id).eq('revision',before.revision).select('*').maybeSingle();
+   if(error)throw error;
+   if(!data){msg('Edit conflict: another phone updated this order. Copy your changes before Refresh Cloud.',true);status('Cloud edit conflict',true);return}
+   receipt=await confirmCloud(before.id,v,before.revision+1);
+  }
+  msg('✓ '+receipt.work_no+' • Revision '+receipt.revision+' • Cloud VERIFIED');
+  status('Cloud Save VERIFIED',false,true);
+  setFormEmpty();msg('✓ '+receipt.work_no+' Saved and verified • Revision '+receipt.revision);
+  await load();
+ }catch(e){
+  msg('Cloud Save NOT confirmed: '+String(e.message||e)+'. Do not submit a second new order; retry this form.',true);
+  status('Cloud receipt missing',true);
+  // Retain pendingCreateId and all fields for idempotent retries.
+ }finally{busy=false;$('saveBtn').disabled=false}
+});
+async function auth(){
+ const {data:{session}}=await db.auth.getSession();
+ user=session?.user||null;
+ if(!user){role=null;$('login').classList.remove('hidden');$('locked').classList.add('hidden');$('work').classList.add('hidden');status('Sign in required');return}
+ const {data,error}=await db.from('cfm_next_members').select('role,active').eq('user_id',user.id).maybeSingle();
+ role=!error&&data?.active?data.role:null;
+ $('login').classList.add('hidden');$('locked').classList.toggle('hidden',!!role);
+ $('work').classList.toggle('hidden',!role);
+ if(!role){status('Approval required',true);return}
+ $('saveBtn').disabled=!['admin','supervisor'].includes(role);
+ setFormEmpty();
+ await load();
+}
+$('loginForm').addEventListener('submit',async e=>{
+ e.preventDefault();$('loginMsg').textContent='Signing in…';
+ const {error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+ if(error){$('loginMsg').textContent=error.message;return}
+ $('password').value='';await auth();
+});
+async function signOut(){await db.auth.signOut();user=null;role=null;await auth()}
+$('signOut').onclick=signOut;$('signOutLocked').onclick=signOut;
+window.addEventListener('online',()=>{if(signedIn())void load()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&signedIn())void load()});
+setFormEmpty();void auth();
+</script>
+</body>
+</html>
