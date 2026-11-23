@@ -90,7 +90,7 @@ export function setupCFMNextEntryCenter({db,getUser,getRole,getWorkOrders,getWor
  const receipt=document.getElementById('workflowReceipt');
  const sync=document.getElementById('workflowSync');
  const outbox=createActivityOutbox(window.indexedDB);
- let selected=MODULES[0],current=[],busy=false,refreshing=false,visible=false;
+ let selected=MODULES[0],current=[],busy=false,refreshing=false,visible=false,realtimeChannel=null;
  const $=id=>document.getElementById(id);
  const escape=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
  const newNode=(tag,attrs={})=>{
@@ -283,14 +283,28 @@ export function setupCFMNextEntryCenter({db,getUser,getRole,getWorkOrders,getWor
     String(e?.message||e)+'. Do not clear browser data.',true);
   }finally{btn.disabled=false}
  });
+ function subscribeRealtime(){
+  if(realtimeChannel||!getUser())return;
+  try{
+   realtimeChannel=db.channel('cfm-next-activity-'+getUser().id.slice(0,8))
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'cfm_next_activity_log'},event=>{
+      if(visible&&event.new?.module===selected.id)void refresh();
+    }).subscribe();
+  }catch(e){console.warn('Realtime unavailable; 30s polling stays active',e)}
+ }
+ function stopRealtime(){
+  if(!realtimeChannel)return;
+  const chan=realtimeChannel;realtimeChannel=null;
+  try{void db.removeChannel(chan)}catch(_){}
+ }
  sync.addEventListener('click',()=>void flush());
  window.addEventListener('online',()=>void flush());
  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&visible){void flush();void refresh()}});
  setInterval(()=>{if(visible&&getUser()&&navigator.onLine){void flush();void refresh()}},30000);
  renderForm();
  return {
-  show(){visible=true;panel.classList.remove('hide');renderForm();void refresh();void flush()},
-  hide(){visible=false;panel.classList.add('hide')},
+  show(){visible=true;panel.classList.remove('hide');renderForm();subscribeRealtime();void refresh();void flush()},
+  hide(){visible=false;panel.classList.add('hide');stopRealtime()},
   refresh,
   showModule(id){const mod=MODULES.find(x=>x.id===id);if(mod)selected=mod;this.show()}
  };
