@@ -212,21 +212,82 @@ async function flushQueue() {
   } finally {processing=false}
 }
 $('workForm').addEventListener('submit',async e=>{
-e.preventDefault();if(!user||!role)return;
-const v=Object.fromEntries(new FormData(e.currentTarget));const done=Number(v.doneQty),given=Number(v.givenQty||0);
-const person=v.person==='__NEW_WORKER__'?$('workerOther').value.trim():String(v.person||'').trim();
-if(!person||!v.department||!v.description.trim()||!Number.isFinite(done)||done<0||!Number.isFinite(given)||given<0){$('saveStatus').textContent='Select worker, department, work and valid quantity';return}
-const uuid=crypto.randomUUID(),entryId='CFM-DW-'+uuid;
-const data={cfmDailyEntryId:entryId,reportOnly:true,date:v.date,person,department:v.department,description:v.description.trim(),workNo:v.workNo.trim(),givenQty:given,doneQty:done,pendingQty:Math.max(0,given-done),remark:v.remark.trim(),updatedAt:new Date().toISOString(),updatedBy:user.email};
-const item={id:uuid,family:'departmentWork',record_key:entryId,data,updated_by:user.id};
-const button=$('saveBtn');button.disabled=true;
-try {
-  await outbox.put(user.id,item); // commit to phone before clearing the form
-  $('saveStatus').textContent='✓ Saved securely on this phone. Sending to Cloud…';
-  addKnownWorker(person);e.currentTarget.reset();renderWorkerSelect();$('workDate').value=today();await flushQueue();
-} catch(err) {
-  $('saveStatus').textContent='⚠️ Phone save failed: '+err.message+'. Form retained; copy the details before leaving.';
-} finally {button.disabled=false}});
+ e.preventDefault();
+ // Capture the form NOW: browser event.currentTarget becomes null after the first await.
+ const form=e.currentTarget;
+ if(!form||!user||!role)return;
+ const button=$('saveBtn');
+ if(button.disabled)return;
+ const v=Object.fromEntries(new FormData(form));
+ const done=Number(v.doneQty),given=Number(v.givenQty||0);
+ const person=v.person==='__NEW_WORKER__'?$('workerOther').value.trim():String(v.person||'').trim();
+ if(!person||!v.department||!v.description.trim()||!Number.isFinite(done)||done<0||
+    !Number.isFinite(given)||given<0){
+   $('saveStatus').textContent='Select worker, department, work and valid quantity';return;
+ }
+ const idUser=user.id;
+ const normalizedWo=String(v.workNo||'').trim().toUpperCase().replace(/^CFM-/,'');
+ const signature=data=>JSON.stringify([
+    String(data.date||'').trim(),String(data.person||'').trim().toUpperCase(),
+    String(data.department||'').trim().toUpperCase(),
+    String(data.workNo||'').trim().toUpperCase().replace(/^CFM-/,''),
+    String(data.description||'').trim().toUpperCase(),
+    Number(data.givenQty||0),Number(data.doneQty||0)
+ ]);
+ const requested={date:v.date,person,department:v.department,workNo:normalizedWo,
+   description:v.description,givenQty:given,doneQty:done};
+ button.disabled=true;
+ let phoneCommitted=false;
+ try{
+   // Reject accidental rapid re-Save while permitting intentional repeated work.
+   const prior=await outbox.list(idUser);
+   const duplicates=prior.filter(p=>signature(p?.data||{})===signature(requested));
+   if(navigator.onLine!==false){
+     try{
+       const {data:recent,error}=await db.from('cfm_next_records')
+         .select('created_at,data').eq('family','departmentWork')
+         .order('created_at',{ascending:false}).limit(100);
+       if(!error){
+         const since=Date.now()-15*60*1000;
+         for(const row of recent||[]){
+           if(Date.parse(row.created_at)>=since&&signature(row.data||{})===signature(requested))
+             duplicates.push(row);
+         }
+       }
+     }catch(error){console.warn('Optional duplicate check unavailable',error)}
+   }
+   if(duplicates.length){
+     const again=confirm('A matching Daily Work entry was saved recently / is pending on this phone. '+
+       'Creating another would count the work twice. Save a SECOND entry intentionally?');
+     if(!again){
+       $('saveStatus').textContent='Existing entry kept. No duplicate added. Refresh Daily Worker Report to check Cloud records.';
+       void flushQueue();return;
+     }
+   }
+   const uuid=crypto.randomUUID(),entryId='CFM-DW-'+uuid;
+   const data={cfmDailyEntryId:entryId,reportOnly:true,date:v.date,person,
+     department:v.department,description:v.description.trim(),
+     workNo:v.workNo.trim(),givenQty:given,doneQty:done,
+     pendingQty:Math.max(0,given-done),remark:v.remark.trim(),
+     updatedAt:new Date().toISOString(),updatedBy:user.email};
+   const item={id:uuid,family:'departmentWork',record_key:entryId,data,updated_by:idUser};
+   await outbox.put(idUser,item); // IndexedDB commits before clearing form.
+   phoneCommitted=true;
+   $('saveStatus').textContent='✓ Saved securely on phone. Checking Cloud receipt…';
+   addKnownWorker(person);
+   form.reset(); // use captured form, NEVER e.currentTarget after an await
+   renderWorkerSelect();
+   $('workDate').value=today();
+   await flushQueue();
+ }catch(err){
+   $('saveStatus').textContent=phoneCommitted
+     ?'⚠️ Saved on phone, but Cloud verification still pending: '+err.message+
+       '. Do NOT save again; refresh or wait for automatic retry.'
+     :'⚠️ Phone save not confirmed: '+err.message+
+       '. Keep your form filled; do not clear browser data.';
+   if(phoneCommitted)void flushQueue();
+ }finally{button.disabled=false}
+});
 window.addEventListener('online',()=>void flushQueue());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){void flushQueue();void load()}});
 setInterval(()=>{if(user&&role&&navigator.onLine){void flushQueue();void load()}},25000);
