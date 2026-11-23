@@ -22,3 +22,21 @@ test('V420 shell deploy uses new cache namespace',()=>{
   assert.match(html,/20261123-v420/);
   assert.match(sw,/20261123-v420/);
 });
+
+test('V421 manual recovery shows device Work Orders and safeguards Cloud sections',()=>{
+ const begin=chunk.indexOf('// V421: device-only Work Order recovery.');
+ const end=chunk.indexOf('async function cloudPoll()',begin);
+ assert.ok(begin>0 && end>begin, 'recovery module must be loaded inside shared sync code');
+ const recovery=chunk.slice(begin,end);
+ assert.doesNotThrow(()=>new Function(recovery), 'manual recovery module syntax must compile');
+ assert.match(recovery,/cfmReviewUnsyncedWorkOrders/, 'safe review action exists');
+ assert.match(recovery,/selected\.size/, 'selected orders required');
+ assert.match(recovery,/const revised=clone\(fresh\.payload\)/, 'Cloud must be the base rather than stale device data');
+ assert.match(recovery,/revised\.pending\[index\]=clone\(x\.local\)/, 'Only selected Work Order row is substituted');
+ assert.match(recovery,/num\(fresh\.version\)!==num\(cloud\.version\)/, 'recheck Cloud version');
+ assert.match(recovery,/version=eq\./, 'compare and swap before Cloud save');
+ assert.match(recovery,/const confirmed=await cloudFetch\(\)/, 'verify Cloud after write');
+ assert.match(recovery,/cloudReady=false;cloudDirty=false/, 'do not silently resume unsafe full state upload');
+ assert.match(recovery,/if\(!cloudReady\)\{await cloudInit\(\);if\(!cloudReady\)\{await window\.cfmReviewUnsyncedWorkOrders\(\)/, 'manual Sync must surface recovery UI');
+ assert.doesNotMatch(recovery,/state=clone\(fresh\.payload\)/, 'must preserve unsynced device data');
+});
