@@ -54,6 +54,8 @@ details summary{cursor:pointer;color:#1769ac}pre{white-space:pre-wrap;max-width:
 </section></main>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.3?bundle';
+import { createSafeOutbox, verifyDailyReceipt } from './safe-outbox.mjs';
+const outbox=createSafeOutbox(window.indexedDB);
 const db=createClient('https://soluxixriexliipfnznc.supabase.co','sb_publishable_hay-tW1slhbk-QXnql7pSg_I0Lh-0N0',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=x=>document.getElementById(x);
 const FAMILIES=[
@@ -74,7 +76,10 @@ async function authUi(){const {data:{session}}=await db.auth.getSession();user=s
 if(!user){role=null;show('login');$('status').textContent='Sign in required';return}
 const {data,error}=await db.from('cfm_next_members').select('role,active').eq('user_id',user.id).maybeSingle();
 if(error||!data||!data.active){show('locked');$('accountId').textContent=user.email+' — awaiting ERP access';$('status').textContent='Approval required';return}
-role=data.role;show('erp');$('sessionLabel').textContent=user.email+' · '+role+' · CFM Next staging';buildNav();await load();void flushQueue();}
+role=data.role;show('erp');$('sessionLabel').textContent=user.email+' · '+role+' · CFM Next staging';buildNav();
+try { const n=await outbox.importLegacy(user.id,window.localStorage); if(n) tell('Recovered '+n+' older phone entries into the safe queue. They are pending Cloud verification.'); }
+catch(e){tell('Phone pending-entry recovery needs attention: '+e.message+'. Do not clear browser storage.',true)}
+await load();void flushQueue();}
 $('authForm').addEventListener('submit',async e=>{e.preventDefault();$('authMsg').textContent='Signing in…';
 const {error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
 $('authMsg').textContent=error?error.message:'Signed in';if(!error)await authUi();});
@@ -88,6 +93,7 @@ $('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{family=b.dataset.f
 async function counts(){
 const main=['pending','store','cutting','departmentWork','packingSlips','sopRecords'];
 const nums=await Promise.all(main.map(async f=>{const {count,error}=await db.from('cfm_next_records').select('id',{head:true,count:'exact'}).eq('family',f);return [LABELS[f],error?'—':count]}));
+if(nums.some(x=>x[1]==='—'))throw new Error('Dashboard count unavailable on one or more data groups');
 $('stats').innerHTML=nums.map(x=>'<div class="stat">'+esc(x[0])+'<b>'+esc(x[1])+'</b></div>').join('');
 }
 function viewRow(row,keys){const d=row.data||{};return '<tr>'+keys.map(k=>'<td>'+esc(d[k]??'—')+'</td>').join('')+
@@ -98,7 +104,7 @@ $('dashboard').classList.toggle('hide',family!=='dashboard');$('dailyForm').clas
 $('recordsPanel').classList.toggle('hide',family==='dashboard');$('familyTitle').textContent=LABELS[family]||'Records';
 if(family==='dashboard'){await counts();status('Cloud up to date');return}
 const {data,error,count}=await db.from('cfm_next_records').select('id,family,record_key,data,revision,updated_at',{count:'exact'}).eq('family',family).order('created_at',{ascending:false}).order('id',{ascending:true}).range(offset,offset+LIMIT-1);
-if(error)throw error;records=data||[];total=count||0;renderRows();status('Cloud up to date · '+total+' records');
+if(error)throw error;records=data||[];total=count||0;renderRows();status('Cloud list refreshed · '+total+' records');
 }catch(e){tell('Cloud read failed: '+e.message+'. Keep existing data; retry without clearing storage.',true);status('Cloud unavailable')}finally{refreshing=false}}
 function renderRows(){const term=$('search').value.trim().toLowerCase();const rows=term?records.filter(r=>JSON.stringify(r.data).toLowerCase().includes(term)):records;
 const keys=COLS[family]||['workNo','date','person','party','description'];
@@ -107,19 +113,37 @@ $('rows').innerHTML='<table><thead><tr>'+keys.map(x=>'<th>'+esc(x)+'</th>').join
 $('page').textContent=(total?offset+1:0)+'–'+Math.min(offset+LIMIT,total)+' of '+total;
 $('prev').disabled=offset===0;$('next').disabled=offset+LIMIT>=total}
 $('search').addEventListener('input',renderRows);$('prev').onclick=()=>{offset=Math.max(0,offset-LIMIT);void load()};$('next').onclick=()=>{offset+=LIMIT;void load()};$('refresh').onclick=()=>void load();
-const qkey=()=>user?'cfm_next_work_outbox_'+user.id:'cfm_next_work_outbox';
-function getQueue(){try{return JSON.parse(localStorage.getItem(qkey())||'[]')}catch{return []}}
-function setQueue(a){localStorage.setItem(qkey(),JSON.stringify(a))}
-async function flushQueue(){if(processing||!user||!role)return;processing=true;
-try{let q=getQueue();if(!q.length)return;status('Sync pending · '+q.length);
-for(const item of q){
- const {error}=await db.from('cfm_next_records').upsert(item,{onConflict:'id',ignoreDuplicates:true});
- if(error){$('saveStatus').textContent='Cloud pending: '+error.message+'. Entry kept on phone.';break}
- const {data, error:verifyError}=await db.from('cfm_next_records').select('id').eq('id',item.id).maybeSingle();
- if(verifyError||!data){$('saveStatus').textContent='Cloud receipt not verified; entry kept for retry.';break}
- q=q.filter(r=>r.id!==item.id);setQueue(q);$('saveStatus').textContent='✓ Daily Work saved and verified in Cloud. Other records unchanged.';
-}status(q.length?'Sync pending · '+q.length:'Cloud work saved');if(!q.length&&family==='departmentWork')void load();
-}catch(e){$('saveStatus').textContent='Sync pending on phone: '+e.message}finally{processing=false}}
+async function flushQueue() {
+  if(processing||!user||!role) return;
+  processing=true;
+  const owner=user.id;
+  try {
+    // Each entry has its own atomic IndexedDB transaction. NEVER rewrite
+    // a stale array snapshot: a second entry may arrive during Cloud sync.
+    for(let i=0;i<200;i++){
+      const pending=await outbox.list(owner);
+      if(!pending.length){status('Cloud work verified');break}
+      status('Sync pending · '+pending.length+' entr'+(pending.length===1?'y':'ies'));
+      if(typeof navigator!=='undefined'&&navigator.onLine===false) break;
+      const item=pending[0];
+      const {error:writeError}=await db.from('cfm_next_records').upsert(item,{onConflict:'id',ignoreDuplicates:true});
+      if(writeError) throw new Error('Cloud write: '+writeError.message);
+      const {data:receipt,error:readError}=await db.from('cfm_next_records')
+        .select('id,family,record_key,data,updated_by').eq('id',item.id).maybeSingle();
+      if(readError) throw new Error('Cloud receipt: '+readError.message);
+      if(!verifyDailyReceipt(receipt,item))
+        throw new Error('Cloud confirmation does not match this entry. Nothing was removed from the phone.');
+      await outbox.remove(owner,item.id);
+      $('saveStatus').textContent='✓ Daily Work verified in Cloud. Other records unchanged.';
+    }
+    const remaining=(await outbox.list(owner)).length;
+    if(remaining) status('Sync pending · '+remaining+' entr'+(remaining===1?'y':'ies'));
+    else {status('Cloud work verified');if(family==='departmentWork')void load()}
+  } catch(e) {
+    $('saveStatus').textContent='⚠️ Cloud not verified: '+e.message+'. Entry remains on this phone; retry after connection returns.';
+    status('Sync pending — not verified');
+  } finally {processing=false}
+}
 $('workForm').addEventListener('submit',async e=>{
 e.preventDefault();if(!user||!role)return;
 const v=Object.fromEntries(new FormData(e.currentTarget));const done=Number(v.doneQty),given=Number(v.givenQty||0);
@@ -127,7 +151,14 @@ if(!v.person.trim()||!v.department||!v.description.trim()||!Number.isFinite(done
 const uuid=crypto.randomUUID(),entryId='CFM-DW-'+uuid;
 const data={cfmDailyEntryId:entryId,reportOnly:true,date:v.date,person:v.person.trim(),department:v.department,description:v.description.trim(),workNo:v.workNo.trim(),givenQty:given,doneQty:done,pendingQty:Math.max(0,given-done),remark:v.remark.trim(),updatedAt:new Date().toISOString(),updatedBy:user.email};
 const item={id:uuid,family:'departmentWork',record_key:entryId,data,updated_by:user.id};
-try{const q=getQueue();q.push(item);setQueue(q);$('saveStatus').textContent='Saved to phone queue. Sending to Cloud…';e.currentTarget.reset();$('workDate').value=today();await flushQueue()}catch(err){$('saveStatus').textContent='Phone storage failed: '+err.message+'. Copy details before leaving this screen.'}});
+const button=$('saveBtn');button.disabled=true;
+try {
+  await outbox.put(user.id,item); // commit to phone before clearing the form
+  $('saveStatus').textContent='✓ Saved securely on this phone. Sending to Cloud…';
+  e.currentTarget.reset();$('workDate').value=today();await flushQueue();
+} catch(err) {
+  $('saveStatus').textContent='⚠️ Phone save failed: '+err.message+'. Form retained; copy the details before leaving.';
+} finally {button.disabled=false}});
 window.addEventListener('online',()=>void flushQueue());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){void flushQueue();void load()}});
 setInterval(()=>{if(user&&role&&navigator.onLine){void flushQueue();void load()}},25000);
