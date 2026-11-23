@@ -40,7 +40,11 @@ details summary{cursor:pointer;color:#1769ac}pre{white-space:pre-wrap;max-width:
 <div><label>Date *</label><input name="date" id="workDate" type="date" required></div>
 <div><label>Department *</label><select name="department" id="workerDept" required><option value="">Select Department</option><option>Cutting</option><option>Stitching</option><option>Thread Cutting</option><option>Gun Finishing</option><option>Packing</option><option>QC</option><option>Store</option><option>Dispatch</option><option>Maintenance</option><option>Housekeeping</option></select></div>
 <div><label>Worker *</label><select name="person" id="workerSelect" required><option value="">Select Worker</option></select><input id="workerOther" type="text" maxlength="80" class="hide" style="margin-top:8px" autocomplete="off" placeholder="New worker name"></div>
-<div><label>Work Order</label><input name="workNo" placeholder="764"></div>
+<div><label>Work Order (optional)</label>
+<input id="workOrderSearch" type="search" placeholder="Search Work No / Party / Product" autocomplete="off" style="margin-bottom:6px">
+<select name="workNo" id="workOrderSelect"><option value="">Manual / No Work Order</option></select>
+<input id="workOrderManual" type="text" class="hide" maxlength="80" placeholder="Type CFM-764 / 764" autocomplete="off" style="margin-top:6px">
+<div id="workOrderHint" class="muted small" style="margin-top:5px">Work Orders loading from CFM Next Cloud…</div></div>
 <div><label>Work details *</label><input name="description" required placeholder="Collar stitching / cutting / packing"></div>
 <div><label>Given Qty</label><input name="givenQty" type="number" min="0" step="any"></div>
 <div><label>Done Qty *</label><input name="doneQty" type="number" min="0" step="any" required></div>
@@ -134,6 +138,80 @@ $('workerDept').addEventListener('change',renderWorkerSelect);
 $('workerSelect').addEventListener('change',toggleNewWorker);
 renderWorkerSelect();
 
+/* Daily Work Work Order dropdown: read-only CFM Next Work Orders, preserves manual entry.
+   Dispatched/completed jobs remain selectable for historical worker reports. */
+let availableWorkOrders=[];
+let workOrdersLoading=false;
+function renderWorkOrderSelect(){
+ const select=$('workOrderSelect'),search=$('workOrderSearch');
+ if(!select||!search)return;
+ const previous=select.value;
+ const q=search.value.trim().toLowerCase();
+ select.replaceChildren();
+ select.add(new Option('Manual / No Work Order',''));
+ let shown=0;
+ const source=availableWorkOrders.slice().sort((a,b)=>{
+  const aNum=Number(String(a.workNo||'').match(/\d+$/)?.[0]||0);
+  const bNum=Number(String(b.workNo||'').match(/\d+$/)?.[0]||0);
+  return bNum-aNum;
+ });
+ for(const wo of source){
+  const name=String(wo.workNo||'').trim();
+  const party=String(wo.party||'').trim();
+  const description=String(wo.description||wo.product||'').trim();
+  const target=[name,party,description,wo.eagleCode].join(' ').toLowerCase();
+  if(q&&!target.includes(q))continue;
+  const title=[name,party,description.slice(0,60)].filter(Boolean).join(' • ');
+  select.add(new Option(title,name));
+  shown++;
+ }
+ select.add(new Option('＋ Enter Work No manually','__MANUAL__'));
+ if(previous&&[...select.options].some(x=>x.value===previous))select.value=previous;
+ else if(previous==='__MANUAL__')select.value=previous;
+ toggleManualWorkOrder();
+ $('workOrderHint').textContent=availableWorkOrders.length
+   ? 'Showing '+shown+' of '+availableWorkOrders.length+' Work Orders from CFM Next Cloud copy'
+   : 'No Cloud Work Orders loaded. Manual entry remains available.';
+}
+function toggleManualWorkOrder(){
+ const select=$('workOrderSelect'),manual=$('workOrderManual'),hint=$('workOrderHint');
+ if(!select||!manual||!hint)return;
+ const val=select.value;
+ manual.classList.toggle('hide',val!=='__MANUAL__');
+ if(val==='__MANUAL__'){hint.textContent='Manual Work No • reports only (stock and orders unchanged)';return}
+ if(val){
+  const selected=availableWorkOrders.find(x=>String(x.workNo||'').trim()===val);
+  if(selected){
+   hint.textContent=[selected.party,selected.description,
+     'Order Qty '+String(selected.orderQty??'-'),
+     'Status '+String(selected.status||'-')].filter(Boolean).join(' • ');
+  }
+ }
+}
+async function loadWorkOrders(){
+ if(!user||!role||workOrdersLoading)return;
+ workOrdersLoading=true;
+ try{
+  const {data,error}=await db.from('cfm_next_records').select('data')
+    .eq('family','pending').limit(1000);
+  if(error)throw error;
+  const unique=new Map();
+  (data||[]).forEach(item=>{
+   const record=item.data||{};
+   const name=String(record.workNo||'').trim();
+   if(name&&!unique.has(name.toUpperCase()))unique.set(name.toUpperCase(),record);
+  });
+  availableWorkOrders=[...unique.values()];
+  renderWorkOrderSelect();
+ }catch(e){
+  console.warn('Work Order list failed; manual option remains',e);
+  $('workOrderHint').textContent='Cloud Work Order list unavailable; choose Enter Work No manually.';
+ }finally{workOrdersLoading=false}
+}
+$('workOrderSearch').addEventListener('input',renderWorkOrderSelect);
+$('workOrderSelect').addEventListener('change',toggleManualWorkOrder);
+renderWorkOrderSelect();
+
 function tell(msg,err=false){$('globalNote').textContent=msg;$('globalNote').className='notice'+(err?' error':'');}
 function status(s){$('status').textContent=s;$('sync').textContent=s;}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -146,7 +224,7 @@ if(error||!data||!data.active){show('locked');$('accountId').textContent=user.em
 role=data.role;show('erp');$('sessionLabel').textContent=user.email+' · '+role+' · CFM Next staging';buildNav();
 try { const n=await outbox.importLegacy(user.id,window.localStorage); if(n) tell('Recovered '+n+' older phone entries into the safe queue. They are pending Cloud verification.'); }
 catch(e){tell('Phone pending-entry recovery needs attention: '+e.message+'. Do not clear browser storage.',true)}
-await load();void loadWorkerNames();void flushQueue();}
+await load();void loadWorkerNames();void loadWorkOrders();void flushQueue();}
 $('authForm').addEventListener('submit',async e=>{e.preventDefault();$('authMsg').textContent='Signing in…';
 const {error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
 $('authMsg').textContent=error?error.message:'Signed in';if(!error)await authUi();});
@@ -226,7 +304,8 @@ $('workForm').addEventListener('submit',async e=>{
    $('saveStatus').textContent='Select worker, department, work and valid quantity';return;
  }
  const idUser=user.id;
- const normalizedWo=String(v.workNo||'').trim().toUpperCase().replace(/^CFM-/,'');
+ const workNo=v.workNo==='__MANUAL__'?$('workOrderManual').value.trim():String(v.workNo||'').trim();
+ const normalizedWo=workNo.toUpperCase().replace(/^CFM-/,'');
  const signature=data=>JSON.stringify([
     String(data.date||'').trim(),String(data.person||'').trim().toUpperCase(),
     String(data.department||'').trim().toUpperCase(),
@@ -267,7 +346,7 @@ $('workForm').addEventListener('submit',async e=>{
    const uuid=crypto.randomUUID(),entryId='CFM-DW-'+uuid;
    const data={cfmDailyEntryId:entryId,reportOnly:true,date:v.date,person,
      department:v.department,description:v.description.trim(),
-     workNo:v.workNo.trim(),givenQty:given,doneQty:done,
+     workNo,givenQty:given,doneQty:done,
      pendingQty:Math.max(0,given-done),remark:v.remark.trim(),
      updatedAt:new Date().toISOString(),updatedBy:user.email};
    const item={id:uuid,family:'departmentWork',record_key:entryId,data,updated_by:idUser};
@@ -277,6 +356,7 @@ $('workForm').addEventListener('submit',async e=>{
    addKnownWorker(person);
    form.reset(); // use captured form, NEVER e.currentTarget after an await
    renderWorkerSelect();
+   renderWorkOrderSelect();
    $('workDate').value=today();
    await flushQueue();
  }catch(err){
