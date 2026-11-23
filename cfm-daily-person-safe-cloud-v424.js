@@ -129,6 +129,24 @@ async function recoverLocalDailyWork(){
     if(!cloud||!validState(cloud.payload))return;
     const byId=new Map((cloud.payload.departmentWork||[])
       .filter(r=>r&&r.cfmDailyEntryId).map(r=>[r.cfmDailyEntryId,r]));
+    // Read-only receive: show newly verified Daily Work from another phone
+    // without touching its Work Orders, Store, Cutting, or dispatch history.
+    let received=0;
+    const known=new Set(state.departmentWork.filter(r=>eligible(r)).map(r=>r.cfmDailyEntryId));
+    const editing=!!document.getElementById('editDialog')?.open;
+    if(!editing && (typeof cloudBusy==='undefined'||!cloudBusy)){
+      for(const remoteRecord of cloud.payload.departmentWork||[]){
+        if(!eligible(remoteRecord)||known.has(remoteRecord.cfmDailyEntryId))continue;
+        state.departmentWork.push(copy(remoteRecord));
+        known.add(remoteRecord.cfmDailyEntryId);
+        received++;
+      }
+      if(received){
+        try{safeStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+        catch(error){console.warn('Received Daily Work: phone storage unavailable',error)}
+        notice('✓ Received '+received+' Daily Work entries from another mobile • Work Orders and Stock untouched',true);
+      }
+    }
     let changed=0,conflicts=0;
     for(const record of state.departmentWork){
       if(!eligible(record))continue;
