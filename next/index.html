@@ -1,397 +1,972 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>CFM Next — Safe Plant ERP</title><meta name="theme-color" content="#15345d">
+<html><head><base href="../"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101820"><title>CFM NEXT — Full Plant ERP</title><link rel="manifest" href="./manifest.json">
 <style>
-:root{font:14px system-ui,-apple-system,sans-serif;color:#182638;background:#f4f7fb}
-*{box-sizing:border-box}body{margin:0}.top{background:#15345d;color:white;padding:14px 16px;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
-.top strong{font-size:19px}.shell{max-width:1300px;margin:auto;padding:14px}.panel{background:#fff;border:1px solid #dbe4ed;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 4px 16px #26395a0b}
-.muted{color:#65748a}.notice{padding:10px 12px;border:1px solid #bfd7f2;background:#edf5ff;border-radius:10px;margin:12px 0}
-.notice.error{background:#fff3f3;border-color:#f2b5b5;color:#902727}
-nav{display:flex;gap:7px;overflow-x:auto;padding:3px 0 8px}nav button{flex:0 0 auto}button,input,select,textarea{font:inherit}
-button{background:#fff;color:#214c7a;border:1px solid #b5cee4;border-radius:9px;padding:9px 12px;cursor:pointer}button.primary,button.active{background:#1769ac;color:white;border-color:#1769ac}
-button:disabled{opacity:.55;cursor:wait}.actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
-input,select,textarea{border:1px solid #c7d3df;border-radius:8px;padding:10px;width:100%;background:#fff}
-label{display:block;font-size:12px;font-weight:700;color:#4a5d71;margin-bottom:5px}
-.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:14px 0}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 9px;text-align:left;border-bottom:1px solid #e6edf4;max-width:320px;word-break:break-word}th{color:#56708b;background:#f7faff;position:sticky;top:0} .scroll{overflow:auto;max-height:65vh}
-.pills{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.stat{border:1px solid #d8e7f5;padding:14px;border-radius:10px;background:#f8fbff}.stat b{font-size:22px;display:block;margin-top:7px}
-details summary{cursor:pointer;color:#1769ac}pre{white-space:pre-wrap;max-width:850px;overflow:auto}
-.small{font-size:12px}.status{font-weight:700}.hide{display:none!important}
-@media(max-width:650px){.shell{padding:8px}.panel{padding:12px}th,td{white-space:nowrap;padding:8px}nav{position:sticky;top:0;background:#f4f7fb;z-index:4}}
-</style></head><body>
-<header class="top"><strong>CFM NEXT · PLANT ERP</strong><span id="status" class="status">Connecting…</span></header>
-<main class="shell">
-<div class="notice" id="globalNote">New data-safe ERP (staging). Original ERP remains unchanged. Production cutover is not enabled.</div>
-<section class="panel" id="login">
-<h2>Secure employee login</h2><p class="muted">Same Cloud records across authorized phones. New staff accounts require administrator approval.</p>
-<form id="authForm" class="form"><div><label>Email</label><input id="email" type="email" autocomplete="email" required></div>
-<div><label>Password (minimum 6 characters)</label><input id="password" type="password" minlength="6" autocomplete="current-password" required></div>
-<div class="actions" style="align-self:end"><button class="primary" type="submit">Sign in</button><button id="signup" type="button">Create account</button></div></form>
-<p id="authMsg" role="status" class="muted"></p>
-</section>
-<section id="locked" class="panel hide"><h2>Approval needed</h2><p>Your account is signed in, but ERP records remain locked until an administrator grants access. No data is exposed or changed.</p><p id="accountId" class="small"></p><button id="lockedLogout">Sign out</button></section>
-<section id="erp" class="hide">
-<div class="actions" style="justify-content:space-between"><p class="muted" id="sessionLabel"></p><div class="actions"><span id="sync" class="small">Cloud connected</span><button id="refresh">↻ Refresh</button><button id="logout">Sign out</button></div></div>
-<nav id="nav"></nav>
-<section id="dashboard" class="panel"><h2>Dashboard</h2><div class="actions" style="margin:9px 0 15px"><button type="button" class="primary" id="entryCenterShortcut">＋ New Department Entry</button></div><div class="pills" id="stats"></div><p class="muted small">Each record has its own database row. This screen reads the new isolated data copy, not the old shared snapshot.</p></section>
-<section class="panel hide" id="workflowPanel">
- <h2>Department Entry Center <small class="muted">• Staging Cloud Logs</small></h2>
- <p class="muted">Work Order Requests, Store Inward, Cutting Review, Production Stages, QC, Packing, Dispatch, SOP, Maintenance and Follow-ups. Live stock, work order status and dispatch are not modified.</p>
- <div id="workflowTabs" class="actions" style="margin:12px 0"></div>
- <div id="workflowNotice" class="notice"></div>
- <form id="workflowForm"></form>
- <p id="workflowReceipt" role="status" class="small"></p>
- <button id="workflowSync" type="button">Cloud Entries</button>
- <div id="workflowLog" class="scroll" style="margin-top:15px"></div>
-</section>
-<section class="panel hide" id="dailyForm">
-<h2>Daily Person Work — New Entry</h2><p class="muted">Report-only entry; it does not automatically change stock or SOP production handover.</p>
-<form id="workForm"><div class="form">
-<div><label>Date *</label><input name="date" id="workDate" type="date" required></div>
-<div><label>Department *</label><select name="department" id="workerDept" required><option value="">Select Department</option><option>Cutting</option><option>Stitching</option><option>Thread Cutting</option><option>Gun Finishing</option><option>Packing</option><option>QC</option><option>Store</option><option>Dispatch</option><option>Maintenance</option><option>Housekeeping</option></select></div>
-<div><label>Worker *</label><select name="person" id="workerSelect" required><option value="">Select Worker</option></select><input id="workerOther" type="text" maxlength="80" class="hide" style="margin-top:8px" autocomplete="off" placeholder="New worker name"></div>
-<div><label>Work Order (optional)</label>
-<input id="workOrderSearch" type="search" placeholder="Search Work No / Party / Product" autocomplete="off" style="margin-bottom:6px">
-<select name="workNo" id="workOrderSelect"><option value="">Manual / No Work Order</option></select>
-<input id="workOrderManual" type="text" class="hide" maxlength="80" placeholder="Type CFM-764 / 764" autocomplete="off" style="margin-top:6px">
-<div id="workOrderHint" class="muted small" style="margin-top:5px">Work Orders loading from CFM Next Cloud…</div></div>
-<div><label>Work details *</label><input name="description" required placeholder="Collar stitching / cutting / packing"></div>
-<div><label>Given Qty</label><input name="givenQty" type="number" min="0" step="any"></div>
-<div><label>Done Qty *</label><input name="doneQty" type="number" min="0" step="any" required></div>
-<div><label>Remarks</label><input name="remark"></div>
-</div><button type="submit" class="primary" id="saveBtn">Save Work Entry</button></form><p role="status" id="saveStatus"></p>
-</section>
-<section class="panel" id="recordsPanel"><div class="actions" style="justify-content:space-between"><h2 id="familyTitle">Records</h2>
-<label style="max-width:300px"><span>Search</span><input type="search" id="search" placeholder="Work No / person / SRL"></label></div>
-<p id="readNote" class="muted small"></p><div class="scroll" id="rows"></div><div class="actions"><button id="prev">Previous</button><span id="page"></span><button id="next">Next</button></div>
-</section>
-</section></main>
-<script type="module">
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.3?bundle';
-import { createSafeOutbox, verifyDailyReceipt } from './safe-outbox.mjs';
-import { setupCFMNextEntryCenter } from './entry-center.mjs?v=1';
-const outbox=createSafeOutbox(window.indexedDB);
-const db=createClient('https://soluxixriexliipfnznc.supabase.co','sb_publishable_hay-tW1slhbk-QXnql7pSg_I0Lh-0N0',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-const $=x=>document.getElementById(x);
-const FAMILIES=[
-['workflow','✍ Department Entries'],['pending','Work Orders'],['store','Store / Cloth Stock'],['cutting','Cutting'],['departmentWork','Daily Worker Report'],
-['packingSlips','Packing Slips'],['packingManualOrders','Manual Packing'],['sopRecords','SOP Register'],
-['pendingWorkAudit','Pending Audit'],['reconstructedBatchReports','Batch History'],['reconstructedPersonWork','Person Work History'],
-['customParties','Party Master'],['packingSlipDeletedIds','Packing Slip Delete Audit'],['packingSlipDeletedRefs','Packing Reference Audit']];
-const LABELS=Object.fromEntries(FAMILIES);
-const COLS={pending:['workNo','party','description','orderQty','cutQty','status','poNo','eagleCode'],store:['srlNo','efpplCode','width','physicalMtr','excelLiveBalanceMtr','status'],cutting:['date','workNo','party','description','cutQty','srlNo','cuttingBy'],departmentWork:['date','person','department','description','workNo','givenQty','doneQty','pendingQty'],packingSlips:['slipNo','party','workNo','thisDispatched','poNo'],sopRecords:['timestamp','code','workNo','operator']};
-let user=null,role=null,family='pending',offset=0,total=0,records=[],refreshing=false,processing=false;
-const LIMIT=100;
+html,body,#app{margin:0;width:100%;height:100%;overflow:hidden;background:#eef3f8}
+#app{border:0;display:block}
+.load{position:fixed;inset:0;display:grid;place-items:center;font-family:system-ui;color:#182433;z-index:20}
+.box{background:#fff;padding:24px;border-radius:16px;box-shadow:0 8px 30px #0002;text-align:center}
+#notifyBtn{position:fixed;right:14px;top:calc(env(safe-area-inset-top, 0px) + 10px);bottom:auto;z-index:999999;border:0;border-radius:999px;width:42px;height:42px;padding:0;background:#fff;color:#1674c9;border:1px solid #b9dcf5;font:700 20px system-ui;box-shadow:0 6px 22px #0004;display:none}
+#notifyBtn:active{transform:scale(.98)}
+/* V197: bell removed from the visible ERP; Settings can still manage notifications. */
+#notifyBtn{display:none!important}
+</style>
 
-/* V1: Existing CFM staff master, plus worker names from authorized Cloud records.
-   Worker/Department selection only changes form options. It does not edit ERP data. */
-const STAFF_NAMES=[
- 'SUMIT','VIJAY SM-01','ANKIT SM-03','SATISH SM-04','RAHUL SM-05',
- 'BHAVNA','RADHA','KAILASH','LAKUSH','SANGITA','JITU','CHETAN','LALA'
-];
-const DEPARTMENT_WORKERS={
- 'Cutting':['SUMIT'],
- 'Stitching':['VIJAY SM-01','ANKIT SM-03','SATISH SM-04','RAHUL SM-05','LAKUSH'],
- 'Thread Cutting':['SANGITA','BHAVNA','RADHA','KAILASH','JITU'],
- 'Gun Finishing':['SANGITA','BHAVNA','RADHA','KAILASH','JITU'],
- 'Packing':['SANGITA','BHAVNA','RADHA','KAILASH'],
- 'QC':['CHETAN','LALA'],
- 'Store':['CHETAN','LALA'],
- 'Dispatch':['LALA','CHETAN'],
- 'Maintenance':['CHETAN'],
- 'Housekeeping':['SANGITA','BHAVNA','RADHA','KAILASH']
-};
-const knownWorkers=new Map(STAFF_NAMES.map(n=>[n.toUpperCase(),n]));
-function addKnownWorker(name){
- const n=String(name||'').trim();
- if(n&&n.length<=80)knownWorkers.set(n.toUpperCase(),n);
+<style id="cfm-v68-theme">
+:root{--cfm-navy:#14213d;--cfm-navy2:#1f3158;--cfm-bg:#f4f6f9;--cfm-line:#e1e6ed;--cfm-text:#172033}
+html,body{background:var(--cfm-bg)!important}
+body,button,input,select,textarea{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif!important}
+.topbar{background:linear-gradient(135deg,var(--cfm-navy),var(--cfm-navy2))!important;box-shadow:0 5px 20px rgba(20,33,61,.18)!important}
+.panel,.data-card,.kpi,.action-card{border-color:var(--cfm-line)!important;box-shadow:0 7px 22px rgba(20,33,61,.07)!important}
+.panel,.data-card,.action-card{border-radius:16px!important}
+.btn-primary,.nav button.active{background:var(--cfm-navy)!important}
+.work,.action-card b{color:var(--cfm-navy)!important}
+input,select,textarea{border-color:#d5dce6!important}
+@media(max-width:760px){
+ .nav{background:#fff!important;border-top:1px solid var(--cfm-line)!important;box-shadow:0 -6px 20px rgba(20,33,61,.08)!important}
+ .nav button.active{background:#e9eef7!important;color:var(--cfm-navy)!important}
 }
-function toggleNewWorker(){
- const other=$('workerOther');
- const isNew=$('workerSelect')?.value==='__NEW_WORKER__';
- if(!other)return;
- other.classList.toggle('hide',!isNew);
- other.required=isNew;
- if(!isNew)other.value='';
+</style>
+<style id="cfm-v69-light-theme">
+:root{--cfm-navy:#486454;--cfm-navy2:#6f8a79;--cfm-bg:#f7f6f2;--cfm-line:#e5e3dc;--cfm-text:#29332d}
+html,body{background:#f7f6f2!important;color:#29332d!important}
+body,button,input,select,textarea{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif!important}
+.topbar{background:linear-gradient(135deg,#f7f4ec,#e7eee8)!important;color:#29332d!important;border-bottom:1px solid #dedfd9!important;box-shadow:0 4px 16px rgba(55,70,60,.08)!important}
+.topbar .brand h1,.topbar .brand p{color:#29332d!important}.topbar .brand p{opacity:.7!important}
+.topbar .btn{background:#fff!important;color:#486454!important;border-color:#d8ddd8!important}
+.panel,.data-card,.action-card{background:#fff!important;border-color:#e5e3dc!important;box-shadow:0 6px 18px rgba(55,70,60,.06)!important}
+.btn-primary{background:#5f7d69!important;color:#fff!important;border-color:#5f7d69!important}
+.btn-green{background:#76957f!important;border-color:#76957f!important}
+.work,.action-card b{color:#486454!important}
+.nav button.active{background:#e5eee7!important;color:#3f6650!important;border-color:#d1dfd4!important;box-shadow:none!important}
+#kpis .kpi,#docKpis .kpi{background:linear-gradient(145deg,#ffffff,#eef2ed)!important;border:1px solid #e1e6df!important}
+#kpis .kpi .num,#kpis .kpi .label,#docKpis .kpi .num,#docKpis .kpi .label{color:#34463b!important}
+input,select,textarea{background:#fff!important;border-color:#dcded8!important;color:#29332d!important}
+@media(max-width:760px){.nav{background:#fff!important}.nav button.active{background:#e7efe9!important;color:#486454!important}}
+</style>
+<style id="cfm-v143-final-blue-theme">
+:root{--cfm-blue:#1674c9;--cfm-blue2:#49a8f2;--cfm-pale:#eef8ff;--cfm-line:#cfe5f6;--cfm-text:#13233b}
+html,body{background:#f6fbff!important;color:var(--cfm-text)!important}
+.topbar{background:linear-gradient(135deg,#fff,#eaf7ff)!important;color:#13233b!important;border-bottom:1px solid #cfe5f6!important;box-shadow:0 5px 18px rgba(22,116,201,.10)!important}
+.topbar .brand h1,.topbar .brand p{color:#17375e!important}
+.panel,.data-card,.action-card,.kpi{background:#fff!important;border-color:#d7eaf8!important;box-shadow:0 7px 22px rgba(30,112,180,.08)!important}
+.btn-primary{background:#1674c9!important;color:#fff!important;border-color:#1674c9!important}
+.btn-green{background:#20a464!important;color:#fff!important}
+.work,.action-card b{color:#176db7!important}
+input,select,textarea{background:#fff!important;border-color:#cfe5f6!important;color:#13233b!important}
+.nav button.active{background:#e5f4ff!important;color:#1269b0!important;border-color:#c9e5f8!important}
+.chip.blue{background:#e8f5ff!important;color:#1269b0!important;border-color:#c9e5f8!important}
+@media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7eaf8!important;box-shadow:0 -5px 18px rgba(22,116,201,.08)!important}}
+</style><style id="cfm-pc-overlap-only">
+@media (min-width:701px){
+  .toast,.snackbar,[class*="toast" i],[class*="snackbar" i]{
+    bottom:24px!important;
+    right:24px!important;
+    left:auto!important;
+    max-width:360px!important;
+    z-index:99999!important;
+  }
 }
-function renderWorkerSelect(){
- const select=$('workerSelect');if(!select)return;
- const previous=select.value,department=$('workerDept')?.value||'';
- select.replaceChildren();
- select.add(new Option('Select Worker',''));
- const suggested=(DEPARTMENT_WORKERS[department]||[]).filter(n=>knownWorkers.has(n.toUpperCase()));
- const selectedKeys=new Set(suggested.map(n=>n.toUpperCase()));
- function appendGroup(title,names){
-  if(!names.length)return;
-  const group=document.createElement('optgroup');group.label=title;
-  names.forEach(name=>group.appendChild(new Option(name,name)));
-  select.appendChild(group);
+</style>
+<style id="cfm-pc-sidebar-header-fix">
+@media (min-width:701px){
+  aside h1, aside h2, aside [class*="brand" i], aside [class*="title" i],
+  .sidebar h1,.sidebar h2,.sidebar [class*="brand" i],.sidebar [class*="title" i]{
+    line-height:1.2!important;
+  }
+  aside, .sidebar{padding-top:18px!important}
+  aside > *:first-child, .sidebar > *:first-child{margin-bottom:12px!important}
+}
+</style>
+<style id="cfm-pc-brand-opposite-fix">
+@media (min-width:701px){
+  aside h1, aside h2, aside [class*="brand" i], aside [class*="title" i],
+  .sidebar h1,.sidebar h2,.sidebar [class*="brand" i],.sidebar [class*="title" i]{
+    text-align:right!important;
+    margin-left:auto!important;
+    margin-right:18px!important;
+  }
+}
+</style>
+<style id="cfm-pc-nav-brand-move-exact">
+@media (min-width:1000px){
+ .nav:before,.nav:after{display:none!important;content:none!important}
+ .topbar:after{
+   content:'CFM • ERP V81  |  EAGLE FILTRATION • PLANT CONTROL';
+   display:block;position:absolute;right:190px;top:50%;transform:translateY(-50%);
+   font-size:11px;font-weight:900;letter-spacing:.06em;color:#526b7b;
+   white-space:nowrap;pointer-events:none
  }
- if(department)appendGroup('Suggested — '+department,suggested);
- appendGroup(department?'All other workers':'CFM Worker Master',
-   [...knownWorkers.values()].filter(n=>!selectedKeys.has(n.toUpperCase())));
- select.add(new Option('＋ Add New Worker','__NEW_WORKER__'));
- if(previous&&[...select.options].some(o=>o.value===previous))select.value=previous;
- toggleNewWorker();
+ .nav{padding-top:20px!important}
 }
-async function loadWorkerNames(){
- if(!user||!role)return;
- try{
-  const {data,error}=await db.from('cfm_next_records').select('family,data')
-    .in('family',['customPersons','departmentWork']).limit(1000);
-  if(error)throw error;
-  (data||[]).forEach(r=>addKnownWorker(r.family==='customPersons'
-    ?(r.data?.name||r.data?.person):r.data?.person));
- }catch(e){console.warn('Worker master fallback: using original CFM names',e)}
- renderWorkerSelect();
-}
-$('workerDept').addEventListener('change',renderWorkerSelect);
-$('workerSelect').addEventListener('change',toggleNewWorker);
-renderWorkerSelect();
+</style>
+</head>
+<body>
+<div class="load" id="load"><div class="box"><b>CFM Plant Tracker</b><div id="st" style="margin-top:8px">Loading…</div></div></div>
+<iframe id="app" title="CFM Plant Tracker" allow="microphone; autoplay"></iframe>
+<div id="cfmUpdateVersion" title="CFM ERP SAP-style function and icon update · 30 Oct 2026" style="position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom, 0px) + 9px);z-index:2147483645;background:#ffffffed;color:#3c5364;border:1px solid #d4e3ed;border-radius:7px;padding:3px 7px;font:700 10px system-ui;box-shadow:0 2px 7px #0001;pointer-events:none">CFM NEXT • Full ERP · Loading</div>
+<script src="./backup-safe.js?v=3"></script>
+<button id="cfmEmergencyExport" type="button" style="position:fixed;top:153px;right:12px;z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:10px 14px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{window.cfmDownloadBackup()}catch(e){alert('Backup export unavailable: '+e.message)}">⬇ Save PC Data</button>
+<button id="cfmWorkRefresh" type="button" style="position:fixed;top:200px;right:12px;z-index:2147483646;background:#13548a;color:#fff;border:0;border-radius:10px;padding:10px 12px;font:700 13px system-ui;box-shadow:0 3px 10px #0003" onclick="try{const w=document.getElementById('app').contentWindow;if(!w||!w.cfmRefreshWorkNos)throw Error('ERP still loading. Wait and try again.');w.cfmRefreshWorkNos()}catch(e){alert(e.message)}">☁️ Load Work Nos</button>
+<button id="cfmResolveWoButton" type="button" style="position:fixed;top:248px;right:12px;z-index:2147483646;background:#0a7d70;color:#fff;border:1px solid #b8ede2;border-radius:9px;padding:10px 12px;font:850 12px system-ui;box-shadow:0 4px 12px #0003" onclick="try{const w=document.getElementById('app')?.contentWindow;if(typeof w?.cfmResolveWorkNos!=='function')throw Error('ERP still loading. Open V236 and retry.');w.cfmResolveWorkNos()}catch(e){alert(e.message)}">🔧 Fix Work Nos</button>
+<button id="cfmDashboardHome" type="button" style="position:fixed;top:106px;right:12px;z-index:2147483646;background:#1674c9;color:#fff;border:0;border-radius:10px;padding:10px 14px;font:700 14px system-ui;box-shadow:0 3px 10px #0003" onclick="try{document.getElementById('app').contentWindow.showView('dashboard')}catch(e){alert('Dashboard unavailable: '+e.message)}">🏠 Dashboard</button>
+<button id="notifyBtn" type="button">🔔 Enable Notifications</button>
+<script>
+const groups=[["chunks/s1-000.txt"],["chunks/s2-000.txt","chunks/s2-001.txt","chunks/s2-002.txt","chunks/s2-003.txt","chunks/s2-004.txt","chunks/s2-005.txt","chunks/s2-006.txt","chunks/s2-007.txt","chunks/s2-008.txt"],["chunks/s3-000.txt","chunks/s3-001.txt"],["chunks/s4-000.txt","chunks/s4-001.txt","chunks/s4-002.txt","chunks/s4-003.txt","chunks/s4-004.txt","chunks/s4-005.txt","chunks/s4-006.txt","chunks/s4-007.txt","chunks/s4-008.txt","chunks/s4-009.txt","chunks/s4-010.txt","chunks/s4-011.txt","chunks/s4-012.txt","chunks/s4-013.txt","chunks/s4-014.txt"]];
+const basePath=new URL('../',location.href).pathname;
+let swReg=null;
 
-/* Daily Work Work Order dropdown: read-only CFM Next Work Orders, preserves manual entry.
-   Dispatched/completed jobs remain selectable for historical worker reports. */
-let availableWorkOrders=[];
-let workOrdersLoading=false;
-function renderWorkOrderSelect(){
- const select=$('workOrderSelect'),search=$('workOrderSearch');
- if(!select||!search)return;
- const previous=select.value;
- const q=search.value.trim().toLowerCase();
- select.replaceChildren();
- select.add(new Option('Manual / No Work Order',''));
- let shown=0;
- const source=availableWorkOrders.slice().sort((a,b)=>{
-  const aNum=Number(String(a.workNo||'').match(/\d+$/)?.[0]||0);
-  const bNum=Number(String(b.workNo||'').match(/\d+$/)?.[0]||0);
-  return bNum-aNum;
+async function registerSW(){
+  if(!('serviceWorker' in navigator))return null;
+  try{
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261123-v425',{updateViaCache:'none'});
+    try{await swReg.update()}catch(_){}
+    await navigator.serviceWorker.ready;
+    return swReg;
+  }catch(e){console.warn('SW registration failed',e);return null}
+}
+
+async function sendCFMNotification(title,body,data={}){
+  if(!('Notification' in window)||Notification.permission!=='granted')return false;
+  const reg=swReg||await navigator.serviceWorker.ready;
+  await reg.showNotification(title||'CFM Plant Tracker',{
+    body:body||'New plant update',
+    icon:'./icons/icon-192.svg',
+    badge:'./icons/icon-192.svg',
+    tag:data.tag||('cfm-'+Date.now()),
+    renotify:true,
+    vibrate:[180,80,180],
+    data:{url:'./',...data},
+    actions:[{action:'open',title:'Open ERP'}]
+  });
+  return true;
+}
+window.CFMNotify=sendCFMNotification;
+
+function refreshNotifyButton(){
+  const b=document.getElementById('notifyBtn');
+  if(!('Notification' in window)){b.style.display='none';return}
+  if(Notification.permission==='granted'){b.style.display='block';b.textContent='🔔';b.disabled=true}
+  else{
+    b.style.display='block';
+    b.textContent=Notification.permission==='denied'?'🔕':'🔔';
+  }
+}
+
+document.getElementById('notifyBtn').addEventListener('click',async()=>{
+  if(!('Notification' in window))return;
+  if(Notification.permission==='denied'){
+    alert('Notifications blocked hain. Chrome > Site settings > Notifications me Allow karein.');
+    return;
+  }
+  const p=await Notification.requestPermission();
+  refreshNotifyButton();
+  if(p==='granted'){
+    await sendCFMNotification('CFM Plant Tracker','Notifications active ✅',{tag:'cfm-enabled'});
+  }
+});
+
+window.addEventListener('message',e=>{
+  const d=e.data||{};
+  if(d.type==='CFM_NOTIFICATION'||d.type==='cfm-notify'){
+    sendCFMNotification(d.title||'CFM Plant Tracker',d.body||'New update',d.data||{});
+    try{document.getElementById('app').contentWindow.CFMToast(d.title||'CFM Update',d.body||'New update')}catch(_){};
+  }
+});
+
+registerSW().then(reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});});
+if('serviceWorker' in navigator){
+ navigator.serviceWorker.addEventListener('controllerchange',()=>{
+  if(sessionStorage.getItem('cfm-sw425-reload'))return;
+  sessionStorage.setItem('cfm-sw425-reload','1');location.reload();
  });
- for(const wo of source){
-  const name=String(wo.workNo||'').trim();
-  const party=String(wo.party||'').trim();
-  const description=String(wo.description||wo.product||'').trim();
-  const target=[name,party,description,wo.eagleCode].join(' ').toLowerCase();
-  if(q&&!target.includes(q))continue;
-  const title=[name,party,description.slice(0,60)].filter(Boolean).join(' • ');
-  select.add(new Option(title,name));
-  shown++;
- }
- select.add(new Option('＋ Enter Work No manually','__MANUAL__'));
- if(previous&&[...select.options].some(x=>x.value===previous))select.value=previous;
- else if(previous==='__MANUAL__')select.value=previous;
- toggleManualWorkOrder();
- $('workOrderHint').textContent=availableWorkOrders.length
-   ? 'Showing '+shown+' of '+availableWorkOrders.length+' Work Orders from CFM Next Cloud copy'
-   : 'No Cloud Work Orders loaded. Manual entry remains available.';
 }
-function toggleManualWorkOrder(){
- const select=$('workOrderSelect'),manual=$('workOrderManual'),hint=$('workOrderHint');
- if(!select||!manual||!hint)return;
- const val=select.value;
- manual.classList.toggle('hide',val!=='__MANUAL__');
- if(val==='__MANUAL__'){hint.textContent='Manual Work No • reports only (stock and orders unchanged)';return}
- if(val){
-  const selected=availableWorkOrders.find(x=>String(x.workNo||'').trim()===val);
-  if(selected){
-   hint.textContent=[selected.party,selected.description,
-     'Order Qty '+String(selected.orderQty??'-'),
-     'Status '+String(selected.status||'-')].filter(Boolean).join(' • ');
+
+(async()=>{
+ let done=0,total=groups.flat().length,st=document.getElementById('st');
+ const urls=groups.flat(), ver='20261123-v425';
+ // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
+ // Never clear browser storage or replace Cloud data while recovering from a network failure.
+ let nextChunk=0;
+ const texts=new Array(urls.length);
+ async function loadChunk(u){
+  let lastError;
+  for(let attempt=1;attempt<=3;attempt++){
+   let controller;
+   let timeout;
+   try{
+    controller=new AbortController();
+    timeout=setTimeout(()=>controller.abort(),25000);
+    const r=await fetch('./'+u+'?v='+ver,{
+     cache:'no-store',signal:controller.signal
+    });
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const txt=await r.text();
+    if(!txt || txt.length<10)throw new Error('File empty');
+    done++;
+    st.textContent='Loading CFM ERP '+done+'/'+total;
+    return txt;
+   }catch(e){
+    lastError=e;
+    st.textContent='Loading retry '+attempt+'/3: '+u;
+   }finally{if(timeout)clearTimeout(timeout)}
+  }
+  throw new Error('Could not load '+u+' ('+String(lastError?.message||lastError||'Network issue')+'). Check PC internet / firewall.');
+ }
+ async function chunkWorker(){
+  while(nextChunk<urls.length){
+   const i=nextChunk++;
+   texts[i]=await loadChunk(urls[i]);
   }
  }
+ await Promise.all(Array.from({length:Math.min(5,total)},()=>chunkWorker()));
+ let src=texts.join('')+'\n';
+  // One canonical displayed version. Old inline modules have repeated timers
+  // that can otherwise force a stale header label after deployment.
+  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V425 LIVE');
+ // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
+ src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
+ src=src.replace(/V(?:98|113|115|116)\b/gi,'V167');
+ src=src.replaceAll('icons/icon-192.png',basePath+'icons/icon-192.svg').replaceAll('icons/icon-512.png',basePath+'icons/icon-512.svg');
+ src=src.replace('<head>',`<head><base href="${location.origin}${basePath}"><style id="cfm-v116-sky-theme">
+:root{--cfm-blue:#1674c9;--cfm-blue2:#49a8f2;--cfm-pale:#eef8ff;--cfm-line:#cfe5f6;--cfm-text:#13233b}
+html,body{background:#f6fbff!important;color:var(--cfm-text)!important}
+body,button,input,select,textarea{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif!important}
+.topbar{background:linear-gradient(135deg,#ffffff,#eef8ff)!important;color:#13233b!important;border-bottom:1px solid #d6e8f6!important;box-shadow:0 5px 18px rgba(22,116,201,.10)!important}
+.topbar .brand h1,.topbar .brand p{color:#17375e!important}.topbar .brand p{opacity:.75!important}
+.topbar .btn{background:#fff!important;color:#176db7!important;border-color:#cfe4f5!important}
+.panel,.data-card,.action-card{background:#fff!important;border-color:#d9e9f5!important;box-shadow:0 7px 22px rgba(30,112,180,.08)!important;border-radius:18px!important}
+.btn-primary{background:linear-gradient(135deg,#1674c9,#3ba3ef)!important;color:#fff!important;border-color:#2589d6!important}
+.btn-green{background:#2f91da!important;border-color:#2f91da!important;color:#fff!important}
+.work,.action-card b{color:#176db7!important}
+.nav button.active{background:#eaf6ff!important;color:#1269b2!important;border-color:#8dc9f3!important;box-shadow:none!important}
+#kpis .kpi,#docKpis .kpi{background:linear-gradient(145deg,#fff,#f1f9ff)!important;border:1px solid #d7eaf8!important;box-shadow:0 6px 18px rgba(30,112,180,.07)!important}
+#kpis .kpi .num,#docKpis .kpi .num{color:#10213c!important}
+#kpis .kpi .label,#docKpis .kpi .label{color:#60748c!important}
+input,select,textarea{background:#fff!important;border-color:#cfe1ef!important;color:#17283e!important}
+.badge,.pill{border-color:#8fc8ee!important}
+@media(max-width:760px){.nav{background:#fff!important;border-top:1px solid #d7e8f4!important;box-shadow:0 -6px 20px rgba(30,112,180,.09)!important}.nav button.active{background:#eaf6ff!important;color:#1269b2!important}}
+</style>`);
+ src=src.replace('</head>',`<style id="cfm-v145-modern-layout">
+body{background:linear-gradient(180deg,#edf8ff 0,#f8fcff 280px,#f5f9fc 100%)!important}
+.topbar{margin:10px!important;border-radius:22px!important;padding:14px 18px!important;background:rgba(255,255,255,.96)!important;border:1px solid #cfe7f8!important;box-shadow:0 10px 30px rgba(20,100,160,.10)!important}
+.topbar .brand h1{font-weight:900!important;letter-spacing:.2px!important}.topbar .brand p{font-weight:700!important}
+main,.main,.content{max-width:1500px!important;margin:auto!important}
+.panel{border-radius:24px!important;padding:20px!important;background:#fff!important}
+#kpis,.kpis{gap:14px!important}
+#kpis .kpi,#docKpis .kpi,.kpi{border:0!important;border-left:5px solid #35a4ef!important;border-radius:18px!important;padding:18px!important;box-shadow:0 8px 24px rgba(27,105,165,.09)!important}
+#kpis .kpi .num,.kpi .num{font-size:30px!important;font-weight:900!important;color:#12395b!important}
+#kpis .kpi .label,.kpi .label{font-size:15px!important;font-weight:700!important;color:#60788c!important}
+.command-hero{border-radius:26px!important;padding:24px!important;background:linear-gradient(120deg,#0d4f80,#167fc2 58%,#49b8e8)!important;color:#fff!important;border:0!important;box-shadow:0 14px 32px rgba(13,79,128,.20)!important}
+.command-hero h3,.command-hero p,.command-eyebrow{color:#fff!important}.command-tags span,.command-tags span:first-child{background:rgba(255,255,255,.14)!important;color:#fff!important;border-color:rgba(255,255,255,.55)!important}
+.data-card,.action-card{border-radius:20px!important;border:1px solid #d8ebf8!important;box-shadow:0 8px 24px rgba(25,105,165,.08)!important}
+.btn,.btn-primary,.btn-green,button{border-radius:12px!important}
+input,select,textarea{border-radius:12px!important}
+.nav{border-radius:22px 22px 0 0!important;padding:8px!important}.nav button{border-radius:15px!important}.nav button.active{background:#dff2ff!important;color:#0d6faf!important}
+@media(max-width:760px){
+ .topbar{margin:0!important;border-radius:0 0 24px 24px!important;padding:12px!important}
+ .panel{border-radius:20px!important;padding:14px!important}
+ .command-hero{border-radius:22px!important;padding:20px!important}
+ #kpis,.kpis{gap:10px!important}
+ #kpis .kpi,.kpi{padding:15px!important;min-height:82px!important}
+ #kpis .kpi .num,.kpi .num{font-size:25px!important}
 }
-async function loadWorkOrders(){
- if(!user||!role||workOrdersLoading)return;
- workOrdersLoading=true;
- try{
-  const {data,error}=await db.from('cfm_next_records').select('data')
-    .eq('family','pending').limit(1000);
-  if(error)throw error;
-  const unique=new Map();
-  (data||[]).forEach(item=>{
-   const record=item.data||{};
-   const name=String(record.workNo||'').trim();
-   if(name&&!unique.has(name.toUpperCase()))unique.set(name.toUpperCase(),record);
-  });
-  availableWorkOrders=[...unique.values()];
-  renderWorkOrderSelect();
- }catch(e){
-  console.warn('Work Order list failed; manual option remains',e);
-  $('workOrderHint').textContent='Cloud Work Order list unavailable; choose Enter Work No manually.';
- }finally{workOrdersLoading=false}
-}
-$('workOrderSearch').addEventListener('input',renderWorkOrderSelect);
-$('workOrderSelect').addEventListener('change',toggleManualWorkOrder);
-renderWorkOrderSelect();
-const entryCenter=setupCFMNextEntryCenter({db,getUser:()=>user,getRole:()=>role,
- getWorkOrders:()=>availableWorkOrders,getWorkers:()=>[...knownWorkers.values()]});
+</style></head>`);
+ src=src.replace('</head>',`<style id="cfm-v145-lightblue-design">
+body{background:#f4f9fd!important}
+.topbar{background:#fff!important;border-bottom:1px solid #d9ebf7!important;box-shadow:0 6px 20px rgba(20,95,150,.08)!important}
+.panel{background:#fff!important;border:1px solid #d9ebf7!important;border-radius:22px!important;box-shadow:0 8px 24px rgba(20,95,150,.07)!important}
+.command-hero{background:linear-gradient(125deg,#0872c9,#1697df 62%,#55c4ef)!important;background-image:linear-gradient(125deg,#0872c9,#1697df 62%,#55c4ef)!important;color:#fff!important;border:0!important;border-radius:24px!important;box-shadow:0 12px 28px rgba(8,114,201,.20)!important}
+.command-hero h3,.command-hero p,.command-eyebrow{color:#fff!important}.command-tags span,.command-tags span:first-child{background:rgba(255,255,255,.15)!important;color:#fff!important;border-color:rgba(255,255,255,.6)!important}
+#kpis .kpi,#docKpis .kpi,.kpi{background:#fff!important;border:1px solid #dcecf7!important;border-left:5px solid #28a7ef!important;border-radius:18px!important;box-shadow:0 7px 20px rgba(20,95,150,.07)!important}
+#kpis .kpi:nth-child(2),.kpi:nth-child(2){border-left-color:#f5a623!important}#kpis .kpi:nth-child(3),.kpi:nth-child(3){border-left-color:#2fc78d!important}#kpis .kpi:nth-child(4),.kpi:nth-child(4){border-left-color:#8b5cf6!important}#kpis .kpi:nth-child(5),.kpi:nth-child(5){border-left-color:#22c997!important}#kpis .kpi:nth-child(6),.kpi:nth-child(6){border-left-color:#ff4d5e!important}
+.btn-primary{background:linear-gradient(135deg,#087ee0,#219cf0)!important;color:#fff!important;border:0!important}.btn-green{background:#168bd1!important;color:#fff!important;border:0!important}
+.nav{background:#fff!important;border-top:1px solid #d8eaf6!important;box-shadow:0 -6px 20px rgba(20,95,150,.08)!important}.nav button.active{background:#dff2ff!important;color:#0872c9!important;border-color:#7fc8f3!important}
+.data-card,.action-card{background:#fff!important;border:1px solid #d9ebf7!important;border-radius:18px!important}
+input,select,textarea{background:#fff!important;border-color:#cde4f3!important;border-radius:12px!important}
+</style></head>`);
+ src=src.replace('</head>',`<style id="cfm-v146-photo-layout">
+.photo-quick-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 16px}.photo-quick-actions button{min-height:88px;border:1px solid #d7e9f6;background:#fff;border-radius:18px;box-shadow:0 7px 20px rgba(20,95,150,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:#164a70;font-weight:800}.photo-quick-actions button:first-child,.photo-quick-actions button:nth-child(2){background:linear-gradient(145deg,#087ee0,#219cf0);color:#fff;border:0}.photo-quick-actions span{font-size:29px}.photo-quick-actions b{font-size:14px}
+#view-dashboard>.section-head{margin-bottom:12px}.command-hero{min-height:190px;display:flex!important;flex-direction:column!important;justify-content:space-between!important}.command-hero h3{font-size:32px!important;margin:7px 0!important}.command-tags{display:flex!important;gap:8px!important;flex-wrap:wrap!important}
+#view-dashboard .kpis{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}#view-dashboard .kpi{min-height:92px!important}
+@media(min-width:900px){#view-dashboard .kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important}.photo-quick-actions{max-width:720px}}
+@media(max-width:760px){#view-dashboard{padding-bottom:90px}.photo-quick-actions{gap:9px}.photo-quick-actions button{min-height:76px;border-radius:16px}.photo-quick-actions span{font-size:24px}.photo-quick-actions b{font-size:12px}.command-hero{min-height:170px!important}.command-hero h3{font-size:26px!important}.exec-group{margin-top:18px!important}.module-command-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.module-command-card{min-height:105px!important;border-radius:17px!important}}
+</style></head>`);
+ src=src.replace('</head>',`<style id="cfm-v144-blue-white-force">
+html,body{background:#f4faff!important;color:#13233b!important}
+.topbar{background:linear-gradient(135deg,#ffffff,#e7f5ff)!important;border-bottom:2px solid #b9def7!important}
+.panel,.data-card,.action-card,.kpi{background:#fff!important;border-color:#cfe7f8!important}
+.btn-primary{background:#1674c9!important;color:#fff!important;border-color:#1674c9!important}
+.btn-green{background:#258fd7!important;color:#fff!important;border-color:#258fd7!important}
+.work,.action-card b{color:#126db7!important}
+#kpis .kpi,#docKpis .kpi{background:#fff!important;border-left:5px solid #49a8f2!important}
+.nav{background:#fff!important}.nav button.active{background:#dff2ff!important;color:#126db7!important;border-color:#8ecaf2!important}
+.command-hero{background:linear-gradient(135deg,#ffffff 0%,#eaf7ff 58%,#d9efff 100%)!important;background-image:linear-gradient(135deg,#ffffff 0%,#eaf7ff 58%,#d9efff 100%)!important;color:#17375e!important;border:1px solid #bcdff6!important}
+.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}
+.command-tags span,.command-tags span:first-child{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}
+</style></head>`);
+ src=src.replace('</head>',`<style id="cfm-final-v117">.command-hero{background:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;background-image:linear-gradient(115deg,#f8fcff 0%,#eaf7ff 55%,#d9efff 100%)!important;color:#17375e!important;border:1px solid #bcdff6!important;box-shadow:0 10px 26px rgba(22,116,201,.10)!important}.command-hero:after{border-color:rgba(22,116,201,.08)!important}.command-hero h3{color:#17375e!important}.command-hero p{color:#4f6b82!important}.command-eyebrow{color:#1674c9!important}.command-tags span,.command-tags span:first-child{background:#fff!important;color:#176db7!important;border-color:#9dcced!important}</style></head>`);
 
-function tell(msg,err=false){$('globalNote').textContent=msg;$('globalNote').className='notice'+(err?' error':'');}
-function status(s){$('status').textContent=s;$('sync').textContent=s;}
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function today(){return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});}
-function show(id){['login','locked','erp'].forEach(n=>$(n).classList.toggle('hide',n!==id));}
-async function authUi(){const {data:{session}}=await db.auth.getSession();user=session?.user||null;
-if(!user){role=null;show('login');$('status').textContent='Sign in required';return}
-const {data,error}=await db.from('cfm_next_members').select('role,active').eq('user_id',user.id).maybeSingle();
-if(error||!data||!data.active){show('locked');$('accountId').textContent=user.email+' — awaiting ERP access';$('status').textContent='Approval required';return}
-role=data.role;show('erp');$('sessionLabel').textContent=user.email+' · '+role+' · CFM Next staging';buildNav();
-try { const n=await outbox.importLegacy(user.id,window.localStorage); if(n) tell('Recovered '+n+' older phone entries into the safe queue. They are pending Cloud verification.'); }
-catch(e){tell('Phone pending-entry recovery needs attention: '+e.message+'. Do not clear browser storage.',true)}
-await load();void loadWorkerNames();void loadWorkOrders();void flushQueue();}
-$('authForm').addEventListener('submit',async e=>{e.preventDefault();$('authMsg').textContent='Signing in…';
-const {error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
-$('authMsg').textContent=error?error.message:'Signed in';if(!error)await authUi();});
-$('signup').addEventListener('click',async()=>{if(!$('email').value||!$('password').value)return $('authMsg').textContent='Enter email and password';
-$('authMsg').textContent='Creating account…';const {error}=await db.auth.signUp({email:$('email').value.trim(),password:$('password').value});
-$('authMsg').textContent=error?error.message:'Check your email for confirmation. ERP access will require administrator approval.';});
-async function signOut(){await db.auth.signOut();user=null;role=null;show('login');$('status').textContent='Signed out';}
-$('logout').onclick=signOut;$('lockedLogout').onclick=signOut;
-$('entryCenterShortcut').addEventListener('click',()=>{family='workflow';offset=0;buildNav();void load()});
-function buildNav(){$('nav').innerHTML='<button data-f="dashboard" class="'+(family==='dashboard'?'active':'')+'">Dashboard</button>'+FAMILIES.map(x=>'<button data-f="'+x[0]+'" class="'+(family===x[0]?'active':'')+'">'+esc(x[1])+'</button>').join('');
-$('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{family=b.dataset.f;offset=0;$('search').value='';buildNav();void load()});}
-async function counts(){
-const main=['pending','store','cutting','departmentWork','packingSlips','sopRecords'];
-const nums=await Promise.all(main.map(async f=>{const {count,error}=await db.from('cfm_next_records').select('id',{head:true,count:'exact'}).eq('family',f);return [LABELS[f],error?'—':count]}));
-if(nums.some(x=>x[1]==='—'))throw new Error('Dashboard count unavailable on one or more data groups');
-const {count:entryCount,error:entryError}=await db.from('cfm_next_activity_log').select('id',{head:true,count:'exact'});
-nums.unshift(['New Department Entries',entryError?'—':entryCount]);
-$('stats').innerHTML=nums.map(x=>'<div class="stat">'+esc(x[0])+'<b>'+esc(x[1])+'</b></div>').join('');
-}
-function viewRow(row,keys){const d=row.data||{};return '<tr>'+keys.map(k=>'<td>'+esc(d[k]??'—')+'</td>').join('')+
-'<td><details><summary>View</summary><pre>'+esc(JSON.stringify(d,null,2))+'</pre></details></td></tr>';}
-async function load(){if(!user||!role||refreshing)return;refreshing=true;status('Refreshing Cloud…');
-try{
-$('dashboard').classList.toggle('hide',family!=='dashboard');$('dailyForm').classList.toggle('hide',family!=='departmentWork');
-$('recordsPanel').classList.toggle('hide',family==='dashboard'||family==='workflow');
-if(family==='workflow'){
- $('dashboard').classList.add('hide');$('dailyForm').classList.add('hide');
- entryCenter.show();status('Entry Center • Cloud Sync');return;
-}
-entryCenter.hide();$('familyTitle').textContent=LABELS[family]||'Records';
-if(family==='dashboard'){await counts();status('Cloud up to date');return}
-const {data,error,count}=await db.from('cfm_next_records').select('id,family,record_key,data,revision,updated_at',{count:'exact'}).eq('family',family).order('created_at',{ascending:false}).order('id',{ascending:true}).range(offset,offset+LIMIT-1);
-if(error)throw error;records=data||[];total=count||0;renderRows();status('Cloud list refreshed · '+total+' records');
-}catch(e){tell('Cloud read failed: '+e.message+'. Keep existing data; retry without clearing storage.',true);status('Cloud unavailable')}finally{refreshing=false}}
-function renderRows(){const term=$('search').value.trim().toLowerCase();const rows=term?records.filter(r=>JSON.stringify(r.data).toLowerCase().includes(term)):records;
-const keys=COLS[family]||['workNo','date','person','party','description'];
-$('readNote').textContent='Old data is preserved. This staging screen is read-only except for new Daily Work entries. Search filters the current page.';
-$('rows').innerHTML='<table><thead><tr>'+keys.map(x=>'<th>'+esc(x)+'</th>').join('')+'<th>Details</th></tr></thead><tbody>'+rows.map(r=>viewRow(r,keys)).join('')+'</tbody></table>';
-$('page').textContent=(total?offset+1:0)+'–'+Math.min(offset+LIMIT,total)+' of '+total;
-$('prev').disabled=offset===0;$('next').disabled=offset+LIMIT>=total}
-$('search').addEventListener('input',renderRows);$('prev').onclick=()=>{offset=Math.max(0,offset-LIMIT);void load()};$('next').onclick=()=>{offset+=LIMIT;void load()};$('refresh').onclick=()=>void load();
-async function flushQueue() {
-  if(processing||!user||!role) return;
-  processing=true;
-  const owner=user.id;
-  try {
-    // Each entry has its own atomic IndexedDB transaction. NEVER rewrite
-    // a stale array snapshot: a second entry may arrive during Cloud sync.
-    for(let i=0;i<200;i++){
-      const pending=await outbox.list(owner);
-      if(!pending.length){status('Cloud work verified');break}
-      status('Sync pending · '+pending.length+' entr'+(pending.length===1?'y':'ies'));
-      if(typeof navigator!=='undefined'&&navigator.onLine===false) break;
-      const item=pending[0];
-      const {error:writeError}=await db.from('cfm_next_records').upsert(item,{onConflict:'id',ignoreDuplicates:true});
-      if(writeError) throw new Error('Cloud write: '+writeError.message);
-      const {data:receipt,error:readError}=await db.from('cfm_next_records')
-        .select('id,family,record_key,data,updated_by').eq('id',item.id).maybeSingle();
-      if(readError) throw new Error('Cloud receipt: '+readError.message);
-      if(!verifyDailyReceipt(receipt,item))
-        throw new Error('Cloud confirmation does not match this entry. Nothing was removed from the phone.');
-      await outbox.remove(owner,item.id);
-      $('saveStatus').textContent='✓ Daily Work verified in Cloud. Other records unchanged.';
-    }
-    const remaining=(await outbox.list(owner)).length;
-    if(remaining) status('Sync pending · '+remaining+' entr'+(remaining===1?'y':'ies'));
-    else {status('Cloud work verified');if(family==='departmentWork')void load()}
-  } catch(e) {
-    $('saveStatus').textContent='⚠️ Cloud not verified: '+e.message+'. Entry remains on this phone; retry after connection returns.';
-    status('Sync pending — not verified');
-  } finally {processing=false}
-}
-$('workForm').addEventListener('submit',async e=>{
- e.preventDefault();
- // Capture the form NOW: browser event.currentTarget becomes null after the first await.
- const form=e.currentTarget;
- if(!form||!user||!role)return;
- const button=$('saveBtn');
- if(button.disabled)return;
- const v=Object.fromEntries(new FormData(form));
- const done=Number(v.doneQty),given=Number(v.givenQty||0);
- const person=v.person==='__NEW_WORKER__'?$('workerOther').value.trim():String(v.person||'').trim();
- if(!person||!v.department||!v.description.trim()||!Number.isFinite(done)||done<0||
-    !Number.isFinite(given)||given<0){
-   $('saveStatus').textContent='Select worker, department, work and valid quantity';return;
+ src=src.replace('</head>',`<script>window.CFM_PHYSICAL_20261027={"rows":[{"srl":"0024","width":38,"meters":100,"cloth":"222 P DFR"},{"srl":"0106","width":38,"meters":100,"cloth":"333 ANT PRO"},{"srl":"0310","width":39.5,"meters":150,"cloth":"333 ANT UNPRO"},{"srl":"0242","width":38,"meters":100,"cloth":"222 P"},{"srl":"0305","width":52,"meters":100,"cloth":"9024 P"},{"srl":"0337","width":50,"meters":51,"cloth":"9024 SW"},{"srl":"0334","width":50,"meters":76,"cloth":"9024 SW"},{"srl":"0336","width":50,"meters":69.5,"cloth":"9024 SW"},{"srl":"0088","width":38,"meters":110,"cloth":"222 P"},{"srl":"0307","width":50.5,"meters":100,"cloth":"222 ANT DFR"},{"srl":"0241","width":38,"meters":100,"cloth":"222 P DFR"},{"srl":"0099","width":62,"meters":85,"cloth":"333 P PRO"},{"srl":"0212","width":38,"meters":50,"cloth":"770 P FINISH"},{"srl":"0102","width":62,"meters":55,"cloth":"8036 POLYESTER"},{"srl":"0213","width":52,"meters":28,"cloth":"930 P DFR"},{"srl":"0092","width":60,"meters":108,"cloth":"333 ANT PRO"},{"srl":"0275","width":38,"meters":100,"cloth":"222 ANT DFR"},{"srl":"0026","width":38,"meters":100,"cloth":"222 P DFR"},{"srl":"0218","width":38,"meters":100,"cloth":"222 ANT DFR"},{"srl":"0246","width":38,"meters":118,"cloth":"222 PLAIN"},{"srl":"0333","width":38,"meters":80.75,"cloth":"9024 SW"},{"srl":"0331","width":38,"meters":52,"cloth":"9024 SW"},{"srl":"0227","width":62,"meters":100,"cloth":"9024 P DFR"},{"srl":"0214","width":60,"meters":82,"cloth":"770 PBT BOX"},{"srl":"0094","width":62,"meters":100,"cloth":"9024 P DFR"},{"srl":"0075","width":62,"meters":41,"cloth":"929 P UNPRO TT"},{"srl":"0076","width":62,"meters":81.5,"cloth":"929 P UNPRO TT"},{"srl":"0077","width":62,"meters":87.5,"cloth":"929 P PRO TT"},{"srl":"0079","width":62,"meters":55,"cloth":"929 P UNPRO TT"},{"srl":"0080","width":62,"meters":77.5,"cloth":"929 P UNPRO TT"},{"srl":"0085","width":63,"meters":97,"cloth":"929 P"},{"srl":"0086","width":63,"meters":98,"cloth":"929 P MCL"},{"srl":"0087","width":63,"meters":64,"cloth":"929 P AZ"},{"srl":"0217","width":62,"meters":69,"cloth":"929 P AZ"},{"srl":"0216","width":62,"meters":62,"cloth":"929 P AZ"},{"srl":"0344","width":52,"meters":70,"cloth":"938 ANT"},{"srl":"0345","width":52,"meters":69,"cloth":"938 ANT"},{"srl":"0346","width":52,"meters":88,"cloth":"333 ANT"},{"srl":"0349","width":52,"meters":113,"cloth":"938 P"},{"srl":"0341","width":80,"meters":63.5,"cloth":"333 ANT"},{"srl":"0338","width":80,"meters":59.75,"cloth":"333 ANT"},{"srl":"0239","width":60,"meters":100,"cloth":"222 P DFR"},{"srl":"0234","width":62,"meters":100,"cloth":"333 ANT UNPRO"},{"srl":"0320","width":61,"meters":100,"cloth":"333 ANT"},{"srl":"0206","width":62,"meters":28,"cloth":"929 P TT"},{"srl":"0093","width":60,"meters":95.5,"cloth":"333 ANT UNPRO"},{"srl":"0120","width":52,"meters":100,"cloth":"222 ANT DFR"},{"srl":"0062","width":62,"meters":72,"cloth":"929 P PRO TT"},{"srl":"0020","width":63.5,"meters":70,"cloth":"938 HY DFR"},{"srl":"0065","width":62,"meters":72.5,"cloth":"929 P TT"},{"srl":"0063","width":62,"meters":59,"cloth":"929 P PRO TT"},{"srl":"0064","width":62,"meters":86,"cloth":"929 P PRO TT"},{"srl":"0215","width":62,"meters":70,"cloth":"938 P WK"},{"srl":"0019","width":63.5,"meters":70,"cloth":"938 HY DFR"},{"srl":"0032","width":63.5,"meters":100,"cloth":"333 P DFR"},{"srl":"0031","width":63.5,"meters":100,"cloth":"333 P DFR"},{"srl":"0067","width":60,"meters":100,"cloth":"8036 ANT DFR"},{"srl":"0238","width":60,"meters":154,"cloth":"222 ANT DFR"},{"srl":"0321","width":61,"meters":70,"cloth":"770 SW PBT"},{"srl":"0329","width":60,"meters":90,"cloth":"770 SIGNAL WIRE"},{"srl":"0328","width":61,"meters":81.5,"cloth":"770 SIGNAL WIRE"},{"srl":"0327","width":61,"meters":98.5,"cloth":"770 SIGNAL WIRE"},{"srl":"0324","width":61,"meters":67.5,"cloth":"770 PBT"},{"srl":"0322","width":61,"meters":84,"cloth":"770 PBT"},{"srl":"0325","width":61,"meters":71,"cloth":"770 PBT"},{"srl":"0270","width":60,"meters":70,"cloth":"333 ANT PRO"},{"srl":"0043","width":62,"meters":100,"cloth":"333 P PRO DFR"},{"srl":"0240","width":60,"meters":100,"cloth":"222 P DFR"},{"srl":"0174","width":65.5,"meters":100,"cloth":"3640 P DFR"},{"srl":"0205","width":62,"meters":54.5,"cloth":"929 P TT"},{"srl":"0202","width":62,"meters":69.25,"cloth":"929 P TT"},{"srl":"0078","width":62,"meters":67,"cloth":"929 P TT"},{"srl":"CFM/131","width":60,"meters":null,"cloth":"770 PBT"},{"srl":"0183","width":60,"meters":null,"cloth":"8036 ANT"},{"srl":"0228","width":62,"meters":null,"cloth":"9024 P"},{"srl":"0059","width":62,"meters":null,"cloth":"929 ANT UNPRO"},{"srl":"0253","width":62,"meters":null,"cloth":"930 P"},{"srl":"0255","width":62,"meters":null,"cloth":"MONOCHROME"},{"srl":"0035","width":62,"meters":null,"cloth":"929 P"},{"srl":"0129","width":62,"meters":null,"cloth":"333 ANT UNPRO"},{"srl":"0268","width":62,"meters":null,"cloth":"938 ANT"},{"srl":"0252","width":62,"meters":null,"cloth":"770 PBT"},{"srl":"0308","width":50,"meters":null,"cloth":"222 ANT DFR"},{"srl":"0318","width":61,"meters":null,"cloth":"333 ANT PRO"},{"srl":"0237","width":66.5,"meters":null,"cloth":"222 ANT"},{"srl":"0125","width":38,"meters":null,"cloth":"929 P"},{"srl":"CFM/108","width":38,"meters":null,"cloth":"222 ANT"},{"srl":"0127","width":38,"meters":null,"cloth":"938 P"},{"srl":"0130","width":52,"meters":null,"cloth":"9024 ANT"},{"srl":"0332","width":38,"meters":null,"cloth":"9024"},{"srl":"0126","width":38,"meters":null,"cloth":"929 P AZ"},{"srl":"0248","width":60,"meters":null,"cloth":"222 CL PLAIN"},{"srl":"0047","width":60,"meters":null,"cloth":"8036 BOX AZ"},{"srl":"0350","width":60,"meters":null,"cloth":"8036 PLAIN"},{"srl":"0256","width":50,"meters":null,"cloth":"MONO"},{"srl":"CFM/11","width":60,"meters":null,"cloth":"MONO"},{"srl":"0306","width":52,"meters":null,"cloth":"9024 PLAIN"},{"srl":"0340","width":80,"meters":null,"cloth":"333 ANT"},{"srl":"0543","width":52,"meters":null,"cloth":"333 ANT"},{"srl":"0551","width":50,"meters":null,"cloth":"938 PLAIN"},{"srl":"0114","width":52,"meters":null,"cloth":"333 PLAIN UNPRO"},{"srl":"0312","width":51,"meters":null,"cloth":"333 ANT UNPRO"},{"srl":"0317","width":61,"meters":null,"cloth":"333 ANT UNPRO"},{"srl":"0112","width":38,"meters":null,"cloth":"333 ANT PRO"},{"srl":"0134","width":38,"meters":null,"cloth":"333 ANT UNPRO"},{"srl":"0156","width":50,"meters":null,"cloth":"222 PLAIN"},{"srl":"0347","width":52,"meters":null,"cloth":"938 ANT"},{"srl":"0263","width":52,"meters":null,"cloth":"938 ANT"},{"srl":"0319","width":61,"meters":null,"cloth":"333 ANT PRO"},{"srl":"0072","width":60,"meters":null,"cloth":"770 SIGNAL WIRE"}]};<\/script></head>`);
+ // V183: dashboard display-only cleanup. Do not remove work orders, status records, stock or production modules.
+ src=src.replace('</head>',`<style id="cfm-v183-dashboard-cleanup">
+/* Hide only the requested dashboard counters, not their underlying data or modules. */
+#view-dashboard #cfmOpsStrip,
+#view-dashboard #kpis,
+#view-dashboard #cfmV148Ops .v148-title,
+#view-dashboard #cfmV148Ops .v148-prod,
+#view-dashboard #cfmV148Ops .v151-person,
+#view-dashboard #cfmV148Ops .v148-alerts > b,
+#view-dashboard #cfmV148Ops .v148-alerts > span:nth-of-type(1),
+#view-dashboard #cfmV148Ops .v148-alerts > span:nth-of-type(2){display:none!important}
+#view-dashboard #cfmV148Ops{padding:8px 12px!important;margin:10px 0!important}
+#view-dashboard #cfmV148Ops .v148-alerts{margin:0!important}
+</style></head>`);
+ // V184: keep utility actions accessible in Settings without obstructing the dashboard.
+ const cfmSettingsHeader='<div class="section-head"><div><h2><span class="ico">⚙️</span><span>Settings</span></h2><p>Free local-first setup</p></div></div>';
+ if(!src.includes(cfmSettingsHeader))throw Error('Settings section missing: v184 UI not applied');
+ src=src.replace(cfmSettingsHeader,cfmSettingsHeader+`<div class="panel" id="cfmV184Tools">
+   <h3>Advanced ERP Utilities</h3>
+   <p>Quick buttons are hidden from the screen. Use these tools here whenever needed.</p>
+   <div class="card-actions" style="display:flex;flex-wrap:wrap;gap:9px">
+     <button class="btn" type="button" onclick="window.cfmRefreshWorkNos ? window.cfmRefreshWorkNos() : alert('Work numbers are not ready. Refresh and retry.')">☁️ Load Work Nos</button>
+     <button class="btn" type="button" onclick="try{window.parent.cfmDownloadBackup()}catch(e){alert('Export unavailable: '+e.message)}">⬇ Save PC Data</button>
+     <button class="btn" type="button" onclick="window.parent.document.getElementById('cfmLabelToggle').click()">🏷 Label Issued</button>
+   </div>
+ </div>`);
+ const app=document.getElementById('app');
+ app.addEventListener('load',()=>{document.getElementById('load').style.display='none';try{app.style.visibility='visible';app.style.opacity='1'}catch(_){}},{once:true});
+ src=src.replace('</head>','<script defer src="./cfm-command-center.js?v=205"></scr'+'ipt></head>');
+ // CFM Forge is the sole ERP interface. Presentation only: do not change plant data.
+ // Legacy ?theme=classic links now open the same Forge interface.
+ src=src.replace('</head>','<script defer src="./cfm-cutting-reconciliation.js?v=249"></scr'+'ipt><link rel="stylesheet" href="./cfm-sap-theme.css?v=212"><link rel="stylesheet" href="./cfm-forge-theme.css?v=213"><link rel="stylesheet" href="./cfm-intelligence.css?v=215"><script defer src="./cfm-sap-actions.js?v=214"></scr'+'ipt><script defer src="./cfm-sap-function-icons.js?v=208"></scr'+'ipt><script defer src="./cfm-sap-workorder-ui.js?v=212"></scr'+'ipt><script defer src="./cfm-forge-ui.js?v=213"></scr'+'ipt><script defer src="./cfm-intelligence-core.js?v=215"></scr'+'ipt><script defer src="./cfm-intelligence-ui.js?v=215"></scr'+'ipt><script defer src="./cfm-workno-reconcile.js?v=236"></scr'+'ipt></head>');
+
+ // V249 PC-only: loaded LAST after Forge / SAP / AI themes to restore useful working area.
+ src=src.replace('</head>','<link rel="stylesheet" href="./cfm-pc-compact.css?v=250"><script defer src="./cfm-pc-dashboard.js?v=250"></scr'+'ipt></head>');
+ // V251: Plant Production SOP controls; operator-side validation, no automatic data write.
+ src=src.replace('</head>','<script defer src="./cfm-plant-production-sop.js?v=423"></scr'+'ipt></head>');
+ src=src.replace('</head>','<script defer src="./cfm-daily-person-safe-cloud-v424.js?v=425"></scr'+'ipt></head>');
+ // V320: SOP-specific fields; cleaning logs are area-based without Work No, SRL or Inward.
+ src=src.replace('</head>','<script defer src="./cfm-sop-register.js?v=334"></scr'+'ipt></head>');
+ // V319 department-specific SOP navigation. Existing SOP records are unchanged.
+ src=src.replace('</head>','<script defer src="./cfm-department-sop-v319.js?v=334"></scr'+'ipt></head>');
+ // V254: read-only A4 unique Measurements Master printing.
+ src=src.replace('</head>','<script defer src="./cfm-unique-measurement-print.js?v=263"></scr'+'ipt></head>');
+ // V259: Editable Non-CF measurement XLSX download / guarded import. No stock writes.
+ src=src.replace('</head>','<script defer src="./cfm-noncf-measurements-excel.js?v=263"></scr'+'ipt></head>');
+ // V330: Central Eagle EFPPL numbered Product Code Master (29 products).
+ src=src.replace('</head>','<script defer src="./cfm-efppl-master-v330.js?v=330"></scr'+'ipt></head>');
+
+ // V343: compact UI-only dashboard; full ERP records and commands remain untouched.
+ src=src.replace('</head>','<script defer src="./cfm-dashboard-compact-v343.js?v=343"></scr'+'ipt></head>');
+ // V344: Theme A Corporate Blue; UI-only, stock header derives from physicalStockSummary().
+ src=src.replace('</head>','<script defer src="./cfm-theme-a-v344.js?v=344"></scr'+'ipt></head>');
+ // V345: move long stock / cutting audit and extra widgets to Dashboard bottom only.
+ src=src.replace('</head>','<script defer src="./cfm-dashboard-bottom-v345.js?v=345"></scr'+'ipt></head>');
+ // V346: Compact corporate-blue internal workspaces and dialogs; pure CSS only.
+ src=src.replace('</head>','<link rel="stylesheet" href="./cfm-submodules-compact-v346.css?v=346"></head>');
+ // V347: operator preferences and read-only system check under Settings only.
+ src=src.replace('</head>','<script defer src="./cfm-operator-safety-v347.js?v=347"></scr'+'ipt></head>');
+ // V350: Store Add SRL — live auto serial + original EFPPL cloth master dropdown.
+ // Read-only until the operator saves. Never rewrites existing stock or serial records.
+ src=src.replace('</head>','<script defer src="./cfm-store-srl-master-v350.js?v=350"></scr'+'ipt></head>');
+ // V360: Approved monochrome EAGLE logo/contact chevron label, 600DPI, 5mm top/bottom stitching clearance.
+ // V363: exact EAGLE head logo traced from the approved corporate artwork; no old bird replacement.
+ src=src.replace('</head>','<script defer src="./cfm-eagle-brand-v361.js?v=370"></scr'+'ipt></head>');
+ src=src.replace('</head>','<script defer src="./cfm-workorder-stitch-label-v352.js?v=396"></scr'+'ipt></head>');
+ // V416: searchable Eagle Code dropdown for single and multi Work Order auto measurements.
+ src=src.replace('</head>','<script defer src="./cfm-eagle-measurement-dropdown-v416.js?v=416"></scr'+'ipt></head>');
+ // V414: Unified non-repeating document number across normal, Multi PO and Without-WO slips.
+ src=src.replace('</head>','<script defer src="./cfm-packing-unique-number-v414.js?v=414"></scr'+'ipt></head>');
+ // V355: Packing Slip with live order qty, verified previous/this dispatch and history.
+ src=src.replace('</head>','<script defer src="./cfm-packing-slip-dispatch-v355.js?v=414"></scr'+'ipt></head>');
+ // V367: ensure the EXISTING Packing Slip and Reprint buttons use the approved EAGLE letterhead.
+ src=src.replace('</head>','<script defer src="./cfm-legacy-packing-letterhead-v366.js?v=380"></scr'+'ipt></head>');
+ // V401: Single crisp A4-landscape Packing Slip print preview with two optional photos; presentation only.
+ src=src.replace('</head>','<script defer src="./cfm-packing-slip-preview-v401.js?v=414"></scr'+'ipt></head>');
+ // V404: Distinct 4×4 Packing Label preview, available without dispatch save; saved Reprints use same label.
+ src=src.replace('</head>','<script defer src="./cfm-packing-label-preview-v404.js?v=405"></scr'+'ipt></head>');
+ // V402: One approved A4 slip format; hide old Create Packing, preserve old reprint history.
+ src=src.replace('</head>','<script defer src="./cfm-packing-single-format-v402.js?v=407"></scr'+'ipt></head>');
+ // V407: one A4 print job = Packing Slip plus numbered 4×4 labels per physical bundle.
+ src=src.replace('</head>','<script defer src="./cfm-packing-combined-bundles-v407.js?v=414"></scr'+'ipt></head>');
+ // V408: combine multiple POs and work orders from the same company with individual balances.
+ src=src.replace('</head>','<script defer src="./cfm-packing-multi-v408.js?v=414"></scr'+'ipt></head>');
+ // V409: Manual Customer PO Packing Slips without a Work Order, Cloud partial balances and bundle labels.
+ src=src.replace('</head>','<script defer src="./cfm-packing-no-wo-v409.js?v=414"></scr'+'ipt></head>');
+ // V418: All-company Cloud Packing Slip Register (read-only; visible inside Packing Slip & Label).
+ src=src.replace('</head>','<script defer src="./cfm-packing-history-all-v418.js?v=418"></scr'+'ipt></head>');
+ // V411: physically mixed bundles (multiple PO items inside one labeled bundle).
+ src=src.replace('</head>','<script defer src="./cfm-packing-mixed-bundle-v411.js?v=411"></scr'+'ipt></head>');
+ // V413: safe Cloud-verified Work Order corrections: immutable Work No, audit and backup.
+ src=src.replace('</head>','<script defer src="./cfm-workorder-correction-v413.js?v=413"></scr'+'ipt></head>');
+ // V419: verified save receipt and exact Eagle Code measurement guidance (read only).
+ src=src.replace('</head>','<script defer src="./cfm-workorder-save-verification-v419.js?v=419"></scr'+'ipt></head>');
+ // V400: Approved Pending Orders corporate TABLE design. Cloud-verified; legacy controls preserved.
+ src=src.replace('</head>','<script defer src="./cfm-pending-corporate-table-v400.js?v=400b"></scr'+'ipt></head>');
+
+ // A real runtime/module check: do not call the ERP LIVE merely because
+ // index.html carries a newer version number.
+ const shellBadge=document.getElementById('cfmUpdateVersion');
+ const requiredModules={
+  'Packing Slip':w=>typeof w.CFM_PACKING_WO_FIELDS_V405==='function',
+  'Slip A4 Preview':w=>typeof w.CFM_PACKING_PREVIEW_V401?.open==='function',
+  'Packing Label':w=>typeof w.CFM_PACKING_LABEL_V404?.open==='function',
+  'Combined Slip + Bundles':w=>typeof w.CFM_PACK_COMBINED_V407?.open==='function',
+  'Multi PO / WO Partial Dispatch':w=>typeof w.CFM_PACK_MULTI_V408?.openFor==='function',
+  'Without WO Packing Slip':w=>typeof w.CFM_PACK_NO_WO_V409?.open==='function',
+  'Mixed PO Physical Bundles':w=>typeof w.CFM_PACK_MIX_V411?.collect==='function',
+  'Cloud Work Order Edit':w=>typeof w.CFM_WO_CORRECT_V413?.open==='function',
+  'Work Order Cloud Save Verification':w=>typeof w.CFM_WO_SAVE_VERIFY_V419?.verifyLast==='function',
+  'Unique Packing Slip Number':w=>typeof w.CFM_PACK_UNIQUE_V414?.next==='function',
+  'Eagle Code Auto Measurement':w=>typeof w.eagleMeasurementResult==='function',
+  'Searchable Eagle Code Dropdown':w=>typeof w.CFM_EAGLE_DROPDOWN_V416?.getList==='function',
+  'Pending Orders':w=>!!w.document?.getElementById('cfmPendingFinal400')
+ };
+ function refreshRuntimeVersion(){
+  if(!shellBadge)return;
+  try{
+   const w=app.contentWindow;
+   if(!w||!w.document?.body){shellBadge.textContent='CFM ERP • V424 · Loading';return}
+   const absent=Object.entries(requiredModules).filter(([name,test])=>{try{return !test(w)}catch(_){return true}}).map(([name])=>name);
+   shellBadge.textContent=absent.length?'CFM ERP • V424 · Check Modules':'CFM ERP • V425 LIVE';
+   shellBadge.title=absent.length?'Module load pending/failed: '+absent.join(', '):'V408 runtime verified · Packing Slip, Label, Multi-WO and Pending Orders loaded';
+  }catch(e){shellBadge.textContent='CFM ERP • V424 · Check Modules';shellBadge.title='Runtime status could not be read: '+String(e?.message||e)}
  }
- const idUser=user.id;
- const workNo=v.workNo==='__MANUAL__'?$('workOrderManual').value.trim():String(v.workNo||'').trim();
- const normalizedWo=workNo.toUpperCase().replace(/^CFM-/,'');
- const signature=data=>JSON.stringify([
-    String(data.date||'').trim(),String(data.person||'').trim().toUpperCase(),
-    String(data.department||'').trim().toUpperCase(),
-    String(data.workNo||'').trim().toUpperCase().replace(/^CFM-/,''),
-    String(data.description||'').trim().toUpperCase(),
-    Number(data.givenQty||0),Number(data.doneQty||0)
- ]);
- const requested={date:v.date,person,department:v.department,workNo:normalizedWo,
-   description:v.description,givenQty:given,doneQty:done};
- button.disabled=true;
- let phoneCommitted=false;
- try{
-   // Reject accidental rapid re-Save while permitting intentional repeated work.
-   const prior=await outbox.list(idUser);
-   const duplicates=prior.filter(p=>signature(p?.data||{})===signature(requested));
-   if(navigator.onLine!==false){
-     try{
-       const {data:recent,error}=await db.from('cfm_next_records')
-         .select('created_at,data').eq('family','departmentWork')
-         .order('created_at',{ascending:false}).limit(100);
-       if(!error){
-         const since=Date.now()-15*60*1000;
-         for(const row of recent||[]){
-           if(Date.parse(row.created_at)>=since&&signature(row.data||{})===signature(requested))
-             duplicates.push(row);
-         }
-       }
-     }catch(error){console.warn('Optional duplicate check unavailable',error)}
-   }
-   if(duplicates.length){
-     const again=confirm('A matching Daily Work entry was saved recently / is pending on this phone. '+
-       'Creating another would count the work twice. Save a SECOND entry intentionally?');
-     if(!again){
-       $('saveStatus').textContent='Existing entry kept. No duplicate added. Refresh Daily Worker Report to check Cloud records.';
-       void flushQueue();return;
-     }
-   }
-   const uuid=crypto.randomUUID(),entryId='CFM-DW-'+uuid;
-   const data={cfmDailyEntryId:entryId,reportOnly:true,date:v.date,person,
-     department:v.department,description:v.description.trim(),
-     workNo,givenQty:given,doneQty:done,
-     pendingQty:Math.max(0,given-done),remark:v.remark.trim(),
-     updatedAt:new Date().toISOString(),updatedBy:user.email};
-   const item={id:uuid,family:'departmentWork',record_key:entryId,data,updated_by:idUser};
-   await outbox.put(idUser,item); // IndexedDB commits before clearing form.
-   phoneCommitted=true;
-   $('saveStatus').textContent='✓ Saved securely on phone. Checking Cloud receipt…';
-   addKnownWorker(person);
-   form.reset(); // use captured form, NEVER e.currentTarget after an await
-   renderWorkerSelect();
-   renderWorkOrderSelect();
-   $('workDate').value=today();
-   await flushQueue();
- }catch(err){
-   $('saveStatus').textContent=phoneCommitted
-     ?'⚠️ Saved on phone, but Cloud verification still pending: '+err.message+
-       '. Do NOT save again; refresh or wait for automatic retry.'
-     :'⚠️ Phone save not confirmed: '+err.message+
-       '. Keep your form filled; do not clear browser data.';
-   if(phoneCommitted)void flushQueue();
- }finally{button.disabled=false}
+ app.addEventListener('load',()=>{refreshRuntimeVersion();setTimeout(refreshRuntimeVersion,1400)});
+
+ app.style.visibility='visible';app.style.opacity='1';await Promise.resolve(window.cfmSafetyReady).catch(()=>{});app.srcdoc=src;setTimeout(()=>{const b=document.getElementById('notifyBtn');if(b){b.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 10px)','important');b.style.setProperty('bottom','auto','important');b.style.setProperty('right','14px','important');b.style.setProperty('z-index','999999','important')}},50);
+ setTimeout(()=>{ if(document.getElementById('load').style.display!=='none') document.getElementById('st').textContent='Opening ERP…'; },2500);
+})().catch(e=>{
+ const load=document.getElementById('load'),st=document.getElementById('st');
+ if(load)load.style.display='grid';
+ if(st){
+  st.textContent='ERP cannot load on this PC: '+(e?.message||String(e));
+  st.style.cssText='margin-top:10px;max-width:520px;line-height:1.5;overflow-wrap:anywhere;color:#9c2727';
+  if(!document.getElementById('cfmPcRetry')){
+   const retry=document.createElement('button');retry.id='cfmPcRetry';retry.type='button';
+   retry.textContent='↻ Retry Loading (keep all data)';
+   retry.style.cssText='display:block;margin:15px auto 0;padding:11px 15px;border:0;border-radius:9px;background:#146fb3;color:#fff;font:700 14px system-ui;cursor:pointer';
+   retry.onclick=()=>{const u=new URL(location.href);u.searchParams.set('v','200');u.searchParams.set('retry',String(Date.now()));location.replace(u.href)};
+   st.after(retry);
+  }
+ }
+ console.error('CFM PC load error',e);
 });
-window.addEventListener('online',()=>void flushQueue());
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){void flushQueue();void load()}});
-setInterval(()=>{if(user&&role&&navigator.onLine){void flushQueue();void load()}},25000);
-db.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT'){show('login');return}if(event==='SIGNED_IN')setTimeout(()=>void authUi(),0)});
-$('workDate').value=today();family='dashboard';try{await authUi()}catch(e){tell('Sign-in or network connection failed: '+e.message,true);$('status').textContent='Check network';show('login')}
-</script></body></html>
+</script>
+<!-- V184: remove only front-facing floating buttons; retain their actions in ERP Settings. -->
+<style id="cfm-v184-clean-floating">
+#cfmDashboardHome,#cfmWorkRefresh,#cfmEmergencyExport,#cfmLabelToggle,#mrOpen,#cfmPOOpen{display:none!important}
+</style>
+<style id="cfm-label-safe-css">
+#cfmLabelToggle{position:fixed;left:12px;bottom:85px;z-index:1000001;border:0;border-radius:12px;background:#126db7;color:#fff;padding:12px;font:700 13px Arial;box-shadow:0 5px 20px #0003;cursor:pointer}
+#cfmLabelDialog[hidden]{display:none!important}
+#cfmLabelDialog{position:fixed;inset:4% 3%;z-index:1000002;overflow:auto;background:#fff;color:#1b3043;padding:18px;border-radius:14px;box-shadow:0 0 0 100vmax #0009;font:14px Arial}
+#cfmLabelDialog input{display:block;width:100%;padding:10px;margin:6px 0 12px;border:1px solid #b4cad8;border-radius:7px;box-sizing:border-box}
+#cfmLabelDialog button{padding:10px;border:0;border-radius:8px;background:#126db7;color:white;margin:3px;cursor:pointer}
+#cfmLabelDialog table{width:100%;border-collapse:collapse;font-size:12px}
+#cfmLabelDialog th,#cfmLabelDialog td{border:1px solid #ccdbe5;padding:7px;text-align:left}
+</style>
+<button id="cfmLabelToggle" type="button">🏷 Label Issued</button>
+<div id="cfmLabelDialog" hidden>
+<button type="button" id="cfmLabelClose">✕ Close</button><h2>Label Issued Register</h2>
+<p>Work orders remain pending until separately completed. Label issue records are stored on this device.</p>
+<form id="cfmLabelForm">
+<label>Work Order No.<input name="wo" required placeholder="CFM-577"></label>
+<label>Labels Issued Qty<input name="qty" type="number" min="1" required></label>
+<label>Issued To<input name="to" required></label>
+<label>Issued Date<input name="date" type="date" required></label>
+<button type="submit">Save Label Issue</button>
+</form>
+<div id="cfmLabelHistory"></div>
+<button type="button" id="cfmLabelExport">⬇ Export</button>
+<button type="button" id="cfmLabelImportButton">⬆ Import</button>
+<input type="file" id="cfmLabelImportFile" accept=".json,application/json" hidden>
+<p><small>Mobile-PC transfer: export on one device, import on the other. No automatic cloud sync.</small></p>
+</div>
+<script>
+(function(){
+'use strict';
+const key='cfm-label-issued-v1';
+const toggle=document.getElementById('cfmLabelToggle'),dialog=document.getElementById('cfmLabelDialog'),form=document.getElementById('cfmLabelForm');
+function get(){try{const a=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
+function safe(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function draw(){const a=get();document.getElementById('cfmLabelHistory').innerHTML='<h3>Issued Labels ('+a.length+')</h3><table><thead><tr><th>Work Order</th><th>Qty</th><th>Issued To</th><th>Date</th></tr></thead><tbody>'+a.slice().reverse().map(x=>'<tr><td>'+safe(x.wo)+'</td><td>'+safe(x.qty)+'</td><td>'+safe(x.to)+'</td><td>'+safe(x.date)+'</td></tr>').join('')+'</tbody></table>'}
+toggle.addEventListener('click',()=>{dialog.hidden=false;form.elements.date.value=new Date().toLocaleDateString('en-CA');draw()});
+document.getElementById('cfmLabelClose').addEventListener('click',()=>{dialog.hidden=true});
+form.addEventListener('submit',ev=>{ev.preventDefault();const wo=form.elements.wo.value.trim().toUpperCase(),qty=Number(form.elements.qty.value),to=form.elements.to.value.trim(),date=form.elements.date.value;if(!wo||!to||!date||!Number.isInteger(qty)||qty<1)return;const a=get(),prior=a.filter(x=>x.wo===wo).reduce((n,x)=>n+Number(x.qty||0),0);if(prior&&!confirm('Already issued '+prior+' labels for '+wo+'. Issue '+qty+' more?'))return;a.push({wo,qty,to,date,createdAt:new Date().toISOString()});try{localStorage.setItem(key,JSON.stringify(a));form.reset();draw()}catch(e){alert('Could not save: '+e.message)}});
+document.getElementById('cfmLabelExport').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({app:'CFM Label Register',version:1,rows:get()},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='CFM-Label-Issued.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)});
+document.getElementById('cfmLabelImportButton').addEventListener('click',()=>document.getElementById('cfmLabelImportFile').click());
+document.getElementById('cfmLabelImportFile').addEventListener('change',async ev=>{const file=ev.target.files[0];if(!file)return;try{const p=JSON.parse(await file.text());if(p.app!=='CFM Label Register'||!Array.isArray(p.rows))throw Error('Invalid backup file');const a=get(),ids=new Set(a.map(x=>[x.wo,x.qty,x.to,x.date,x.createdAt].join('|')));let n=0;for(const x of p.rows){if(!x||typeof x.wo!=='string'||!Number.isInteger(Number(x.qty))||Number(x.qty)<1)continue;const id=[x.wo,x.qty,x.to,x.date,x.createdAt].join('|');if(!ids.has(id)){a.push(x);ids.add(id);n++}}if(n&&confirm('Import '+n+' new label records?')){localStorage.setItem(key,JSON.stringify(a));draw()}else if(!n)alert('No new label records')}catch(e){alert('Import error: '+e.message)}ev.target.value=''});
+})();
+</script>
+
+<!-- Material receiving worksheet and label printing; stock posting deliberately disabled until cloud atomic allocation is integrated -->
+<style>
+#mrOpen{position:fixed;right:12px;bottom:80px;z-index:2147483646;background:#234c70;color:white;border:0;border-radius:12px;padding:12px;font:700 13px system-ui}
+#mrPanel{position:fixed;inset:4% 3%;z-index:2147483647;background:#fff;color:#172333;border-radius:16px;padding:16px;overflow:auto;box-shadow:0 10px 50px #0008;font:14px system-ui}
+#mrPanel[hidden]{display:none}#mrPanel input{box-sizing:border-box;width:100%;padding:10px;margin:3px 0 10px;border:1px solid #bcc9d5;border-radius:8px}#mrPanel button{padding:9px;border:1px solid #9db0bf;border-radius:8px;margin:3px}#mrPanel .mrgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}#mrRows>div{display:flex;align-items:center;gap:8px}#mrRows input{flex:1;min-width:0}#mrRows button{flex:none}
+@media print{body>*{display:none!important}#mrPrint{display:block!important;position:static!important}#mrPrint .mrlabels{display:grid;grid-template-columns:90mm 90mm;grid-auto-rows:85mm;gap:5mm 8mm}#mrPrint .mrlabel{break-inside:avoid;border:1px solid #111;border-radius:3mm;padding:3mm;box-sizing:border-box;text-align:center;font-family:Arial}#mrPrint .mrserial{font-size:17pt;font-weight:900}#mrPrint .mrmajor{font-size:19pt;font-weight:900} @page{size:A4;margin:9mm}}
+#mrPrint{display:none}
+</style>
+<button id="mrOpen" type="button">📦 Material Receiving / Labels</button>
+<section id="mrPanel" hidden role="dialog" aria-label="Material Receiving">
+<button id="mrClose" style="float:right">✕ Close</button><h2>Material Receiving — Bill & Rolls</h2>
+<p style="color:#8a4700"><b>Worksheet / Label Preview only:</b> Cloud stock posting and automatic serial allocation are NOT active. Do not use sample serials as real stock serials.</p>
+<div class="mrgrid"><label>Supplier<input id="mrSupplier" autocomplete="off"></label><label>Bill Number<input id="mrBill" autocomplete="off"></label><label>Quality<input id="mrQuality" value="333 ANT"></label><label>Width (inch)<input id="mrWidth" value="60" type="number" min="1"></label></div>
+<label>Bill Total Meter<input id="mrTotal" type="number" min="0" step=".01" value="500"></label>
+<h3>Physical Roll Meters</h3><div id="mrRows"></div><button id="mrAdd">+ Add Roll</button>
+<p id="mrCheck"></p><button id="mrPrintBtn">🖨 Print A4 Labels (5 per page)</button>
+<p><small>Serials are not generated here. Print uses SAMPLE placeholders to prevent duplicates. No ERP stock changes.</small></p>
+</section><div id="mrPrint"></div>
+<script>
+(function(){
+const $=id=>document.getElementById(id),rows=$('mrRows');
+function add(v=''){const d=document.createElement('div');const i=document.createElement('input');i.type='number';i.min='0.01';i.step='.01';i.placeholder='Roll meter';i.value=v;i.addEventListener('input',check);const b=document.createElement('button');b.textContent='Remove';b.onclick=()=>{d.remove();check()};d.append(i,b);rows.append(d);check()}
+function meters(){return [...rows.querySelectorAll('input')].map(x=>Number(x.value))}
+function check(){const a=meters(),sum=a.reduce((x,y)=>x+y,0),total=Number($('mrTotal').value);$('mrCheck').textContent='Rolls: '+a.length+' | Total: '+sum.toFixed(2)+' MTR | Bill: '+total.toFixed(2)+' MTR | Difference: '+(total-sum).toFixed(2)+' MTR';$('mrCheck').style.color=Math.abs(total-sum)<.001?'green':'#a33'}
+$('mrOpen').onclick=()=>{$('mrPanel').hidden=false;check()};$('mrClose').onclick=()=>{$('mrPanel').hidden=true};$('mrAdd').onclick=()=>add();$('mrTotal').addEventListener('input',check);
+[120,85,100,95,100].forEach(x=>add(x));
+$('mrPrintBtn').onclick=()=>{const a=meters(),total=Number($('mrTotal').value);if(!a.length||a.some(x=>!Number.isFinite(x)||x<=0)||Math.abs(a.reduce((x,y)=>x+y,0)-total)>.001){alert('Roll meter total must match bill meter');return}const quality=$('mrQuality').value.trim(),width=$('mrWidth').value.trim(),bill=$('mrBill').value.trim();if(!quality||!width||!bill){alert('Enter Bill Number, Quality and Width');return}const safe=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));$('mrPrint').innerHTML='<div class="mrlabels">'+a.map((m,i)=>'<div class="mrlabel"><b>EAGLE FILTRATION</b><div>MATERIAL BUNDLE</div><hr><div>SERIAL NUMBER (SAMPLE)</div><div class="mrserial">NOT ALLOCATED</div><hr><div>QUALITY</div><div class="mrmajor">'+safe(quality)+'</div><div>METER</div><div class="mrmajor">'+m+' MTR</div><hr><div>WIDTH: '+safe(width)+'″ | BILL: '+safe(bill)+' | ROLL: '+(i+1)+'</div></div>').join('')+'</div>';window.print()};
+})();
+</script>
+
+<!-- Verified PO-to-Work-Order creation. Final save is performed by the existing ERP form. -->
+<style>#cfmPOOpen{position:fixed;right:12px;bottom:192px;z-index:2147483645;background:#165a83;color:white;border:0;border-radius:12px;padding:11px 13px;font:700 13px system-ui}#cfmPOPanel{position:fixed;inset:3%;z-index:2147483647;background:white;color:#123;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 50px #0008}#cfmPOPanel[hidden]{display:none!important}#cfmPOPanel header{padding:12px;display:flex;justify-content:space-between;font:700 14px system-ui}#cfmPOPanel iframe{border:0;flex:1;width:100%}</style>
+<button id="cfmPOOpen" type="button">📄 PO → Create Work Orders</button>
+<section id="cfmPOPanel" hidden role="dialog" aria-label="Create Work Orders from Company PO">
+<header><span>Company PO Photo / PDF → Create Work Orders</span><button id="cfmPOClose" type="button">✕ Close</button></header>
+<iframe id="cfmPOFrame" title="PO Photo/PDF to Create Work Orders"></iframe>
+</section>
+<script>
+(function(){
+ const p=document.getElementById('cfmPOPanel'),f=document.getElementById('cfmPOFrame');
+ window.openCFMPOWorkOrders=function(){
+   p.hidden=false;
+   if(!f.getAttribute('src'))f.src='./po-workorder.html?v=330';
+ };
+ document.getElementById('cfmPOOpen').addEventListener('click',window.openCFMPOWorkOrders);
+ if(new URLSearchParams(location.search).get('openPO')==='1')setTimeout(window.openCFMPOWorkOrders,100);
+ document.getElementById('cfmPOClose').addEventListener('click',()=>{p.hidden=true});
+})();
+</script>
+
+<!-- Verified PO -> existing Multi-item PO editor. Only ERP Save PO Items writes work orders. -->
+<script id="cfmPOVerifiedBridge">
+(function(){
+'use strict';
+function reply(target,ok,message){
+  try{target.postMessage({kind:'CFM_PO_DRAFT_TRANSFER_RESULT',ok,message},location.origin)}catch(e){console.warn(e)}
+}
+window.addEventListener('message',function(event){
+  const viewer=document.getElementById('cfmPOFrame');
+  if(!viewer||event.source!==viewer.contentWindow||event.origin!==location.origin)return;
+  const d=event.data;
+  if(!d||d.kind!=='CFM_PO_DRAFT_TRANSFER_V1')return;
+  const fail=message=>{reply(event.source,false,message);alert(message)};
+  const party=String(d.party||'').trim(),po=String(d.poNumber||'').trim(),date=String(d.poDate||'');
+  if(d.verified!==true||!party||party.length>160||!po||po.length>110||!/[0-9]/.test(po)||!/^\d{4}-\d{2}-\d{2}$/.test(date))return fail('Missing verified PO details. Return to PO Reader.');
+  if(!Array.isArray(d.lines)||d.lines.length<1||d.lines.length>40)return fail('PO must contain 1–40 verified product lines');
+  const rows=d.lines.map(x=>({description:String(x.description||'').trim(),quantity:Number(x.quantity),customerCode:String(x.customerCode||'').trim(),efpplCode:String(x.efpplCode||'').trim()}));
+  if(rows.some(x=>!x.description||x.description.length>600||!Number.isSafeInteger(x.quantity)||x.quantity<1||x.quantity>100000||x.customerCode.length>60))return fail('Invalid product description or quantity. Verify PO again.');
+  const issue=String(d.discrepancy||'').slice(0,350),reason=String(d.discrepancyReason||'').trim().slice(0,350);
+  if(issue&&!reason)return fail('Resolve PO quantity mismatch and enter verification reason first');
+  const app=document.getElementById('app'),w=app&&app.contentWindow;
+  if(!w||typeof w.openMultiPendingForm!=='function')return fail('Main ERP still loading. Wait and retry, or refresh the ERP.');
+  if(typeof w.cfmPOExistingOrders!=='function')return fail('ERP duplicate-PO checker is not loaded. Refresh the full ERP and retry.');
+  let duplicates=[];
+  try{duplicates=w.cfmPOExistingOrders(party,po)||[]}catch(e){return fail('Could not check existing PO. Refresh ERP first.')}
+  if(duplicates.length)return fail('PO '+po+' for '+party+' is already saved in ERP as '+duplicates.map(x=>x.workNo+' (Qty '+(x.orderQty??'?')+')').slice(0,8).join(', ')+'. Open Pending Orders to view the existing record. This PO has NOT been imported again.');
+  // V341: Verified photo/PDF PO uses the same fast Cloud form as manual PO.
+  // Do not reopen the giant ERP multi-item modal (it froze on Android).
+  // Original description, buyer item code and discrepancy details are kept.
+  try{
+    let unsynced=false;
+    try{unsynced=!!w.eval('typeof cloudDirty!=="undefined"&&cloudDirty')}catch(_){}
+    if(unsynced)return fail('This device has unsynced ERP edits. Sync or export a backup first so local data cannot be lost when opening the Fast Work Order page.');
+    const transfer={
+      kind:'CFM_FAST_PO_IMPORT_V341',party,poNo:po,orderDate:date,
+      deliveryDate:String(d.deliveryDate||''),
+      issue,reason,items:rows.map(x=>({
+        description:x.description,quantity:x.quantity,
+        buyerItemCode:x.customerCode,efpplCode:x.efpplCode
+      }))
+    };
+    sessionStorage.setItem('cfm-fast-po-import-v341',JSON.stringify(transfer));
+    reply(event.source,true,'Opening Fast Work Order with '+rows.length+' verified PO lines. Fill cloth/width and save after review.');
+    location.assign(new URL('./fast-work-order.html?v=417',location.href).href);
+  }catch(e){fail('Could not open Fast Work Order: '+(e.message||e))}
+});
+})();
+</script>
+<script id="cfm-dispatch-v264">
+(function(){
+ const frame=document.getElementById('app');
+ const key=x=>String(x.workNo||x.workOrder||x.wo||'').trim();
+ const isDone=x=>String(x.status||'').toUpperCase()==='DISPATCHED';
+ function install(){
+  let w;try{w=frame.contentWindow;if(!w||!w.document)return; if(!w.state||typeof w.save!=='function'){try{const bridge=w.eval('({state: typeof state!=="undefined"?state:null, save:typeof save==="function"?save:null, render:typeof render==="function"?render:null})');if(bridge.state)w.state=bridge.state;if(bridge.save)w.save=bridge.save;if(bridge.render)w.render=bridge.render}catch(_){}}if(!w.state||!Array.isArray(w.state.pending)||typeof w.save!=='function')return}catch(e){return}
+  const d=w.document;if(d.getElementById('cfmDispatchPanelV264'))return;
+  const panel=d.createElement('section');panel.id='cfmDispatchPanelV264';panel.hidden=true;
+  panel.style.cssText='position:fixed;inset:4% 3%;z-index:2147483600;background:white;color:#172b3b;border:2px solid #1674c9;border-radius:14px;padding:14px;overflow:auto;box-shadow:0 0 0 100vmax #0008;font:14px system-ui';
+  panel.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><h3>Dispatch Done / History</h3><button type="button" id="cfmDispatchClose">✕ Close</button></div><p>Select only actually dispatched Work Orders. Cutting and stock will not change.</p><input id="cfmDispatchSearch" placeholder="Search Work Order / Party" style="width:96%;padding:10px;margin:6px 0"><div style="margin:8px 0"><button type="button" id="cfmDispatchPendingTab">Pending</button> <button type="button" id="cfmDispatchHistoryTab">History</button> <button type="button" id="cfmDispatchSelectAll">Select visible</button></div><div id="cfmDispatchRows"></div><div style="position:sticky;bottom:0;background:#fff;padding:10px;border-top:1px solid #ddd"><button type="button" id="cfmDispatchApply" style="background:#1674c9;color:white;padding:10px;border:0;border-radius:7px">Dispatch Done → History</button> <span id="cfmDispatchMessage"></span></div>';
+  d.body.appendChild(panel);
+  const b=d.createElement('button');b.id='cfmDispatchOpenV264';b.textContent='✓ Dispatch Done / History';b.type='button';b.style.cssText='position:fixed;right:12px;bottom:90px;z-index:2147483500;background:#1269a0;color:#fff;border:0;border-radius:10px;padding:11px 13px;font:700 13px system-ui;box-shadow:0 3px 10px #0004';d.body.appendChild(b);
+  let tab='pending';const $=id=>d.getElementById(id);
+  async function draw(){
+   const q=$('cfmDispatchSearch').value.toLowerCase();
+   let source=w.eval('state').pending, cloudError='';
+   try{
+     const remote=await w.eval('cloudFetch()');
+     if(remote&&Array.isArray(remote.payload?.pending)){source=remote.payload.pending;panel.dataset.cloudVersion=String(remote.version);panel.dataset.cloudReady='yes'}
+     else throw Error('Invalid Cloud response');
+   }catch(e){cloudError=String(e.message||e);panel.dataset.cloudReady='no'}
+   const items=source.filter(x=>(tab==='history'?isDone(x):(String(x.status||'').toUpperCase()==='PENDING'&&!x.archived&&Number(x.orderQty||0)>Number(x.cutQty||0)&&!x.cutEntryPending))&&[key(x),x.party,x.description].join(' ').toLowerCase().includes(q));
+   const rows=$('cfmDispatchRows');rows.replaceChildren();
+   items.forEach(x=>{const label=d.createElement('label');label.style.cssText='display:flex;align-items:center;gap:10px;padding:9px;border-bottom:1px solid #e5e5e5';const check=d.createElement('input');check.type='checkbox';check.className='cfmDispatchCheck';check.value=key(x);label.appendChild(check);const span=d.createElement('span');span.textContent=key(x)+' • '+String(x.party||'')+' • Qty '+String(x.orderQty??x.qty??'');label.appendChild(span);rows.appendChild(label)});
+   $('cfmDispatchApply').textContent=tab==='history'?'Restore to Pending':'Dispatch Done → History';$('cfmDispatchMessage').textContent=items.length+' orders'+(cloudError?' • Cloud unavailable (read-only)':' • Live Cloud');
+  }
+  b.onclick=()=>{panel.hidden=false;draw()};$('cfmDispatchClose').onclick=()=>panel.hidden=true;
+  $('cfmDispatchSearch').oninput=draw;
+  $('cfmDispatchPendingTab').onclick=()=>{tab='pending';draw()};
+  $('cfmDispatchHistoryTab').onclick=()=>{tab='history';draw()};
+  $('cfmDispatchSelectAll').onclick=()=>rowsCheck(true);
+  function rowsCheck(v){panel.querySelectorAll('.cfmDispatchCheck').forEach(x=>x.checked=v)}
+  $('cfmDispatchApply').onclick=()=>{
+   if(panel.dataset.cloudReady!=='yes')return w.alert('Cloud unavailable. No dispatch changes allowed.');
+   const ids=[...panel.querySelectorAll('.cfmDispatchCheck:checked')].map(x=>x.value);
+   if(!ids.length)return w.alert('Select Work Orders first.');
+   const liveState=w.eval('state');const matches=liveState.pending.filter(x=>ids.includes(key(x))&&isDone(x)===(tab==='history'));
+   if(Number(panel.dataset.cloudVersion)!==Number(w.eval('cloudVersion')))return w.alert('Cloud has newer records. Use ERP Cloud Sync first, then reopen Dispatch History. No changes made.');
+   if(matches.length!==ids.length)return w.alert('Work Orders changed. Refresh and retry.');
+   if(!w.confirm((tab==='pending'?'Mark DISPATCH DONE':'Restore to PENDING')+' for '+matches.length+' Work Orders? This does not change stock.'))return;
+   const ts=new Date().toISOString();
+   matches.forEach(x=>{if(tab==='pending'){x.status='DISPATCHED';x.dispatchDoneAt=ts;x.dispatchBatchReportStatus='PENDING_REVIEW'}else{x.status='PENDING';x.restoredAt=ts}});
+   try{w.save();if(typeof w.render==='function')w.render();draw();w.alert(matches.length+' Work Orders changed on this device. IMPORTANT: Verify Cloud sync and History after refresh. If they reappear in Pending, Cloud did not save; do not repeat dispatch.')}catch(e){w.alert('Save failed: '+e.message)}
+  };
+ }
+ const outer=document.createElement('button');outer.id='cfmDispatchOuterV265';outer.type='button';outer.textContent='✓ Dispatch Done / History';outer.style.cssText='position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom, 0px) + 72px);z-index:2147483647;background:#1269a0;color:#fff;border:0;border-radius:10px;padding:12px 14px;font:700 13px system-ui;box-shadow:0 3px 12px #0005';document.body.appendChild(outer);
+ outer.onclick=()=>{install();try{const d=frame.contentWindow.document;const inner=d.getElementById('cfmDispatchOpenV264');if(inner)inner.click();else alert('Dispatch panel is loading. Wait for ERP Cloud to load, then tap again.')}catch(e){alert('Dispatch panel unavailable: '+e.message)}};
+ frame.addEventListener('load',()=>setTimeout(install,1500));setInterval(install,12000);
+})();
+</script>
+<script id="cfm-all-pending-v266">
+(function(){
+const frame=document.getElementById('app');
+const button=document.createElement('button');button.id='cfmAllOrdersV266';button.type='button';button.textContent='📋 All Pending Work Orders';button.style.cssText='position:fixed;left:12px;bottom:calc(env(safe-area-inset-bottom, 0px) + 72px);z-index:2147483646;background:#175f43;color:white;border:0;border-radius:10px;padding:12px;font:700 12px system-ui;box-shadow:0 3px 12px #0004';document.body.appendChild(button);
+const panel=document.createElement('section');panel.id='cfmAllOrdersPanelV266';panel.hidden=true;panel.style.cssText='position:fixed;inset:4% 3%;z-index:2147483647;background:white;color:#173043;border:2px solid #1674c9;border-radius:14px;padding:12px;overflow:auto;box-shadow:0 0 0 100vmax #0009;font:14px system-ui';panel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><b id="cfmAllCountV266">All Pending Work Orders</b><button type="button" id="cfmAllCloseV266">✕ Close</button></div><p style="font-size:12px">Live ERP records only. Read-only; cutting and stock stay unchanged.</p><input id="cfmAllSearchV266" placeholder="Search Work No / Party / Item" style="width:95%;padding:11px;border:1px solid #aaa;border-radius:8px"><div id="cfmAllRowsV266"></div>';document.body.appendChild(panel);
+const get=()=>{const w=frame.contentWindow;if(!w)return null;if(!w.state){try{const x=w.eval('typeof state!=="undefined"?state:null');if(x)w.state=x}catch(_){}}return w.state&&Array.isArray(w.state.pending)?w.state.pending:null};
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function draw(){const rows=document.getElementById('cfmAllRowsV266');rows.textContent='Loading live Cloud pending orders…';let data,source='Live Cloud';try{const w=frame.contentWindow;const remote=await w.eval('cloudFetch()');if(!remote||!Array.isArray(remote.payload?.pending))throw Error('Invalid Cloud data');data=remote.payload.pending}catch(e){rows.textContent='Cloud unavailable: '+String(e.message||e)+'. No stale Pending list shown. Retry after Cloud sync.';document.getElementById('cfmAllCountV266').textContent='Pending Work Orders — Cloud unavailable';return}const q=document.getElementById('cfmAllSearchV266').value.toLowerCase();const pending=data.filter(x=>String(x.status||'').toUpperCase()==='PENDING'&&!x.archived&&!x.cutEntryPending&&Number(x.orderQty||0)>Number(x.cutQty||0));const shown=pending.filter(x=>[x.workNo,x.party,x.description,x.item].join(' ').toLowerCase().includes(q)).sort((a,b)=>(Number(String(b.workNo||'').match(/\\d+$/)?.[0]||0)-Number(String(a.workNo||'').match(/\\d+$/)?.[0]||0)));document.getElementById('cfmAllCountV266').textContent='Live Pending: '+pending.length+' | Showing: '+shown.length;rows.innerHTML=shown.map(x=>'<div style="border-bottom:1px solid #dce7ef;padding:11px 3px"><b>'+esc(x.workNo)+'</b> • '+esc(x.party)+'<div style="font-size:12px;margin-top:3px">'+esc(x.description||x.item)+'</div><div style="font-size:12px;color:#51677b">Order '+esc(x.orderQty??x.qty)+' • Cut '+esc(x.cutQty??0)+' • '+esc(x.status||'PENDING')+'</div></div>').join('')||'No matching work orders';}
+button.onclick=()=>{panel.hidden=false;draw()};document.getElementById('cfmAllCloseV266').onclick=()=>panel.hidden=true;document.getElementById('cfmAllSearchV266').oninput=draw;
+})();
+</script>
+<style id="cfm-v271-hide-extra-controls">
+#cfmAllOrdersV266,#cfmResolveWoButton{display:none!important}
+</style>
+
+<style id="cfm-v272-clean-controls">
+#cfmWorkRefresh,#cfmAllOrdersV266,#cfmResolveWoButton,#cfmLabelBtn,#cfmSimulationBtn{display:none!important}
+</style>
+<script id="cfm-v272-clean-controls">
+(function(){
+ const exact=/^(simulation|simulate|test simulation|demo mode|fix work nos|load work nos|all pending work orders|label issued register)$/i;
+ function clean(d){if(!d||!d.body)return;for(const el of d.querySelectorAll('button,[role="button"]')){const t=String(el.textContent||'').replace(/[🔧☁️📋🏷✓]/g,'').trim();if(exact.test(t))el.style.setProperty('display','none','important')}}
+ function run(){clean(document);try{clean(document.getElementById('app')?.contentWindow?.document)}catch(_){}}
+ document.getElementById('app')?.addEventListener('load',run);setInterval(run,12000);run();
+})();
+</script>
+<style id="cfm-v273-dispatch-position">
+#cfmDispatchOuterV265{right:10px!important;top:auto!important;bottom:calc(env(safe-area-inset-bottom,0px) + 14px)!important;padding:9px 11px!important;font-size:12px!important;max-width:190px!important;opacity:1!important}
+#cfmAllOrdersV266{display:none!important}
+</style>
+<script id="cfm-v273-single-dispatch">
+(function(){
+function tidy(){try{const d=document.getElementById('app')?.contentWindow?.document;if(!d)return;const inner=d.getElementById('cfmDispatchOpenV264');if(inner)inner.style.setProperty('display','none','important')}catch(_){}}
+document.getElementById('app')?.addEventListener('load',tidy);setInterval(tidy,12000);
+})();
+</script>
+
+<style id="cfm-v275-report-css">
+#cfmResultOpen{position:fixed;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 88px);top:auto;max-width:calc(100vw - 16px);z-index:2147483646;background:#145a45;color:white;border:2px solid #fff;border-radius:10px;padding:11px 13px;font:700 13px system-ui;box-shadow:0 4px 15px #0005;cursor:pointer}
+#cfmResultPanel[hidden]{display:none!important}
+#cfmResultPanel{position:fixed;inset:3%;z-index:2147483647;background:white;color:#172b3b;border-radius:14px;overflow:auto;padding:14px;font:13px system-ui;box-shadow:0 0 0 100vmax #0009}
+#cfmResultPanel table{width:100%;border-collapse:collapse}#cfmResultPanel td,#cfmResultPanel th{border-bottom:1px solid #dce4ed;padding:7px;text-align:left}
+#cfmResultPanel select,#cfmResultPanel input{padding:8px;max-width:100%}
+</style>
+<script id="cfm-v275-reconstructed-reports">
+(function(){
+const f=document.getElementById('app'),open=document.createElement('button'),p=document.createElement('section');
+open.id='cfmResultOpen';open.textContent='📄 Batch / Person Reports';document.body.appendChild(open);
+p.id='cfmResultPanel';p.hidden=true;p.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>CFM • Dispatch Batch & Person Reports</b><button id="cfmResultClose">✕ Close</button></div><p style="color:#865b18">Reconstructed estimates, NOT verified production or attendance. Cloud is read-only.</p><div id="cfmResultInfo">Loading…</div><div id="cfmReviewInfo"></div><button id="cfmReviewOpen" type="button" style="padding:9px;margin:8px 0;background:#334155;color:white;border:0;border-radius:8px">View Saved Person Work (Review)</button><div id="cfmReviewBody" style="max-height:330px;overflow:auto"></div><div style="border-top:1px solid #cbd5e1;margin-top:12px;padding-top:10px"><b>Daily Person Work • Reconstructed Review Register</b><p style="font-size:12px">Separate read-only register. Not actual attendance or verified production.</p><input id="cfmPersonFilter" placeholder="Search person / WO / department" style="width:96%;padding:8px"><select id="cfmPersonDept" style="width:100%;margin:6px 0"><option value="">All Departments</option><option>Cutting</option><option>Stitching</option><option>FBD Stitching</option><option>Thread Cutting</option><option>Gun Finishing</option><option>Packing</option></select><label style="display:block;margin-top:8px">Date-wise report: <input id="cfmPersonDate" type="date" style="padding:7px"></label><button id="cfmPersonPrint" type="button" style="padding:9px;margin:7px 0;background:#1d4ed8;color:white;border:0;border-radius:7px">Print A4 • Filtered Person Work</button><div id="cfmPersonSummary"></div><div id="cfmPersonRows" style="max-height:340px;overflow:auto"></div></div><button id="cfmResultExport" type="button" style="padding:9px;margin:8px 0;background:#166534;color:white;border:0;border-radius:8px">Export All Daily Person Entries (CSV)</button><label style="display:block;margin-top:8px">Work No. — Manual Type or Dropdown</label><input id="cfmResultSearch" list="cfmWorkNoSuggestions" placeholder="Type 580 / CFM-580 or choose dropdown" style="width:96%"><datalist id="cfmWorkNoSuggestions"></datalist><select id="cfmResultSelect" style="width:100%;margin:8px 0"></select><div id="cfmResultBody"></div>';document.body.appendChild(p);
+let data=[],cuts=[],review=[];
+const $=id=>document.getElementById(id);
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
+const teams={Cutting:['Sumit'],Stitching:['Ankit','Satish','Lavkush','Vijay','Rahul'],'Thread Cutting':['Sangita','Bhavna','Kailash','Radha'],'Gun Finishing':['Sangita','Bhavna','Kailash','Radha'],Packing:['Sangita','Bhavna','Kailash','Radha']};
+const packingPairs=[['Sangita','Radha'],['Sangita','Bhavna'],['Sangita','Kailash'],['Bhavna','Radha'],['Bhavna','Kailash'],['Radha','Kailash']];
+function allocations(dept,qty,idx,product,oct){const n=Math.max(0,Math.floor(Number(qty)||0));if(!n)return [];if(dept==='Cutting')return oct?[['Sumit',n],['Kailash (Helper; shared qty)',n]]:[['Sumit',n]];const people=oct&&['Thread Cutting','Gun Finishing','Packing'].includes(dept)?['Sangita','Bhavna','Radha']:teams[dept];if(dept==='Packing'){const pairs=oct?[['Sangita','Radha'],['Sangita','Bhavna'],['Bhavna','Radha']]:packingPairs;const pair=pairs[idx%pairs.length];return [[pair[0],Math.ceil(n/2)],[pair[1],Math.floor(n/2)]].filter(x=>x[1]>0)}const slots=Math.min(people.length,n),base=Math.floor(n/slots),extra=n%slots;return Array.from({length:slots},(_,j)=>[people[(idx+j)%people.length],base+(j<extra?1:0)])}
+function draw(){const i=Number($('cfmResultSelect').value)||0,x=data[i];if(!x){$('cfmResultBody').textContent='No dispatched work orders';return}const qty=Number(x.orderQty)||0,wo=String(x.workNo||''),serials=[...new Set(cuts.filter(c=>String(c.workNo||'')===wo&&String(c.entryType||'')!=='ORDER ONLY'&&c.srlNo).map(c=>String(c.srlNo)))];const product=String(x.description||'');const oneDayFilterPress=/FILTER\s*PRESS|FILTER\s*PRES\b/i.test(product)||String(x.actualProductType||'').toUpperCase()==='FILTER PRESS';const relevantCut=cuts.filter(c=>String(c.workNo||'')===wo&&String(c.entryType||'')!=='ORDER ONLY');const relevantDate=relevantCut.map(c=>String(c.date||'')).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort()[0]||String(x.orderDate||'');const oct=relevantDate>='2026-10-01';let html='<h3>'+esc(wo)+' • '+esc(x.party)+'</h3><p>'+esc(product)+'</p><table><tr><th>Order Qty / Report Qty</th><td><b>'+esc(qty)+' Nos</b></td></tr><tr><th>Dispatch</th><td>'+esc(x.status)+'</td></tr><tr><th>Cloth SRL (Cutting)</th><td>'+esc(serials.join(', ')||'Not recorded')+'</td></tr><tr><th>Report basis</th><td>Reconstructed • Person allocation estimated; October onward: Kailash Cutting Helper only (not additional output)</td></tr></table><h3>Department / Person Work Allocation</h3><table><tr><th>Department</th><th>FBD Work / Sub-Department</th><th>Person</th><th>Qty</th></tr>';for(const dept of Object.keys(teams)){for(const [person,count] of allocations(dept,qty,i,product,oct)){html+='<tr><td>'+esc(dept)+'</td><td>'+esc(person)+'</td><td>'+count+'</td></tr>'}}html+='</table><h3>'+(oneDayFilterPress?'1-Day Filter Press Work Plan (Reconstructed)':'3-Day Daily Person Work (Reconstructed)')+'</h3><table><tr><th>Day / Date</th><th>Department</th><th>Person</th><th>Qty</th></tr>';const realCuts=cuts.filter(c=>String(c.workNo||'')===wo&&String(c.entryType||'')!=='ORDER ONLY');const cutDate=realCuts.map(c=>String(c.date||'')).filter(d=>/^\\d{4}-\\d{2}-\\d{2}$/.test(d)).sort()[0]||'';const dayLabel=day=>{if(oneDayFilterPress)return cutDate?'Day 1 • '+cutDate+' (1-day plan, unverified)':'Day 1 (1-day plan; date unknown)';if(!cutDate)return 'Day '+day+' (date unknown)';const d=new Date(cutDate+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+day-1);return 'Day '+day+' • '+d.toISOString().slice(0,10)+' (estimated)'};for(const dept of Object.keys(teams)){for(const [person,count] of allocations(dept,qty,i,product,oct)){let portions;if(dept==='Cutting')portions=[[1,count]];else if(dept==='Stitching'){const first=Math.ceil(count/2);portions=[[1,first],[2,count-first]]}else if(dept==='Packing')portions=[[3,count]];else {const first=Math.ceil(count/2);portions=[[2,first],[3,count-first]]}for(const [day,n] of (oneDayFilterPress?[[1,count]]:portions)){if(n>0)html+='<tr><td>'+esc(dayLabel(day))+'</td><td>'+esc(dept)+'</td><td>'+esc(person)+'</td><td>'+n+'</td></tr>'}}}html+='</table><p style="color:#795d2d">'+(oneDayFilterPress?'Filter Press standard production cycle: 1 day. All stages are planned on Day 1; saved historical allocation and dates still require verification.':'Daily Person Work: 3-day reconstructed plan (Day 1 Cutting + partial Stitching; Day 2 remaining Stitching + finishing; Day 3 finishing + Packing).')+' Dates and person quantities are estimates, NOT verified production or attendance.</p>';$('cfmResultBody').innerHTML=html}
+function options(){const q=$('cfmResultSearch').value.toLowerCase().trim();const select=$('cfmResultSelect');const prior=select.value;select.replaceChildren();data.forEach((x,i)=>{if(![x.workNo,x.party,x.description].join(' ').toLowerCase().includes(q))return;const o=document.createElement('option');o.value=String(i);o.textContent=x.workNo+' • '+x.party+' • '+x.orderQty+' Nos';select.appendChild(o)});if([...select.options].some(o=>o.value===prior))select.value=prior;draw()}
+$('cfmResultSearch').onchange=()=>{const raw=$('cfmResultSearch').value.trim().toLowerCase(),match=data.find(x=>String(x.workNo||'').toLowerCase()===raw||String(x.workNo||'').toLowerCase()==='cfm-'+raw);if(match){$('cfmResultSearch').value=String(match.workNo);options()}};
+open.onclick=async()=>{p.hidden=false;$('cfmResultInfo').textContent='Reading live Cloud…';try{const w=f.contentWindow;const row=await w.eval('cloudFetch()');if(!row||!Array.isArray(row.payload?.pending))throw Error('Invalid Cloud response');data=row.payload.pending.filter(x=>String(x.status||'').toUpperCase()==='DISPATCHED').sort((a,b)=>Number(String(a.workNo).match(/\d+$/)?.[0]||0)-Number(String(b.workNo).match(/\d+$/)?.[0]||0));const dl=$('cfmWorkNoSuggestions');dl.replaceChildren();data.forEach(x=>{const opt=document.createElement('option');opt.value=String(x.workNo||'');opt.label=String(x.description||x.party||'');dl.appendChild(opt)});cuts=Array.isArray(row.payload.cutting)?row.payload.cutting:[];review=Array.isArray(row.payload.reconstructedPersonWork)?row.payload.reconstructedPersonWork:[];drawPersonReview();$('cfmReviewInfo').textContent=review.length+' saved Reconstructed Person Work entries (review only)';$('cfmReviewBody').innerHTML='';$('cfmResultInfo').textContent=data.length+' dispatched reports • '+data.filter(x=>cuts.some(c=>String(c.workNo||'')===String(x.workNo||'')&&String(c.entryType||'')!=='ORDER ONLY'&&/^\\d{4}-\\d{2}-\\d{2}$/.test(String(c.date||'')))).length+' with recorded cutting dates • Live Cloud version '+row.version+' • No records modified';options()}catch(e){data=[];$('cfmResultInfo').textContent='Cloud unavailable: '+String(e.message||e);$('cfmResultBody').textContent='Reports cannot load safely from stale data.'}};
+function drawPersonReview(){const query=String($('cfmPersonFilter').value||'').toLowerCase().trim(),dept=$('cfmPersonDept').value;const selectedDate=$('cfmPersonDate').value;const found=review.filter(x=>(!selectedDate||x.date===selectedDate)&&(!dept||x.process===dept)&&(!query||[x.workNo,x.person,x.process,x.subDepartment,x.productName].some(v=>String(v||'').toLowerCase().includes(query))));$('cfmPersonSummary').textContent=found.length+' of '+review.length+' reconstructed entries • '+found.filter(x=>!x.date).length+' missing dates • review only';$('cfmPersonRows').innerHTML='<table style="width:100%;font-size:12px"><thead><tr><th>WO</th><th>Day / Date</th><th>Department</th><th>FBD Work / Sub-Department</th><th>Person</th><th>Qty</th></tr></thead><tbody>'+found.slice(0,150).map(x=>'<tr><td>'+esc(x.workNo)+'</td><td>'+esc(x.day)+' / '+esc(x.date||'Unknown')+'</td><td>'+esc(x.process)+'</td><td>'+esc(x.subDepartment||'—')+'</td><td>'+esc(x.person)+'</td><td>'+esc(x.doneQty)+(x.isHelper?' (helper)':'')+'</td></tr>').join('')+'</tbody></table>'+(found.length>150?'<p>Showing first 150 matches. Filter by WO or person to see more.</p>':'')};
+$('cfmPersonPrint').onclick=()=>{const query=String($('cfmPersonFilter').value||'').toLowerCase().trim(),dept=$('cfmPersonDept').value;const selectedDate=$('cfmPersonDate').value;const found=review.filter(x=>(!selectedDate||x.date===selectedDate)&&(!dept||x.process===dept)&&(!query||[x.workNo,x.person,x.process,x.subDepartment,x.productName].some(v=>String(v||'').toLowerCase().includes(query))));if(!found.length){alert('No matching entries to print');return}const woInfo=new Map(data.map(x=>[String(x.workNo),x]));const rows=found.map(x=>{const o=woInfo.get(String(x.workNo))||{};const qty=Number(x.doneQty)||0;return '<tr><td>'+esc(x.date||'Date not recorded')+'</td><td>'+esc(x.workNo)+'</td><td>'+esc(o.party||'')+'</td><td>'+esc(o.description||o.product||'')+'</td><td>'+esc(x.process)+'</td><td>'+esc(x.subDepartment||'—')+'</td><td>'+esc(x.person)+'</td><td style="text-align:right">'+esc(x.isHelper?'—':qty)+'</td><td style="text-align:right">'+esc(x.isHelper?'—':qty)+'</td><td style="text-align:right">'+esc(x.isHelper?'—':'0')+'</td></tr>'}).join('');const page='<!doctype html><html><head><meta charset="utf-8"><title>CFM Daily Person Work - Review Print</title><style>@page{size:A4 portrait;margin:12mm}body{font:11px Arial,sans-serif;color:#111}h2{text-align:center;margin:0 0 4px}p{text-align:center;margin:4px 0 12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #333;padding:5px 4px;vertical-align:top}th{background:#eee}thead{display:table-header-group}tr{break-inside:avoid}.note{font-weight:bold;border:1px solid #333;padding:7px;margin:9px 0}@media print{button{display:none}}</style></head><body><h2>EAGLE CFM • DAILY PERSON WORK REPORT</h2><p>Date: '+esc(selectedDate||'All dates')+' | Department: '+esc(dept||'All')+' | Entries: '+found.length+'</p><p style="font-size:10px;text-align:left">Review copy — quantities and worker assignments require verification; blank dates have not been assumed.</p><table><thead><tr><th>Date</th><th>Work Order</th><th>Party</th><th>Product Name / Description</th><th>Department</th><th>FBD Work / Sub-Department</th><th>Worker</th><th>Given Qty</th><th>Done Qty</th><th>Pending Qty</th></tr></thead><tbody>'+rows+'</tbody></table><p>Supervisor Sign: __________________ &nbsp;&nbsp; Checked By: __________________</p></body></html>';const w=window.open('','_blank');if(!w){alert('Allow popups to print report');return}w.document.open();w.document.write(page);w.document.close();w.focus();setTimeout(()=>w.print(),400)};
+$('cfmPersonDate').onchange=drawPersonReview;$('cfmPersonFilter').oninput=drawPersonReview;$('cfmPersonDept').onchange=drawPersonReview;
+$('cfmReviewOpen').onclick=()=>{const wo=String(data[Number($('cfmResultSelect').value)||0]?.workNo||'');const list=review.filter(x=>String(x.workNo||'')===wo);$('cfmReviewBody').innerHTML='<b>'+esc(wo)+' • '+list.length+' saved reconstructed person entries</b><p>Review only — not actual attendance. Blank date means cutting date unavailable.</p><table><tr><th>Day</th><th>Date</th><th>Department</th><th>Person</th><th>Qty</th></tr>'+list.map(x=>'<tr><td>'+esc(x.day)+'</td><td>'+esc(x.date||'Unknown')+'</td><td>'+esc(x.process)+'</td><td>'+esc(x.subDepartment||'—')+'</td><td>'+esc(x.person)+'</td><td>'+esc(x.doneQty)+'</td></tr>').join('')+'</table>'};
+$('cfmResultExport').onclick=()=>{if(!data.length)return alert('Load live Cloud reports first');const rows=[['Work No','Party','Day','Date','Department','Person','Qty','Status']];for(let i=0;i<data.length;i++){const x=data[i],wo=String(x.workNo||''),qty=Number(x.orderQty)||0,realCuts=cuts.filter(c=>String(c.workNo||'')===wo&&String(c.entryType||'')!=='ORDER ONLY'),cutDate=realCuts.map(c=>String(c.date||'')).filter(d=>/^\\d{4}-\\d{2}-\\d{2}$/.test(d)).sort()[0]||'',oct=(cutDate||String(x.orderDate||''))>='2026-10-01';for(const dept of Object.keys(teams)){for(const [person,count] of allocations(dept,qty,i,String(x.description||''),oct)){let parts=dept==='Cutting'?[[1,count]]:dept==='Packing'?[[3,count]]:dept==='Stitching'?[[1,Math.ceil(count/2)],[2,Math.floor(count/2)]]:[[2,Math.ceil(count/2)],[3,Math.floor(count/2)]];for(const [day,n] of parts){if(!n)continue;let date='';if(cutDate){const d=new Date(cutDate+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+day-1);date=d.toISOString().slice(0,10)}rows.push([wo,x.party||'',day,date,dept,person,n])}}}}const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\\r\\n');const blob=new Blob(['\\ufeff'+csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='CFM-Reconstructed-Daily-Person-Reports.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+$('cfmResultClose').onclick=()=>p.hidden=true;$('cfmResultSearch').oninput=options;$('cfmResultSelect').onchange=draw;
+})();
+</script>
+<style id="cfm-v277-dashboard-dispatch">
+#cfmDispatchOuterV265{display:none!important}
+</style>
+<script id="cfm-v277-dashboard-dispatch">
+(function(){
+  const frame=document.getElementById('app');
+  if(!frame)return;
+  // V314: Quick Actions are in normal Dashboard flow, not over the plant cards.
+  function install(){
+    try{
+      const doc=frame.contentWindow.document;
+      if(!doc?.body)return;
+      const dash=doc.getElementById('view-dashboard')||
+        doc.querySelector('#dashboardPage,#page-dashboard,.dashboard-page');
+      if(!dash)return;
+      // Remove old injected floating/dashboard duplicate, if it exists.
+      const legacy=doc.getElementById('cfmDashboardDispatchV277');
+      if(legacy)legacy.remove();
+      let bar=doc.getElementById('cfmV314QuickActions');
+      if(!bar){
+        bar=doc.createElement('div');
+        bar.id='cfmV314QuickActions';
+        bar.setAttribute('role','group');
+        bar.setAttribute('aria-label','Batch and Dispatch quick actions');
+        bar.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 14px;padding:0;position:relative;z-index:1;box-sizing:border-box;max-width:calc(100% - 28px)';
+        function add(id,label,color,handler){
+          const btn=doc.createElement('button');
+          btn.id=id;btn.type='button';btn.textContent=label;
+          btn.style.cssText='position:static;display:block;width:100%;min-height:46px;white-space:normal;line-height:1.3;text-align:center;box-sizing:border-box;border:0;border-radius:10px;padding:10px 8px;background:'+color+';color:white;font:700 12px system-ui;box-shadow:0 2px 7px #0002;cursor:pointer';
+          btn.onclick=handler;
+          bar.appendChild(btn);
+        }
+        add('cfmV314DispatchQuick','✓ Dispatch / History','#125a86',()=>{
+          const outer=document.getElementById('cfmDispatchOuterV265');
+          if(outer)outer.click();
+          else{
+            const inner=doc.getElementById('cfmDispatchOpenV264');
+            if(inner)inner.click();else alert('History loading. Refresh ERP and retry.');
+          }
+        });
+        add('cfmV314BatchQuick','📄 Batch / Person Reports','#14694e',()=>{
+          const outer=document.getElementById('cfmResultOpen');
+          if(outer)outer.click();else alert('Batch Reports loading. Refresh ERP and retry.');
+        });
+      }
+      if(bar.parentNode!==dash)dash.insertBefore(bar,dash.firstChild);
+      else if(dash.firstChild!==bar)dash.insertBefore(bar,dash.firstChild);
+    }catch(e){console.warn('CFM Quick Actions unavailable',e)}
+  }
+  frame.addEventListener('load',install);
+  setInterval(install,12000);
+  install();
+})();
+</script>
+<style id="cfm-v293-cutqty-css">
+#cfmCutQtyPanel293{position:fixed;inset:3%;z-index:2147483647;background:#fff;color:#173043;border-radius:14px;padding:14px;overflow:auto;box-shadow:0 0 0 100vmax #0009;font:14px system-ui}
+#cfmCutQtyPanel293 button,#cfmCutQtyPanel293 input{font:inherit;padding:7px;border-radius:7px}
+#cfmCutQtyPanel293 .cqrow{display:grid;grid-template-columns:minmax(190px,1fr) 72px 85px 70px 65px;gap:6px;align-items:center;border-bottom:1px solid #ddd;padding:9px 0}
+#cfmCutQtyPanel293 input[type=number]{width:75px;box-sizing:border-box;border:1px solid #9ab}
+@media(max-width:620px){#cfmCutQtyPanel293 .cqrow{grid-template-columns:minmax(145px,1fr) 45px 61px 48px 48px;font-size:11px;gap:3px}#cfmCutQtyPanel293 input[type=number]{width:60px;padding:5px}}
+</style>
+<script id="cfm-v293-manual-cutqty">
+(function(){
+const frame=document.getElementById('app');if(!frame)return;
+const panel=document.createElement('section');panel.id='cfmCutQtyPanel293';panel.hidden=true;
+panel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>Pending Orders • Manual Cutting Qty</b><button id="cqClose293">✕ Close</button></div><p style="font-size:12px">Enter TOTAL cut pieces completed so far (not today additional pieces). Pending = Order − Cutting. This does not deduct cloth stock or create cutting entries.</p><input id="cqSearch293" placeholder="Search Work No / Party" style="width:95%;border:1px solid #aaa"><p id="cqMsg293"></p><div class="cqrow" style="font-weight:bold"><span>Work Order No / Details</span><span>Order Qty</span><span>Cut Qty</span><span>Bal Qty</span><span>Save</span></div><div id="cqRows293"></div>';
+document.body.appendChild(panel);
+const esc=v=>String(v??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
+const $=id=>document.getElementById(id);
+let live=[],loading=false;
+async function load(){if(loading)return;loading=true;$('cqMsg293').textContent='Loading live Cloud orders…';try{const remote=await frame.contentWindow.eval('cloudFetch()');if(!remote||!Array.isArray(remote.payload?.pending))throw Error('Cloud unavailable');live=remote.payload.pending.filter(x=>String(x.status||'').toUpperCase()==='PENDING'&&!x.archived&&!x.cutEntryPending&&Number(x.orderQty||0)>Number(x.cutQty||0));$('cqMsg293').textContent=live.length+' open orders • enter cumulative cutting qty';draw()}catch(e){$('cqMsg293').textContent='Cloud error: '+(e.message||e)}finally{loading=false}}
+function draw(){const q=$('cqSearch293').value.trim().toLowerCase();const list=live.filter(x=>[x.workNo,x.party,x.description].join(' ').toLowerCase().includes(q));$('cqRows293').innerHTML=list.map(x=>{const qty=Number(x.orderQty||0),cut=Number(x.cutQty||0),key=esc(x.workNo);return '<div class="cqrow" data-wo="'+key+'"><span><b>'+key+'</b><small style="display:block">'+esc(x.party)+'</small><small style="display:block;white-space:normal;overflow-wrap:anywhere">'+esc(x.description||x.item||x.product||'')+'</small></span><span>'+qty+'</span><input type="number" min="0" max="'+qty+'" step="1" value="'+cut+'" aria-label="Cut qty for '+key+'"><span class="cqBalance">'+Math.max(0,qty-cut)+'</span><button class="cqSave" type="button">Save</button></div>'}).join('')||'No matching open orders';}
+$('cqRows293').addEventListener('input',e=>{if(e.target.type!=='number')return;const row=e.target.closest('.cqrow');const item=live.find(x=>x.workNo===row.dataset.wo);if(item)row.querySelector('.cqBalance').textContent=Math.max(0,Number(item.orderQty||0)-Number(e.target.value||0))});
+$('cqRows293').addEventListener('click',async e=>{if(!e.target.classList.contains('cqSave'))return;const btn=e.target,row=btn.closest('.cqrow'),wo=row.dataset.wo,inp=row.querySelector('input'),n=Number(inp.value);const record=live.find(x=>x.workNo===wo),max=Number(record?.orderQty||0);if(!Number.isInteger(n)||n<0||n>max){alert('Enter whole quantity between 0 and '+max);return}if(!confirm(wo+': save total cut quantity '+n+' of '+max+'?'))return;btn.disabled=true;try{const w=frame.contentWindow;const latest=await w.eval('cloudFetch()');const cloudOrder=latest?.payload?.pending?.find(x=>x.workNo===wo);if(!cloudOrder||['DISPATCHED','ARCHIVED'].includes(String(cloudOrder.status||'').toUpperCase()))throw Error('Order is not pending in Cloud');if(Number(cloudOrder.cutQty||0)!==Number(record.cutQty||0))throw Error('Cloud quantity changed. Refresh and try again.');const result=w.eval('(()=>{const r=state.pending.find(x=>x.workNo==='+JSON.stringify(wo)+');if(!r)throw Error("Work Order not found locally");if(["DISPATCHED","ARCHIVED"].includes(String(r.status||"").toUpperCase()))throw Error("Order is dispatched");r.cutQty='+n+';r.manualCutQtyUpdatedAt=new Date().toISOString();r.manualCutQtySource="DASHBOARD_MANUAL";save();return r.cutQty})()');if(result!==n)throw Error('Local save mismatch');$('cqMsg293').textContent=wo+' saved locally; Cloud sync in progress. Refresh to verify.';await new Promise(resolve=>setTimeout(resolve,1400));const verified=await w.eval('cloudFetch()');if(Number(verified?.payload?.pending?.find(x=>x.workNo===wo)?.cutQty)!==n)throw Error('Cloud not yet confirmed. Check Sync status before another edit.');record.cutQty=n;row.querySelector('.cqBalance').textContent=Math.max(0,max-n);$('cqMsg293').textContent='✓ '+wo+' Cutting Qty '+n+' / '+max+' saved in Cloud.';}catch(err){$('cqMsg293').textContent='Save not verified: '+String(err.message||err)+'. Refresh before retry.';}finally{btn.disabled=false}});
+$('cqClose293').onclick=()=>panel.hidden=true;$('cqSearch293').oninput=draw;
+function install(){try{const d=frame.contentWindow.document;if(!d?.body)return;let btn=d.getElementById('cfmManualCutQtyDashboard293');if(!btn){btn=d.createElement('button');btn.id='cfmManualCutQtyDashboard293';btn.type='button';btn.textContent='✂ Pending Orders • Cutting Qty';btn.style.cssText='margin:10px 12px;padding:12px 15px;background:#116c55;color:#fff;border:0;border-radius:9px;font-weight:bold;cursor:pointer';btn.onclick=()=>{panel.hidden=false;load()};const dash=d.getElementById('view-dashboard');(dash||d.body).prepend(btn)}}catch(e){}}
+frame.addEventListener('load',install);setInterval(install,12000);install();
+})();
+</script>
+
+<script id="cfm-v306-saved-batch-review-print">
+(function(){
+  const panel=document.getElementById('cfmResultPanel');
+  const select=document.getElementById('cfmResultSelect');
+  const frame=document.getElementById('app');
+  if(!panel||!select||!frame)return;
+  const button=document.createElement('button');
+  button.id='cfmBatchSavedPrint306';
+  button.type='button';
+  button.textContent='📋 View / Print Saved Batch Report';
+  button.style.cssText='display:block;margin:9px 0;padding:11px 14px;background:#165b82;color:white;border:0;border-radius:9px;font:700 13px system-ui;cursor:pointer';
+  select.insertAdjacentElement('afterend',button);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const qty=s=>{const v=Number(s);return Number.isFinite(v)&&v>0?v:0};
+  function workNo(){
+    const typed=(document.getElementById('cfmResultSearch')?.value||'').trim().toUpperCase();
+    const opt=select.selectedOptions[0]?.textContent||'';
+    const value=/^CFM-\d+$/.test(typed)?typed:/^\d+$/.test(typed)?'CFM-'+typed:'';
+    return value||(opt.match(/CFM-\d+/i)||[])[0]||'';
+  }
+  const norm=v=>String(v??'').trim().toUpperCase();
+  const dateText=v=>{const x=String(v||'');const m=x.match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+'-'+m[2]+'-'+m[1]:(x||'-')};
+  function stageMatch(x,stage){
+    const v=norm(x.process||x.department||x.stage||x.dept);
+    if(stage==='GUN / FINISHING')return v.includes('GUN')||v.includes('FINISH');
+    if(stage==='FINAL CHECKING')return v.includes('CHECK')||v==='QC'||v.includes('QUALITY');
+    if(stage==='THREAD CUTTING')return v.includes('THREAD');
+    if(stage==='STITCHING')return v.includes('STITCH');
+    if(stage==='CUTTING')return v.includes('CUT')&&!v.includes('THREAD');
+    return v.includes(stage);
+  }
+  function build(wo,payload){
+    const order=(payload.pending||[]).find(x=>norm(x.workNo)===wo);
+    if(!order)throw Error('Work Order not found in live Cloud.');
+    const saved=(payload.reconstructedBatchReports||[]).find(x=>norm(x.workNo)===wo)||{};
+    const review=(payload.reconstructedPersonWork||[]).filter(x=>norm(x.workNo)===wo);
+    const actual=(payload.departmentWork||[]).filter(x=>norm(x.workNo)===wo);
+    const sourceCuts=(payload.cutting||[]).filter(x=>norm(x.workNo)===wo);
+    const photoCuts=sourceCuts.filter(x=>norm(x.entryType)!=='ORDER ONLY'&&(String(x.srlNo||x.srl||'').trim()||qty(x.cutQty)>0));
+    const usedSrls=[...new Set(photoCuts.map(x=>String(x.srlNo||x.srl||'').trim()).filter(Boolean))];
+    const parts=(()=>{try{return frame.contentWindow.cfmProductParts?.(order)||[]}catch(_){return []}})();
+    const stitches=(()=>{try{return frame.contentWindow.cfmBatchStitchOperations?.(order)||[]}catch(_){return []}})();
+    const oq=qty(order.orderQty),isReview=review.length>0;
+    const oneDayFilterPress=/FILTER\s*PRESS|FILTER\s*PRES\b/i.test(String(order.description||''))||norm(order.actualProductType)==='FILTER PRESS';
+    const stages=['CUTTING','STITCHING','THREAD CUTTING','GUN / FINISHING','FINAL CHECKING','PACKING'];
+    const date=new Date().toLocaleDateString('en-GB',{timeZone:'Asia/Kolkata'});
+    const refs=photoCuts.map(x=>{
+      const part=String(x._redPenPart||x._photoPart||x.part||(x.sizeLine||'').split('|')[0]||'CUT PART').trim();
+      const measurement=[x.length||'-',x.height||x.width||'-'].map(esc).join(' × ');
+      const needsCheck=x._redPenPendingStock||x._physicalRollBalanceUnverified||x._stockUsageEstimated;
+      return '<tr><td>'+esc(dateText(x.date))+'</td><td>'+esc(x.srlNo||x.srl||'-')+'</td><td>'+esc(part)+'</td><td>'+measurement+'</td><td class="center">'+esc(x.cutQty??'-')+'</td><td>'+esc(needsCheck?'Meter / SRL verify':'Cutting recorded')+'</td></tr>';
+    }).join('');
+    const reference='<section><h3>Cutting Reference — '+photoCuts.length+' Entries (Photo / Manual)</h3>'+
+      '<div class="photo-note">These are cut pieces, not completed bags. Stock-meter confirmation and department Done Qty must be recorded separately.</div>'+
+      '<table class="reference"><thead><tr><th>DATE</th><th>SRL</th><th>PART</th><th>L × W (INCH)</th><th>PIECES</th><th>VERIFICATION</th></tr></thead><tbody>'+
+      (refs||'<tr><td colspan="6" class="center">No saved cutting reference</td></tr>')+'</tbody></table></section>';
+    const stageRows=stages.map(stage=>{
+      const real=actual.filter(x=>stageMatch(x,stage));
+      const allocate=review.filter(x=>stageMatch(x,stage));
+      const used=real.length?real:allocate;
+      const verified=real.length>0;
+      const totals=new Map();
+      used.forEach(x=>{const name=String(x.person||x.cuttingPerson||'-').trim();const prev=totals.get(name)||{total:0,helper:false};prev.total+=qty(x.doneQty??x.qty??x.completedQty);prev.helper=prev.helper||!!x.isHelper;totals.set(name,prev)});
+      const person=[...totals.entries()].map(([name,v])=>esc(name)+(v.helper&&!verified?' (helper)':': '+esc(v.total))).join(' • ')||'-';
+      const calculated=used.filter(x=>verified||!x.isHelper).reduce((sum,x)=>sum+qty(x.doneQty??x.qty??x.completedQty),0);
+      const quantity=used.length?(verified?String(calculated):String(calculated)+'*'):'—';
+      const pending=verified?String(Math.max(0,oq-calculated)):(allocate.length?String(Math.max(0,oq-calculated))+'*':'Verify');
+      const dates=(!verified&&oneDayFilterPress)?'1-Day Plan*':([...new Set(used.map(x=>dateText(x.date)).filter(x=>x!=='-'))].join(', ')||'-');
+      const task=stage==='STITCHING'&&stitches.length?stitches.join(' • '):stage==='CUTTING'&&parts.length?parts.join(' • '):(order.description||'-');
+      const stageRemark=verified?'ERP-entered':allocate.length?(oneDayFilterPress?'1-Day cycle • unverified':'Review only • unverified'):'Not recorded';
+      return '<tr><td class="dept">'+esc(stage)+'</td><td class="person">'+person+'</td><td class="center">'+(verified?'✓':'☐')+'</td><td class="center">'+esc(oq)+'</td><td class="center">'+esc(quantity)+'</td><td class="center">'+esc(pending)+'</td><td>'+esc(task)+'</td><td>'+esc(dates)+'</td><td>'+esc(stageRemark)+'</td></tr>';
+    }).join('');
+    const hasUnverified=review.some(x=>!actual.some(y=>stageMatch(y,norm(x.process||''))));
+    const styles='@page{size:A4 landscape;margin:9mm}*{box-sizing:border-box}body{font:10px Arial,sans-serif;color:#293743;margin:0;background:white}.actions{padding:7px 0}.actions button{font-weight:700;cursor:pointer}.head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:3px solid #226247;padding:5px 0 10px}.brand{font-size:21px;font-weight:800;color:#244839;letter-spacing:.1px}.sub{font-size:9px;color:#5b6971;letter-spacing:.65px;margin-top:3px}.heading{text-align:right;font-size:18px;font-weight:800;line-height:1.13;min-width:210px}.meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:12px 0}.meta .item{border:1px solid #cbd9d0;border-radius:6px;background:#f8faf9;padding:7px;min-height:37px}.meta small{display:block;color:#6d7980;font-size:8px;margin-bottom:3px;text-transform:uppercase}.meta b{font-size:11px;overflow-wrap:anywhere}.meta .wide{grid-column:span 2}.content{border:1px solid #d4e0d8;border-radius:5px;padding:6px;margin-top:-5px;margin-bottom:11px}h3{font-size:13px;margin:11px 0 5px}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}th{background:#1d684a;color:#fff;text-transform:uppercase;font-size:8px;padding:7px 5px;text-align:left}td{padding:6px 5px;border:1px solid #d3dfd7;vertical-align:top;overflow-wrap:anywhere}tbody tr:nth-child(even){background:#f7faf8}tr{break-inside:avoid;page-break-inside:avoid}th.center,td.center{text-align:center}.reference th:nth-child(1){width:17%}.reference th:nth-child(2){width:18%}.reference th:nth-child(3){width:18%}.reference th:nth-child(4){width:18%}.reference th:nth-child(5){width:13%}.reference th:nth-child(6){width:16%}.main th:nth-child(1){width:12%}.main th:nth-child(2){width:16%}.main th:nth-child(3){width:5%}.main th:nth-child(4){width:7%}.main th:nth-child(5){width:7%}.main th:nth-child(6){width:8%}.main th:nth-child(7){width:20%}.main th:nth-child(8){width:13%}.main th:nth-child(9){width:12%}.dept{font-weight:700}.person{font-size:9px}.photo-note{font-size:9px;margin:0 0 5px}.disclaimer{font-size:9px;color:#6f5431;padding:6px 0;margin-top:7px}.sign{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-top:26px}.sign div{border-top:1px solid #87969c;text-align:center;padding-top:6px;color:#5a6871}.foot{display:flex;justify-content:space-between;border-top:1px solid #e1e7e4;padding-top:7px;margin-top:16px;color:#7b8789;font-size:8px}@media print{.actions{display:none!important}.head{padding-top:1px}}';
+    return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(wo)+' Work Production Batch Report</title><style>'+styles+'</style></head><body>'+
+      '<div class="actions"><button onclick="window.print()" style="padding:9px 16px;border:0;border-radius:6px;background:#1d684a;color:white">🖨 Print A4 Landscape</button></div>'+
+      '<header class="head"><div><div class="brand">EAGLE FILTRATION PRODUCT PVT. LTD.</div><div class="sub">CFM OPERATIONS • PRODUCTION TRACEABILITY</div></div><div class="heading">WORK PRODUCTION<br>BATCH REPORT</div></header>'+
+      '<div class="meta"><div class="item"><small>Work No</small><b>'+esc(wo)+'</b></div>'+
+      '<div class="item"><small>Party</small><b>'+esc(order.party||saved.party||'-')+'</b></div>'+
+      '<div class="item"><small>Order Qty</small><b>'+esc(oq)+'</b></div>'+
+      '<div class="item"><small>Report Date</small><b>'+esc(date)+'</b></div>'+
+      '<div class="item wide"><small>Description</small><b>'+esc(order.description||saved.description||'-')+'</b></div>'+
+      '<div class="item wide"><small>Measurement / Details</small><b>'+esc(order.description2||'-')+'</b></div>'+
+      '<div class="item" style="grid-column:span 4"><small>Cloth SRL No. (Actual Cutting Entry)</small><b>'+esc(usedSrls.join(' • ')||'Not recorded')+'</b></div></div>'+
+      (parts.length?'<div class="content"><b>Product Content — Saved Cutting Parts / Layers:</b> '+esc(parts.join(' • '))+'</div>':'')+
+      reference+
+      '<table class="main"><thead><tr><th>DEPARTMENT</th><th>PERSON</th><th class="center">CHECK</th><th class="center">ORDER</th><th class="center">QTY</th><th class="center">PENDING</th><th>REMARK / WORK</th><th>DATE</th><th>REMARK</th></tr></thead><tbody>'+stageRows+'</tbody></table>'+
+      (isReview?'<div class="disclaimer"><b>* Saved person-wise allocation (review only).</b> Qty* and Pending* are allocation figures, NOT physically verified Done/Pending. Filter Press production cycle is 1 day when applicable; the 1-Day Plan* label is a target, not proof of historical completion. Helper quantities are not extra production. Actual department entries are shown without *. Dispatch status: '+esc(order.status||'-')+'.</div>':'')+
+      '<div class="sign"><div>Prepared By</div><div>Checked By</div><div>Approved By</div></div>'+
+      '<div class="foot"><span>CFM Plant ERP • Controlled Production Record</span><span>'+esc(wo)+'</span></div></body></html>';
+  }
+  button.addEventListener('click',async()=>{
+    const wo=workNo();
+    if(!wo){alert('Select a Work Order first.');return}
+    const win=window.open('','_blank');
+    if(!win){alert('Allow popups to view / print Batch Report');return}
+    win.document.write('<p style="font:16px Arial;padding:25px">Loading saved review report for '+esc(wo)+'…</p>');
+    button.disabled=true;
+    try{
+      const cloud=await frame.contentWindow.eval('cloudFetch()');
+      if(!cloud||!cloud.payload)throw Error('Cloud records are unavailable.');
+      const html=build(wo,cloud.payload);
+      win.document.open();win.document.write(html);win.document.close();
+    }catch(e){
+      win.document.open();win.document.write('<p style="font:15px Arial;padding:25px">Batch report not available: '+esc(e.message||e)+'</p>');win.document.close();
+    }finally{button.disabled=false}
+  });
+})();
+</script>
+
+
+<style id="cfm-v310-restore-dispatch-history">
+/* Make existing live Dispatch/History opener visible on every screen.
+   This changes presentation only; dispatch/restoration actions still require confirmation. */
+#cfmDispatchOuterV265 {
+ display:block!important;
+ right:10px!important;
+ top:auto!important;
+ bottom:calc(env(safe-area-inset-bottom, 0px) + 86px)!important;
+ z-index:2147483647!important;
+ max-width:190px!important;
+ background:#125a86!important;
+ color:#fff!important;
+ border:1px solid #0e4d72!important;
+ border-radius:11px!important;
+ padding:10px 12px!important;
+ box-shadow:0 4px 16px rgba(0,0,0,.20)!important;
+ font:700 12px system-ui!important;
+}
+@media(min-width:780px){
+ #cfmDispatchOuterV265 { bottom:20px!important;right:18px!important; }
+}
+</style>
+<style id="cfm-v314-no-overlap">
+/* V314: Do not cover ERP dashboard, production cards or the phone navigation.
+   Accessible Quick Actions live in normal Dashboard flow inside #view-dashboard. */
+#cfmDispatchOuterV265,#cfmResultOpen {
+  display:none!important;
+}
+#cfmUpdateVersion {
+  left:8px!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 7px)!important;
+  font-size:9px!important;
+  padding:2px 5px!important;
+  opacity:.88!important;
+}
+</style>
+<style id="cfm-v315-no-mobile-version-overlap">
+@media (max-width:760px){#cfmUpdateVersion{display:none!important}}
+</style>
+<!-- V394: Independent outer-shell Stitch Label shortcut; not dependent on Dashboard sections. -->
+<style>
+#cfmLabelOuter394{position:fixed!important;left:12px!important;bottom:calc(env(safe-area-inset-bottom,0px) + 45px)!important;z-index:2147483646!important;display:block!important;visibility:visible!important;opacity:1!important;background:#153f92!important;color:white!important;border:2px solid white!important;border-radius:9px!important;padding:10px 14px!important;font:700 13px Arial,sans-serif!important;box-shadow:0 3px 12px #0005!important;cursor:pointer!important}
+</style>
+<button id="cfmLabelOuter394" type="button">🏷 Stitch Label</button>
+<script>
+(function(){
+ const b=document.getElementById('cfmLabelOuter394');
+ b.addEventListener('click',function(){
+  const frame=document.getElementById('app'),doc=frame?.contentDocument;
+  const dialog=doc?.getElementById('woLabelDialog');
+  if(dialog){
+   if(!dialog.open)dialog.showModal();
+   const refresh=doc.getElementById('woLabelRefresh');
+   if(refresh)refresh.click();
+   return;
+  }
+  const launch=doc?.getElementById('woLabelLaunch');
+  if(launch){launch.click();return}
+  alert('Stitch Label module is not loaded in this ERP session. Please reopen ERP online and try again.');
+ });
+})();
+</script>
+</body></html>
