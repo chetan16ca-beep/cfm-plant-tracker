@@ -18,6 +18,7 @@ const scripts=[
  'cfm-dashboard-bottom-v345.js','cfm-operator-safety-v347.js','cfm-cutting-reconciliation.js',
  'cfm-intelligence-core.js'
 ];
+scripts.push('cfm-daily-person-safe-cloud-v424.js');
 for(const p of scripts){
  ok(existsSync(file(p)),'ERP support script present: '+p);
  try{new Script(read(p),{filename:p})}catch(e){throw new Error('Syntax error in '+p+': '+e.message)}
@@ -50,3 +51,11 @@ ok(sop.includes('supervisor:supervisor.trim(),reportOnly:false'), 'Verified Batc
 has('index.html','cfm-plant-production-sop.js?v=423');
 ok(!index.includes('cfm-jessi-voice.js'),'Removed Jessi is not loaded again');
 console.log('CFM read-only deployment safety checks passed: '+checks);
+
+// V424: Daily Person Work Cloud upload is isolated from conflicted phone stock and orders.
+const daily=read('cfm-daily-person-safe-cloud-v424.js');
+ok(daily.includes("payload.departmentWork=original.map(copy).concat(copy(record))"),'Daily Work performs one append only');
+ok(daily.includes("for(const key of Object.keys(before.payload))"),'Other Cloud families preserved');
+ok(daily.includes("version=eq."),'Cloud compare-and-swap remains mandatory');
+ok(daily.includes('const verified=await cloudFetch()'),'Daily Work Cloud receipt is checked');
+has('index.html','cfm-daily-person-safe-cloud-v424.js?v=424');

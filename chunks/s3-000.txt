@@ -442,8 +442,12 @@ window.openDeptWorkForm=function(i=null){
     rec.pendingQty=deptEntryPending(rec);
     // Daily person entries record actual work without asserting SOP stage handover.
     rec.reportOnly=true;
-    if(!rec.person){toast('Person select karo');return false}
-    if(!String(rec.description||'').trim()){toast('Activity / Work Details enter karo');return false}
+    // V424: stable receipt for targeted Daily Work Cloud append; never changes Work Order history.
+    rec.cfmDailyEntryId=i==null
+      ? 'CFM-DW-'+(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2,12))
+      : (state.departmentWork[i]?.cfmDailyEntryId||'');
+    if(!rec.person){alert('Person select karo');return false}
+    if(!String(rec.description||'').trim()){alert('Activity / Work Details enter karo');return false}
     /* Department daily entry stays open even when legacy/previous-process totals differ.
        Order / Already Done / Balance remain visible for operator reference. */
     const isNewEntry=i==null;
@@ -459,7 +463,10 @@ window.openDeptWorkForm=function(i=null){
       setNextUpdateNotification('👷 Person Work Updated',[rec.person||'Person',rec.process||'Work',rec.workNo?('Work '+rec.workNo):''].filter(Boolean).join(' • '));
     }
     save();
-    toast('Person work entry saved • Work No optional');
+    if(rec.cfmDailyEntryId&&typeof window.cfmSafeDailyPersonCloudSave==='function'){
+      window.cfmSafeDailyPersonCloudSave(rec);
+      toast('Daily Work entered • Cloud verification started');
+    }else toast('Daily Work entered on this device • Cloud status unverified');
     return true;
   },{type:'deptwork',i,date:r.date||'',person:r.person||''});
   setTimeout(bindDeptWorkForm,0);
