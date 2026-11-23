@@ -441,12 +441,152 @@ function queueCloudPush(){
     await cloudPush(false);
   },250);
 }
+// V421: device-only Work Order recovery. Never overwrite entire Cloud state with an older phone.
+let cfm421ReviewBusy=false;
+window.cfmReviewUnsyncedWorkOrders=async function(){
+  if(cfm421ReviewBusy)return;
+  cfm421ReviewBusy=true;
+  try{
+    const cloud=await cloudFetch();
+    if(!cloud||!validState(cloud.payload))throw Error('Cannot read current Cloud snapshot');
+    const key=x=>normalize(x?.workNo);
+    const remote=new Map((cloud.payload.pending||[]).filter(x=>key(x)).map(x=>[key(x),x]));
+    const fields=['party','poNo','orderDate','description','description2','orderQty','cutQty','status','cloth','width','itemCode','eagleCode','buyerItemCode','deliveryDate','priority','remark','challanStatus','billStatus','dispatchDate','reservedSrl','selectedSrl','accountsRemark'];
+    const canonical=x=>String(x===undefined||x===null?'':x).trim();
+    const changes=(a,b)=>fields.filter(k=>canonical(a?.[k])!==canonical(b?.[k]));
+    const diffs=(state.pending||[]).filter(x=>key(x)).map(local=>{
+      const server=remote.get(key(local));
+      return {local,server,changed:server?changes(local,server):['NEW WORK ORDER']};
+    }).filter(x=>x.changed.length);
+    document.getElementById('cfm421RecoveryDialog')?.remove();
+    const dialog=document.createElement('dialog');dialog.id='cfm421RecoveryDialog';
+    dialog.style.cssText='box-sizing:border-box;width:min(96vw,760px);max-height:90dvh;overflow:auto;padding:15px;border:1px solid #a7bbc9;border-radius:14px;background:#fff;color:#14354a;font:13px/1.5 system-ui;box-shadow:0 15px 55px #0007';
+    const heading=document.createElement('h2');heading.textContent='Safe Sync • Unsaved Work Orders';
+    heading.style.cssText='font:800 18px system-ui;margin:0 0 10px';
+    const description=document.createElement('p');
+    description.textContent='Cloud version '+cloud.version+' • '+diffs.length+' Work Orders differ on this phone. Tick ONLY orders you edited. Cloud stock, cutting and other orders stay unchanged.';
+    description.style.cssText='margin:0 0 10px;line-height:1.5';dialog.append(heading,description);
+    const search=document.createElement('input');search.type='search';search.placeholder='Search Work No or company';
+    search.style.cssText='box-sizing:border-box;width:100%;padding:12px;border:1px solid #9bb9cc;border-radius:9px;font:14px system-ui;margin-bottom:10px';
+    dialog.append(search);
+    const list=document.createElement('div');list.style.cssText='max-height:48dvh;overflow:auto;border:1px solid #dce6eb;border-radius:9px';dialog.append(list);
+    const selected=new Set();
+    function draw(){
+      list.replaceChildren();
+      const query=normalize(search.value);
+      const filtered=diffs.filter(x=>!query||key(x.local).includes(query)||normalize(x.local.party).includes(query));
+      for(const item of filtered.slice(0,100)){
+        const id=key(item.local), row=document.createElement('label');
+        row.style.cssText='display:flex;gap:9px;padding:10px;border-bottom:1px solid #e4eaed;align-items:flex-start';
+        const check=document.createElement('input');check.type='checkbox';check.checked=selected.has(id);
+        const cutLocal=num(item.local.cutQty),cutCloud=num(item.server?.cutQty);
+        const unsafeCut=!!item.server&&cutLocal<cutCloud;
+        const unsafeDispatch=!!item.server&&normalize(item.server.status)==='DISPATCHED'&&normalize(item.local.status)!=='DISPATCHED';
+        check.disabled=unsafeCut||unsafeDispatch;
+        check.onchange=()=>{if(check.checked)selected.add(id);else selected.delete(id)};
+        const content=document.createElement('span');content.style.cssText='flex:1;min-width:0;overflow-wrap:anywhere';
+        const name=document.createElement('strong');name.textContent=id+' • '+String(item.local.party||'');
+        const detail=document.createElement('div');
+        detail.textContent='Phone Qty '+String(item.local.orderQty??'-')+' / Cut '+String(item.local.cutQty??'-')+
+          '  | Cloud '+(item.server?('Qty '+String(item.server.orderQty??'-')+' / Cut '+String(item.server.cutQty??'-')):'not saved');
+        const keys=document.createElement('div');keys.style.cssText='font-size:11px;color:#527080';
+        keys.textContent=(unsafeCut?'Cut Qty on phone is LOWER than Cloud; recovery blocked. ':
+          unsafeDispatch?'Cloud is dispatched; recovery blocked. ':'')+
+          'Different: '+item.changed.join(', ');
+        content.append(name,detail,keys);row.append(check,content);list.append(row);
+      }
+      if(filtered.length>100){const note=document.createElement('p');note.textContent='Showing first 100. Search for the Work No.';list.append(note)}
+      if(!filtered.length){const p=document.createElement('p');p.textContent='No differing Work Orders for this search';p.style.padding='12px';list.append(p)}
+    }
+    search.oninput=draw;draw();
+    const footer=document.createElement('div');footer.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin-top:12px';
+    const save=document.createElement('button');save.type='button';save.textContent='Save Selected Work Orders to Cloud';
+    save.style.cssText='flex:1;min-width:180px;padding:12px;background:#09766d;color:#fff;border:0;border-radius:9px;font:700 12px system-ui';
+    const close=document.createElement('button');close.type='button';close.textContent='Keep Device Data / Close';
+    close.style.cssText='padding:12px;border:1px solid #a7bac9;background:#f5f8fa;border-radius:9px;font:700 12px system-ui';
+    close.onclick=()=>dialog.close();
+    save.onclick=async()=>{
+      if(!selected.size){alert('Select the Work Orders you actually updated. Nothing has been changed.');return}
+      const chosen=diffs.filter(x=>selected.has(key(x.local)));
+      if(chosen.some(x=>x.server&&
+        (num(x.local.cutQty)<num(x.server.cutQty)||
+         (normalize(x.server.status)==='DISPATCHED'&&normalize(x.local.status)!=='DISPATCHED')))){
+         alert('A selected order could lose completed cutting or dispatched status. Sync blocked.');return;
+      }
+      const confirmations=chosen.map(x=>key(x.local)+' · '+String(x.local.party||'?')+
+        ' · Cut '+String(x.local.cutQty??'0')).join('\n');
+      if(!confirm('Save ONLY these '+chosen.length+' phone Work Orders to Cloud?\n'+confirmations.slice(0,900)+
+         '\nUnselected Cloud records stay unchanged.'))return;
+      save.disabled=true;save.textContent='Checking & Saving…';
+      try{
+        const fresh=await cloudFetch();
+        if(!fresh||num(fresh.version)!==num(cloud.version))
+          throw Error('Cloud changed on another phone. Close and review again before saving.');
+        const revised=clone(fresh.payload);
+        const serverIndex=new Map(revised.pending.map((x,i)=>[key(x),i]));
+        for(const x of chosen){
+          const id=key(x.local),index=serverIndex.get(id);
+          if(index!==undefined){
+            const existing=revised.pending[index];
+            if(normalize(existing.party)!==normalize(x.server?.party)||
+               normalize(existing.poNo)!==normalize(x.server?.poNo))
+              throw Error(id+' changed on Cloud; review before overwriting');
+            revised.pending[index]=clone(x.local);
+          }else{
+            revised.pending.push(clone(x.local));serverIndex.set(id,revised.pending.length-1);
+          }
+        }
+        // Cloud state is the base. Never replace Store, Cutting, packing or other orders.
+        const base=num(fresh.version),ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),20000);
+        let result;
+        try{
+          result=await fetch(CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+base,{
+            method:'PATCH',signal:ctrl.signal,
+            headers:{...cloudHeaders(),'Prefer':'return=representation','x-cfm-base-version':String(base)},
+            body:JSON.stringify({payload:revised,version:base+1,updated_at:new Date().toISOString()})
+          });
+        }finally{clearTimeout(timer)}
+        if(!result.ok)throw Error('Cloud rejected selected orders (HTTP '+result.status+'). Phone data remains safe.');
+        const saved=await result.json();
+        if(saved.length!==1)throw Error('Cloud version changed before save. Phone records remain safe.');
+        const confirmed=await cloudFetch();
+        if(!confirmed||num(confirmed.version)!==base+1)
+          throw Error('Cloud save response received, but final verification needs review. Do not resubmit automatically.');
+        for(const x of chosen){
+          const got=(confirmed.payload.pending||[]).find(r=>key(r)===key(x.local));
+          if(!got||changes(got,x.local).length)
+            throw Error('Cloud verification differs for '+key(x.local)+'. Review before retry.');
+        }
+        cloudVersion=num(confirmed.version);cloudUpdatedAt=confirmed.updated_at||'';
+        // Do NOT replace phone state; other unsynced device records may still be present.
+        cloudReady=false;cloudDirty=false;
+        dialog.close();
+        const note='✓ '+chosen.length+' Work Orders CLOUD VERIFIED. Other unsynced phone data kept safe.';
+        setCloudBadge('☁️ '+note,'amber');toast(note);
+        try{document.dispatchEvent(new CustomEvent('cfm:po-cloud-result',
+          {detail:{ok:true,workNos:chosen.map(x=>key(x.local)),version:cloudVersion}}))}catch(_){}
+      }catch(error){
+        const reason=String(error?.message||error);
+        console.warn('CFM selected Work Order sync:',error);
+        alert('Safe Sync paused: '+reason+'\nYour phone data is unchanged.');
+      }finally{save.disabled=false;save.textContent='Save Selected Work Orders to Cloud'}
+    };
+    footer.append(save,close);dialog.append(footer);document.body.append(dialog);
+    if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');
+    setCloudBadge('☁️ Review local Work Order changes before sync','amber');
+  }catch(error){
+    console.warn('CFM safe sync review:',error);
+    setCloudBadge('☁️ Review unavailable: '+String(error?.message||error).slice(0,80),'red');
+    toast('Cannot open Work Order review; phone data unchanged');
+  }finally{cfm421ReviewBusy=false}
+};
+
 window.manualCloudSync=async function(){
   if(cloudBusy){setCloudBadge('☁️ Sync already running…','amber');return}
   setCloudBadge('☁️ Syncing…','amber');
   try{
-    if(!cloudReady){await cloudInit();if(!cloudReady)throw new Error('Local/Cloud recovery conflict');toast('3-4 Mobile sync complete');return}
-    if(cloudDirty){const ok=await cloudPush(true);if(!ok)throw new Error('Cloud push failed');toast('3-4 Mobile sync complete');return}
+    if(!cloudReady){await cloudInit();if(!cloudReady){await window.cfmReviewUnsyncedWorkOrders();return}toast('3-4 Mobile sync complete');return}
+    if(cloudDirty){const ok=await cloudPush(true);if(!ok){await window.cfmReviewUnsyncedWorkOrders();return}toast('3-4 Mobile sync complete');return}
     const meta=await cloudFetchMeta();
     const v=num(meta?.version)||0;
     if(v>cloudVersion){
