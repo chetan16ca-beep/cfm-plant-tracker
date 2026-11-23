@@ -49,3 +49,18 @@ test('CFM NEXT has safe independent Cloud and department shortcuts',()=>{
  assert.match(read('next/staging.html'),/cfm_next_members/);
  assert.match(read('next/entry-center.mjs'),/STAGING_REVIEW/);
 });
+
+test('CFM NEXT installs as a distinct PWA and preserves the old ERP installation',()=>{
+ const next=read('next/index.html'),old=read('manifest.json');
+ const m=JSON.parse(read('next/manifest.webmanifest'));
+ assert.equal(m.short_name,'CFM NEXT');
+ assert.equal(m.id,'./');
+ assert.equal(m.scope,'./');
+ assert.equal(m.start_url,'./?source=pwa');
+ assert.notEqual(m.name,JSON.parse(old).name);
+ assert.match(next,/href="\.\/manifest\.webmanifest"/);
+ assert.match(next,/serviceWorker\.register\('\.\/sw\.js',\{scope:'\.\/'\}\)/);
+ const sw=read('next/sw.js');
+ assert.match(sw,/cfm-next-shell-/);
+ assert.doesNotMatch(sw,/cfm-plant-ui-|cfm_shared_state|localStorage|indexedDB|POST|PATCH/);
+});

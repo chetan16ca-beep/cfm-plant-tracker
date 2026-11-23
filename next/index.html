@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#101d37">
 <meta name="description" content="CFM NEXT Plant ERP — work orders, store, cutting, production, packing and dispatch in one workspace">
 <title>CFM NEXT | Plant ERP</title>
-<link rel="manifest" href="../manifest.json">
+<link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#17243c;background:#f4f7fb}
 *{box-sizing:border-box}
@@ -325,6 +325,12 @@ setTimeout(()=>{
 renderNav('');
 selectRoute(modules[location.hash.slice(1)]?location.hash.slice(1):'dashboard');
 })();
+</script>
+<script>
+if('serviceWorker' in navigator){
+ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'})
+   .catch(err=>console.warn('NEXT offline shell unavailable; online ERP remains usable',err)));
+}
 </script>
 </body>
 </html>
