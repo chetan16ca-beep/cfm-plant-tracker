@@ -58,4 +58,10 @@ ok(daily.includes("payload.departmentWork=original.map(copy).concat(copy(record)
 ok(daily.includes("for(const key of Object.keys(before.payload))"),'Other Cloud families preserved');
 ok(daily.includes("version=eq."),'Cloud compare-and-swap remains mandatory');
 ok(daily.includes('const verified=await cloudFetch()'),'Daily Work Cloud receipt is checked');
-has('index.html','cfm-daily-person-safe-cloud-v424.js?v=424');
+has('index.html','cfm-daily-person-safe-cloud-v424.js?v=425');
+
+// V425 targeted Daily Work has an independent verified Cloud receipt and protected mobile recovery.
+ok(daily.includes("pending.set(entry.cfmDailyEntryId,copy(entry))"),'Every Daily Work save enters the targeted Cloud queue');
+ok(daily.includes("recoverLocalDailyWork"),'Offline recovery/retry path exists');
+ok(daily.includes("state.departmentWork.push(copy(remoteRecord))"),'Other mobile Daily Work received by immutable ID');
+ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified.payload)"),'Full-state version must not advance on unaligned local records');
