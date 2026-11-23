@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CFM Next — Safe Plant ERP</title><meta name="theme-color" content="#15345d">
+<style>
+:root{font:14px system-ui,-apple-system,sans-serif;color:#182638;background:#f4f7fb}
+*{box-sizing:border-box}body{margin:0}.top{background:#15345d;color:white;padding:14px 16px;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.top strong{font-size:19px}.shell{max-width:1300px;margin:auto;padding:14px}.panel{background:#fff;border:1px solid #dbe4ed;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 4px 16px #26395a0b}
+.muted{color:#65748a}.notice{padding:10px 12px;border:1px solid #bfd7f2;background:#edf5ff;border-radius:10px;margin:12px 0}
+.notice.error{background:#fff3f3;border-color:#f2b5b5;color:#902727}
+nav{display:flex;gap:7px;overflow-x:auto;padding:3px 0 8px}nav button{flex:0 0 auto}button,input,select,textarea{font:inherit}
+button{background:#fff;color:#214c7a;border:1px solid #b5cee4;border-radius:9px;padding:9px 12px;cursor:pointer}button.primary,button.active{background:#1769ac;color:white;border-color:#1769ac}
+button:disabled{opacity:.55;cursor:wait}.actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+input,select,textarea{border:1px solid #c7d3df;border-radius:8px;padding:10px;width:100%;background:#fff}
+label{display:block;font-size:12px;font-weight:700;color:#4a5d71;margin-bottom:5px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:14px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 9px;text-align:left;border-bottom:1px solid #e6edf4;max-width:320px;word-break:break-word}th{color:#56708b;background:#f7faff;position:sticky;top:0} .scroll{overflow:auto;max-height:65vh}
+.pills{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.stat{border:1px solid #d8e7f5;padding:14px;border-radius:10px;background:#f8fbff}.stat b{font-size:22px;display:block;margin-top:7px}
+details summary{cursor:pointer;color:#1769ac}pre{white-space:pre-wrap;max-width:850px;overflow:auto}
+.small{font-size:12px}.status{font-weight:700}.hide{display:none!important}
+@media(max-width:650px){.shell{padding:8px}.panel{padding:12px}th,td{white-space:nowrap;padding:8px}nav{position:sticky;top:0;background:#f4f7fb;z-index:4}}
+</style></head><body>
+<header class="top"><strong>CFM NEXT · PLANT ERP</strong><span id="status" class="status">Connecting…</span></header>
+<main class="shell">
+<div class="notice" id="globalNote">New data-safe ERP (staging). Original ERP remains unchanged. Production cutover is not enabled.</div>
+<section class="panel" id="login">
+<h2>Secure employee login</h2><p class="muted">Same Cloud records across authorized phones. New staff accounts require administrator approval.</p>
+<form id="authForm" class="form"><div><label>Email</label><input id="email" type="email" autocomplete="email" required></div>
+<div><label>Password (minimum 6 characters)</label><input id="password" type="password" minlength="6" autocomplete="current-password" required></div>
+<div class="actions" style="align-self:end"><button class="primary" type="submit">Sign in</button><button id="signup" type="button">Create account</button></div></form>
+<p id="authMsg" role="status" class="muted"></p>
+</section>
+<section id="locked" class="panel hide"><h2>Approval needed</h2><p>Your account is signed in, but ERP records remain locked until an administrator grants access. No data is exposed or changed.</p><p id="accountId" class="small"></p><button id="lockedLogout">Sign out</button></section>
+<section id="erp" class="hide">
+<div class="actions" style="justify-content:space-between"><p class="muted" id="sessionLabel"></p><div class="actions"><span id="sync" class="small">Cloud connected</span><button id="refresh">↻ Refresh</button><button id="logout">Sign out</button></div></div>
+<nav id="nav"></nav>
+<section id="dashboard" class="panel"><h2>Dashboard</h2><div class="pills" id="stats"></div><p class="muted small">Each record has its own database row. This screen reads the new isolated data copy, not the old shared snapshot.</p></section>
+<section class="panel hide" id="dailyForm">
+<h2>Daily Person Work — New Entry</h2><p class="muted">Report-only entry; it does not automatically change stock or SOP production handover.</p>
+<form id="workForm"><div class="form">
+<div><label>Date *</label><input name="date" id="workDate" type="date" required></div>
+<div><label>Worker *</label><input name="person" placeholder="Worker name" required></div>
+<div><label>Department *</label><select name="department" required><option value="">Select</option><option>Cutting</option><option>Stitching</option><option>Thread Cutting</option><option>Gun Finishing</option><option>Packing</option><option>QC</option><option>Store</option><option>Dispatch</option><option>Maintenance</option><option>Housekeeping</option></select></div>
+<div><label>Work Order</label><input name="workNo" placeholder="764"></div>
+<div><label>Work details *</label><input name="description" required placeholder="Collar stitching / cutting / packing"></div>
+<div><label>Given Qty</label><input name="givenQty" type="number" min="0" step="any"></div>
+<div><label>Done Qty *</label><input name="doneQty" type="number" min="0" step="any" required></div>
+<div><label>Remarks</label><input name="remark"></div>
+</div><button type="submit" class="primary" id="saveBtn">Save Work Entry</button></form><p role="status" id="saveStatus"></p>
+</section>
+<section class="panel" id="recordsPanel"><div class="actions" style="justify-content:space-between"><h2 id="familyTitle">Records</h2>
+<label style="max-width:300px"><span>Search</span><input type="search" id="search" placeholder="Work No / person / SRL"></label></div>
+<p id="readNote" class="muted small"></p><div class="scroll" id="rows"></div><div class="actions"><button id="prev">Previous</button><span id="page"></span><button id="next">Next</button></div>
+</section>
+</section></main>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.3?bundle';
+const db=createClient('https://soluxixriexliipfnznc.supabase.co','sb_publishable_hay-tW1slhbk-QXnql7pSg_I0Lh-0N0',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const $=x=>document.getElementById(x);
+const FAMILIES=[
+['pending','Work Orders'],['store','Store / Cloth Stock'],['cutting','Cutting'],['departmentWork','Daily Worker Report'],
+['packingSlips','Packing Slips'],['packingManualOrders','Manual Packing'],['sopRecords','SOP Register'],
+['pendingWorkAudit','Pending Audit'],['reconstructedBatchReports','Batch History'],['reconstructedPersonWork','Person Work History'],
+['customParties','Party Master'],['packingSlipDeletedIds','Packing Slip Delete Audit'],['packingSlipDeletedRefs','Packing Reference Audit']];
+const LABELS=Object.fromEntries(FAMILIES);
+const COLS={pending:['workNo','party','description','orderQty','cutQty','status','poNo','eagleCode'],store:['srlNo','efpplCode','width','physicalMtr','excelLiveBalanceMtr','status'],cutting:['date','workNo','party','description','cutQty','srlNo','cuttingBy'],departmentWork:['date','person','department','description','workNo','givenQty','doneQty','pendingQty'],packingSlips:['slipNo','party','workNo','thisDispatched','poNo'],sopRecords:['timestamp','code','workNo','operator']};
+let user=null,role=null,family='pending',offset=0,total=0,records=[],refreshing=false,processing=false;
+const LIMIT=100;
+function tell(msg,err=false){$('globalNote').textContent=msg;$('globalNote').className='notice'+(err?' error':'');}
+function status(s){$('status').textContent=s;$('sync').textContent=s;}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function today(){return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});}
+function show(id){['login','locked','erp'].forEach(n=>$(n).classList.toggle('hide',n!==id));}
+async function authUi(){const {data:{session}}=await db.auth.getSession();user=session?.user||null;
+if(!user){role=null;show('login');$('status').textContent='Sign in required';return}
+const {data,error}=await db.from('cfm_next_members').select('role,active').eq('user_id',user.id).maybeSingle();
+if(error||!data||!data.active){show('locked');$('accountId').textContent=user.email+' — awaiting ERP access';$('status').textContent='Approval required';return}
+role=data.role;show('erp');$('sessionLabel').textContent=user.email+' · '+role+' · CFM Next staging';buildNav();await load();void flushQueue();}
+$('authForm').addEventListener('submit',async e=>{e.preventDefault();$('authMsg').textContent='Signing in…';
+const {error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+$('authMsg').textContent=error?error.message:'Signed in';if(!error)await authUi();});
+$('signup').addEventListener('click',async()=>{if(!$('email').value||!$('password').value)return $('authMsg').textContent='Enter email and password';
+$('authMsg').textContent='Creating account…';const {error}=await db.auth.signUp({email:$('email').value.trim(),password:$('password').value});
+$('authMsg').textContent=error?error.message:'Check your email for confirmation. ERP access will require administrator approval.';});
+async function signOut(){await db.auth.signOut();user=null;role=null;show('login');$('status').textContent='Signed out';}
+$('logout').onclick=signOut;$('lockedLogout').onclick=signOut;
+function buildNav(){$('nav').innerHTML='<button data-f="dashboard" class="'+(family==='dashboard'?'active':'')+'">Dashboard</button>'+FAMILIES.map(x=>'<button data-f="'+x[0]+'" class="'+(family===x[0]?'active':'')+'">'+esc(x[1])+'</button>').join('');
+$('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{family=b.dataset.f;offset=0;$('search').value='';buildNav();void load()});}
+async function counts(){
+const main=['pending','store','cutting','departmentWork','packingSlips','sopRecords'];
+const nums=await Promise.all(main.map(async f=>{const {count,error}=await db.from('cfm_next_records').select('id',{head:true,count:'exact'}).eq('family',f);return [LABELS[f],error?'—':count]}));
+$('stats').innerHTML=nums.map(x=>'<div class="stat">'+esc(x[0])+'<b>'+esc(x[1])+'</b></div>').join('');
+}
+function viewRow(row,keys){const d=row.data||{};return '<tr>'+keys.map(k=>'<td>'+esc(d[k]??'—')+'</td>').join('')+
+'<td><details><summary>View</summary><pre>'+esc(JSON.stringify(d,null,2))+'</pre></details></td></tr>';}
+async function load(){if(!user||!role||refreshing)return;refreshing=true;status('Refreshing Cloud…');
+try{
+$('dashboard').classList.toggle('hide',family!=='dashboard');$('dailyForm').classList.toggle('hide',family!=='departmentWork');
+$('recordsPanel').classList.toggle('hide',family==='dashboard');$('familyTitle').textContent=LABELS[family]||'Records';
+if(family==='dashboard'){await counts();status('Cloud up to date');return}
+const {data,error,count}=await db.from('cfm_next_records').select('id,family,record_key,data,revision,updated_at',{count:'exact'}).eq('family',family).order('created_at',{ascending:false}).order('id',{ascending:true}).range(offset,offset+LIMIT-1);
+if(error)throw error;records=data||[];total=count||0;renderRows();status('Cloud up to date · '+total+' records');
+}catch(e){tell('Cloud read failed: '+e.message+'. Keep existing data; retry without clearing storage.',true);status('Cloud unavailable')}finally{refreshing=false}}
+function renderRows(){const term=$('search').value.trim().toLowerCase();const rows=term?records.filter(r=>JSON.stringify(r.data).toLowerCase().includes(term)):records;
+const keys=COLS[family]||['workNo','date','person','party','description'];
+$('readNote').textContent='Old data is preserved. This staging screen is read-only except for new Daily Work entries. Search filters the current page.';
+$('rows').innerHTML='<table><thead><tr>'+keys.map(x=>'<th>'+esc(x)+'</th>').join('')+'<th>Details</th></tr></thead><tbody>'+rows.map(r=>viewRow(r,keys)).join('')+'</tbody></table>';
+$('page').textContent=(total?offset+1:0)+'–'+Math.min(offset+LIMIT,total)+' of '+total;
+$('prev').disabled=offset===0;$('next').disabled=offset+LIMIT>=total}
+$('search').addEventListener('input',renderRows);$('prev').onclick=()=>{offset=Math.max(0,offset-LIMIT);void load()};$('next').onclick=()=>{offset+=LIMIT;void load()};$('refresh').onclick=()=>void load();
+const qkey=()=>user?'cfm_next_work_outbox_'+user.id:'cfm_next_work_outbox';
+function getQueue(){try{return JSON.parse(localStorage.getItem(qkey())||'[]')}catch{return []}}
+function setQueue(a){localStorage.setItem(qkey(),JSON.stringify(a))}
+async function flushQueue(){if(processing||!user||!role)return;processing=true;
+try{let q=getQueue();if(!q.length)return;status('Sync pending · '+q.length);
+for(const item of q){
+ const {error}=await db.from('cfm_next_records').upsert(item,{onConflict:'id',ignoreDuplicates:true});
+ if(error){$('saveStatus').textContent='Cloud pending: '+error.message+'. Entry kept on phone.';break}
+ const {data, error:verifyError}=await db.from('cfm_next_records').select('id').eq('id',item.id).maybeSingle();
+ if(verifyError||!data){$('saveStatus').textContent='Cloud receipt not verified; entry kept for retry.';break}
+ q=q.filter(r=>r.id!==item.id);setQueue(q);$('saveStatus').textContent='✓ Daily Work saved and verified in Cloud. Other records unchanged.';
+}status(q.length?'Sync pending · '+q.length:'Cloud work saved');if(!q.length&&family==='departmentWork')void load();
+}catch(e){$('saveStatus').textContent='Sync pending on phone: '+e.message}finally{processing=false}}
+$('workForm').addEventListener('submit',async e=>{
+e.preventDefault();if(!user||!role)return;
+const v=Object.fromEntries(new FormData(e.currentTarget));const done=Number(v.doneQty),given=Number(v.givenQty||0);
+if(!v.person.trim()||!v.department||!v.description.trim()||!Number.isFinite(done)||done<0||!Number.isFinite(given)||given<0){$('saveStatus').textContent='Enter valid worker, department, work and quantity';return}
+const uuid=crypto.randomUUID(),entryId='CFM-DW-'+uuid;
+const data={cfmDailyEntryId:entryId,reportOnly:true,date:v.date,person:v.person.trim(),department:v.department,description:v.description.trim(),workNo:v.workNo.trim(),givenQty:given,doneQty:done,pendingQty:Math.max(0,given-done),remark:v.remark.trim(),updatedAt:new Date().toISOString(),updatedBy:user.email};
+const item={id:uuid,family:'departmentWork',record_key:entryId,data,updated_by:user.id};
+try{const q=getQueue();q.push(item);setQueue(q);$('saveStatus').textContent='Saved to phone queue. Sending to Cloud…';e.currentTarget.reset();$('workDate').value=today();await flushQueue()}catch(err){$('saveStatus').textContent='Phone storage failed: '+err.message+'. Copy details before leaving this screen.'}});
+window.addEventListener('online',()=>void flushQueue());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){void flushQueue();void load()}});
+setInterval(()=>{if(user&&role&&navigator.onLine){void flushQueue();void load()}},25000);
+db.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT'){show('login');return}if(event==='SIGNED_IN')setTimeout(()=>void authUi(),0)});
+$('workDate').value=today();family='dashboard';try{await authUi()}catch(e){tell('Sign-in or network connection failed: '+e.message,true);$('status').textContent='Check network';show('login')}
+</script></body></html>
