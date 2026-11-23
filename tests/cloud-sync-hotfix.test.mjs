@@ -16,11 +16,13 @@ test('Cloud write reconciles protected SRL and Work No before snapshot',()=>{
   assert.match(src,/Historical Cutting\/Customer data differs/,'Cutting history must not be discarded');
   assert.match(src,/version=eq\./,'Cloud CAS must remain enabled');
 });
-test('V421 shell deploy uses new cache namespace',()=>{
+test('Live shell and service worker use the same cache namespace',()=>{
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
   const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
-  assert.match(html,/20261123-v422/);
-  assert.match(sw,/20261123-v422/);
+  const match=html.match(/const urls=groups\.flat\(\), ver='([^']+)'/);
+  assert.ok(match,'Shell declares a chunk-cache version');
+  assert.ok(sw.includes("const CACHE='cfm-plant-ui-"+match[1]+"-cached-chunks'"),'Service Worker cache version matches shell');
+  assert.match(html,/V423 LIVE/,'Shell identifies latest deployed release');
 });
 
 test('V421 manual recovery shows device Work Orders and safeguards Cloud sections',()=>{
