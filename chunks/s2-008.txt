@@ -463,17 +463,24 @@ window.cfmReviewUnsyncedWorkOrders=async function(){
     const fields=['party','poNo','orderDate','description','description2','orderQty','cutQty','status','cloth','width','itemCode','eagleCode','buyerItemCode','deliveryDate','priority','remark','challanStatus','billStatus','dispatchDate','reservedSrl','selectedSrl','accountsRemark'];
     const canonical=x=>String(x===undefined||x===null?'':x).trim();
     const changes=(a,b)=>fields.filter(k=>canonical(a?.[k])!==canonical(b?.[k]));
-    const diffs=(state.pending||[]).filter(x=>key(x)).map(local=>{
+    const allDiffs=(state.pending||[]).filter(x=>key(x)).map(local=>{
       const server=remote.get(key(local));
       return {local,server,changed:server?changes(local,server):['NEW WORK ORDER']};
     }).filter(x=>x.changed.length);
+    // Cloud already DISPATCHED + a phone-only status difference is not an
+    // unsaved Work Order. Never overwrite authoritative Cloud dispatch history.
+    const cfmDispatchedStatusOnly=x=>!!x.server &&
+      normalize(x.server.status)==='DISPATCHED' &&
+      x.changed.length===1 && x.changed[0]==='status';
+    const cloudDispatchedOnly=allDiffs.filter(cfmDispatchedStatusOnly);
+    const diffs=allDiffs.filter(x=>!cfmDispatchedStatusOnly(x));
     document.getElementById('cfm421RecoveryDialog')?.remove();
     const dialog=document.createElement('dialog');dialog.id='cfm421RecoveryDialog';
     dialog.style.cssText='box-sizing:border-box;width:min(96vw,760px);max-height:90dvh;overflow:auto;padding:15px;border:1px solid #a7bbc9;border-radius:14px;background:#fff;color:#14354a;font:13px/1.5 system-ui;box-shadow:0 15px 55px #0007';
-    const heading=document.createElement('h2');heading.textContent='Safe Sync • Unsaved Work Orders';
+    const heading=document.createElement('h2');heading.textContent='Safe Sync • Review Work Order Differences';
     heading.style.cssText='font:800 18px system-ui;margin:0 0 10px';
     const description=document.createElement('p');
-    description.textContent='Cloud version '+cloud.version+' • '+diffs.length+' Work Orders differ on this phone. Tick ONLY orders you edited. Cloud stock, cutting and other orders stay unchanged.';
+    description.textContent='Cloud version '+cloud.version+' • '+diffs.length+' Work Orders need review. '+(cloudDispatchedOnly.length?cloudDispatchedOnly.length+' already DISPATCHED in Cloud (phone status only): not unsaved, excluded from recovery. ':'')+'Tick ONLY orders you edited. Cloud stock, cutting and other orders stay unchanged.';
     description.style.cssText='margin:0 0 10px;line-height:1.5';dialog.append(heading,description);
     const search=document.createElement('input');search.type='search';search.placeholder='Search Work No or company';
     search.style.cssText='box-sizing:border-box;width:100%;padding:12px;border:1px solid #9bb9cc;border-radius:9px;font:14px system-ui;margin-bottom:10px';
@@ -490,7 +497,7 @@ window.cfmReviewUnsyncedWorkOrders=async function(){
         const check=document.createElement('input');check.type='checkbox';check.checked=selected.has(id);
         const cutLocal=num(item.local.cutQty),cutCloud=num(item.server?.cutQty);
         const unsafeCut=!!item.server&&cutLocal<cutCloud;
-        const unsafeDispatch=!!item.server&&normalize(item.server.status)==='DISPATCHED'&&normalize(item.local.status)!=='DISPATCHED';
+        const unsafeDispatch=!!item.server&&normalize(item.server.status)==='DISPATCHED';
         check.disabled=unsafeCut||unsafeDispatch;
         check.onchange=()=>{if(check.checked)selected.add(id);else selected.delete(id)};
         const content=document.createElement('span');content.style.cssText='flex:1;min-width:0;overflow-wrap:anywhere';
@@ -511,6 +518,7 @@ window.cfmReviewUnsyncedWorkOrders=async function(){
     const footer=document.createElement('div');footer.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin-top:12px';
     const save=document.createElement('button');save.type='button';save.textContent='Save Selected Work Orders to Cloud';
     save.style.cssText='flex:1;min-width:180px;padding:12px;background:#09766d;color:#fff;border:0;border-radius:9px;font:700 12px system-ui';
+    if(!diffs.length){save.disabled=true;save.textContent='No phone Work Orders to upload'}
     const close=document.createElement('button');close.type='button';close.textContent='Keep Device Data / Close';
     close.style.cssText='padding:12px;border:1px solid #a7bac9;background:#f5f8fa;border-radius:9px;font:700 12px system-ui';
     close.onclick=()=>dialog.close();
@@ -519,7 +527,7 @@ window.cfmReviewUnsyncedWorkOrders=async function(){
       const chosen=diffs.filter(x=>selected.has(key(x.local)));
       if(chosen.some(x=>x.server&&
         (num(x.local.cutQty)<num(x.server.cutQty)||
-         (normalize(x.server.status)==='DISPATCHED'&&normalize(x.local.status)!=='DISPATCHED')))){
+         normalize(x.server.status)==='DISPATCHED'))){
          alert('A selected order could lose completed cutting or dispatched status. Sync blocked.');return;
       }
       const confirmations=chosen.map(x=>key(x.local)+' · '+String(x.local.party||'?')+
