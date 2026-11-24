@@ -78,11 +78,20 @@ function measurementInfo(r){return eagleMeasurementResult(r)}
 const CLOUD_URL='https://soluxixriexliipfnznc.supabase.co';
 const CLOUD_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvbHV4aXhyaWV4bGlpcGZuem5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NTM3OTgsImV4cCI6MjEwNjEyOTc5OH0.Jnk36EO3AYNBXufFuMr2zotXEIDYIOM2NVwPkuhTDa0';
 const CLOUD_CODE_STORAGE='cfm-cloud-code-v1';
-let CLOUD_KEY='EAGLE-CFM-28'; safeStorage.setItem(CLOUD_CODE_STORAGE,CLOUD_KEY);
-function ensureCloudKey(){
-  CLOUD_KEY='EAGLE-CFM-28';
+let CLOUD_KEY='EAGLE-CFM-28';
+// Cloud authorization must never require free localStorage space. In particular,
+// do not write the same key again on every request (Android quota regression).
+try{
+ if(safeStorage.getItem(CLOUD_CODE_STORAGE)!==CLOUD_KEY)
   safeStorage.setItem(CLOUD_CODE_STORAGE,CLOUD_KEY);
-  return true;
+}catch(e){console.warn('Cloud code is in memory; browser storage unavailable',e)}
+function ensureCloudKey(){
+ CLOUD_KEY='EAGLE-CFM-28';
+ try{
+  if(safeStorage.getItem(CLOUD_CODE_STORAGE)!==CLOUD_KEY)
+   safeStorage.setItem(CLOUD_CODE_STORAGE,CLOUD_KEY);
+ }catch(e){console.warn('Keeping Cloud code in memory; storage is full',e)}
+ return true;
 }
 window.changeCloudCode=function(){toast('Sync Code fixed hai • 3-4 Mobile LIVE');};
 let cloudVersion=0;
@@ -622,7 +631,19 @@ async function cloudPoll(){
     if(v>cloudVersion){const row=await cloudFetch();if(row&&validState(row.payload)){
       if(!await cfmAllowCloudReplacement(row.payload,'Automatic Cloud Refresh')){cfmShowRestoredWorkNumbersWithoutOverwrite(row.payload);return;}
       try{await window.parent.cfmSaveBackup?.()}catch(_){}
-      const prevRaw=JSON.stringify(state);state=clone(row.payload);ensureExcelMasterData();syncDerivedState();cloudVersion=v;cloudUpdatedAt=row.updated_at||'';const nextRaw=JSON.stringify(state);safeStorage.setItem(STORAGE_KEY,nextRaw);renderAll();setCloudBadge('☁️ Updated from other mobile','green');const notice=genericUpdateNotification(prevRaw,nextRaw);showLocalNotification('☁️ Other Device • '+notice.title.replace(/^🔔\s*/,''),notice.body||notificationSummary());
+      const prevRaw=JSON.stringify(state);
+      state=clone(row.payload);ensureExcelMasterData();syncDerivedState();cloudVersion=v;cloudUpdatedAt=row.updated_at||'';
+      const nextRaw=JSON.stringify(state);
+      let phoneCacheOkay=true;
+      try{safeStorage.setItem(STORAGE_KEY,nextRaw)}
+      catch(e){phoneCacheOkay=false;console.warn('Cloud refreshed; phone cache is full. No Cloud data lost',e)}
+      try{renderAll()}
+      catch(e){console.error('Cloud refreshed but dashboard render failed',e);setCloudBadge('☁️ Cloud updated • Dashboard refresh issue','amber');return}
+      setCloudBadge(phoneCacheOkay?'☁️ Updated from other mobile':'☁️ Cloud updated • phone storage full','green');
+      if(!phoneCacheOkay)setCloudBadge('☁️ Cloud updated • phone cache limited · do not clear data','amber');
+      const notice=genericUpdateNotification(prevRaw,nextRaw);
+      try{showLocalNotification('☁️ Other Device • '+notice.title.replace(/^🔔\s*/,''),notice.body||notificationSummary())}
+      catch(e){console.warn('Cloud notice failed; records still loaded',e)}
     }}
     else if(cloudReady)setCloudBadge('☁️ 3-4 Mobile LIVE','green');
   }catch(e){setCloudBadge('☁️ Offline – will retry','red');}
@@ -744,14 +765,12 @@ function save(doRender=true,options=null){
   try{safeStorage.setItem(STORAGE_KEY,next)}
   catch(e){
     if(e&&(e.name==='QuotaExceededError'||/quota/i.test(String(e.message||e)))){
-      try{safeStorage.removeItem(HISTORY_KEY)}catch(_){}
-      try{safeStorage.setItem(STORAGE_KEY,next)}
-      catch(e2){
-        cloudDirty=true;queueCloudPush();
-        toast('Local storage full • Cloud save queued');
-        if(doRender)renderAll();
-        return;
-      }
+      // NEVER delete the recovery history just to make space. Cloud is the
+      // authoritative save; preserve local draft in memory until confirmed.
+      cloudDirty=true;queueCloudPush();
+      toast('Phone storage full • Keep ERP open until Cloud verified');
+      if(doRender)try{renderAll()}catch(renderError){console.warn('Deferred UI render',renderError)}
+      return;
     }else throw e;
   }
   try{safeStorage.setItem(SETTINGS_KEY,JSON.stringify(settings))}catch(e){}
