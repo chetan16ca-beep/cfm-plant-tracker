@@ -108,11 +108,21 @@ function setCloudBadge(msg,mode='green'){
  // 3–4 refers to supported devices, NOT a claimed number currently online.
  const dashboard=document.getElementById('cfmDashboardCloudSync');
  if(dashboard){
-  const connected=mode==='green'&&cloudReady&&/3[-–]4\s*Mobile\s*LIVE/i.test(String(msg||''));
-  const status=connected?'Cloud Connected':mode==='red'?'Sync Error':mode==='amber'?'Syncing / Pending':'Checking Connection';
+  // Show the real state, not a generic "Syncing / Pending" on every amber
+  // message. A protected conflict is NOT a completed multi-mobile sync.
+  const detail=String(msg||'');
+  const review=/protected|review|conflict|differ|data protected|sync hold|paused/i.test(detail);
+  const storage=/storage limited|storage full|phone cache limited/i.test(detail);
+  const connected=mode==='green'&&cloudReady&&!cloudDirty&&!cloudBusy;
+  const status=review?'Review Required':
+    storage?'Phone Cache Limited':
+    mode==='red'?'Sync Error':
+    cloudBusy?'Syncing Now':
+    connected?'Cloud Connected':
+    mode==='amber'?'Sync Pending':'Checking Connection';
   dashboard.dataset.syncMode=connected?'green':mode==='red'?'red':'amber';
-  dashboard.title='3–4 mobile cloud sync support • '+status+' • Tap to sync now';
-  dashboard.setAttribute('aria-label','3 to 4 mobile cloud sync. '+status+'. Tap to sync now.');
+  dashboard.title='3–4 mobile sync • '+status+' • '+detail+' • Open Safe Sync Check before retrying';
+  dashboard.setAttribute('aria-label','3 to 4 mobile sync. '+status+'. '+detail);
   const label=document.getElementById('cfmDashboardCloudSyncStatus');
   if(label)label.textContent=status;
  }
@@ -375,6 +385,23 @@ async function cloudPush(force=false){
     if(num(remote.version)!==baseVersion){
       throw new Error('Another device saved a newer Cloud version. Local edits preserved; review before syncing');
     }
+    // V429: A phone can hold a stale PENDING status for an order already
+    // DISPATCHED in Cloud. Never upload that stale status or reduce completed
+    // cutting; the server's business history is authoritative.
+    const localWorkMap=new Map((state.pending||[]).filter(x=>normalize(x?.workNo))
+      .map(x=>[normalize(x.workNo),x]));
+    for(const serverOrder of remote.payload.pending||[]){
+      const no=normalize(serverOrder?.workNo),phoneOrder=localWorkMap.get(no);
+      if(!no||!phoneOrder)continue; // Existing missing rows are safely restored below.
+      if(normalize(serverOrder.status)==='DISPATCHED' &&
+          (normalize(phoneOrder.status)!=='DISPATCHED' ||
+            (!!serverOrder.dispatchDoneAt && !phoneOrder.dispatchDoneAt))){
+        throw new Error(no+' already DISPATCHED in Cloud; stale phone order blocked. Review Safe Sync');
+      }
+      if(num(phoneOrder.cutQty)<num(serverOrder.cutQty)){
+        throw new Error(no+' Cloud Cutting Qty is higher than phone; review before Sync');
+      }
+    }
     const restored={pending:0,store:0};
     for(const [part,key] of [['pending','workNo'],['store','srlNo']]){
       const localRows=state[part];
@@ -433,7 +460,7 @@ async function cloudPush(force=false){
     console.warn('CFM protected Cloud save:',e);
     cloudDirty=true;
     const reason=String(e?.message||e).slice(0,170);
-    const conflict=/newer Cloud version|local entries protected|Historical Cutting|Cloud version conflict|safety|400/i.test(reason);
+    const conflict=/newer Cloud version|local entries protected|Historical Cutting|Cloud version conflict|safety|400|already DISPATCHED|Cutting Qty is higher|Review Safe Sync/i.test(reason);
     setCloudBadge('☁️ '+(conflict?'Protected Sync Hold: ':'Sync failed: ')+reason,conflict?'amber':'red');
     try{document.dispatchEvent(new CustomEvent('cfm:po-cloud-result',{detail:{ok:false,workNos:(state.pending||[]).map(x=>String(x.workNo||'')),reason}}))}catch(_){}
     return false;
