@@ -34,6 +34,84 @@ function summary(local,remote){
    diff.length||c.length!==d.length||w.length!==z.length)
  };
 }
+
+/* V431: explicit, device-only recovery. Archive BOTH snapshots in a separate
+ * IndexedDB database and verify the stored record before any replacement.
+ * No Cloud PATCH, no deletion, and no automatic merge of production data. */
+async function archiveRecovery(record){
+ const raw=JSON.stringify(record);
+ const db=await new Promise((resolve,reject)=>{
+   const req=indexedDB.open('CFM_SYNC_RECOVERY_ARCHIVES',1);
+   req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('archives'))req.result.createObjectStore('archives',{keyPath:'id'})};
+   req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+   req.onblocked=()=>reject(Error('Recovery archive database blocked'));
+ });
+ try{
+   await new Promise((resolve,reject)=>{
+     const tx=db.transaction('archives','readwrite');tx.objectStore('archives').add({id:record.id,raw});
+     tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('Archive aborted'));
+   });
+   const stored=await new Promise((resolve,reject)=>{
+     const tx=db.transaction('archives','readonly'),q=tx.objectStore('archives').get(record.id);
+     q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);
+   });
+   if(stored?.raw!==raw)throw Error('Archive verification failed');
+   return raw;
+ }finally{db.close()}
+}
+function downloadRecovery(raw,id){
+ const url=URL.createObjectURL(new Blob([raw],{type:'application/json'}));
+ const link=document.createElement('a');link.href=url;link.download='CFM-Sync-Recovery-'+id+'.json';
+ document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+let resuming=false;
+async function resumeFromCloud(){
+ if(resuming||cloudBusy){notice('Another sync is running. Retry after it finishes.',true);return}
+ if(!confirm('Use Cloud as the active data on THIS device? First review and send your unsynced Work Orders / Daily Work. Local-only Stock, Cutting and other edits will be archived, NOT merged into Cloud. Do not proceed until you have reviewed them.'))return;
+ resuming=true;cloudBusy=true;
+ const mutation=localMutationSeq;
+ const before=JSON.stringify(state);
+ const previous={ready:cloudReady,dirty:cloudDirty,version:cloudVersion,updated:cloudUpdatedAt};
+ let switched=false;
+ try{
+   notice('Preparing verified device and Cloud recovery archive…');
+   const remote=await cloudFetch();
+   if(!remote||!validState(remote.payload)||!validState(state))throw Error('Invalid device or Cloud state');
+   const id=new Date().toISOString().replace(/[:.]/g,'-')+'-'+Math.random().toString(36).slice(2,9);
+   const record={id,createdAt:new Date().toISOString(),deviceVersion:previous.version,device:JSON.parse(before),cloud:remote};
+   const raw=await archiveRecovery(record);
+   downloadRecovery(raw,id);
+   if(!confirm('Recovery archive verified and download requested. Cloud version '+remote.version+' will become active on this device. Unsynced local entries are preserved in the archive only. Continue ONLY if reviewed?')){notice('Archive saved; active device data unchanged.');return}
+   const fresh=await cloudFetchMeta();
+   if(Number(fresh?.version)!==Number(remote.version))throw Error('Cloud changed while reviewing. Run recovery again.');
+   if(localMutationSeq!==mutation||JSON.stringify(state)!==before)throw Error('Device data changed during review. Run recovery again.');
+   const next=clone(remote.payload);
+   // First persist and read back the authoritative data; if storage is full,
+   // keep the original in-memory records and the verified archive.
+   const nextRaw=JSON.stringify(next);
+   safeStorage.setItem(STORAGE_KEY,nextRaw);
+   if(safeStorage.getItem(STORAGE_KEY)!==nextRaw)throw Error('Device storage could not verify the new cache');
+   state=next;switched=true;
+   cloudVersion=Number(remote.version);cloudUpdatedAt=remote.updated_at||'';
+   cloudDirty=false;cloudReady=true;
+   ensureExcelMasterData();syncDerivedState();
+   document.getElementById('cfmCloudConflictNotice')?.remove();
+   try{renderAll()}catch(e){console.warn('Recovered Cloud; render failed',e)}
+   notice('Cloud version '+cloudVersion+' active on this device. Recovery archive retained.');
+ }catch(e){
+   if(!switched){
+     cloudReady=previous.ready;cloudDirty=previous.dirty;cloudVersion=previous.version;cloudUpdatedAt=previous.updated;
+   }else{
+     // A derived-state failure must not allow an unverified snapshot upload.
+     cloudReady=false;cloudDirty=false;
+   }
+   notice('Recovery paused: '+String(e?.message||e)+'. Cloud records not changed.',true);
+ }finally{
+   cloudBusy=false;resuming=false;
+   if(switched&&cloudReady)setCloudBadge('☁️ Cloud active • recovery archive saved','green');
+ }
+}
+
 function build(){
  if(find(ID))return;
  const box=document.createElement('dialog');box.id=ID;box.setAttribute('aria-labelledby','cfmSync427Title');
@@ -63,6 +141,7 @@ function build(){
  const report=document.createElement('div');report.id='cfmSync427Report';report.className='report';
  const actionsList=[
   ['☁ Check Cloud',async()=>await check()],
+  ['🔒 Archive & Resume Cloud Sync',async()=>await resumeFromCloud()],
   ['📋 Review & Send Work Orders',()=>typeof window.cfmReviewUnsyncedWorkOrders==='function'?window.cfmReviewUnsyncedWorkOrders():notice('Work Order recovery unavailable in this version',true)],
   ['👷 Retry Daily Work ONLY',()=>typeof window.cfmRetryDailyPersonCloud425==='function'?window.cfmRetryDailyPersonCloud425():notice('Daily Work retry unavailable in this version',true)],
   ['💾 Download Phone Backup',()=>{if(typeof window.parent.cfmDownloadBackup==='function')window.parent.cfmDownloadBackup();else notice('Backup button unavailable; open original ERP Backup option',true)}]

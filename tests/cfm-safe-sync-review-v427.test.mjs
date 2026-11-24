@@ -13,7 +13,7 @@ function api(){
 }
 test('Safe Sync script is loaded only in the original CFM ERP and parses',()=>{
  assert.doesNotThrow(()=>new Script(src));
- assert.match(old,/cfm-safe-sync-review-v427\.js\?v=430/);
+ assert.match(old,/cfm-safe-sync-review-v427\.js\?v=431/);
  assert.match(src,/☁️ Safe Sync Check/);
  assert.match(src,/const response=await cloudFetch\(\)/);
  const a=api();assert.equal(typeof a.summary,'function');
