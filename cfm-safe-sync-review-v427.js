@@ -30,8 +30,8 @@ function summary(local,remote){
  return {
   orders:[a.length,b.length],store:[s.length,t.length],cutting:[c.length,d.length],daily:[w.length,z.length],
   missingWork,missingRemoteWork,missingSRL,newRemoteSRL,diff,missingDaily,
-  needsReview:missingWork.length||missingRemoteWork.length||missingSRL.length||newRemoteSRL.length||
-   diff.length||c.length!==d.length||w.length!==z.length
+  needsReview:!!(missingWork.length||missingRemoteWork.length||missingSRL.length||newRemoteSRL.length||
+   diff.length||c.length!==d.length||w.length!==z.length)
  };
 }
 function build(){
