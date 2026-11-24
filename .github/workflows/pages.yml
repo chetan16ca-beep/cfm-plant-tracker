@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify original CFM ERP Cloud, Work Order, Store, Cutting and Android storage fixes
-        run: node --test tests/erp-safety.test.mjs tests/cloud-sync-hotfix.test.mjs tests/daily-work-v425-behavior.test.mjs tests/cfm-legacy-android-quota.test.mjs
+        run: node --test tests/erp-safety.test.mjs tests/cloud-sync-hotfix.test.mjs tests/daily-work-v425-behavior.test.mjs tests/cfm-legacy-android-quota.test.mjs tests/cfm-safe-sync-review-v427.test.mjs
       - name: Report pre-existing label and packing test drift (not part of Cloud sync fix)
         continue-on-error: true
         run: node --test tests/label-design-lock.test.mjs tests/packing-slip-format.test.mjs
