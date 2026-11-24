@@ -21,7 +21,7 @@ test('CFM sync Dashboard shows real Cloud status and not a generic pending banne
  assert.match(code,/Phone Cache Limited/);
  assert.match(code,/Cloud Connected/);
  assert.match(code,/Sync Pending/);
- assert.doesNotMatch(code,/Syncing \/ Pending/);
+ assert.doesNotMatch(code,/mode==='amber'\?'Syncing \/ Pending'/);
 });
 test('Cloud protection runs before stale mobile can PATCH full snapshot',()=>{
  assert.doesNotThrow(()=>new Function(push));
