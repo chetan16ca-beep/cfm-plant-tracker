@@ -119,12 +119,38 @@ function mount(){
  if(mounted)return;
  const dash=find('view-dashboard');if(!dash)return;
  build();
+ const target=dash.querySelector('#cfmDashboardCloudSync')?.parentElement||dash;
+ // V430: keep daily production moving without letting a conflicted phone
+ // upload its whole stale Work Order/Stock/Cutting snapshot.
+ const work=document.createElement('section');work.id='cfmWorkNow430';
+ work.style.cssText='box-sizing:border-box;margin:11px 8px;padding:13px;border:1px solid #8cc8be;border-radius:13px;background:#effcf7;box-shadow:0 3px 12px #0a4b3f12;color:#173d36;font:12px/1.55 system-ui';
+ const heading=document.createElement('strong');
+ heading.textContent='✅ Work Now • Direct Cloud — No Full Sync Needed';
+ heading.style.cssText='display:block;font-size:14px;margin-bottom:5px';
+ const info=document.createElement('div');
+ info.textContent='New Work Orders save directly in LIVE CFM Cloud. A Save is complete only when Cloud confirmed appears. Existing unsynced phone records remain protected.';
+ const actions=document.createElement('div');
+ actions.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin-top:10px';
+ const link=(text,url,primary)=>{
+  const el=document.createElement('a');el.textContent=text;el.href=url;
+  el.target='_blank';el.rel='noopener';
+  el.style.cssText='display:inline-flex;align-items:center;justify-content:center;min-height:43px;box-sizing:border-box;flex:1 1 175px;padding:10px;border-radius:10px;text-decoration:none;font:bold 13px system-ui;border:1px solid '+(primary?'#0a7867':'#bbd4de')+';background:'+(primary?'#0a7867':'#fff')+';color:'+(primary?'#fff':'#1c5a68');
+  return el;
+ };
+ actions.append(
+  link('➕ Create Work Order • Cloud Save','./fast-work-order.html?v=430',true),
+  link('☁️ View Live Cloud Orders','./cloud-workorders.html?v=430',false)
+ );
+ const warning=document.createElement('div');
+ warning.textContent='Store/Cutting changes are NOT covered by this route. Keep those entries on the designated main device until Safe Sync review is resolved.';
+ warning.style.cssText='font-size:11px;color:#6e4b21;margin-top:9px';
+ work.append(heading,info,actions,warning);
  const btn=document.createElement('button');btn.id='cfmSync427Open';btn.type='button';
  btn.textContent='☁️ Safe Sync Check • Fix Pending';
  btn.style.cssText='margin:7px 8px;padding:10px 13px;border:1px solid #9fc0d6;border-radius:11px;background:#eaf7ff;color:#123e5e;font:bold 13px system-ui';
  btn.onclick=()=>{build();find(ID).showModal();void check()};
- const target=dash.querySelector('#cfmDashboardCloudSync')?.parentElement||dash;
- target.prepend(btn);mounted=true;
+ target.prepend(work,btn);
+ mounted=true;
 }
 function init(){mount();if(!mounted){let n=0;const poll=setInterval(()=>{mount();if(mounted||++n>50)clearInterval(poll)},250)}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();

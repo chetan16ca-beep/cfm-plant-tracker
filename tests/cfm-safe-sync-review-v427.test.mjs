@@ -13,7 +13,7 @@ function api(){
 }
 test('Safe Sync script is loaded only in the original CFM ERP and parses',()=>{
  assert.doesNotThrow(()=>new Script(src));
- assert.match(old,/cfm-safe-sync-review-v427\.js\?v=427/);
+ assert.match(old,/cfm-safe-sync-review-v427\.js\?v=430/);
  assert.match(src,/☁️ Safe Sync Check/);
  assert.match(src,/const response=await cloudFetch\(\)/);
  const a=api();assert.equal(typeof a.summary,'function');
@@ -48,4 +48,12 @@ test('Safe Sync reports phone-only Work Orders, SRL and same-number collisions',
  assert.equal(r.newRemoteSRL.join(','),'EFPPL03/0400');
  assert.equal(r.missingDaily.length,1);
  assert.equal(r.cutting[0],1);assert.equal(r.cutting[1],0);
+});
+
+test('V430 Work Now offers safe existing Direct Cloud operations, not full phone sync',()=>{
+ assert.match(src,/id='cfmWorkNow430'/);
+ assert.match(src,/fast-work-order\.html\?v=430/);
+ assert.match(src,/cloud-workorders\.html\?v=430/);
+ assert.match(src,/Save is complete only when Cloud confirmed appears/);
+ assert.match(src,/Store\/Cutting changes are NOT covered/);
 });
