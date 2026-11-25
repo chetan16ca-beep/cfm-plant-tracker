@@ -293,8 +293,8 @@ function slip(p,attachment=null,bundleIndex=null){
  (p.draft?'DRAFT — NOT DISPATCHED':legacy?'LEGACY / UNVERIFIED':'CONFIRMED DISPATCH')+'</small></div></div>'+
  '<div class="cfm407-refs">'+ref('SLIP NO.',p.slip)+ref('DATE',p.date)+ref('WORK ORDER NO.',p.manualNoWO?'NOT ISSUED':multi?'Multiple ('+p.items.length+')':p.wo)+ref('CUSTOMER PO NO.',multi?'See PO column':p.po)+'</div>'+
  (attachment?'<div class="cfm407-remark" style="min-height:0"><b>BILL REFERENCE (ENTERED FOR THIS PRINT)</b><p>'+esc(attachment.billNo)+' · '+esc(attachment.billDate||'Date not entered')+'</p></div>':'')+
- '<div class="cfm407-dest"><div><small>PARTY / COMPANY</small><b>'+esc(show(p.party))+'</b>'+
- '<small>SHIP-TO / DELIVERY ADDRESS</small><p>'+esc(p.address||'Not recorded — verify customer PO')+'</p></div>'+
+ '<div class="cfm407-dest"><div class="cfm434-shipto"><small>SHIP TO / DELIVERY ADDRESS</small><b>'+esc(show(p.party))+'</b>'+
+ '<p class="cfm434-address">'+esc(p.address||'Not recorded — verify customer PO')+'</p></div>'+
  '<div><small>PO DATE</small><b>'+esc(show(p.poDate))+'</b><small>CUSTOMER ITEM CODE</small><b>'+esc(show(p.item))+'</b></div></div>'+
  '<h3>PRODUCT DETAILS · '+(p.manualNoWO?'AS PER CUSTOMER PO (NO WORK ORDER)':'AS PER WORK ORDER')+'</h3>'+
  (multi?'<table class="cfm407-products cfm407-multi"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:12%"><col style="width:15%"><col style="width:28%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:7%"></colgroup>'+
@@ -353,10 +353,10 @@ function documentHtml(record,work,photos,attachment=null){
  '.cfm407-info-cell{border-right:1px solid #111;padding:1.6mm;min-width:0;overflow-wrap:anywhere}',
  '.cfm407-info-cell small,.cfm407-dest small{display:block;font:bold 7pt Arial;color:#222}',
  '.cfm407-info-cell b{display:block;font:bold 8.8pt Arial;margin-top:.5mm}',
- '.cfm407-dest{display:grid;grid-template-columns:1.5fr 1fr;border:1px solid #111}',
+ '.cfm407-dest{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);border:1.5px solid #111;flex-shrink:0}',
  '.cfm407-dest>div{padding:1.5mm 2mm;min-width:0;overflow-wrap:anywhere}.cfm407-dest>div+div{border-left:1px solid #111}',
  '.cfm407-dest b{display:block;font:bold 9pt Arial;margin:1mm 0 2mm}',
- '.cfm407-dest p{margin:1mm 0;font:8.4pt/1.2 Arial;white-space:pre-wrap}',
+ '.cfm407-dest p{margin:1mm 0;font:8.4pt/1.2 Arial;white-space:pre-wrap}.cfm407-dest .cfm434-shipto{padding:2.5mm 3mm}.cfm407-dest .cfm434-shipto small{font:bold 10pt Arial;letter-spacing:.5px}.cfm407-dest .cfm434-shipto b{font:bold 16pt/1.15 Arial;margin:1.3mm 0}.cfm407-dest .cfm434-address{font:600 13pt/1.3 Arial;color:#000;white-space:pre-wrap;overflow-wrap:anywhere;margin:1mm 0 0}',
  '.cfm407-slip h3{font:bold 8.5pt Arial;margin:1.4mm 0 .5mm}',
  '.cfm407-products{width:100%;table-layout:fixed;border-collapse:collapse}',
  '.cfm407-products th,.cfm407-products td{border:1px solid #111;padding:1.6mm 1mm;overflow-wrap:anywhere;vertical-align:top}',
