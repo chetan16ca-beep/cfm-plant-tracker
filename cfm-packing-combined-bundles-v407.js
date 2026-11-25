@@ -269,7 +269,7 @@ function label(p,i){
  '<div><small>QTY IN BUNDLE (NOS)</small><strong>'+esc(itemNumber(q))+'</strong></div></div>'+
  '<div class="cfm407-label-bottom"><span>'+esc(show(p.slip))+'</span><span>'+esc(show(p.date))+'</span></div></section>';
 }
-function slip(p){
+function slip(p,attachment=null){
  const ref=(label,v)=>'<div class="cfm407-info-cell"><small>'+esc(label)+'</small><b>'+esc(show(v))+'</b></div>';
  const td=(txt,cls='')=>'<td class="'+cls+'">'+esc(show(txt))+'</td>';
  const multi=p.items.length>1||p.manualNoWO===true;
@@ -286,6 +286,7 @@ function slip(p){
  '<div class="cfm407-slip-head">'+eagle()+'<div class="cfm407-slip-name"><b>PACKING SLIP</b><small>'+
  (p.draft?'DRAFT — NOT DISPATCHED':legacy?'LEGACY / UNVERIFIED':'CONFIRMED DISPATCH')+'</small></div></div>'+
  '<div class="cfm407-refs">'+ref('SLIP NO.',p.slip)+ref('DATE',p.date)+ref('WORK ORDER NO.',p.manualNoWO?'NOT ISSUED':multi?'Multiple ('+p.items.length+')':p.wo)+ref('CUSTOMER PO NO.',multi?'See PO column':p.po)+'</div>'+
+ (attachment?'<div class="cfm407-remark" style="min-height:0"><b>BILL REFERENCE (ENTERED FOR THIS PRINT)</b><p>'+esc(attachment.billNo)+' · '+esc(attachment.billDate||'Date not entered')+'</p></div>':'')+
  '<div class="cfm407-dest"><div><small>PARTY / COMPANY</small><b>'+esc(show(p.party))+'</b>'+
  '<small>SHIP-TO / DELIVERY ADDRESS</small><p>'+esc(p.address||'Not recorded — verify customer PO')+'</p></div>'+
  '<div><small>PO DATE</small><b>'+esc(show(p.poDate))+'</b><small>CUSTOMER ITEM CODE</small><b>'+esc(show(p.item))+'</b></div></div>'+
@@ -306,7 +307,7 @@ function slip(p){
  (!p.bundle.verified?'<div class="cfm407-unverified">Bundle Qty not verified — check actual packing before printing.</div>':'')+
  '<div class="cfm407-remark"><b>PACKING / LR / DISPATCH REMARKS</b><p>'+esc(show(p.note))+'</p></div>'+
  '<div class="cfm407-sign"><span>PREPARED BY <b>'+esc(show(p.operator))+'</b></span><span>PACKED / CHECKED BY <b>____________</b></span><span>RECEIVED BY <b>____________</b></span></div>'+
- '<div class="cfm407-foot">A4 LANDSCAPE · SLIP PRINTED ONCE · TOTAL '+p.bundle.count+' LABEL(S) IN THIS JOB'+(p.draft?' · DRAFT / NO DISPATCH SAVED':'')+'</div>'+
+ '<div class="cfm407-foot">A4 LANDSCAPE · '+(attachment?'BILL ATTACHMENT · '+p.bundle.count+' BUNDLE(S)':'SLIP PRINTED ONCE · TOTAL '+p.bundle.count+' LABEL(S) IN THIS JOB')+''+(p.draft?' · DRAFT / NO DISPATCH SAVED':'')+'</div>'+
  '</section>';
 }
 // V414: Photos removed by request; Packing Slip and 4x4 labels only.
@@ -317,8 +318,9 @@ function extraPhotos(photos){
    (valid?'<img alt="Photo '+i+'" src="'+src+'">':'<span>NO PHOTO ATTACHED</span>')+'</section>';
  }).join('')+'</div>';
 }
-function documentHtml(record,work,photos){
+function documentHtml(record,work,photos,attachment=null){
  const p=prep(record,work),n=p.bundle.count;
+ if(attachment&&(!str(attachment.billNo)||p.draft||p.legacy||!p.bundle.verified||n>12))throw Error('Bill attachment requires a verified saved slip, Bill No. and at most 12 bundles. Use existing Slip + Labels for larger shipments.');
  if(n>200)throw Error('Bundle count exceeds 200; cannot prepare print.');
  const extraPages=[];
  for(let start=1;start<n;start+=2){
@@ -410,6 +412,7 @@ function documentHtml(record,work,photos){
  const head='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
  '<title>EAGLE · Slip + '+n+' Bundle Labels · '+esc(show(p.slip))+'</title>'+
  '<style>'+css+'</style></head><body>';
+ if(attachment)return head+'<style>.cfm407-slip{width:281mm}.cfm407-sheet{overflow:visible}.cfm407-slip{overflow:visible}</style><div class="cfm407-toolbar"><span>Bill attachment · saved shipment · no new dispatch</span><button onclick="var x=document.querySelector(\'.cfm407-slip\');if(x.scrollHeight>x.clientHeight+4||x.scrollWidth>x.clientWidth+4){alert(\'Content exceeds A4; use normal packing slip.\');return}window.print()">Print / Save PDF</button></div><div class="cfm407-scroll"><section class="cfm407-sheet">'+slip(p,attachment)+'</section></div></body></html>';
  const first='<section class="cfm407-sheet cfm407-first">'+slip(p)+
  '<div class="cfm407-right">'+label(p,0)+'</div></section>';
  const script='<script>function printVerified(){var sheets=document.querySelectorAll(".cfm407-sheet");'+
@@ -431,7 +434,7 @@ function open(record,options={}){
  if(!popup){alert('Allow pop-ups to view Packing Slip and Bundle Labels.');return false}
  try{
   const html=documentHtml(record,options.workOrder||{},
-   options.photos||window.CFM_PACKING_PREVIEW_V401?.photosFor?.(record.workNo)||{});
+   options.photos||window.CFM_PACKING_PREVIEW_V401?.photosFor?.(record.workNo)||{},options.billAttachment||null);
   popup.document.open();popup.document.write(html);popup.document.close();popup.focus();return true;
  }catch(e){popup.document.open();popup.document.write('<!doctype html><title>Print blocked</title><p>Print Preview could not be prepared: '+esc(String(e.message||e))+'</p>');popup.document.close();return false}
 }
