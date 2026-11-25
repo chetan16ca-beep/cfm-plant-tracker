@@ -29,7 +29,7 @@ function makeDialog(){
  '<div class="cfm418-filter"><label>Search Company / Slip / Work Order / PO<input id="cfm418Search" type="search" placeholder="e.g. SUN, 775, EFPPL/PS..."></label>'+
  '<label>From<input id="cfm418From" type="date"></label><label>To<input id="cfm418To" type="date"></label>'+
  '<button type="button" id="cfm418Refresh">↻ Refresh Cloud</button><button type="button" id="cfm418Clear">Clear filters</button></div>'+
- '<div id="cfm418Status" role="status">Open to load Cloud history.</div><div id="cfm418Rows" class="cfm418-rows"></div>'+
+ '<div id="cfm418Status" role="status">Open to load Cloud history.</div><div style="padding:10px"><button type="button" id="cfmBillPendingToggle">Billed / Partial Dispatch Balance</button><div id="cfmBillPendingRows" hidden></div></div><div id="cfm418Rows" class="cfm418-rows"></div>'+
  '<div class="cfm418-foot">Reprint opens the already-saved Packing Slip + Bundle Label preview. No new dispatch is created.</div>';
  document.body.append(dlg);
  const style=document.createElement('style');
@@ -60,6 +60,7 @@ function makeDialog(){
  for(const n of ['cfm418Search','cfm418From','cfm418To'])byId(n).addEventListener('input',render);
  byId('cfm418Clear').onclick=()=>{for(const n of ['cfm418Search','cfm418From','cfm418To'])byId(n).value='';render()};
  byId('cfm418Refresh').onclick=refresh;
+ byId('cfmBillPendingToggle').onclick=()=>{const panel=byId('cfmBillPendingRows');panel.hidden=!panel.hidden;if(!panel.hidden)renderBillPending()};
  byId('cfm418Rows').addEventListener('click',event=>{
   const b=event.target.closest('button[data-cfm418-id]');if(!b)return;
   const slip=rows.find(x=>str(x.id)===b.dataset.cfm418Id);
@@ -67,11 +68,35 @@ function makeDialog(){
   const printer=window.CFM_PACK_COMBINED_V407?.open;
   if(typeof printer!=='function'){byId('cfm418Status').textContent='Packing print module unavailable. Reopen ERP online.';return}
   const order=pending.find(x=>str(x.workNo)===str(slip.workNo))||{};
-  printer(slip,{workOrder:order});
+  if(b.dataset.billAttachment==='yes'){
+   const no=prompt('Enter verified invoice number for this shipment (print reference only):','');
+   if(!no||!no.trim())return;
+   const date=prompt('Enter invoice date (YYYY-MM-DD), or leave blank:','');
+   if(date===null)return;
+   if(date.trim()&&!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())){alert('Use YYYY-MM-DD for Bill Date');return}
+   printer(slip,{workOrder:order,billAttachment:{billNo:no.trim(),billDate:date.trim()}});
+  }else printer(slip,{workOrder:order});
  });
  return dlg;
 }
+function renderBillPending(){
+ const panel=byId('cfmBillPendingRows');if(!panel||panel.hidden)return;
+ const calc=window.CFM_BILL_DISPATCH_LEDGER?.summarize;
+ if(!calc){panel.textContent='Balance module unavailable. Reopen online.';return}
+ const relevant=pending.filter(o=>str(o.billNo)||['DONE','BILLED','COMPLETED'].includes(str(o.billStatus).toUpperCase())||rows.some(s=>str(s.workNo)===str(o.workNo)||(s.items||[]).some(i=>str(i.workNo)===str(o.workNo))));
+ const output=[];
+ for(const o of relevant){
+  try{
+   const a=calc(o,rows);
+   if(a.balanceQty===0&&!a.needsLegacyReview)continue;
+   const review=a.needsLegacyReview||str(o.status).toUpperCase()==='DISPATCHED'||!!o.dispatchDoneAt;
+   output.push('<div style="padding:7px;border-bottom:1px solid #ddd"><b>'+esc(o.workNo)+' · '+esc(o.party)+'</b><br>Bill: '+esc(o.billNo||o.billStatus||'Not recorded')+' · Order: '+a.orderQty+' · Recorded sent: '+a.confirmedDispatchQty+' · '+(review?'Balance requires verification':'Order balance: '+a.balanceQty)+'</div>');
+  }catch(e){output.push('<div style="padding:7px">'+esc(o.workNo)+' · Verify dispatch ledger: '+esc(e.message)+'</div>')}
+ }
+ panel.innerHTML='<p>Read-only order balance from saved Cloud packing slips. Bill quantity is not inferred. Older or closed orders may need physical reconciliation.</p>'+(output.join('')||'No matching pending records.');
+}
 function render(){
+ renderBillPending();
  const q=str(byId('cfm418Search')?.value).toLowerCase();
  const from=str(byId('cfm418From')?.value),to=str(byId('cfm418To')?.value);
  const visible=rows.filter(x=>{
@@ -91,7 +116,7 @@ function render(){
    '<div class="cfm418-party">'+esc(label(x.party))+'</div>'+
    '<small>Saved: '+esc(localTime(x.createdAt))+' · Work Order: '+esc(works)+'</small>'+
    '<small>PO: '+esc(po)+' · Dispatch Qty: '+esc(qty(x.thisDispatched))+' · Bundles: '+esc(bundles)+'</small></div>'+
-   '<button type="button" data-cfm418-id="'+esc(x.id)+'">🖨 Reprint Slip + Labels</button></article>';
+   '<button type="button" data-cfm418-id="'+esc(x.id)+'">🖨 Reprint Slip + Labels</button><button type="button" data-cfm418-id="'+esc(x.id)+'" data-bill-attachment="yes">Bill Attachment</button></article>';
  }).join(''):'<p style="padding:18px 0">No Packing Slips match these filters.</p>';
 }
 async function refresh(){
@@ -105,7 +130,7 @@ async function refresh(){
   if(!snap||!Array.isArray(snap.payload?.packingSlips))throw Error('Invalid Cloud history response');
   rows=[...snap.payload.packingSlips].sort((a,b)=>str(b.createdAt).localeCompare(str(a.createdAt)));
   pending=Array.isArray(snap.payload.pending)?snap.payload.pending:[];
- }catch(e){rows=[];pending=[];byId('cfm418Status').textContent='Cloud not available: '+String(e.message||e);byId('cfm418Rows').textContent='No changes were made to ERP data.';loading=false;return}
+ }catch(e){rows=[];pending=[];byId('cfmBillPendingRows').hidden=true;byId('cfm418Status').textContent='Cloud not available: '+String(e.message||e);byId('cfm418Rows').textContent='No changes were made to ERP data.';loading=false;return}
  loading=false;
  render();
 }
