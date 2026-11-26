@@ -304,7 +304,36 @@
   function batchWork() {
     return (String($('dialogTitle')?.textContent || '').match(/CFM-\d+/i) || [])[0] || '';
   }
-  function postBatchStage(work, process, person, qty, supervisor, remark) {
+  // Append-only production/SOP save. No stale whole-phone snapshot is uploaded.
+  const canonical = v => Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
+  const same = (a,b) => JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
+  async function directRecord(family,record,idField,validate){
+    if(!['departmentWork','sopRecords'].includes(family)||!record[idField])throw Error('Invalid direct record');
+    if(cloudBusy)throw Error('Another database save is running. Retry shortly.');
+    cloudBusy=true;
+    try{
+      for(let attempt=0;attempt<3;attempt++){
+        const fresh=await cloudFetch();
+        if(!fresh||!validState(fresh.payload)||!Number.isSafeInteger(Number(fresh.version)))throw Error('Database unavailable');
+        const rows=arr(fresh.payload[family]),existing=rows.find(x=>x[idField]===record[idField]);
+        if(existing){if(!same(existing,record))throw Error('Duplicate identity conflict');return fresh;}
+        const issue=validate(fresh.payload);if(issue)throw Error(issue);
+        const payload=clone(fresh.payload);payload[family]=[...rows,record];
+        const base=Number(fresh.version),ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),20000);
+        let response,ack,error;
+        try{response=await fetch(CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+base,{method:'PATCH',signal:ctrl.signal,headers:{...cloudHeaders(),'Prefer':'return=representation','x-cfm-base-version':String(base)},body:JSON.stringify({payload,version:base+1,updated_at:new Date().toISOString()})});if(!response.ok)throw Error('Database rejected save HTTP '+response.status);ack=await response.json()}catch(e){error=e}finally{clearTimeout(timer)}
+        const verified=await cloudFetch(),hit=arr(verified?.payload?.[family]).find(x=>x[idField]===record[idField]);
+        if(hit&&same(hit,record))return verified;
+        if(error)throw Error('Save not confirmed: '+error.message+'. Retry same entry to verify.');
+        if(Array.isArray(ack)&&ack.length===0)continue;
+        throw Error('Receipt not verified. Retry same entry, not a new entry.');
+      }
+      throw Error('Database changed repeatedly. Retry same entry.');
+    }finally{cloudBusy=false}
+  }
+  window.CFM_DIRECT_RECORD_V438=directRecord;
+  let batchPending=null,batchBusy=false;
+  async function postBatchStage(work, process, person, qty, supervisor, remark) {
     const s = getState();
     const wo = s && matchOrder(s,work);
     if (!wo) return 'Work Order not found in ERP.';
@@ -320,12 +349,13 @@
     })[k] || ''})}};
     const issue = checkDepartment(form,s);
     if (issue) return issue;
-    if (typeof save !== 'function') return 'ERP Save is not ready; refresh before posting.';
+    if (batchBusy) return 'A verified stage is already being saved.';
     const date = typeof todayISO === 'function' ? todayISO() : new Date().toISOString().slice(0,10);
     const baseRemark = String(remark || '').trim();
     const stamped = (baseRemark ? baseRemark + '\n' : '') +
       'SOP verified by: ' + supervisor.trim() + ' | ' + new Date().toLocaleString('en-IN');
     const rec = {
+      cfmBatchEntryId:'CFM-BATCH-'+(globalThis.crypto?.randomUUID?.()||Date.now()+'-'+Math.random().toString(36).slice(2)),
       workNo:work,party:wo.party||'',description:wo.description||'',description2:wo.description2||'',
       workDescription:baseRemark||wo.description||'',person:person.trim(),process,
       department:process,givenQty:number(wo.orderQty),orderQty:number(wo.orderQty),
@@ -334,23 +364,35 @@
       updatedAt:new Date().toISOString(),
       updatedBy:typeof deviceLabel === 'function' ? deviceLabel() : 'CFM SOP'
     };
-    if (!Array.isArray(s.departmentWork)) s.departmentWork = [];
-    s.departmentWork.push(rec);
-    try { save(); } catch (e) {
-      s.departmentWork.pop();
-      return 'Could not save verified stage: ' + String(e?.message || e);
-    }
-    try { typeof toast === 'function' && toast(process + ' • ' + Number(qty) + ' pcs verified and saved'); } catch (_) {}
-    setTimeout(() => {
-      try { if (typeof window.cfmSafeBatchOpen === 'function') window.cfmSafeBatchOpen(work); }
-      catch (e) { console.warn('Batch report refresh',e); }
-    },160);
+    const signature=JSON.stringify([work,process,person,Number(qty),supervisor,remark]);
+    if(batchPending&&batchPending.signature!==signature)return 'Previous stage save is unverified. Retry the same details before changing the entry.';
+    if(!batchPending)batchPending={signature,record:rec};
+    const intended=batchPending.record;
+    batchBusy=true;
+    try{
+      const verified=await directRecord('departmentWork',intended,'cfmBatchEntryId',fresh=>{
+        const cloudOrder=matchOrder(fresh,work);
+        if(!cloudOrder||cloudOrder.archived||['DISPATCHED','ARCHIVED'].includes(norm(cloudOrder.status))||
+           norm(cloudOrder.party)!==norm(wo.party)||norm(cloudOrder.poNo)!==norm(wo.poNo)||number(cloudOrder.orderQty)!==number(wo.orderQty))
+          return 'Work Order changed. Review before saving.';
+        return checkDepartment(form,fresh);
+      });
+      const cached=getState();if(cached){
+        const rows=arr(cached.departmentWork);
+        if(!rows.some(x=>x.cfmBatchEntryId===intended.cfmBatchEntryId))cached.departmentWork=[...rows,intended];
+      }
+      batchPending=null;
+      try{toast(process+' • '+Number(qty)+' pcs DATABASE VERIFIED')}catch(_){}
+      try{if(typeof window.cfmSafeBatchOpen==='function')window.cfmSafeBatchOpen(work)}catch(_){}
+      try{if(!cloudDirty)setTimeout(()=>cloudPoll(),0)}catch(_){}
+    }catch(e){return 'Stage not confirmed: '+String(e?.message||e)}
+    finally{batchBusy=false}
     return '';
   }
   function bindBatchSop() {
     if (!document.__cfmBatchSopBound) {
       document.__cfmBatchSopBound = true;
-      document.addEventListener('click',(e)=>{
+      document.addEventListener('click',async(e)=>{
         const button = e.target?.closest?.('#batchAddOne,#batchSaveAll');
         if (!button) return;
         // Capture before the legacy draft/save listeners; do not allow an unapproved write.
@@ -374,12 +416,12 @@
           alert('SOP HOLD: Old unsaved drafts exist. Close the Batch Report and reopen; do not save them without checking.');
           return;
         }
-        const issue = postBatchStage(work,stage,person,qty,supervisor,remark);
-        if (issue) alert('SOP HOLD: ' + issue);
+        button.disabled=true;try{const issue = await postBatchStage(work,stage,person,qty,supervisor,remark);
+        if (issue) alert('SOP HOLD: ' + issue);}finally{button.disabled=false}
       },true);
     }
     if (typeof window.cfmBatchRowSave === 'function' && !window.cfmBatchRowSave.__cfmSop) {
-      const guarded = function(work,tr,i) {
+      const guarded = async function(work,tr,i) {
         const stage = BATCH_STAGES[i];
         if (!stage || !tr) return false;
         const person = String(tr.querySelector('.batch-person')?.value || '').trim();
@@ -388,7 +430,7 @@
         const supervisor = window.prompt('CFM SOP: Supervisor Name for ' + stage + ' (' + work + ')');
         if (!supervisor) return false;
         if (!window.confirm('I verified previous stage, real quantity and this worker entry. Continue?')) return false;
-        const issue = postBatchStage(work,stage,person,qty,supervisor,remark);
+        const issue = await postBatchStage(work,stage,person,qty,supervisor,remark);
         if (issue) { alert('SOP HOLD: ' + issue); return false; }
         return true;
       };

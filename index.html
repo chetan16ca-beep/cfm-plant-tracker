@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261126-v437',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261126-v438',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -176,14 +176,14 @@ window.addEventListener('message',e=>{
 registerSW().then(reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw437-reload'))return;
-  sessionStorage.setItem('cfm-sw437-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw438-reload'))return;
+  sessionStorage.setItem('cfm-sw438-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261126-v437';
+ const urls=groups.flat(), ver='20261126-v438';
  // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
  // Never clear browser storage or replace Cloud data while recovering from a network failure.
  let nextChunk=0;
@@ -222,7 +222,7 @@ if('serviceWorker' in navigator){
  let src=texts.join('')+'\n';
   // One canonical displayed version. Old inline modules have repeated timers
   // that can otherwise force a stale header label after deployment.
-  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V437 LIVE');
+  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V438 LIVE');
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V167');
@@ -343,12 +343,12 @@ html,body{background:#f4faff!important;color:#13233b!important}
  // V249 PC-only: loaded LAST after Forge / SAP / AI themes to restore useful working area.
  src=src.replace('</head>','<link rel="stylesheet" href="./cfm-pc-compact.css?v=250"><script defer src="./cfm-pc-dashboard.js?v=250"></scr'+'ipt></head>');
  // V251: Plant Production SOP controls; operator-side validation, no automatic data write.
- src=src.replace('</head>','<script defer src="./cfm-plant-production-sop.js?v=423"></scr'+'ipt></head>');
+ src=src.replace('</head>','<script defer src="./cfm-plant-production-sop.js?v=438"></scr'+'ipt></head>');
  src=src.replace('</head>','<script defer src="./cfm-daily-person-safe-cloud-v424.js?v=425"></scr'+'ipt></head>');
  // V427: read-only phone-vs-Cloud review; safe Work Order/Daily Work retry controls.
  src=src.replace('</head>','<script defer src="./cfm-safe-sync-review-v427.js?v=431"></scr'+'ipt></head>');
  // V320: SOP-specific fields; cleaning logs are area-based without Work No, SRL or Inward.
- src=src.replace('</head>','<script defer src="./cfm-sop-register.js?v=334"></scr'+'ipt></head>');
+ src=src.replace('</head>','<script defer src="./cfm-sop-register.js?v=438"></scr'+'ipt></head>');
  // V319 department-specific SOP navigation. Existing SOP records are unchanged.
  src=src.replace('</head>','<script defer src="./cfm-department-sop-v319.js?v=334"></scr'+'ipt></head>');
  // V254: read-only A4 unique Measurements Master printing.
@@ -431,7 +431,7 @@ html,body{background:#f4faff!important;color:#13233b!important}
    const w=app.contentWindow;
    if(!w||!w.document?.body){shellBadge.textContent='CFM ERP • V424 · Loading';return}
    const absent=Object.entries(requiredModules).filter(([name,test])=>{try{return !test(w)}catch(_){return true}}).map(([name])=>name);
-   shellBadge.textContent=absent.length?'CFM ERP • V424 · Check Modules':'CFM ERP • V437 LIVE';
+   shellBadge.textContent=absent.length?'CFM ERP • V424 · Check Modules':'CFM ERP • V438 LIVE';
    shellBadge.title=absent.length?'Module load pending/failed: '+absent.join(', '):'V408 runtime verified · Packing Slip, Label, Multi-WO and Pending Orders loaded';
   }catch(e){shellBadge.textContent='CFM ERP • V424 · Check Modules';shellBadge.title='Runtime status could not be read: '+String(e?.message||e)}
  }

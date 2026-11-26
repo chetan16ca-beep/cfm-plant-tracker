@@ -1,7 +1,7 @@
 /* Read-only CI regression preflight for CFM. Does NOT create a Work Order. */
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { Script } from 'node:vm';
+import { Script, runInNewContext } from 'node:vm';
 const file=p=>new URL('../'+p,import.meta.url),read=p=>readFileSync(file(p),'utf8');
 let checks=0;
 function ok(v,m){assert.ok(v,m);checks++;console.log('✓ '+m)}
@@ -48,7 +48,11 @@ ok(worker.includes('rec.reportOnly=true;'), 'Daily Worker entries are logged as 
 ok(sop.includes('r.reportOnly !== true'), 'SOP production handover excludes report-only worker logs');
 ok(worker.includes('x.reportOnly!==true'), 'Stage availability previews exclude unverified worker logs');
 ok(sop.includes('supervisor:supervisor.trim(),reportOnly:false'), 'Verified Batch stage entries remain handover eligible');
-has('index.html','cfm-plant-production-sop.js?v=423');
+has('index.html','cfm-plant-production-sop.js?v=438');
+ has('index.html','cfm-sop-register.js?v=438');
+ ok(sop.includes("await directRecord('departmentWork',intended,'cfmBatchEntryId'"), 'Batch save uses direct verified append');
+ ok(sop.includes('version=eq.'+"'"+"+base") || sop.includes("version=eq.'+base"), 'Direct save uses current-version CAS');
+ ok(read('cfm-sop-register.js').includes("await window.CFM_DIRECT_RECORD_V438('sopRecords'"), 'SOP checklist uses direct verified append');
 ok(!index.includes('cfm-jessi-voice.js'),'Removed Jessi is not loaded again');
 console.log('CFM read-only deployment safety checks passed: '+checks);
 
@@ -65,3 +69,24 @@ ok(daily.includes("pending.set(entry.cfmDailyEntryId,copy(entry))"),'Every Daily
 ok(daily.includes("recoverLocalDailyWork"),'Offline recovery/retry path exists');
 ok(daily.includes("state.departmentWork.push(copy(remoteRecord))"),'Other mobile Daily Work received by immutable ID');
 ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified.payload)"),'Full-state version must not advance on unaligned local records');
+
+{
+ const initial={version:10,payload:{pending:[{workNo:'CFM-TEST',orderQty:4}],store:[{srlNo:'TEST-SRL'}],cutting:[{id:'CUT-TEST'}],sopRecords:[],departmentWork:[]}};
+ let server=structuredClone(initial),writes=0;
+ const win={},doc={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ const ctx={window:win,document:doc,cloudBusy:false,cloudDirty:true,validState:p=>Array.isArray(p.pending),clone:structuredClone,
+  CLOUD_URL:'https://test.invalid',cloudHeaders:()=>({}),AbortController,setTimeout:()=>1,clearTimeout(){},
+  cloudFetch:async()=>structuredClone(server),
+  fetch:async(url,options)=>{writes++;const body=JSON.parse(options.body);assert.match(url,new RegExp('version=eq\\.'+server.version+'$'));
+   assert.deepEqual(body.payload.pending,initial.payload.pending);assert.deepEqual(body.payload.store,initial.payload.store);assert.deepEqual(body.payload.cutting,initial.payload.cutting);
+   server={version:body.version,payload:body.payload};return {ok:true,json:async()=>[server]}}};
+ runInNewContext(sop,ctx,{timeout:1000});
+ const rec={id:'TEST-SOP',results:{A:'PASS'},operator:'TEST'};
+ await win.CFM_DIRECT_RECORD_V438('sopRecords',rec,'id',()=> '');
+ await win.CFM_DIRECT_RECORD_V438('sopRecords',{operator:'TEST',results:{A:'PASS'},id:'TEST-SOP'},'id',()=> '');
+ assert.equal(writes,1);assert.equal(server.payload.sopRecords.length,1);
+ await assert.rejects(win.CFM_DIRECT_RECORD_V438('sopRecords',{...rec,operator:'OTHER'},'id',()=> ''),/identity conflict/);
+ await assert.rejects(win.CFM_DIRECT_RECORD_V438('departmentWork',{cfmBatchEntryId:'TEST-BATCH'},'cfmBatchEntryId',()=> 'Stage limit'),/Stage limit/);
+ assert.equal(writes,1);assert.equal(ctx.cloudBusy,false);
+ ok(true,'Direct SOP append preserves production data, rejects conflicts and safely retries same receipt');
+}

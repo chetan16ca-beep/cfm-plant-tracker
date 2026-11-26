@@ -655,7 +655,9 @@ function openPanel(preset){
  $('cfmSopCode318').addEventListener('change',render);render();
  $('cfmSopClose318').addEventListener('click',()=>overlay.remove());
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
- $('cfmSopSave318').addEventListener('click',()=>{
+ let pendingChecklist=null,checklistBusy=false;
+ $('cfmSopSave318').addEventListener('click',async()=>{
+  if(checklistBusy)return;
   const cat=CATALOG.find(x=>x.code===field('cfmSopCode318'));if(!cat)return;
   // Never persist hidden references (e.g. preset Work No from a pending card)
   // into a cleaning checklist. Historical saved checklists are left untouched.
@@ -667,7 +669,7 @@ function openPanel(preset){
     operator=field('cfmSopOperator318')==='__MANUAL__'?field('cfmSopOperatorOther327'):field('cfmSopOperator318'),supervisor=field('cfmSopSupervisor318'),
     remark=field('cfmSopRemark318');
   const st=getState();
-  if(!st||typeof save!=='function'){setMsg('ERP Save not ready');return}
+  if(!st||typeof window.CFM_DIRECT_RECORD_V438!=='function'){setMsg('Direct database save not ready');return}
   if(!operator||!supervisor||!$('cfmSopApproved318').checked){setMsg('Operator, supervisor and verification tick are mandatory.');return}
   if(cat.code==='MCL'&&!field('cfmSopArea318')){setMsg('Select / enter machine first, then choose its actual operator.');return}
   if(isMaterial(cat.code)&&!srlNo&&!(cat.code==='MR'&&inwardNo)){setMsg('Full SRL required (or Inward No for receipt before SRL allotment).');return}
@@ -679,14 +681,27 @@ function openPanel(preset){
   if(hasBad&&!remark){setMsg('HOLD or FAIL needs a reason / corrective action in Remark.');return}
   if(isControlledSop(cat.code)&&Object.values(results).includes('N/A')&&!remark){setMsg('Audit: N/A needs a written justification in Remark.');return}
   const rec={id:'SOP-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),schema:schemaId,code:cat.code,workNo,srlNo,inwardNo,area,shift,operator,supervisor,results,remark,timestamp:new Date().toISOString(),device:typeof deviceLabel==='function'?deviceLabel():'ERP',documentNo:isControlledSop(cat.code)?sopDocumentNo(cat.code):'',checklistNo:isControlledSop(cat.code)?sopChecklistNo(cat.code):'',sopRevision:isControlledSop(cat.code)?SOP_DOCUMENT_REV:'',checklistSnapshot:isControlledSop(cat.code)?cat.items.map(item=>({...item})):[]};
-  const before=arr(st.sopRecords).slice();
-  st.sopRecords=records().concat(rec);backup(st.sopRecords);
+  const signature=JSON.stringify([cat.code,workNo,srlNo,inwardNo,area,shift,operator,supervisor,results,remark]);
+  if(pendingChecklist&&pendingChecklist.signature!==signature){setMsg('Previous save not verified. Retry the original checklist before changing it.');return}
+  if(!pendingChecklist)pendingChecklist={signature,record:rec};
+  const intended=pendingChecklist.record,btn=$('cfmSopSave318');
+  checklistBusy=true;btn.disabled=true;setMsg('Saving checklist directly to database…');
   try{
-   save(false);
-   render();
-   setMsg('Checklist saved locally. Confirm Cloud Sync before relying on the record.');
-  }
-  catch(e){st.sopRecords=before;backup(before);setMsg('Save failed: '+String(e.message||e))}
+   const verified=await window.CFM_DIRECT_RECORD_V438('sopRecords',intended,'id',fresh=>{
+    if(workNo&&!arr(fresh.pending).some(x=>norm(x.workNo)===norm(workNo)))return 'Work Order no longer exists.';
+    if(isMaterial(cat.code)&&srlNo&&!arr(fresh.store).some(x=>norm(x.srlNo)===norm(srlNo)))return 'SRL not found in current Store.';
+    return '';
+   });
+   const current=getState();
+   if(current){
+    const combined=new Map([...records(),...arr(verified.payload.sopRecords)].map(x=>[x.id,x]));
+    current.sopRecords=[...combined.values()];backup(current.sopRecords);
+   }
+   pendingChecklist=null;render();
+   setMsg('✓ Checklist saved and verified in database.');
+   try{if(!cloudDirty)setTimeout(()=>cloudPoll(),0)}catch(_){}
+  }catch(e){setMsg('Checklist save not confirmed: '+String(e.message||e)+'. Retry same details; do not create a duplicate.')}
+  finally{checklistBusy=false;btn.disabled=false}
  });
  $('cfmSopPrint321').addEventListener('click',()=>{
   const cat=CATALOG.find(x=>x.code===field('cfmSopCode318'));if(!cat)return;
