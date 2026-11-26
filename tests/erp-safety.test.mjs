@@ -105,3 +105,21 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.ok(render(rows,'BOTH','','26/11/2026',()=>'',r=>r.itemCode).includes('*Total Qty: VERIFY QTY*'));
  ok(true,'Bill/challan grouping, codes, partial quantities and invalid quantity guard');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ runInNewContext(read('cfm-order-control-v443.js'),{window,document,setInterval:()=>1,clearInterval(){}});
+ const f=window.CFM_ORDER_CONTROL_V443.transition,p={pending:[{workNo:'CFM-100',party:'OLD'}],store:[{srlNo:'TEST'}],cutting:[{id:'TEST'}]};
+ const record={party:'SAMPLE',description:'Spiral Filter Cloth',poNo:'',specification:'64x380',qty:10,source:'Phone Call',priority:'NORMAL',itemCode:'EFPPL-7000-SFC',orderDate:'2026-11-26'};
+ const x=f(p,{kind:'add',id:'test-1',record,actor:'tester'}).record;
+ assert.equal(p.orderInbox.length,1);
+ assert.equal(f(p,{kind:'add',id:'test-1',record,actor:'tester'}).unchanged,true);
+ assert.throws(()=>f(p,{kind:'add',id:'test-2',record,actor:'tester'}),/already exists/);
+ assert.throws(()=>f(p,{kind:'convert',id:'test-1',expected:x.updatedAt,actor:'tester',cloth:'PP',width:64}),/Group Sent|group sent/);
+ const y=f(p,{kind:'group',id:'test-1',expected:x.updatedAt,actor:'tester'}).record;
+ const z=f(p,{kind:'convert',id:'test-1',expected:y.updatedAt,actor:'tester',cloth:'PP',width:64}).record;
+ assert.equal(z.workNo,'CFM-101');assert.equal(p.pending[1].orderInboxId,'test-1');
+ assert.equal(f(p,{kind:'convert',id:'test-1',expected:y.updatedAt,actor:'tester',cloth:'PP',width:64}).unchanged,true);
+ assert.equal(p.pending.length,2);assert.equal(p.store.length,1);assert.equal(p.cutting.length,1);
+ ok(true,'Order Inbox deduplicates entries and converts exactly once without changing stock/cutting');
+}
