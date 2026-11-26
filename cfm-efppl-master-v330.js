@@ -31,7 +31,8 @@ const RAW=[
 ['5001','ANFD-FC','ANFD Filter Cloth'],
 ['6000','SFP-19X43','Sparkler Filter Cloth Pad 19" x 43"'],
 ['6001','SFP-15X43','Sparkler Filter Cloth Pad 15" x 43"'],
-['6002','SFP-25X55','Sparkler Filter Cloth Pad 25" x 55"']
+['6002','SFP-25X55','Sparkler Filter Cloth Pad 25" x 55"'],
+['7000','SFC','Spiral Filter Cloth']
 ];
 const MASTER=RAW.map(x=>Object.freeze({itemNo:x[0],code:'EFPPL-'+x[0]+'-'+x[1],oldCode:'EFPPL-'+x[1],description:x[2]}));
 const BYCODE=new Map(MASTER.map(x=>[x.code,x]));
@@ -40,7 +41,7 @@ function findCode(value){
  const s=normal(value);
  if(!s)return null;
  for(const p of MASTER)if(s.includes(p.code)||s.includes(p.oldCode))return p;
- const m=s.match(/\bEFPPL[- ]?(1008|1009|1010|1011|1012|200[0-9]|300[0-4]|400[0-3]|500[01]|600[0-2])\b/);
+ const m=s.match(/\bEFPPL[- ]?(1008|1009|1010|1011|1012|200[0-9]|300[0-4]|400[0-3]|500[01]|600[0-2]|7000)\b/);
  if(m)return MASTER.find(x=>x.itemNo===m[1])||null;
  if(/\bFBD\b/.test(s)){
   const finger=s.match(/\b(?:FBD(?:\s+FINGER)?(?:\s+BAG)?|FINGER(?:\s+BAG)?)\s*[-:]?\s*(0?8|12|19|31|37)\b/)||
@@ -60,6 +61,7 @@ function findCode(value){
   return MASTER.find(x=>x.oldCode==='EFPPL-CF-'+size[1]+'-'+(top?'TLT':'ORD'))||null;
  }
  const direct=[
+ [/\bSPIRAL\s+FILTER\s+CLOTH\b/,'7000'],
  [/\bRNF\b/, '3000'],[/\bSNF\b/,'3001'],
  [/\bBASKET\s+FILTER\s+BAG\b/,'3002'],[/\bCANDLE\s+FILTER\s+BAG\b/,'3003'],
  [/\bPRESSURE\s+NUTCH\s+FILTER\s+BAG\b/,'3004'],
@@ -105,7 +107,7 @@ function addSingleForm(){
  if(!item||item.dataset.efpplBound)return;
  item.dataset.efpplBound='1';
  const desc=form.querySelector('[name="description"]');
- const label=document.createElement('label');label.textContent='EFPPL Product Code (29-item master)';
+ const label=document.createElement('label');label.textContent='EFPPL Product Code (30-item master)';
  label.style.cssText='font-size:11px;display:block;margin-top:7px;font-weight:700;color:#235377';
  const select=createSelect();label.append(select);
  item.insertAdjacentElement('afterend',label);
