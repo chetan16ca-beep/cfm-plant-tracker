@@ -17,12 +17,13 @@ function history(){return Array.isArray(snap?.payload?.packingSlips)?snap.payloa
 function linesFor(wo,slips=history()){
  return slips.filter(s=>key(s.workNo)===key(wo)||(Array.isArray(s.items)&&s.items.some(i=>key(i.workNo)===key(wo))));
 }
-function sent(wo,slips=history()){
+function manualFor(row){return window.CFM_BILL_DISPATCH_LEDGER.manual(row||{});}
+function sent(wo,slips=history(),row=allOrders().find(r=>key(r.workNo)===key(wo))){
  return linesFor(wo,slips).reduce((sum,s)=>{
   const line=Array.isArray(s.items)?s.items.find(i=>key(i.workNo)===key(wo)):null;
   if(line)return sum+(Number(line.qty)||0)+(Number(line.manualPreviousBaseline)||0);
   return sum+(Number(s.thisDispatched)||0)+(Number(s.manualPreviousBaseline)||0);
- },0);
+ },0)+manualFor(row).qty;
 }
 function legacy(r){return !!r&&(key(r.status)==='DISPATCHED'||!!r.dispatchDoneAt||key(r.dispatchStatus)==='DISPATCHED'||!!r.dispatchDate||(r.dispatchQty!==''&&r.dispatchQty!=null&&Number(r.dispatchQty)>0))}
 function mapped(row){return window.CFM_PACKING_WO_FIELDS_V405?.(row)||{}}
@@ -59,7 +60,7 @@ function renderOrders(){
   addressBox.value=addrs.length===1?addrs[0]:'';
  }
  $('cfm408Orders').innerHTML=rows.map(r=>{
-  const m=mapped(r),ordered=pos(r.orderQty),previous=sent(r.workNo),baseline=legacy(r)&&!linesFor(r.workNo).length;
+  const m=mapped(r),ordered=pos(r.orderQty),previous=sent(r.workNo),baseline=legacy(r)&&!linesFor(r.workNo).length&&!manualFor(r).verified;
   const rest=Math.max(0,ordered-previous);
   return '<tr data-work-no="'+esc(r.workNo)+'"><td><input type="checkbox" data-select '+(!rest&&!baseline?'disabled':'')+'></td>'+
   '<td><b>'+esc(r.workNo)+'</b><small>PO '+esc(r.poNo||'—')+'</small><small>'+esc(m.efpplCode||'—')+'</small>'+
@@ -173,7 +174,7 @@ async function saveCombined(){
    const cloudRow=latest.payload.pending.find(r=>key(r.workNo)===key(item.workNo));
    const original=allOrders().find(r=>key(r.workNo)===key(item.workNo));
    if(!equivalent(original,cloudRow)||!!cloudRow.archived||JSON.stringify([original.status,original.dispatchDoneAt,original.dispatchQty])!==JSON.stringify([cloudRow.status,cloudRow.dispatchDoneAt,cloudRow.dispatchQty]))throw Error(item.workNo+': Work Order changed; refresh first.');
-   const sentNow=sent(item.workNo,log);
+   const sentNow=sent(item.workNo,log,cloudRow);
    if(sentNow!==item.previousDispatched-item.manualPreviousBaseline||sentNow+item.manualPreviousBaseline+item.qty>pos(cloudRow.orderQty))
     throw Error(item.workNo+': pending Qty changed. Nothing saved.');
   }
