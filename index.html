@@ -815,7 +815,54 @@ let live=[],loading=false;
 async function load(){if(loading)return;loading=true;$('cqMsg293').textContent='Loading live Cloud orders…';try{const remote=await frame.contentWindow.eval('cloudFetch()');if(!remote||!Array.isArray(remote.payload?.pending))throw Error('Cloud unavailable');live=remote.payload.pending.filter(x=>String(x.status||'').toUpperCase()==='PENDING'&&!x.archived&&!x.cutEntryPending&&Number(x.orderQty||0)>Number(x.cutQty||0));$('cqMsg293').textContent=live.length+' open orders • enter cumulative cutting qty';draw()}catch(e){$('cqMsg293').textContent='Cloud error: '+(e.message||e)}finally{loading=false}}
 function draw(){const q=$('cqSearch293').value.trim().toLowerCase();const list=live.filter(x=>[x.workNo,x.party,x.description].join(' ').toLowerCase().includes(q));$('cqRows293').innerHTML=list.map(x=>{const qty=Number(x.orderQty||0),cut=Number(x.cutQty||0),key=esc(x.workNo);return '<div class="cqrow" data-wo="'+key+'"><span><b>'+key+'</b><small style="display:block">'+esc(x.party)+'</small><small style="display:block;white-space:normal;overflow-wrap:anywhere">'+esc(x.description||x.item||x.product||'')+'</small></span><span>'+qty+'</span><input type="number" min="0" max="'+qty+'" step="1" value="'+cut+'" aria-label="Cut qty for '+key+'"><span class="cqCutLabel" aria-hidden="true">Cut Qty</span><span class="cqBalance">'+Math.max(0,qty-cut)+'</span><button class="cqSave" type="button">Save</button></div>'}).join('')||'No matching open orders';}
 $('cqRows293').addEventListener('input',e=>{if(e.target.type!=='number')return;const row=e.target.closest('.cqrow');const item=live.find(x=>x.workNo===row.dataset.wo);if(item)row.querySelector('.cqBalance').textContent=Math.max(0,Number(item.orderQty||0)-Number(e.target.value||0))});
-$('cqRows293').addEventListener('click',async e=>{if(!e.target.classList.contains('cqSave'))return;const btn=e.target,row=btn.closest('.cqrow'),wo=row.dataset.wo,inp=row.querySelector('input'),n=Number(inp.value);const record=live.find(x=>x.workNo===wo),max=Number(record?.orderQty||0);if(!Number.isInteger(n)||n<0||n>max){alert('Enter whole quantity between 0 and '+max);return}if(!confirm(wo+': save total cut quantity '+n+' of '+max+'?'))return;btn.disabled=true;try{const w=frame.contentWindow;const latest=await w.eval('cloudFetch()');const cloudOrder=latest?.payload?.pending?.find(x=>x.workNo===wo);if(!cloudOrder||['DISPATCHED','ARCHIVED'].includes(String(cloudOrder.status||'').toUpperCase()))throw Error('Order is not pending in Cloud');if(Number(cloudOrder.cutQty||0)!==Number(record.cutQty||0))throw Error('Cloud quantity changed. Refresh and try again.');const result=w.eval('(()=>{const r=state.pending.find(x=>x.workNo==='+JSON.stringify(wo)+');if(!r)throw Error("Work Order not found locally");if(["DISPATCHED","ARCHIVED"].includes(String(r.status||"").toUpperCase()))throw Error("Order is dispatched");r.cutQty='+n+';r.manualCutQtyUpdatedAt=new Date().toISOString();r.manualCutQtySource="DASHBOARD_MANUAL";save();return r.cutQty})()');if(result!==n)throw Error('Local save mismatch');$('cqMsg293').textContent=wo+' saved locally; Cloud sync in progress. Refresh to verify.';await new Promise(resolve=>setTimeout(resolve,1400));const verified=await w.eval('cloudFetch()');if(Number(verified?.payload?.pending?.find(x=>x.workNo===wo)?.cutQty)!==n)throw Error('Cloud not yet confirmed. Check Sync status before another edit.');record.cutQty=n;row.querySelector('.cqBalance').textContent=Math.max(0,max-n);$('cqMsg293').textContent='✓ '+wo+' Cutting Qty '+n+' / '+max+' saved in Cloud.';}catch(err){$('cqMsg293').textContent='Save not verified: '+String(err.message||err)+'. Refresh before retry.';}finally{btn.disabled=false}});
+let cqSaving=false;
+$('cqRows293').addEventListener('click',async e=>{
+ if(!e.target.classList.contains('cqSave')||cqSaving)return;
+ const btn=e.target,row=btn.closest('.cqrow'),wo=row.dataset.wo,inp=row.querySelector('input');
+ const record=live.find(x=>x.workNo===wo),max=Number(record?.orderQty||0),n=Number(inp.value);
+ if(!record||inp.value.trim()===''||!Number.isSafeInteger(n)||n<Number(record.cutQty||0)||n>max){alert('Enter cumulative Cut Qty between '+Number(record?.cutQty||0)+' and '+max+'.');return}
+ if(!confirm(wo+': save total cut quantity '+n+' of '+max+'? This updates order progress only, not stock.'))return;
+ cqSaving=true;btn.disabled=true;btn.textContent='Saving…';$('cqMsg293').textContent='Saving '+wo+' directly to Cloud…';
+ try{
+  const w=frame.contentWindow;
+  const request={wo,n,old:Number(record.cutQty||0),max,party:String(record.party||''),po:String(record.poNo||''),description:String(record.description||'')};
+  const result=await w.eval('('+async function(req){
+   if(cloudBusy)throw Error('Cloud sync in progress. Retry when finished.');
+   cloudBusy=true;
+   try{
+    const latest=await cloudFetch();
+    if(!latest||!validState(latest.payload))throw Error('Cloud unavailable; no changes made');
+    const base=Number(latest.version);
+    if(!Number.isSafeInteger(base)||base<1)throw Error('Invalid Cloud version');
+    const revised=clone(latest.payload),matches=revised.pending.filter(x=>x.workNo===req.wo);
+    if(matches.length!==1)throw Error('Work Order missing or duplicated in Cloud');
+    const x=matches[0],same=r=>r&&String(r.party||'')===req.party&&String(r.poNo||'')===req.po&&String(r.description||'')===req.description&&Number(r.orderQty)===req.max;
+    if(!same(x)||x.archived||x.cutEntryPending||!['PENDING','COMPLETED'].includes(normalize(x.status)))throw Error('Order details/status changed. Refresh and review.');
+    const local=(state.pending||[]).find(r=>r.workNo===req.wo);
+    if(local&&(!same(local)||Number(local.cutQty||0)>req.n||['DISPATCHED','ARCHIVED'].includes(normalize(local.status))))throw Error('This phone has different or newer order details. Review Safe Sync first.');
+    if(Number(x.cutQty||0)!==req.old&&Number(x.cutQty||0)!==req.n)throw Error('Cloud Cutting Qty changed. Refresh first.');
+    if(req.n<Number(x.cutQty||0)||req.n>req.max)throw Error('Invalid cumulative quantity');
+    if(Number(x.cutQty||0)!==req.n){
+     x.cutQty=req.n;x.status=req.n===req.max?'COMPLETED':'PENDING';x.manualCutQtyUpdatedAt=new Date().toISOString();x.manualCutQtySource='DASHBOARD_MANUAL';
+     const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),20000);let response;
+     try{response=await fetch(CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+base,{method:'PATCH',signal:ctrl.signal,headers:{...cloudHeaders(),'Prefer':'return=representation','x-cfm-base-version':String(base)},body:JSON.stringify({payload:revised,version:base+1,updated_at:new Date().toISOString()})})}finally{clearTimeout(timer)}
+     if(!response.ok)throw Error('Cloud rejected save (HTTP '+response.status+'). Refresh before retry.');
+     const saved=await response.json();if(saved.length!==1)throw Error('Another device saved first. Refresh and retry.');
+    }
+    const verified=await cloudFetch(),got=verified?.payload?.pending?.find(r=>r.workNo===req.wo);
+    if(!same(got)||Number(got.cutQty)!==req.n)throw Error('Save not verified; refresh before retry.');
+    // Do not advance a stale phone version, clear local drafts, or overwrite the phone snapshot.
+    return {qty:Number(got.cutQty),version:verified.version,review:cloudDirty||!cloudReady};
+   }finally{cloudBusy=false}
+  }.toString()+')('+JSON.stringify(request)+')');
+  record.cutQty=result.qty;row.querySelector('.cqBalance').textContent=Math.max(0,max-result.qty);
+  $('cqMsg293').textContent='✓ '+wo+' Cloud saved: '+result.qty+' / '+max+' • Balance '+(max-result.qty);
+  alert(wo+' CLOUD SAVED ✓\nCut Qty: '+result.qty+' / '+max+'\nBalance: '+(max-result.qty)+(result.review?'\nOther phone edits preserved. Review Safe Sync separately.':''));
+  if(result.qty===max)draw();
+  try{w.eval('cloudPoll()')}catch(_){}
+ }catch(err){const msg='Save not verified: '+String(err.message||err)+'. Refresh before retry.';$('cqMsg293').textContent=msg;alert(msg)}
+ finally{cqSaving=false;btn.disabled=false;btn.textContent='Save'}
+});
 $('cqClose293').onclick=()=>panel.hidden=true;$('cqSearch293').oninput=draw;
 function install(){try{const d=frame.contentWindow.document;if(!d?.body)return;let btn=d.getElementById('cfmManualCutQtyDashboard293');if(!btn){btn=d.createElement('button');btn.id='cfmManualCutQtyDashboard293';btn.type='button';btn.textContent='✂ Pending Orders • Cutting Qty';btn.style.cssText='margin:10px 12px;padding:12px 15px;background:#116c55;color:#fff;border:0;border-radius:9px;font-weight:bold;cursor:pointer';btn.onclick=()=>{panel.hidden=false;load()};const dash=d.getElementById('view-dashboard');(dash||d.body).prepend(btn)}}catch(e){}}
 frame.addEventListener('load',install);setInterval(install,12000);install();
