@@ -199,3 +199,20 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  m.transition(p,{...cmd,id:'T2',expectedManual:4,expectedLast:'T1',total:12});assert.equal(m.listState(p,r),'DONE');assert.equal(l.summarize(r,[]).balanceQty,0);
  ok(true,'Saved old dispatch entries leave default reconciliation queue; partial balance remains in dispatch ledger and completed history');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ for(const f of ['sync/bill-dispatch-ledger.js','cfm-manual-dispatch-v447.js'])runInNewContext(read(f),{window,document,setInterval:()=>1,clearInterval(){}});
+ const l=window.CFM_BILL_DISPATCH_LEDGER,m=window.CFM_MANUAL_DISPATCH_V447;
+ const r1={workNo:'CFM-TEST1',party:'SAMPLE',poNo:'P1',description:'Cloth',orderQty:12,cutQty:4,status:'PENDING'},r2={...r1,workNo:'CFM-TEST2',orderQty:5};
+ const p={pending:[r1,r2],packingSlips:[{id:'P1',workNo:r1.workNo,thisDispatched:2}],store:[{id:'ROLL'}],cutting:[{id:'CUT'}]};
+ const cmd=r=>({id:'MD-'+r.workNo,workNo:r.workNo,identity:l.identity(r),expectedPacking:r===r1?2:0,expectedManual:0,expectedLast:'',total:r.orderQty,actor:'test',reason:'Verified old dispatch'});
+ const commands=[cmd(r1),cmd(r2)],before=JSON.stringify(p);
+ assert.throws(()=>m.bulkTransition(p,[commands[0],{...commands[1],total:4}]),/full dispatch only/);assert.equal(JSON.stringify(p),before);
+ assert.throws(()=>m.bulkTransition(p,[commands[0],commands[0]]),/Duplicate/);assert.equal(JSON.stringify(p),before);
+ m.bulkTransition(p,commands);assert.equal(p.pending.every(r=>m.listState(p,r)==='DONE'),true);
+ assert.equal(l.summarize(p.pending[0],p.packingSlips).confirmedDispatchQty,12);assert.equal(l.summarize(p.pending[0],p.packingSlips).manualQty,10);
+ m.bulkTransition(p,commands);assert.equal(p.pending.every(r=>r.manualDispatchHistory.length===1),true);
+ assert.equal(JSON.stringify([p.store,p.cutting,p.packingSlips]),JSON.stringify([JSON.parse(before).store,JSON.parse(before).cutting,JSON.parse(before).packingSlips]));
+ ok(true,'Bulk full dispatch is atomic, idempotent, excludes saved entries and preserves stock/cutting/packing records');
+}
