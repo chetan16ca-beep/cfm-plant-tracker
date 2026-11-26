@@ -290,7 +290,7 @@ async function saveSlip(){
    source:'MANUAL CONFIRMED SHIPMENT',operator:typeof deviceLabel==='function'?deviceLabel():''
   };
   const confirmed=await directPackingAppend(latest,record,documentNo);
-  remote=confirmed;verifiedSlip=record;
+  remote=confirmed;verifiedSlip=record;clearPackingMeta('packSlipDialog');
   $('packSlipThis').value='';$('packSlipPrior').value='';
   summary();
   say('✓ SAVED TO LIVE CLOUD: '+record.slipNo+' · This dispatch '+amount+' · Total sent '+record.totalDispatched+' · Balance '+record.balanceAfter);
