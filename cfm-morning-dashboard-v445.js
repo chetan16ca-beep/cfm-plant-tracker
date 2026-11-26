@@ -7,7 +7,7 @@ function productDetails(r){
  const source=[description,spec].filter(Boolean).join(' ');
  // Extract only explicitly labelled micron / pore size, not an arbitrary number in a code.
  const micron=T(r.micron)||source.match(/(?:pore\s*size|micron)\s*[:=-]?\s*(\d+(?:\.\d+)?)\s*(?:microns?|[µμ]m?)?/i)?.[1]||source.match(/(\d+(?:\.\d+)?)\s*(?:microns?\b|[µμ]m?)/i)?.[1]||'';
- const size=T(r.size||r.productSize)||source.match(/(?:\bCF\s*BAG\b|\bCF[-\s]*)(?:\s*[-/]\s*|\s*)(\d+(?:\.\d+)?)\s*(?:"|″|”|inch\b)/i)?.[1]||'';
+ const size=T(r.size||r.productSize)||source.match(/(?:\bCF\s*BAG\b|\bCF[-\s]*)(?:\s*[-/]\s*|\s*)(\d+(?:\.\d+)?)\s*(?:"|″|”|inch\b)/i)?.[1]||source.match(/(\d+(?:\.\d+)?)\s*(?:"|″|”|inch\b)\s*CF\s*BAG\b/i)?.[1]||'';
  const code=T(r.itemCode||r.efpplCode);
  return {description,spec,micron,size: T(r.size||r.productSize)|| (size?size+' inch':''),cloth:T(r.cloth),width:T(r.width),code:/^EFPPL[- ]/i.test(code)?code:T(r.efpplCode)||T(window.CFM_EFPPL?.codeForRow?.(r)?.code)||'',buyerCode:T(r.buyerItemCode||r.partyProductCode),measurement:T(r.measurementAuto)};
 }
