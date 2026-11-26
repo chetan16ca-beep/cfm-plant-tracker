@@ -22,7 +22,7 @@ function summary(p,r,t){
  ['REQUESTED','DONE','READY'].includes(N(r[k==='BILL'?'billStatus':'challanStatus']))||T(r[k==='BILL'?'billNo':'challanNo'])||
  T(r[k==='BILL'?'billRequestedAt':'challanRequestedAt'])));
  const dispatch=window.CFM_BILL_DISPATCH_LEDGER.summarize(r,A(p.packingSlips));
- const ambiguousDispatch=dispatch.needsLegacyReview||(!dispatch.confirmedDispatchQty&&(!!r.deliveredMaterial||!!r.dispatchDate||Number(r.dispatchQty)>0));
+ const ambiguousDispatch=dispatch.needsLegacyReview||(!dispatch.manualVerified&&!dispatch.confirmedDispatchQty&&(!!r.deliveredMaterial||!!r.dispatchDate||Number(r.dispatchQty)>0));
  return {order,bill:count.BILL,challan:count.CHALLAN,previous,remaining:order-previous,legacy,actual:ambiguousDispatch?null:dispatch.confirmedDispatchQty,dispatchPending:ambiguousDispatch?null:dispatch.balanceQty};
 }
 function transition(p,req){

@@ -9,6 +9,7 @@ const qty=x=>Number(x), fmt=x=>String(Number(x)),esc=x=>String(x??'').replace(/[
 let remote=null,selected=null,verifiedSlip=null,busy=false;
 function say(s,err=false){const el=$('packSlipMsg');if(el){el.textContent=s;el.style.color=err?'#a12626':'#24567a'}}
 function slips(){return Array.isArray(remote?.payload?.packingSlips)?remote.payload.packingSlips:[]}
+function manualFor(row){return window.CFM_BILL_DISPATCH_LEDGER.manual(row||{});}
 function forWork(wo){return slips().filter(x=>up(x.workNo)===up(wo)||(Array.isArray(x.items)&&x.items.some(i=>up(i.workNo)===up(wo))))}
 function shipped(rows,wo){
  return rows.reduce((a,x)=>{
@@ -144,7 +145,7 @@ function summary(){
  verifiedSlip=null;$('packSlipPrint').disabled=true;$('packSlipA4').disabled=true;$('packSlipCarton').disabled=true;
  if(!row){panel.textContent='Choose a Work Order.';return}
  selected=row;
- const history=forWork(row.workNo),previous=shipped(history,row.workNo),ordered=Number(row.orderQty),baselineNeeded=legacy(row)&&history.length===0;
+ const history=forWork(row.workNo),previous=shipped(history,row.workNo)+manualFor(row).qty,ordered=Number(row.orderQty),baselineNeeded=legacy(row)&&history.length===0&&!manualFor(row).verified;
  $('packSlipBaselineWrap').hidden=!baselineNeeded;
  if(!baselineNeeded)$('packSlipPrior').value='';
  const extra=baselineNeeded?(Number($('packSlipPrior').value)||0):0;
@@ -249,14 +250,14 @@ async function saveSlip(){
   if(!window.CFM_PACK_COMBINED_V407?.collect)throw Error('Bundle print module not loaded. Refresh ERP and retry.');
   bundleData=window.CFM_PACK_COMBINED_V407.collect(amount,true);
  }catch(e){say(String(e.message||e),true);return}
- const history=forWork(wo),requiresBaseline=legacy(original)&&history.length===0;
+ const history=forWork(wo),requiresBaseline=legacy(original)&&history.length===0&&!manualFor(original).verified;
  const baselineValue=$('packSlipPrior').value.trim(),baseline=requiresBaseline?Number(baselineValue):0;
  if(requiresBaseline&&baselineValue===''){say('Previous dispatched qty must be verified for this older dispatch order.',true);return}
  if(!Number.isSafeInteger(baseline)||baseline<0){say('Earlier dispatched qty must be a whole number (0 or more).',true);return}
  const address=String($('packSlipPartyAddress')?.value||'').trim();
  if(!address){say('Ship-to / Party Address missing. Enter and verify it against the customer PO before saving.',true);return}
  const ordered=Number(original.orderQty);
- if(!Number.isSafeInteger(ordered)||ordered<=0||shipped(history,wo)+baseline+amount>ordered){say('Dispatch exceeds Work Order Qty, or order quantity is invalid.',true);return}
+ if(!Number.isSafeInteger(ordered)||ordered<=0||shipped(history,wo)+manualFor(original).qty+baseline+amount>ordered){say('Dispatch exceeds Work Order Qty, or order quantity is invalid.',true);return}
  if(typeof cloudFetch!=='function'||typeof cloudHeaders!=='function'){say('Database connection not available.',true);return}
  if(cloudBusy){say('Another save is running. Retry when finished.',true);return}
  if(!confirm('Confirm ACTUALLY DISPATCHED '+amount+' nos for '+wo+'? This will record an auditable packing slip, not change stock.'))return;
@@ -273,7 +274,8 @@ async function saveSlip(){
   if(typeof window.CFM_PACK_UNIQUE_V414?.next!=='function')throw Error('Unique Packing Slip number service unavailable. Refresh ERP V414.');
   const documentNo=window.CFM_PACK_UNIQUE_V414.next(latest.payload);
   if(JSON.stringify(rows)!==JSON.stringify(history))throw Error('This shipment history changed. Refresh and check remaining quantity.');
-  const prev=shipped(rows,wo)+baseline,balance=ordered-prev-amount;
+  if(JSON.stringify(manualFor(liveRow))!==JSON.stringify(manualFor(original)))throw Error('Manual dispatch balance changed. Refresh.');
+  const prev=shipped(rows,wo)+manualFor(liveRow).qty+baseline,balance=ordered-prev-amount;
   if(balance<0)throw Error('New shipment exceeds remaining Work Order Qty');
   record={
    id:uuid(),slipNo:documentNo.slipNo,packingSlipSerial:documentNo.serial,
@@ -457,7 +459,7 @@ function previewFromWorkOrder(){
  }
  let meta;try{meta=readPackingMeta('packSlipDialog')}catch(e){say(e.message,true);return}
  const history=forWork(row.workNo);
- const prev=shipped(history,row.workNo)+(legacy(row)&&!history.length?(Number($('packSlipPrior')?.value)||0):0);
+ const prev=shipped(history,row.workNo)+manualFor(row).qty+(legacy(row)&&!history.length&&!manualFor(row).verified?(Number($('packSlipPrior')?.value)||0):0);
  const n=Number($('packSlipThis')?.value)||0;
  const ordered=Number(row.orderQty)||0;
  printSlip(true,{

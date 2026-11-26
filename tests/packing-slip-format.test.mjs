@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
 const source=readFileSync(new URL('../cfm-packing-slip-dispatch-v355.js',import.meta.url),'utf8');
+const ledger=readFileSync(new URL('../sync/bill-dispatch-ledger.js',import.meta.url),'utf8');
 const legacy=readFileSync(new URL('../cfm-legacy-packing-letterhead-v366.js',import.meta.url),'utf8');
 
 function harness(){
@@ -21,6 +22,7 @@ function harness(){
  const instrumented=source.replace(/\}\)\(\);\s*$/,
   'window.__test={printSlip,previewFromWorkOrder,setRemote:v=>remote=v};})();');
  assert.notEqual(instrumented,source,'Packing Slip test export must be available');
+ runInNewContext(ledger,{window:win});
  runInNewContext(instrumented,{document:doc,window:win,confirm(){throw Error('preview must not confirm a dispatch')},
   cloudPush(){throw Error('preview must not save Cloud data')},setTimeout(){throw Error('preview must not schedule saves')}},
   {timeout:1000});
@@ -97,4 +99,14 @@ test('Direct packing append preserves unrelated data, verifies receipt and does 
  assert.equal(writes,1);assert.equal(JSON.stringify(phone),before);assert.equal(ctx.cloudBusy,false);
  await assert.rejects(win.CFM_DIRECT_PACK_APPEND_V436(result,rec,{slipNo:rec.slipNo,serial:1}),/already exists/);
  assert.equal(writes,1);
+});
+
+test('Packing preview uses verified old dispatch together with saved packing history',()=>{
+ const h=harness(),r={...order};
+ r.manualDispatchHistory=[{id:'old',identity:h.win.CFM_BILL_DISPATCH_LEDGER.identity(r),additionalQty:3}];
+ h.win.__test.setRemote({payload:{pending:[r],packingSlips:[{id:'P1',workNo:r.workNo,thisDispatched:2}]}});
+ h.win.__test.previewFromWorkOrder();
+ assert.match(h.html(),/PREVIOUS SENT/);
+ assert.equal(h.win.CFM_BILL_DISPATCH_LEDGER.summarize(r,[{id:'P1',workNo:r.workNo,thisDispatched:2}]).confirmedDispatchQty,5);
+ assert.equal(h.win.CFM_BILL_DISPATCH_LEDGER.summarize(r,[{id:'P1',workNo:r.workNo,thisDispatched:2}]).balanceQty,15);
 });

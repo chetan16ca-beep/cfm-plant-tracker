@@ -27,7 +27,7 @@ function calculate(p){
   if(cutPending===null)review.push('Cutting quantity needs review');
   try{
    const d=window.CFM_BILL_DISPATCH_LEDGER.summarize(r,A(p.packingSlips));
-   const ambiguous=d.needsLegacyReview||(!d.confirmedDispatchQty&&(r.deliveredMaterial||r.dispatchDate||Number(r.dispatchQty)>0));
+   const ambiguous=d.needsLegacyReview||(!d.manualVerified&&!d.confirmedDispatchQty&&(r.deliveredMaterial||r.dispatchDate||Number(r.dispatchQty)>0));
    if(ambiguous||closed&&d.balanceQty>0)review.push('Legacy dispatch needs verification');
    else{dispatchPending=d.balanceQty;actual=d.confirmedDispatchQty}
   }catch(e){review.push(e.message)}
