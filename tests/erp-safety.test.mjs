@@ -123,3 +123,16 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(p.pending.length,2);assert.equal(p.store.length,1);assert.equal(p.cutting.length,1);
  ok(true,'Order Inbox deduplicates entries and converts exactly once without changing stock/cutting');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ runInNewContext(read('sync/bill-dispatch-ledger.js'),{window});
+ runInNewContext(read('cfm-advanced-bill-request-v444.js'),{window,document,setInterval:()=>1,clearInterval(){}});
+ const f=window.CFM_ADV_BILL_V444,r={workNo:'CFM-TEST',party:'SAMPLE',poNo:'P1',description:'Cloth',orderQty:12},p={pending:[r],packingSlips:[],store:[{id:'test'}],cutting:[{id:'test'}]};
+ const req={id:'TEST',type:'BOTH',actor:'test',items:[{workNo:r.workNo,identity:JSON.stringify(['CFM-TEST','SAMPLE','P1','CLOTH',12]),qty:4}]};
+ f.transition(p,req);let s=f.summary(p,r,'BOTH');assert.equal(s.remaining,8);assert.equal(s.dispatchPending,12);assert.equal(s.bill,4);assert.equal(s.challan,4);
+ p.packingSlips.push({id:'PACK-TEST',workNo:r.workNo,thisDispatched:4});assert.equal(f.summary(p,r,'BOTH').dispatchPending,8);
+ f.transition(p,req);assert.equal(p.accountsQtyRequests.length,1);assert.throws(()=>f.transition(p,{...req,id:'TEST-2',items:[{...req.items[0],qty:9}]}),/exceeds/);
+ assert.equal(p.store.length,1);assert.equal(p.cutting.length,1);assert.equal(r.deliveredMaterial,undefined);
+ ok(true,'Partial quantity request and actual dispatch ledgers are separate; duplicate and over-request protection');
+}
