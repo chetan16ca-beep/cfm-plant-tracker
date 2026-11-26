@@ -219,7 +219,7 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
 
 {
  const window={},document={readyState:'loading',addEventListener(){}};
- runInNewContext(read('cfm-workorder-stitch-label-v352.js'),{window,document});
+ runInNewContext(read('cfm-stitch-label-helper-v451.js'),{window,document});
  const f=window.CFM_STITCH_V451;
  assert.equal(f.orderNumber('CFM-461'),'461');
  assert.equal(f.explicitMicron({description:'ANFD 5 KL BAG 5 MICRON ANT'}),'5');
