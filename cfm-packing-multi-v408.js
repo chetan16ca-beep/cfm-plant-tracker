@@ -53,7 +53,11 @@ function render(){
 function renderOrders(){
  const rows=companyOrders();
  const addrs=addresses(rows);
- $('cfm408Address').value=addrs.length===1?addrs[0]:'';
+ const addressBox=$('cfm408Address'),addressScope=company();
+ if(addressBox.dataset.addressScope!==addressScope||addressBox.dataset.addressEdited!=='1'){
+  addressBox.dataset.addressScope=addressScope;addressBox.dataset.addressEdited='0';
+  addressBox.value=addrs.length===1?addrs[0]:'';
+ }
  $('cfm408Orders').innerHTML=rows.map(r=>{
   const m=mapped(r),ordered=pos(r.orderQty),previous=sent(r.workNo),baseline=legacy(r)&&!linesFor(r.workNo).length;
   const rest=Math.max(0,ordered-previous);
@@ -243,6 +247,7 @@ function mount(){
  '<div class="cfm408-foot"><button id="cfm408Refresh">↻ Refresh Cloud</button><button id="cfm408Preview">👁 Preview (No Save)</button>'+
  '<button id="cfm408Save">✓ Save Actual Multi-WO Dispatch</button><button id="cfm408Last">🖨 Reprint Last Saved</button></div>';
  document.body.append(d);
+ window.CFM_ADDRESS_PASTE_V440?.('cfm408Address',()=>company());
  const style=document.createElement('style');style.id='cfm408Style';
  style.textContent='#cfm408Open{display:block;width:100%;margin:6px 0 12px!important;background:#e8f5ff!important;color:#0b467a!important;border:1px solid #83b4d5!important;font-weight:800!important}'+
  '#cfm408Dialog{width:min(1200px,98vw);max-height:95dvh;padding:0;border:1px solid #a1b7cc;border-radius:12px;color:#173b57;background:#fff;font:12px Arial;overflow:auto}'+
