@@ -325,7 +325,7 @@ async function saveSlip(){
     Number(row.payload.packingSlipGlobalSequence)>=Number(record?.packingSlipSerial)&&
     window.CFM_PACK_UNIQUE_V414?.verify?.(row.payload,{slipNo:record.slipNo,serial:record.packingSlipSerial})&&
     data.newOrders.every(o=>(row.payload.packingManualOrders||[]).some(x=>x.id===o.id)),true);
-  lastSaved=snap.payload.packingSlips.find(x=>x.id===receiptId);
+  lastSaved=snap.payload.packingSlips.find(x=>x.id===receiptId);window.CFM_PACK_META_V441?.clear('cfm409Dialog');
   lines=[];window.CFM_PACK_MIX_V411?.reset?.();renderLines();renderHistory();
   msg('✓ CLOUD SAVED: '+lastSaved.slipNo+' · Sent '+total+' Nos · Pending '+lastSaved.balanceAfter+' Nos · '+lastSaved.bundleCount+' Labels.');
  }catch(e){msg('⚠ '+String(e.message||e)+' Check Cloud History before retry.',true)}
