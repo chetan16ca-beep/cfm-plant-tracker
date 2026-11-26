@@ -110,6 +110,30 @@ function installAddressPaste(id,scope){
  });
 }
 window.CFM_ADDRESS_PASTE_V440=installAddressPaste;
+// Optional dispatch metadata is captured on each new slip, never inferred from remarks.
+const packingMetaFields=[['invoiceNo','Invoice / Bill No.'],['challanNo','Delivery Challan No.'],['transporter','Transporter / Courier'],['lrNo','LR / AWB No.'],['vehicleNo','Vehicle No.'],['packageType','Packing Type'],['grossWeightKg','Gross Weight (kg)'],['netWeightKg','Net Weight (kg)']];
+function installPackingMeta(dialogId,anchorId){
+ const dialog=$(dialogId),anchor=$(anchorId);if(!dialog||!anchor||dialog.querySelector('[data-pack-meta]'))return;
+ const block=document.createElement('details');block.dataset.packMeta='1';block.style.cssText='border:1px solid #b2cbdf;border-radius:7px;padding:8px;margin:8px 0;background:white';
+ const head=document.createElement('summary');head.textContent='Additional Dispatch Details (Optional)';head.style.cssText='font-weight:700;cursor:pointer';block.append(head);
+ const fields=document.createElement('div');fields.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:5px 8px';
+ for(const [key,title] of packingMetaFields){
+  const label=document.createElement('label');label.textContent=title;
+  const input=document.createElement('input');input.dataset.packMetaField=key;input.type=key.endsWith('WeightKg')?'number':'text';input.maxLength=100;if(input.type==='number'){input.min='0';input.step='0.001'}label.append(input);fields.append(label);
+ }
+ block.append(fields);(anchor.closest('label')||anchor).after(block);
+}
+function readPackingMeta(dialogId){
+ const result={};for(const el of $(dialogId)?.querySelectorAll('[data-pack-meta-field]')||[]){
+  const v=String(el.value||'').trim();if(!v)continue;
+  if(el.dataset.packMetaField.endsWith('WeightKg')&&(!Number.isFinite(Number(v))||Number(v)<=0))throw Error('Enter a positive shipment weight in kg.');
+  result[el.dataset.packMetaField]=v;
+ }
+ if(result.grossWeightKg&&result.netWeightKg&&Number(result.netWeightKg)>Number(result.grossWeightKg))throw Error('Net weight cannot exceed gross weight.');
+ return result;
+}
+function clearPackingMeta(dialogId){for(const el of $(dialogId)?.querySelectorAll('[data-pack-meta-field]')||[])el.value=''}
+window.CFM_PACK_META_V441={install:installPackingMeta,read:readPackingMeta,clear:clearPackingMeta};
 function legacy(row){return !!row&&(
  up(row.status)==='DISPATCHED'||!!row.dispatchDoneAt||
  up(row.dispatchStatus)==='DISPATCHED'||!!row.dispatchDate||
@@ -253,7 +277,7 @@ async function saveSlip(){
   if(balance<0)throw Error('New shipment exceeds remaining Work Order Qty');
   record={
    id:uuid(),slipNo:documentNo.slipNo,packingSlipSerial:documentNo.serial,
-   workNo:wo,party:liveRow.party||'',partyAddress:address,poNo:liveRow.poNo||'',
+   workNo:wo,party:liveRow.party||'',partyAddress:address,poNo:liveRow.poNo||'',dispatchMeta:readPackingMeta('packSlipDialog'),
    poDate:field(liveRow,['poDate','purchaseOrderDate']),orderDate:liveRow.orderDate||'',
    customerItemNo:packingWOFields(liveRow).customerItemNo,size:packingWOFields(liveRow).size,
    micron:packingWOFields(liveRow).micron,
@@ -266,7 +290,7 @@ async function saveSlip(){
    source:'MANUAL CONFIRMED SHIPMENT',operator:typeof deviceLabel==='function'?deviceLabel():''
   };
   const confirmed=await directPackingAppend(latest,record,documentNo);
-  remote=confirmed;verifiedSlip=record;
+  remote=confirmed;verifiedSlip=record;clearPackingMeta('packSlipDialog');
   $('packSlipThis').value='';$('packSlipPrior').value='';
   summary();
   say('✓ SAVED TO LIVE CLOUD: '+record.slipNo+' · This dispatch '+amount+' · Total sent '+record.totalDispatched+' · Balance '+record.balanceAfter);
@@ -431,6 +455,7 @@ function previewFromWorkOrder(){
   try{bundleData=window.CFM_PACK_COMBINED_V407.collect(Number($('packSlipThis')?.value)||0,false)}
   catch(e){say(String(e.message||e),true);return}
  }
+ let meta;try{meta=readPackingMeta('packSlipDialog')}catch(e){say(e.message,true);return}
  const history=forWork(row.workNo);
  const prev=shipped(history,row.workNo)+(legacy(row)&&!history.length?(Number($('packSlipPrior')?.value)||0):0);
  const n=Number($('packSlipThis')?.value)||0;
@@ -447,7 +472,7 @@ function previewFromWorkOrder(){
   totalDispatched:prev+n,balanceAfter:ordered-prev-n,
   bundleCount:bundleData.bundleCount,bundleQtys:bundleData.bundleQtys,packages:bundleData.packages,
   createdAt:new Date().toISOString(),
-  notes:$('packSlipRemarks')?.value||'',operator:'',source:'DRAFT — READ ONLY'
+  notes:$('packSlipRemarks')?.value||'',dispatchMeta:meta,operator:'',source:'DRAFT — READ ONLY'
  });
 }
 function printCartonLabel(record=null){
@@ -531,6 +556,7 @@ function build(){
  '<div class="pfoot"><button id="packSlipDeleteOne" type="button">🗑 Delete Single</button><button id="packSlipDeleteAll" type="button">🗑 Delete All Demo Slips</button><button id="packSlipPreview">👁 A4 Preview (No Save)</button><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>👁 Saved Slip Preview</button><button id="packSlipA4" disabled>🖨 A4 Landscape Preview & Print</button><button id="packSlipCarton" disabled>📦 Print Packing Label 4×4</button></div>';
  document.body.append(d);
  installAddressPaste('packSlipPartyAddress',()=>JSON.stringify([$('packSlipWO')?.value,current()?.party,current()?.poNo]));
+ installPackingMeta('packSlipDialog','packSlipRemarks');
  $('packSlipClose').onclick=()=>d.close();
  $('packSlipDeleteOne').onclick=()=>deletePackingSlips(false);
  $('packSlipDeleteAll').onclick=()=>deletePackingSlips(true);
@@ -544,7 +570,7 @@ function build(){
   if(b.dataset.kind==='carton')printCartonLabel(item);
   else printSlip(true,item);
  };
- $('packSlipWO').onchange=()=>{$('packSlipThis').value='';$('packSlipPrior').value='';setOrderAddress();summary()};
+ $('packSlipWO').onchange=()=>{clearPackingMeta('packSlipDialog');$('packSlipThis').value='';$('packSlipPrior').value='';setOrderAddress();summary()};
  $('packSlipPartyAddress').oninput=summary;
  $('packSlipPreview').onclick=previewFromWorkOrder;
  $('packSlipReload').onclick=load;
