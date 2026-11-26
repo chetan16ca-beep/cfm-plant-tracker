@@ -74,8 +74,42 @@ const partyShipAddress=row=>{
 };
 function setOrderAddress(){
  const row=current(),el=$('packSlipPartyAddress');
- if(el)el.value=row?partyShipAddress(row):'';
+ if(!el)return;
+ const scope=JSON.stringify([row?.workNo||'',row?.party||'',row?.poNo||'']);
+ if(el.dataset.addressScope===scope&&el.dataset.addressEdited==='1')return;
+ el.dataset.addressScope=scope;el.dataset.addressEdited='0';
+ el.value=row?partyShipAddress(row):'';
 }
+// Native text selection plus explicit clipboard read on a user tap.
+function installAddressPaste(id,scope){
+ const el=$(id);if(!el||el.dataset.pasteBound)return;
+ el.dataset.pasteBound='1';
+ el.style.setProperty('user-select','text','important');
+ el.style.setProperty('-webkit-user-select','text','important');
+ el.style.setProperty('-webkit-touch-callout','default','important');
+ el.style.setProperty('touch-action','auto','important');
+ el.style.setProperty('font-size','16px','important');
+ el.style.setProperty('min-height','85px');
+ el.addEventListener('input',()=>{el.dataset.addressEdited='1'});
+ const bar=document.createElement('div');bar.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 8px';
+ const btn=document.createElement('button');btn.type='button';btn.textContent='Paste Address';
+ const status=document.createElement('small');status.setAttribute('role','status');status.style.cssText='font:12px/1.4 Arial;color:#36566e';
+ bar.append(btn,status);el.insertAdjacentElement('afterend',bar);
+ btn.addEventListener('click',async()=>{
+  const original=el.value,context=scope();btn.disabled=true;
+  try{
+   if(typeof navigator.clipboard?.readText!=='function')throw Error('Clipboard unavailable');
+   const value=await navigator.clipboard.readText();
+   if(!el.isConnected||scope()!==context||el.value!==original){status.textContent='Selection changed. Tap Paste again.';return}
+   if(!value.trim()){status.textContent='Clipboard is empty. Copy the address first.';return}
+   if(original.trim()&&original!==value&&!window.confirm('Replace the current address with the copied address?'))return;
+   el.value=value;el.dataset.addressEdited='1';el.dispatchEvent(new Event('input',{bubbles:true}));
+   status.textContent='Address pasted. Verify against customer PO.';
+  }catch(e){el.focus();status.textContent='Touch and hold inside the address box, then choose Paste from your keyboard/menu.'}
+  finally{btn.disabled=false}
+ });
+}
+window.CFM_ADDRESS_PASTE_V440=installAddressPaste;
 function legacy(row){return !!row&&(
  up(row.status)==='DISPATCHED'||!!row.dispatchDoneAt||
  up(row.dispatchStatus)==='DISPATCHED'||!!row.dispatchDate||
@@ -496,6 +530,7 @@ function build(){
  '<div id="packSlipMsg" role="status">Load live Cloud to begin.</div>'+
  '<div class="pfoot"><button id="packSlipDeleteOne" type="button">🗑 Delete Single</button><button id="packSlipDeleteAll" type="button">🗑 Delete All Demo Slips</button><button id="packSlipPreview">👁 A4 Preview (No Save)</button><button id="packSlipSave" class="action">✓ Save Actual Dispatch Qty</button><button id="packSlipPrint" disabled>👁 Saved Slip Preview</button><button id="packSlipA4" disabled>🖨 A4 Landscape Preview & Print</button><button id="packSlipCarton" disabled>📦 Print Packing Label 4×4</button></div>';
  document.body.append(d);
+ installAddressPaste('packSlipPartyAddress',()=>JSON.stringify([$('packSlipWO')?.value,current()?.party,current()?.poNo]));
  $('packSlipClose').onclick=()=>d.close();
  $('packSlipDeleteOne').onclick=()=>deletePackingSlips(false);
  $('packSlipDeleteAll').onclick=()=>deletePackingSlips(true);
