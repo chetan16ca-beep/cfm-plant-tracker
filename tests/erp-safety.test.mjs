@@ -136,3 +136,12 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(p.store.length,1);assert.equal(p.cutting.length,1);assert.equal(r.deliveredMaterial,undefined);
  ok(true,'Partial quantity request and actual dispatch ledgers are separate; duplicate and over-request protection');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ for(const f of ['sync/bill-dispatch-ledger.js','cfm-advanced-bill-request-v444.js','cfm-morning-dispatch-v445.js'])runInNewContext(read(f),{window,document,setInterval:()=>1,clearInterval(){}});
+ const p={pending:[{workNo:'CFM-TEST',party:'Sample',description:'Cloth',orderQty:12,status:'PENDING'},{workNo:'CFM-OLD',party:'Sample',description:'Cloth',orderQty:10,status:'DISPATCHED'},{workNo:'CFM-DONE',party:'Sample',description:'Cloth',orderQty:2,status:'COMPLETED'},{workNo:'CFM-ARCH',orderQty:7,status:'ARCHIVED'}],packingSlips:[{id:'TEST-1',workNo:'CFM-TEST',thisDispatched:4},{id:'TEST-2',workNo:'CFM-DONE',thisDispatched:2}]};
+ const before=JSON.stringify(p),r=window.CFM_MORNING_DISPATCH_V445.build(p);
+ assert.equal(r.open,1);assert.equal(r.rows.length,1);assert.equal(r.rows[0].balance,8);assert.equal(r.balance,8);assert.equal(r.review.length,1);assert.equal(r.closed.length,1);assert.equal(JSON.stringify(p),before);
+ ok(true,'Morning dispatch list shows partial balance, excludes closed/archive, flags legacy quantities and never mutates ERP');
+}
