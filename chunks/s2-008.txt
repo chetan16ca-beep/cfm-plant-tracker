@@ -428,6 +428,7 @@ async function cloudPush(force=false){
     // Order Control Center is an exclusively direct-database ledger.
     // Legacy module saves must preserve the authoritative Inbox unchanged.
     if(Array.isArray(remote.payload.orderInbox))snapshot.orderInbox=clone(remote.payload.orderInbox);
+    if(Array.isArray(remote.payload.accountsQtyRequests))snapshot.accountsQtyRequests=clone(remote.payload.accountsQtyRequests);
     // Compare-and-swap: require this exact Cloud version for the write.
     const nextVersion=baseVersion+1;
     const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+baseVersion;
