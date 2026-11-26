@@ -2,18 +2,41 @@
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),C_W=2008,C_H=1063,VIEW_W=850,VIEW_H=450;
-let loaded=[],pasted=false,printable=false,overflow=false;
+let loaded=[],pasted=false,printable=false,overflow=false,refreshSeq=0,previewReady=false;
 function val(id){return String($(id)?.value||'').trim()}
 function put(id,v){if($(id))$(id).value=String(v??'')}
 function onlyNumber(v){return String(v??'').match(/\d+(?:\.\d+)?/)?.[0]||''}
 function note(v){if($('woLabelNotice'))$('woLabelNotice').textContent=v}
+function explicitMicron(row){
+ const raw=String(row?.micron??row?.micronRating??'').trim();
+ if(/^\d+(?:\.\d+)?(?:\s*(?:microns?|[µμ]m?))?$/i.test(raw))return onlyNumber(raw);
+ const s=[row?.description,row?.description2].filter(Boolean).join(' ');
+ return s.match(/(\d+(?:\.\d+)?)\s*(?:microns?\b|[µμ]m?)/i)?.[1]||s.match(/(?:micron|pore\s*size)\s*[:=-]?\s*(\d+(?:\.\d+)?)/i)?.[1]||'';
+}
+function orderNumber(v){const s=String(v??'').trim();return s.match(/^(?:CFM[-\s]*)?(\d+)$/i)?.[1]||''}
 function orders(){try{return loaded.length?loaded:(typeof state!=='undefined'&&Array.isArray(state.pending)?state.pending:[])}catch(e){return loaded}}
 function getCode(row){
  const stored=String(row?.itemCode||row?.efpplCode||'').trim();
  const mapped=window.CFM_EFPPL?.codeForRow?.(row)?.code||'';
  return /^EFPPL-\d{4}-/i.test(stored)?stored:(mapped||stored);
 }
+function populateWorkList(data,current=''){
+ const sel=$('woLabelSelect'),query=val('woLabelSearch').toUpperCase();
+ const sorted=[...data].sort((a,b)=>Number(orderNumber(b.workNo))-Number(orderNumber(a.workNo)));
+ const used=new Set();sel.replaceChildren(new Option('Select Work Order / Manual',''));
+ for(const r of sorted){
+  const n=String(r.workNo||'').trim();if(!n||used.has(n))continue;
+  if(query&&![n,r.party,r.poNo,r.description,r.itemCode].join(' ').toUpperCase().includes(query)&&n!==current)continue;
+  used.add(n);sel.add(new Option(n+' • '+String(r.party||'')+' • '+String(r.description||'').replace(/\s+/g,' ').slice(0,75),n));
+ }
+ if(used.has(current))sel.value=current;
+ const master=$('woLabelMaster'),previous=master.value;master.replaceChildren(new Option('Choose verified EFPPL code',''));
+ for(const p of window.CFM_EFPPL?.master||[])master.add(new Option(p.code+' | '+p.description,p.code));
+ if([...master.options].some(o=>o.value===previous))master.value=previous;
+ return used.size;
+}
 async function refresh(){
+ const seq=++refreshSeq;
  let data=orders(),source='ERP';
  try{
   if(typeof cloudFetch==='function'){
@@ -21,31 +44,23 @@ async function refresh(){
    if(Array.isArray(res?.payload?.pending)){data=res.payload.pending;source='Live Cloud'}
   }
  }catch(e){source='Offline ERP'}
- loaded=data;
- const sel=$('woLabelSelect'),current=sel.value;
- sel.replaceChildren(new Option('Select Work Order / Manual',''));
- const sorted=[...data].sort((a,b)=>Number(String(b.workNo||'').match(/\d+/)?.[0]||0)-Number(String(a.workNo||'').match(/\d+/)?.[0]||0));
- const used=new Set();
- for(const r of sorted){
-  const n=String(r.workNo||'').trim();if(!n||used.has(n))continue;
-  used.add(n);sel.add(new Option(n+' • '+String(r.description||'').replace(/\s+/g,' ').slice(0,42),n));
- }
- if(used.has(current))sel.value=current;
- note(source+' · '+used.size+' Work Orders available');
+ if(seq!==refreshSeq)return;
+ loaded=data;const current=val('woLabelSelect'),count=populateWorkList(data,current);
+ note(source+' · '+count+' matching Work Orders available. Select a Work Order.');
 }
 function selectWork(){
  const n=val('woLabelSelect'),r=orders().find(x=>String(x.workNo||'').trim()===n);
- if(!r)return;
- put('woLabelNo',onlyNumber(n));put('woLabelHeading',r.description||'');put('woLabelDetails',r.description2||'');
- put('woLabelCode',getCode(r));
+ if(!r){for(const id of ['woLabelNo','woLabelHeading','woLabelDetails','woLabelCode','woLabelMicron','woLabelMaster'])put(id,'');draw();return}
+ put('woLabelNo',orderNumber(n));put('woLabelHeading',r.description||'');put('woLabelDetails',r.description2||'');
+ put('woLabelCode',getCode(r));put('woLabelMaster',getCode(r));
  const h=String(r.description||'');
  const sizeRaw=String(r.size||r.sizeInch||r.dimensions||'').trim();
  const inch=h.match(/\b\d{1,3}(?:\.\d+)?\s*(?:"|″|INCH(?:ES)?)/i)?.[0]||'';
  put('woLabelSize',sizeRaw||inch);
- put('woLabelMicron',onlyNumber(r.micron||r.micronRating||r.description2||''));
+ put('woLabelMicron',explicitMicron(r));
  put('woLabelMfgDate',String(r.mfgDate||r.manufacturingDate||r.productionDate||'').trim());
  draw();
- note('Work Order saved heading and details loaded. Verify EFPPL code.');
+ if(!val('woLabelCode'))note('EFPPL code missing: select the correct master code or enter verified code.');
 }
 function wrap(ctx,s,max,font){
  ctx.font=font;const lines=[];
@@ -100,7 +115,7 @@ function label45Layout(){
  }
  const out={v,fields};
  for(const o of fields){
-  const raw=o.key==='micron'?v.micron||v.spec:v[o.key];
+  const raw=v[o.key];
   out[o.key]=fit(raw,o);
  }
  out.overflowFields=fields.filter(o=>!out[o.key]).map(o=>o.label);
@@ -181,15 +196,15 @@ function draw(){
  const L=label45Layout();if(!L)return;
  const ctx=canvas.getContext('2d');
  ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#fff';ctx.fillRect(0,0,C_W,C_H);
- overflow=L.overflow;pasted=false;printable=L.valid;
+ overflow=L.overflow;pasted=false;printable=L.valid;previewReady=false;
  const seq=++drawSequence;
  if(!L.valid){
   note(L.overflow?'Box overflow ('+L.overflowFields.join(', ')+'). Shorten that value before printing; no text will be cut.':'Select Work Order and verify Product / Item Code.');
   return;
  }
  const svg=vectorLabel(),image=new Image();
- image.onload=()=>{if(seq!==drawSequence)return;ctx.clearRect(0,0,C_W,C_H);ctx.drawImage(image,0,0,C_W,C_H)};
- image.onerror=()=>note('Preview could not render. Please refresh.');
+ image.onload=()=>{if(seq!==drawSequence)return;ctx.clearRect(0,0,C_W,C_H);ctx.drawImage(image,0,0,C_W,C_H);previewReady=true};
+ image.onerror=()=>{if(seq!==drawSequence)return;previewReady=false;note('Preview could not render. Tap Preview again.')};
  image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
  note('CFM V391 · White boxes, high-contrast readable text · 85×45 mm vector.');
 }
@@ -223,11 +238,11 @@ function imagePaste(file){
   const ctx=$('woLabelCanvas').getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='white';ctx.fillRect(0,0,C_W,C_H);
   const ratio=Math.min(C_W/img.width,C_H/img.height),w=img.width*ratio,h=img.height*ratio;
   ctx.drawImage(img,(C_W-w)/2,(C_H-h)/2,w,h);
-  pasted=true;printable=true;overflow=false;note('Pasted image ready for landscape print.');
+  pasted=true;printable=true;overflow=false;previewReady=true;note('Pasted image ready for landscape print.');
  };
  img.onerror=()=>{URL.revokeObjectURL(url);note('Image could not be loaded.')};img.src=url;
 }
-function ok(){if(printable)return true;note('Enter Work Order, heading/details and EFPPL code before printing.');return false}
+function ok(){if(printable)return true;note(overflow?'Label text too long. Edit Product to a shorter verified description; then Preview.':'Enter Work Order, Product and verified EFPPL code before printing.');return false}
 // Pure vector for native printing: avoids resampling raster text on Taffeta.
 function printLabel(sheet){
  if(!ok())return;
@@ -288,11 +303,11 @@ function build(){
  const d=document.createElement('dialog');d.id='woLabelDialog';
  d.innerHTML='<div class="top"><div><strong>EAGLE · Stitching Label</strong><small>New approved corporate design · 85 × 45 mm · Work Order Auto-Fill</small></div><button id="woLabelClose">✕ Close</button></div>'+
  '<div class="main"><div class="editor">'+
- '<div class="workselect"><label>SELECT WORK ORDER<select id="woLabelSelect"><option value="">Select Work Order / Manual</option></select></label><button id="woLabelRefresh">↻ Refresh</button></div>'+
+ '<label>SEARCH WORK ORDER / COMPANY / PRODUCT<input id="woLabelSearch" placeholder="e.g. 461 or company"></label><div class="workselect"><label>SELECT WORK ORDER<select id="woLabelSelect"><option value="">Select Work Order / Manual</option></select></label><button id="woLabelRefresh">↻ Refresh</button></div>'+
  '<div class="fields">'+
  '<label>WORK ORDER NO. (NUMBER ONLY)<input id="woLabelNo" inputmode="numeric" placeholder="556"></label>'+
- '<label>EFPPL ITEM CODE<input id="woLabelCode" placeholder="EFPPL-2000-CF-48-TLT"></label>'+
- '<label class="wide">PRODUCT — WORK ORDER DESCRIPTION<textarea id="woLabelHeading" rows="2" placeholder="Auto from Work Order"></textarea></label>'+
+ '<label>EFPPL ITEM CODE<input id="woLabelCode" placeholder="Enter verified code"></label><label class="wide">EFPPL MASTER CODE<select id="woLabelMaster"><option value="">Choose verified EFPPL code</option></select></label>'+
+ '<label class="wide">PRODUCT — EDITABLE LABEL DESCRIPTION<textarea id="woLabelHeading" rows="2" placeholder="Auto from Work Order"></textarea></label>'+
  '<label class="wide">MICRON (NUMBER ONLY)<input id="woLabelMicron" inputmode="numeric" placeholder="5"></label>'+
 
 
@@ -303,19 +318,19 @@ function build(){
  '<button id="woLabelPaste">↳ Apply Pasted Matter</button>'+
  '<label>Or import image (PNG/JPG)<input id="woLabelUpload" type="file" accept="image/png,image/jpeg,image/webp"></label>'+
  '</details>'+
- '<p class="help">Auto from selected Work Order. Details use medium-weight text and auto-fit each box; too-long values block printing instead of getting cut. Print at 100% Actual Size, Fit to Page OFF.</p>'+
+ '<p class="help">Auto from selected Work Order. Details use medium-weight text and auto-fit each box; For a long description, shorten the label-only Product text using the verified PO details. This does not modify the Work Order. Missing code must be verified. Print at 100% Actual Size, Fit to Page OFF.</p>'+
  '</div><div class="preview"><strong>LIVE PRINT PREVIEW</strong><canvas id="woLabelCanvas" width="2008" height="1063"></canvas><span id="woLabelNotice" role="status">Select Work Order</span></div></div>'+
  '<div class="tools"><button id="woLabelPrint" class="primary">🖨 Print 85 × 45</button><button id="woLabelA4">🖨 A4 (10)</button>'+
  '<button id="woLabelGenerate">↻ Preview</button><button id="woLabelSave">↓ Save PNG</button><button id="woLabelCopy">⧉ Copy Image</button></div>';
  document.body.append(d);
  $('woLabelClose').onclick=()=>d.close();
- $('woLabelRefresh').onclick=refresh;$('woLabelSelect').onchange=selectWork;$('woLabelPaste').onclick=pasteMatter;
+ $('woLabelSearch').oninput=()=>populateWorkList(orders(),val('woLabelSelect'));$('woLabelMaster').onchange=()=>{if(val('woLabelMaster')){put('woLabelCode',val('woLabelMaster'));draw()}};$('woLabelRefresh').onclick=refresh;$('woLabelSelect').onchange=selectWork;$('woLabelPaste').onclick=pasteMatter;
  for(const id of ['woLabelNo','woLabelHeading','woLabelDetails','woLabelCode','woLabelMicron'])$(id)?.addEventListener('input',draw);
  $('woLabelGenerate').onclick=draw;
  $('woLabelUpload').onchange=e=>imagePaste(e.target.files?.[0]);
  d.addEventListener('paste',e=>{const item=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith('image/'));if(item){e.preventDefault();imagePaste(item.getAsFile())}});
  $('woLabelCopy').onclick=async()=>{
-  if(!ok())return;
+  if(!ok())return;if(!previewReady){note('Preview is still loading. Try Copy again when visible.');return}
   const canvas=$('woLabelCanvas');
   try{
    if(!window.isSecureContext)throw Error('Clipboard needs HTTPS');
@@ -332,7 +347,7 @@ function build(){
   }
  };
  $('woLabelSave').onclick=()=>{
-  if(!ok())return;
+  if(!ok())return;if(!previewReady){note('Preview is still loading. Try Save PNG again when visible.');return}
   const a=document.createElement('a');a.href=$('woLabelCanvas').toDataURL('image/png');
   a.download='CFM-Stitching-Label-'+(val('woLabelNo').replace(/[^a-z0-9_-]/gi,'-')||'85x45')+'.png';
   document.body.append(a);a.click();a.remove();note('PNG saved.');
@@ -410,6 +425,7 @@ function boot(){
  });
  observer.observe(document.body,{childList:true,subtree:true});
 }
+window.CFM_STITCH_V451={explicitMicron,orderNumber,getCode};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
 else boot();
 })();
