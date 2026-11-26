@@ -145,3 +145,13 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(r.open,1);assert.equal(r.rows.length,1);assert.equal(r.rows[0].balance,8);assert.equal(r.balance,8);assert.equal(r.review.length,1);assert.equal(r.closed.length,1);assert.equal(JSON.stringify(p),before);
  ok(true,'Morning dispatch list shows partial balance, excludes closed/archive, flags legacy quantities and never mutates ERP');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ for(const f of ['sync/bill-dispatch-ledger.js','cfm-advanced-bill-request-v444.js','cfm-morning-dashboard-v445.js'])runInNewContext(read(f),{window,document,setInterval:()=>1,clearInterval(){}});
+ const r={workNo:'CFM-TEST',party:'SAMPLE',poNo:'P1',description:'Cloth',orderQty:12,cutQty:4,status:'PENDING'},p={pending:[r,{workNo:'CFM-OLD',party:'OLD',orderQty:10,cutQty:10,status:'DISPATCHED'}],packingSlips:[{id:'PACK-TEST',workNo:'CFM-TEST',thisDispatched:4}]};
+ window.CFM_ADV_BILL_V444.transition(p,{id:'TEST',type:'BOTH',actor:'test',items:[{workNo:r.workNo,identity:JSON.stringify(['CFM-TEST','SAMPLE','P1','CLOTH',12]),qty:4}]});
+ const before=JSON.stringify(p),d=window.CFM_MORNING_V445.calculate(p);
+ assert.equal(d.totals.cutWO,1);assert.equal(d.totals.cutQty,8);assert.equal(d.totals.dispatchWO,1);assert.equal(d.totals.dispatchQty,8);assert.equal(d.totals.billQty,8);assert.equal(d.totals.challanQty,8);assert.equal(d.totals.review,1);assert.equal(JSON.stringify(p),before);
+ ok(true,'Morning dashboard reports live 12/4/8 balance, flags legacy records and performs no writes');
+}
