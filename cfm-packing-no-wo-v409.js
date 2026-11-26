@@ -418,6 +418,7 @@ function mount(){
  '<button id="cfm409Save">✓ Save Confirmed Dispatch</button>'+
  '<button id="cfm409Last">🖨 Reprint Last Saved</button></div>';
  document.body.appendChild(d);
+ window.CFM_ADDRESS_PASTE_V440?.('cfm409Address',()=>key($('cfm409Party')?.value));
  const css=document.createElement('style');css.id='cfm409Css';
  css.textContent='#cfm409Open{display:block;width:100%;margin:6px 0 12px!important;background:#edf9ef!important;color:#146341!important;border:1px solid #95c7ae!important;font-weight:800!important}'+
  '#cfm409Dialog{width:min(1240px,98vw);max-height:94dvh;overflow:auto;border:1px solid #b2cadc;border-radius:12px;padding:0;background:#fff;color:#17394f;font:12px/1.45 Arial}'+
