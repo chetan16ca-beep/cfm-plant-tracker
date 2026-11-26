@@ -154,7 +154,7 @@ function prep(record,work){
  const choose=(v,f)=>str(v)||str(f);
  const bundle=verifySavedBundles(record);
  const items=Array.isArray(record.items)&&record.items.length?record.items.map(x=>({
-  workNo:choose(x.workNo,record.workNo),poNo:choose(x.poNo,record.poNo),customerItemNo:choose(x.customerItemNo,record.customerItemNo),
+  workNo:choose(x.workNo,record.workNo),poNo:choose(x.poNo,record.poNo),poDate:choose(x.poDate,record.items.length===1?record.poDate:''),customerItemNo:choose(x.customerItemNo,record.items.length===1?record.customerItemNo:''),
   name:choose(x.description,choose(record.description,mapped.description)),
   spec:choose(x.description2,choose(record.description2,mapped.description2)),
   code:choose(x.efpplCode,choose(record.efpplCode,mapped.efpplCode)),
@@ -218,6 +218,7 @@ function prep(record,work){
   balance:record.balanceAfter,
   totalQty:record.totalDispatched,
   note:record.notes,
+  dispatchMeta:record.dispatchMeta||{},
   operator:record.operator,
   draft:!!record.draft,legacy:!!record.legacy,manualNoWO:!!record.manualNoWO
  };
@@ -280,7 +281,7 @@ function slip(p,attachment=null,bundleIndex=null){
  const td=(txt,cls='')=>'<td class="'+cls+'">'+esc(show(txt))+'</td>';
  const multi=originalItems.length>1||p.manualNoWO===true;
  const table=p.items.map((x,i)=>multi?
-  '<tr>'+td(String(i+1),'num')+td(x.workNo)+td(x.poNo)+td(x.code)+
+  '<tr>'+td(String(i+1),'num')+td(p.manualNoWO?'—':x.workNo)+td([x.poNo,x.poDate?'Date '+x.poDate:''].filter(Boolean).join(' · '))+td([x.code,x.customerItemNo?'Cust. '+x.customerItemNo:''].filter(Boolean).join(' · '))+
    td([x.name,x.spec,x.size?'Size '+x.size:'',x.micron?'Micron '+x.micron:''].filter(Boolean).join(' · '))+
    td(itemNumber(x.orderQty),'num')+td(itemNumber(x.previousDispatched),'num')+
    td(itemNumber(x.qty),'num')+td(itemNumber(x.balanceAfter),'num')+'</tr>':
@@ -288,6 +289,10 @@ function slip(p,attachment=null,bundleIndex=null){
    td(itemNumber(x.qty),'num')+'</tr>').join('');
  const qty=(text,val)=>'<div><small>'+esc(text)+'</small><strong>'+esc(itemNumber(val))+'</strong></div>';
  const legacy=p.legacy;
+ const meta=p.dispatchMeta||{},fields=[['invoiceNo','INVOICE / BILL'],['challanNo','CHALLAN'],['transporter','TRANSPORTER'],['lrNo','LR / AWB'],['vehicleNo','VEHICLE'],['packageType','PACKING TYPE'],['grossWeightKg','SHIPMENT GROSS (kg)'],['netWeightKg','SHIPMENT NET (kg)']];
+ const populated=fields.filter(([k])=>str(meta[k]));
+ const shipping=populated.length?'<div class="cfm441-shipping">'+populated.map(([k,l])=>ref(l,meta[k])).join('')+'</div>':'';
+ const bundleRef=isBundle?(p.draft?'DRAFT':show(p.slip))+'/B'+String(bundleIndex+1).padStart(2,'0'):'';
  return '<section class="cfm407-slip" aria-label="Packing Slip">'+
  '<div class="cfm407-slip-head">'+eagle()+'<div class="cfm407-slip-name"><b>PACKING SLIP</b><small>'+
  (p.draft?'DRAFT — NOT DISPATCHED':legacy?'LEGACY / UNVERIFIED':'CONFIRMED DISPATCH')+'</small></div></div>'+
@@ -298,11 +303,11 @@ function slip(p,attachment=null,bundleIndex=null){
  '<div><small>PO DATE</small><b>'+esc(show(p.poDate))+'</b><small>CUSTOMER ITEM CODE</small><b>'+esc(show(p.item))+'</b></div></div>'+
  '<h3>PRODUCT DETAILS · '+(p.manualNoWO?'AS PER CUSTOMER PO (NO WORK ORDER)':'AS PER WORK ORDER')+'</h3>'+
  (multi?'<table class="cfm407-products cfm407-multi"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:12%"><col style="width:15%"><col style="width:28%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:7%"></colgroup>'+
-  '<thead><tr><th>#</th><th>WO</th><th>PO NO.</th><th>EFPPL</th><th>PRODUCT / SPEC</th><th>ORDER</th><th>PREV</th><th>'+ (isBundle?'BUNDLE QTY':'NOW') +'</th><th>PENDING</th></tr></thead><tbody>'+table+'</tbody></table>':
+  '<thead><tr><th>#</th><th>WO</th><th>PO NO. / DATE</th><th>EFPPL / CUSTOMER ITEM</th><th>PRODUCT / SPEC</th><th>ORDER</th><th>PREV</th><th>'+ (isBundle?'BUNDLE QTY':'NOW') +'</th><th>PENDING</th></tr></thead><tbody>'+table+'</tbody></table>':
   '<table class="cfm407-products"><colgroup><col style="width:5%"><col style="width:13%"><col style="width:17%"><col style="width:24%"><col style="width:20%"><col style="width:7%"><col style="width:7%"><col style="width:7%"></colgroup>'+
   '<thead><tr><th>#</th><th>WORK NO.</th><th>EFPPL CODE</th><th>PRODUCT</th><th>SPECIFICATION</th><th>MICRON</th><th>SIZE</th><th>'+ (isBundle?'BUNDLE QTY':'QTY') +'</th></tr></thead><tbody>'+table+'</tbody></table>')+
  '<div class="cfm407-qty">'+qty('ORDER QTY',p.orderQty)+qty('PREVIOUS SENT',legacy?'UNVERIFIED':p.prevQty)+
- qty(isBundle?'TOTAL THIS DISPATCH':'THIS DISPATCH',p.shippedQty)+qty('BALANCE',legacy?'UNVERIFIED':p.balance)+'</div>'+
+ qty(isBundle?'TOTAL THIS DISPATCH':'THIS DISPATCH',p.shippedQty)+qty('TOTAL SENT',legacy?'UNVERIFIED':p.totalQty)+qty('BALANCE',legacy?'UNVERIFIED':p.balance)+'</div>'+
  (isBundle?'<div class="cfm407-bundle-title" style="font-size:16pt;display:flex;justify-content:space-between">BUNDLE NO. '+(bundleIndex+1)+' / '+p.bundle.count+' <span>QTY IN BUNDLE: '+esc(itemNumber(p.bundle.quantities[bundleIndex]))+' NOS</span></div>':'<div class="cfm407-bundle-title">PACKING BUNDLES: '+p.bundle.count+'</div>')+
  (isBundle?'':'<div class="cfm407-bundle-rows">'+p.bundle.quantities.slice(0,12).map((q,i)=>'<span>Bundle '+(i+1)+' / '+p.bundle.count+': <b>'+
  esc(itemNumber(q))+' Nos</b>'+
@@ -311,6 +316,7 @@ function slip(p,attachment=null,bundleIndex=null){
  '</span>').join('')+
  (p.bundle.count>12?'<span>Remaining '+(p.bundle.count-12)+' Bundle quantities are printed on their own packing slips</span>':'')+'</div>')+
  (!p.bundle.verified?'<div class="cfm407-unverified">Bundle Qty not verified — check actual packing before printing.</div>':'')+
+ (isBundle?'<div class="cfm441-trace">BUNDLE TRACE ID: '+esc(bundleRef)+' · SHIPMENT QUANTITY IN NOS</div>':'')+shipping+
  '<div class="cfm407-remark"><b>PACKING / LR / DISPATCH REMARKS</b><p>'+esc(show(p.note))+'</p></div>'+
  '<div class="cfm407-sign"><span>PREPARED BY <b>'+esc(show(p.operator))+'</b></span><span>PACKED / CHECKED BY <b>____________</b></span><span>RECEIVED BY <b>____________</b></span></div>'+
  '<div class="cfm407-foot">A4 LANDSCAPE · '+(attachment?'BILL ATTACHMENT · '+p.bundle.count+' BUNDLE(S)':'ONE PACKING SLIP PER BUNDLE · TOTAL '+p.bundle.count+' SLIP(S) IN THIS JOB')+''+(p.draft?' · DRAFT / NO DISPATCH SAVED':'')+'</div>'+
@@ -362,14 +368,15 @@ function documentHtml(record,work,photos,attachment=null){
  '.cfm407-products th,.cfm407-products td{border:1px solid #111;padding:1.6mm 1mm;overflow-wrap:anywhere;vertical-align:top}',
  '.cfm407-products th{font:bold 7pt Arial;text-align:center}.cfm407-products td{font:7.8pt/1.25 Arial}.cfm407-products .num{text-align:center;font-weight:800}',
  '.cfm407-products.cfm407-multi th{font-size:6.5pt}.cfm407-products.cfm407-multi td{font-size:7pt;padding:1.2mm .8mm}',
- '.cfm407-qty{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #111;border-right:0}',
+ '.cfm407-qty{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid #111;border-right:0}',
  '.cfm407-qty>div{padding:2mm 1mm;text-align:center;border-right:1px solid #111}',
  '.cfm407-qty small{display:block;font:bold 7pt Arial}.cfm407-qty strong{display:block;font:bold 14pt Arial}',
  '.cfm407-bundle-title{border:1px solid #111;padding:1.8mm;font:bold 9pt Arial;background:#f7f7f7}',
  '.cfm407-bundle-rows{display:flex;flex-wrap:wrap;gap:1.2mm}',
  '.cfm407-bundle-rows span{border:1px solid #aaa;border-radius:2px;padding:1mm 1.7mm;font:7.6pt Arial;min-width:25mm}',
  '.cfm407-unverified{font:bold 8pt Arial;color:#a82323}',
- '.cfm407-remark{border:1px solid #111;padding:1.8mm;overflow-wrap:anywhere;min-height:12mm}',
+ '.cfm441-trace{font:bold 8pt Arial;overflow-wrap:anywhere}.cfm441-shipping{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid #111;border-right:0;flex-shrink:0}.cfm441-shipping .cfm407-info-cell{padding:1mm;min-width:0;overflow-wrap:anywhere}.cfm441-shipping .cfm407-info-cell b{font-size:8pt}',
+ '.cfm407-remark{border:1px solid #111;padding:1.2mm;overflow-wrap:anywhere;min-height:8mm}',
  '.cfm407-remark b{display:block;font:bold 7pt Arial}.cfm407-remark p{margin:1mm 0;font:8pt Arial;white-space:pre-wrap}',
  '.cfm407-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm;align-items:end;margin-top:auto}',
  '.cfm407-sign span{border-top:1px solid #111;text-align:center;font:bold 7pt Arial;padding-top:1mm}.cfm407-sign b{display:block;font:7pt Arial;margin-top:1mm}',
