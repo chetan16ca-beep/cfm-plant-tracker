@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261125-v434',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261126-v435',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -176,14 +176,14 @@ window.addEventListener('message',e=>{
 registerSW().then(reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw434-reload'))return;
-  sessionStorage.setItem('cfm-sw434-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw435-reload'))return;
+  sessionStorage.setItem('cfm-sw435-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261125-v434';
+ const urls=groups.flat(), ver='20261126-v435';
  // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
  // Never clear browser storage or replace Cloud data while recovering from a network failure.
  let nextChunk=0;
@@ -222,7 +222,7 @@ if('serviceWorker' in navigator){
  let src=texts.join('')+'\n';
   // One canonical displayed version. Old inline modules have repeated timers
   // that can otherwise force a stale header label after deployment.
-  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V434 LIVE');
+  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V435 LIVE');
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V167');
@@ -431,7 +431,7 @@ html,body{background:#f4faff!important;color:#13233b!important}
    const w=app.contentWindow;
    if(!w||!w.document?.body){shellBadge.textContent='CFM ERP • V424 · Loading';return}
    const absent=Object.entries(requiredModules).filter(([name,test])=>{try{return !test(w)}catch(_){return true}}).map(([name])=>name);
-   shellBadge.textContent=absent.length?'CFM ERP • V424 · Check Modules':'CFM ERP • V434 LIVE';
+   shellBadge.textContent=absent.length?'CFM ERP • V424 · Check Modules':'CFM ERP • V435 LIVE';
    shellBadge.title=absent.length?'Module load pending/failed: '+absent.join(', '):'V408 runtime verified · Packing Slip, Label, Multi-WO and Pending Orders loaded';
   }catch(e){shellBadge.textContent='CFM ERP • V424 · Check Modules';shellBadge.title='Runtime status could not be read: '+String(e?.message||e)}
  }
@@ -774,11 +774,34 @@ $('cfmResultClose').onclick=()=>p.hidden=true;$('cfmResultSearch').oninput=optio
 })();
 </script>
 <style id="cfm-v293-cutqty-css">
-#cfmCutQtyPanel293{position:fixed;inset:3%;z-index:2147483647;background:#fff;color:#173043;border-radius:14px;padding:14px;overflow:auto;box-shadow:0 0 0 100vmax #0009;font:14px system-ui}
-#cfmCutQtyPanel293 button,#cfmCutQtyPanel293 input{font:inherit;padding:7px;border-radius:7px}
-#cfmCutQtyPanel293 .cqrow{display:grid;grid-template-columns:minmax(190px,1fr) 72px 85px 70px 65px;gap:6px;align-items:center;border-bottom:1px solid #ddd;padding:9px 0}
-#cfmCutQtyPanel293 input[type=number]{width:75px;box-sizing:border-box;border:1px solid #9ab}
-@media(max-width:620px){#cfmCutQtyPanel293 .cqrow{grid-template-columns:minmax(145px,1fr) 45px 61px 48px 48px;font-size:11px;gap:3px}#cfmCutQtyPanel293 input[type=number]{width:60px;padding:5px}}
+#cfmCutQtyPanel293{position:fixed;inset:3%;z-index:2147483647;background:#fff;color:#173043;border-radius:14px;padding:14px;overflow-y:auto;overflow-x:hidden;box-shadow:0 0 0 100vmax #0009;font:14px system-ui;box-sizing:border-box;min-width:0;max-width:94vw}
+#cfmCutQtyPanel293 *,#cfmCutQtyPanel293 *::before{box-sizing:border-box}
+#cfmCutQtyPanel293 button,#cfmCutQtyPanel293 input{font:inherit;padding:7px;border-radius:7px;min-width:0;max-width:100%}
+#cfmCutQtyPanel293 .cqrow{display:grid;grid-template-columns:minmax(0,1fr) 72px 85px 70px 65px;gap:6px;align-items:center;border-bottom:1px solid #ddd;padding:9px 0}
+#cfmCutQtyPanel293 .cqrow>*{min-width:0;overflow-wrap:anywhere}
+#cfmCutQtyPanel293 input[type=number]{width:100%;border:1px solid #9ab}
+#cfmCutQtyPanel293>div:first-child{position:sticky;top:-14px;background:#fff;padding:10px 0;z-index:3;border-bottom:1px solid #ddd}
+#cfmCutQtyPanel293 #cqClose293{flex-shrink:0}
+#cfmCutQtyPanel293 #cqSearch293{width:100%!important}
+@media(max-width:620px){
+ #cfmCutQtyPanel293{inset:2%;max-width:96vw;padding:10px}
+ #cfmCutQtyPanel293>div:first-child{top:-10px}
+ #cfmCutQtyPanel293>.cqrow{display:none}
+ #cfmCutQtyPanel293 #cqRows293 .cqrow{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;align-items:end;padding:10px 0;font-size:13px}
+ #cfmCutQtyPanel293 #cqRows293 .cqrow>span:first-child{grid-column:1/-1;font-size:14px;line-height:1.35}
+ #cfmCutQtyPanel293 #cqRows293 .cqrow>span:nth-child(2),#cfmCutQtyPanel293 #cqRows293 .cqrow>.cqBalance{text-align:center;align-self:center;font-weight:700}
+ #cfmCutQtyPanel293 #cqRows293 .cqrow>span:nth-child(2)::before,#cfmCutQtyPanel293 #cqRows293 .cqrow>.cqBalance::before{display:block;font-size:10px;font-weight:500;color:#526476;margin-bottom:4px}
+ #cfmCutQtyPanel293 #cqRows293 .cqrow>span:nth-child(2)::before{content:'Order Qty'}
+ #cfmCutQtyPanel293 #cqRows293 .cqrow>.cqBalance::before{content:'Balance'}
+ #cfmCutQtyPanel293 #cqRows293 .cqrow>input[type=number]{font-size:16px;min-height:42px;padding:6px;width:100%;align-self:end}
+ #cfmCutQtyPanel293 .cqSave{font-size:13px;min-height:42px;padding:6px;background:#116c55;color:white;border:1px solid #116c55;white-space:normal}
+ #cfmCutQtyPanel293 .cqrow>span:first-child small{font-size:12px}
+ #cfmCutQtyPanel293 .cqCutLabel{display:block;font-size:10px;color:#526476;grid-column:2;grid-row:2;text-align:center;align-self:start;pointer-events:none}
+ #cfmCutQtyPanel293 #cqRows293 .cqrow>input[type=number]{grid-column:2;grid-row:2;margin-top:16px}
+ #cfmCutQtyPanel293 #cqRows293 .cqrow>.cqBalance{grid-column:3;grid-row:2}
+ #cfmCutQtyPanel293 .cqSave{grid-column:4;grid-row:2}
+}
+@media(min-width:621px){#cfmCutQtyPanel293 .cqCutLabel{display:none}}
 </style>
 <script id="cfm-v293-manual-cutqty">
 (function(){
@@ -790,7 +813,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&
 const $=id=>document.getElementById(id);
 let live=[],loading=false;
 async function load(){if(loading)return;loading=true;$('cqMsg293').textContent='Loading live Cloud orders…';try{const remote=await frame.contentWindow.eval('cloudFetch()');if(!remote||!Array.isArray(remote.payload?.pending))throw Error('Cloud unavailable');live=remote.payload.pending.filter(x=>String(x.status||'').toUpperCase()==='PENDING'&&!x.archived&&!x.cutEntryPending&&Number(x.orderQty||0)>Number(x.cutQty||0));$('cqMsg293').textContent=live.length+' open orders • enter cumulative cutting qty';draw()}catch(e){$('cqMsg293').textContent='Cloud error: '+(e.message||e)}finally{loading=false}}
-function draw(){const q=$('cqSearch293').value.trim().toLowerCase();const list=live.filter(x=>[x.workNo,x.party,x.description].join(' ').toLowerCase().includes(q));$('cqRows293').innerHTML=list.map(x=>{const qty=Number(x.orderQty||0),cut=Number(x.cutQty||0),key=esc(x.workNo);return '<div class="cqrow" data-wo="'+key+'"><span><b>'+key+'</b><small style="display:block">'+esc(x.party)+'</small><small style="display:block;white-space:normal;overflow-wrap:anywhere">'+esc(x.description||x.item||x.product||'')+'</small></span><span>'+qty+'</span><input type="number" min="0" max="'+qty+'" step="1" value="'+cut+'" aria-label="Cut qty for '+key+'"><span class="cqBalance">'+Math.max(0,qty-cut)+'</span><button class="cqSave" type="button">Save</button></div>'}).join('')||'No matching open orders';}
+function draw(){const q=$('cqSearch293').value.trim().toLowerCase();const list=live.filter(x=>[x.workNo,x.party,x.description].join(' ').toLowerCase().includes(q));$('cqRows293').innerHTML=list.map(x=>{const qty=Number(x.orderQty||0),cut=Number(x.cutQty||0),key=esc(x.workNo);return '<div class="cqrow" data-wo="'+key+'"><span><b>'+key+'</b><small style="display:block">'+esc(x.party)+'</small><small style="display:block;white-space:normal;overflow-wrap:anywhere">'+esc(x.description||x.item||x.product||'')+'</small></span><span>'+qty+'</span><input type="number" min="0" max="'+qty+'" step="1" value="'+cut+'" aria-label="Cut qty for '+key+'"><span class="cqCutLabel" aria-hidden="true">Cut Qty</span><span class="cqBalance">'+Math.max(0,qty-cut)+'</span><button class="cqSave" type="button">Save</button></div>'}).join('')||'No matching open orders';}
 $('cqRows293').addEventListener('input',e=>{if(e.target.type!=='number')return;const row=e.target.closest('.cqrow');const item=live.find(x=>x.workNo===row.dataset.wo);if(item)row.querySelector('.cqBalance').textContent=Math.max(0,Number(item.orderQty||0)-Number(e.target.value||0))});
 $('cqRows293').addEventListener('click',async e=>{if(!e.target.classList.contains('cqSave'))return;const btn=e.target,row=btn.closest('.cqrow'),wo=row.dataset.wo,inp=row.querySelector('input'),n=Number(inp.value);const record=live.find(x=>x.workNo===wo),max=Number(record?.orderQty||0);if(!Number.isInteger(n)||n<0||n>max){alert('Enter whole quantity between 0 and '+max);return}if(!confirm(wo+': save total cut quantity '+n+' of '+max+'?'))return;btn.disabled=true;try{const w=frame.contentWindow;const latest=await w.eval('cloudFetch()');const cloudOrder=latest?.payload?.pending?.find(x=>x.workNo===wo);if(!cloudOrder||['DISPATCHED','ARCHIVED'].includes(String(cloudOrder.status||'').toUpperCase()))throw Error('Order is not pending in Cloud');if(Number(cloudOrder.cutQty||0)!==Number(record.cutQty||0))throw Error('Cloud quantity changed. Refresh and try again.');const result=w.eval('(()=>{const r=state.pending.find(x=>x.workNo==='+JSON.stringify(wo)+');if(!r)throw Error("Work Order not found locally");if(["DISPATCHED","ARCHIVED"].includes(String(r.status||"").toUpperCase()))throw Error("Order is dispatched");r.cutQty='+n+';r.manualCutQtyUpdatedAt=new Date().toISOString();r.manualCutQtySource="DASHBOARD_MANUAL";save();return r.cutQty})()');if(result!==n)throw Error('Local save mismatch');$('cqMsg293').textContent=wo+' saved locally; Cloud sync in progress. Refresh to verify.';await new Promise(resolve=>setTimeout(resolve,1400));const verified=await w.eval('cloudFetch()');if(Number(verified?.payload?.pending?.find(x=>x.workNo===wo)?.cutQty)!==n)throw Error('Cloud not yet confirmed. Check Sync status before another edit.');record.cutQty=n;row.querySelector('.cqBalance').textContent=Math.max(0,max-n);$('cqMsg293').textContent='✓ '+wo+' Cutting Qty '+n+' / '+max+' saved in Cloud.';}catch(err){$('cqMsg293').textContent='Save not verified: '+String(err.message||err)+'. Refresh before retry.';}finally{btn.disabled=false}});
 $('cqClose293').onclick=()=>panel.hidden=true;$('cqSearch293').oninput=draw;
