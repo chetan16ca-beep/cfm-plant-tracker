@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261126-v436',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261126-v437',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -176,14 +176,14 @@ window.addEventListener('message',e=>{
 registerSW().then(reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw436-reload'))return;
-  sessionStorage.setItem('cfm-sw436-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw437-reload'))return;
+  sessionStorage.setItem('cfm-sw437-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261126-v436';
+ const urls=groups.flat(), ver='20261126-v437';
  // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
  // Never clear browser storage or replace Cloud data while recovering from a network failure.
  let nextChunk=0;
@@ -222,7 +222,7 @@ if('serviceWorker' in navigator){
  let src=texts.join('')+'\n';
   // One canonical displayed version. Old inline modules have repeated timers
   // that can otherwise force a stale header label after deployment.
-  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V436 LIVE');
+  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V437 LIVE');
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V167');
@@ -431,7 +431,7 @@ html,body{background:#f4faff!important;color:#13233b!important}
    const w=app.contentWindow;
    if(!w||!w.document?.body){shellBadge.textContent='CFM ERP • V424 · Loading';return}
    const absent=Object.entries(requiredModules).filter(([name,test])=>{try{return !test(w)}catch(_){return true}}).map(([name])=>name);
-   shellBadge.textContent=absent.length?'CFM ERP • V424 · Check Modules':'CFM ERP • V436 LIVE';
+   shellBadge.textContent=absent.length?'CFM ERP • V424 · Check Modules':'CFM ERP • V437 LIVE';
    shellBadge.title=absent.length?'Module load pending/failed: '+absent.join(', '):'V408 runtime verified · Packing Slip, Label, Multi-WO and Pending Orders loaded';
   }catch(e){shellBadge.textContent='CFM ERP • V424 · Check Modules';shellBadge.title='Runtime status could not be read: '+String(e?.message||e)}
  }
@@ -614,18 +614,20 @@ window.addEventListener('message',function(event){
   panel.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><h3>Dispatch Done / History</h3><button type="button" id="cfmDispatchClose">✕ Close</button></div><p>Select only actually dispatched Work Orders. Cutting and stock will not change.</p><input id="cfmDispatchSearch" placeholder="Search Work Order / Party" style="width:96%;padding:10px;margin:6px 0"><div style="margin:8px 0"><button type="button" id="cfmDispatchPendingTab">Pending</button> <button type="button" id="cfmDispatchHistoryTab">History</button> <button type="button" id="cfmDispatchSelectAll">Select visible</button></div><div id="cfmDispatchRows"></div><div style="position:sticky;bottom:0;background:#fff;padding:10px;border-top:1px solid #ddd"><button type="button" id="cfmDispatchApply" style="background:#1674c9;color:white;padding:10px;border:0;border-radius:7px">Dispatch Done → History</button> <span id="cfmDispatchMessage"></span></div>';
   d.body.appendChild(panel);
   const b=d.createElement('button');b.id='cfmDispatchOpenV264';b.textContent='✓ Dispatch Done / History';b.type='button';b.style.cssText='position:fixed;right:12px;bottom:90px;z-index:2147483500;background:#1269a0;color:#fff;border:0;border-radius:10px;padding:11px 13px;font:700 13px system-ui;box-shadow:0 3px 10px #0004';d.body.appendChild(b);
-  let tab='pending';const $=id=>d.getElementById(id);
+  let tab='pending',shown=[],saving=false,drawSeq=0;const $=id=>d.getElementById(id);
   async function draw(){
+   if(saving)return;const seq=++drawSeq;panel.dataset.cloudReady='no';
    const q=$('cfmDispatchSearch').value.toLowerCase();
-   let source=w.eval('state').pending, cloudError='';
+   let source=[], cloudError='',slips=[];
    try{
      const remote=await w.eval('cloudFetch()');
-     if(remote&&Array.isArray(remote.payload?.pending)){source=remote.payload.pending;panel.dataset.cloudVersion=String(remote.version);panel.dataset.cloudReady='yes'}
+     if(remote&&Array.isArray(remote.payload?.pending)){source=remote.payload.pending;slips=remote.payload.packingSlips||[];if(seq!==drawSeq)return;panel.dataset.cloudVersion=String(remote.version);panel.dataset.cloudReady='yes'}
      else throw Error('Invalid Cloud response');
    }catch(e){cloudError=String(e.message||e);panel.dataset.cloudReady='no'}
-   const items=source.filter(x=>(tab==='history'?isDone(x):(String(x.status||'').toUpperCase()==='PENDING'&&!x.archived&&Number(x.orderQty||0)>Number(x.cutQty||0)&&!x.cutEntryPending))&&[key(x),x.party,x.description].join(' ').toLowerCase().includes(q));
-   const rows=$('cfmDispatchRows');rows.replaceChildren();
-   items.forEach(x=>{const label=d.createElement('label');label.style.cssText='display:flex;align-items:center;gap:10px;padding:9px;border-bottom:1px solid #e5e5e5';const check=d.createElement('input');check.type='checkbox';check.className='cfmDispatchCheck';check.value=key(x);label.appendChild(check);const span=d.createElement('span');span.textContent=key(x)+' • '+String(x.party||'')+' • Qty '+String(x.orderQty??x.qty??'');label.appendChild(span);rows.appendChild(label)});
+   if(seq!==drawSeq)return;
+   const items=source.filter(x=>(tab==='history'?isDone(x):(['PENDING','COMPLETED'].includes(String(x.status||'').toUpperCase())&&!x.archived&&Number(x.orderQty||0)>0&&!x.cutEntryPending))&&[key(x),x.party,x.description].join(' ').toLowerCase().includes(q));
+   shown=items;const rows=$('cfmDispatchRows');rows.replaceChildren();
+   items.forEach(x=>{const label=d.createElement('label');label.style.cssText='display:flex;align-items:center;gap:10px;padding:9px;border-bottom:1px solid #e5e5e5';const check=d.createElement('input');check.type='checkbox';check.className='cfmDispatchCheck';check.value=key(x);label.appendChild(check);const span=d.createElement('span');let balance='';try{const a=w.CFM_BILL_DISPATCH_LEDGER.summarize(x,slips);balance=' • Sent '+a.confirmedDispatchQty+' • Balance '+a.balanceQty;if(tab==='pending'&&a.confirmedDispatchQty>0&&a.balanceQty>0){check.disabled=true;balance+=' (Partial shipment — cannot close)'}}catch(e){check.disabled=true;balance=' • Verify shipment history'}span.textContent=key(x)+' • '+String(x.party||'')+' • Qty '+String(x.orderQty??x.qty??'')+balance;label.appendChild(span);rows.appendChild(label)});
    $('cfmDispatchApply').textContent=tab==='history'?'Restore to Pending':'Dispatch Done → History';$('cfmDispatchMessage').textContent=items.length+' orders'+(cloudError?' • Cloud unavailable (read-only)':' • Live Cloud');
   }
   b.onclick=()=>{panel.hidden=false;draw()};$('cfmDispatchClose').onclick=()=>panel.hidden=true;
@@ -633,18 +635,54 @@ window.addEventListener('message',function(event){
   $('cfmDispatchPendingTab').onclick=()=>{tab='pending';draw()};
   $('cfmDispatchHistoryTab').onclick=()=>{tab='history';draw()};
   $('cfmDispatchSelectAll').onclick=()=>rowsCheck(true);
-  function rowsCheck(v){panel.querySelectorAll('.cfmDispatchCheck').forEach(x=>x.checked=v)}
-  $('cfmDispatchApply').onclick=()=>{
-   if(panel.dataset.cloudReady!=='yes')return w.alert('Cloud unavailable. No dispatch changes allowed.');
-   const ids=[...panel.querySelectorAll('.cfmDispatchCheck:checked')].map(x=>x.value);
+  function rowsCheck(v){panel.querySelectorAll('.cfmDispatchCheck:not(:disabled)').forEach(x=>x.checked=v)}
+  $('cfmDispatchApply').onclick=async()=>{
+   if(saving||panel.dataset.cloudReady!=='yes')return w.alert('Database is not ready. No dispatch changes made.');
+   const ids=[...panel.querySelectorAll('.cfmDispatchCheck:checked:not(:disabled)')].map(x=>x.value);
    if(!ids.length)return w.alert('Select Work Orders first.');
-   const liveState=w.eval('state');const matches=liveState.pending.filter(x=>ids.includes(key(x))&&isDone(x)===(tab==='history'));
-   if(Number(panel.dataset.cloudVersion)!==Number(w.eval('cloudVersion')))return w.alert('Cloud has newer records. Use ERP Cloud Sync first, then reopen Dispatch History. No changes made.');
-   if(matches.length!==ids.length)return w.alert('Work Orders changed. Refresh and retry.');
-   if(!w.confirm((tab==='pending'?'Mark DISPATCH DONE':'Restore to PENDING')+' for '+matches.length+' Work Orders? This does not change stock.'))return;
-   const ts=new Date().toISOString();
-   matches.forEach(x=>{if(tab==='pending'){x.status='DISPATCHED';x.dispatchDoneAt=ts;x.dispatchBatchReportStatus='PENDING_REVIEW'}else{x.status='PENDING';x.restoredAt=ts}});
-   try{w.save();if(typeof w.render==='function')w.render();draw();w.alert(matches.length+' Work Orders changed on this device. IMPORTANT: Verify Cloud sync and History after refresh. If they reappear in Pending, Cloud did not save; do not repeat dispatch.')}catch(e){w.alert('Save failed: '+e.message)}
+   const restore=tab==='history',chosen=shown.filter(x=>ids.includes(key(x)));
+   if(chosen.length!==ids.length)return w.alert('Selection changed. Open the list again.');
+   if(!w.confirm((restore?'Restore selected orders to open status?':'Confirm FULL physical dispatch of all selected Work Orders? Orders with partial saved shipments cannot be closed. If no packing slip exists, verify all material physically sent.')+'\n'+ids.join(', ')+'\nStock and Cutting will not change.'))return;
+   saving=true;const btn=$('cfmDispatchApply');btn.disabled=true;$('cfmDispatchMessage').textContent='Saving selected orders directly…';
+   try{
+    const result=await w.eval('('+async function(req){
+     if(cloudBusy)throw Error('Another database save is running. Retry shortly.');
+     cloudBusy=true;
+     try{
+      const fresh=await cloudFetch();
+      if(!fresh||!validState(fresh.payload)||!Number.isSafeInteger(Number(fresh.version)))throw Error('Database read unavailable');
+      const next=clone(fresh.payload),norm=v=>String(v??'').trim().toUpperCase(),ts=new Date().toISOString();
+      const expected=[];
+      for(const original of req.chosen){
+       const matches=next.pending.filter(x=>norm(x.workNo)===norm(original.workNo));
+       if(matches.length!==1)throw Error(original.workNo+' missing or duplicated');
+       const x=matches[0];
+       if(JSON.stringify(x)!==JSON.stringify(original)||x.archived)throw Error(original.workNo+' changed; reopen list and review.');
+       const a=window.CFM_BILL_DISPATCH_LEDGER.summarize(x,next.packingSlips||[]);
+       if(!req.restore){
+        if(!['PENDING','COMPLETED'].includes(norm(x.status))||x.cutEntryPending||a.orderQty<=0)throw Error(x.workNo+' not eligible');
+        if(a.confirmedDispatchQty>0&&a.balanceQty>0)throw Error(x.workNo+' partial dispatch balance '+a.balanceQty+'; cannot close');
+        x.status='DISPATCHED';x.dispatchDoneAt=ts;x.dispatchBatchReportStatus='PENDING_REVIEW';x.dispatchConfirmationSource=a.balanceQty===0?'PACKING_LEDGER':'OPERATOR_FULL_DISPATCH_CONFIRMATION';
+       }else{
+        if(norm(x.status)!=='DISPATCHED')throw Error(x.workNo+' is not dispatched');
+        if(a.confirmedDispatchQty>0)throw Error(x.workNo+' has a saved shipment. Review shipment history before restoring.');
+        x.previousDispatchDoneAt=x.dispatchDoneAt||'';x.dispatchDoneAt='';x.status=Number(x.cutQty||0)>=Number(x.orderQty||0)?'COMPLETED':'PENDING';x.restoredAt=ts;
+       }
+       expected.push({workNo:x.workNo,status:x.status,stamp:req.restore?x.restoredAt:x.dispatchDoneAt});
+      }
+      const base=Number(fresh.version),ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),20000);let response;
+      try{response=await fetch(CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+base,{method:'PATCH',signal:ctrl.signal,headers:{...cloudHeaders(),'Prefer':'return=representation','x-cfm-base-version':String(base)},body:JSON.stringify({payload:next,version:base+1,updated_at:new Date().toISOString()})})}finally{clearTimeout(timer)}
+      if(!response.ok)throw Error('Database refused save (HTTP '+response.status+')');
+      const rows=await response.json();if(rows.length!==1)throw Error('Another device saved first. Reopen list.');
+      const verified=await cloudFetch();
+      if(!expected.every(e=>verified?.payload?.pending?.some(x=>x.workNo===e.workNo&&x.status===e.status&&(req.restore?x.restoredAt:x.dispatchDoneAt)===e.stamp)))throw Error('Receipt not verified. Check history before retrying.');
+      return expected.length;
+     }finally{cloudBusy=false}
+    }.toString()+')('+JSON.stringify({chosen,restore})+')');
+    w.alert('✓ '+result+' Work Orders saved and verified in Database.');
+    try{w.eval('cloudPoll()')}catch(_){}
+   }catch(e){w.alert('Save not verified: '+String(e.message||e)+'. Reopen History before retrying.')}
+   finally{saving=false;btn.disabled=false;draw()}
   };
  }
  const outer=document.createElement('button');outer.id='cfmDispatchOuterV265';outer.type='button';outer.textContent='✓ Dispatch Done / History';outer.style.cssText='position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom, 0px) + 72px);z-index:2147483647;background:#1269a0;color:#fff;border:0;border-radius:10px;padding:12px 14px;font:700 13px system-ui;box-shadow:0 3px 12px #0005';document.body.appendChild(outer);
