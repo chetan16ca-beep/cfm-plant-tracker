@@ -216,3 +216,15 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(JSON.stringify([p.store,p.cutting,p.packingSlips]),JSON.stringify([JSON.parse(before).store,JSON.parse(before).cutting,JSON.parse(before).packingSlips]));
  ok(true,'Bulk full dispatch is atomic, idempotent, excludes saved entries and preserves stock/cutting/packing records');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){}};
+ runInNewContext(read('cfm-stitch-label-helper-v451.js'),{window,document});
+ const f=window.CFM_STITCH_V451;
+ assert.equal(f.orderNumber('CFM-461'),'461');
+ assert.equal(f.explicitMicron({description:'ANFD 5 KL BAG 5 MICRON ANT'}),'5');
+ assert.equal(f.explicitMicron({description:'JM-1 Finger/A/2 micron',description2:'60 inch'}),'2');
+ assert.equal(f.explicitMicron({description:'FBD 19 FINGER',description2:'60 inch'}),'');
+ assert.equal(f.getCode({itemCode:'',description:'Unknown product'}),'');
+ ok(true,'Stitch label extracts only explicit micron, accepts work number and never fabricates missing code');
+}
