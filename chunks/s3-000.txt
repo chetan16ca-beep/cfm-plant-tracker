@@ -163,31 +163,85 @@ function selectedBillRequests(){
   return state.pending.filter(r=>works.includes(normalize(r.workNo)));
 }
 function selectedBillRequest(){return selectedBillRequests()[0]||null}
-function billRequestMessage(){
-  const rows=selectedBillRequests();if(!rows.length)return 'Select Work No.';
-  const type=$('billRequestType')?.value||'BILL', remark=($('billRequestRemark')?.value||'').trim();
-  const title=type==='BOTH'?'BILL + CHALLAN REQUEST':type==='CHALLAN'?'CHALLAN REQUEST':'BILL REQUEST';
-  let t='*'+title+'*\nCompany: '+(rows[0].party||'-')+'\n\n';
-  rows.forEach((r,i)=>{t+=(i+1)+'. Work No: '+(r.workNo||'-')+'\nPO / Ref: '+(r.poNo||'-')+'\nItem: '+(r.description||'-')+'\nOrder Qty: '+fmt(r.orderQty)+' | Cut Qty: '+fmt(r.cutQty)+' | Pending: '+fmt(pendingQty(r))+(r.deliveryDate?'\nDelivery: '+dateDisplay(r.deliveryDate):'')+'\n\n'});
-  if(remark)t+='Remark: '+remark+'\n';
-  t+='Please prepare the '+(type==='BOTH'?'bill and challan':type.toLowerCase())+' for the above '+rows.length+' work order(s).\nRequest Date: '+dateDisplay(todayISO());
-  return t;
+const cfmBillQty442=new Map();
+const cfmBillText442=v=>String(v??'').trim();
+const cfmBillKey442=r=>JSON.stringify([r.party,r.workNo,r.poNo,r.orderQty]);
+function cfmBillQtyValue442(r){return cfmBillQty442.get(cfmBillKey442(r))??String(r.orderQty??'')}
+function cfmBillQtyValid442(r){const q=cfmBillQtyValue442(r);return q.trim()!==''&&Number.isSafeInteger(Number(q))&&Number(q)>0&&Number(q)<=Number(r.orderQty)}
+function cfmBillRequestFormat442(rows,type,remark,date,qtyFor,codeFor){
+ if(!rows.length)return 'Select Work No.';
+ const title=type==='BOTH'?'BILL + CHALLAN REQUEST':type==='CHALLAN'?'CHALLAN REQUEST':'BILL REQUEST';
+ const line='━━━━━━━━━━━━━━━━━━━━',sep='────────────────────';
+ const parties=new Map();
+ for(const r of rows){const party=cfmBillText442(r.party)||'NOT RECORDED';if(!parties.has(party))parties.set(party,new Map());const groups=parties.get(party),po=cfmBillText442(r.poNo)||'NOT RECORDED';if(!groups.has(po))groups.set(po,[]);groups.get(po).push(r)}
+ let t='*EAGLE FILTRATION PRODUCT PVT. LTD.*\n'+line+'\n*'+title+'*\n'+line+'\n\n';
+ let i=0,total=0,valid=true;
+ for(const [party,groups] of parties){
+  for(const [po,items] of groups){
+   t+='*Company Name:* '+party+'\n*PO No.:* '+po+'\n';
+   const dates=[...new Set(items.map(r=>cfmBillText442(r.poDate||r.purchaseOrderDate)).filter(Boolean))];
+   if(dates.length===1)t+='*PO Date:* '+dates[0]+'\n';
+   else if(dates.length>1)t+='*PO Date:* VERIFY (multiple dates)\n';
+   for(const r of items){
+    const q=qtyFor(r),ok=String(q??'').trim()!==''&&Number.isSafeInteger(Number(q))&&Number(q)>0&&Number(q)<=Number(r.orderQty);
+    if(ok)total+=Number(q);else valid=false;
+    const code=codeFor(r)||'NOT MAPPED — VERIFY';
+    t+='\n'+sep+'\n*ITEM – '+String(++i).padStart(2,'0')+'*\n\nWork Order No.: '+(cfmBillText442(r.workNo)||'—')+'\nEFPPL Code: '+code+'\nItem Description: '+(cfmBillText442(r.description)||'—')+'\n';
+    const spec=cfmBillText442(r.description2||r.specification||r.productDetails);
+    if(spec)t+='Specification: '+spec+'\n';
+    t+='Qty: '+(ok?String(Number(q))+' Nos.':'VERIFY QTY')+'\n';
+   }
+   t+='\n'+sep+'\n';
+  }
+ }
+ t+=line+'\n*Total Qty: '+(valid?total+' Nos.':'VERIFY QTY')+'*\n'+line+'\n';
+ if(remark)t+='\nRemark: '+remark+'\n';
+ t+='\nKindly prepare the '+(type==='BOTH'?'Bill / Challan':type==='CHALLAN'?'Challan':'Bill')+' as per the above details.\nRequest Date: '+date+'\n\n*CFM Department | EFPPL*';
+ return t;
 }
-window.updateBillRequestPreview=function(){const p=$('billRequestPreview');if(p)p.textContent=billRequestMessage()}
+function billRequestMessage(){
+ const rows=selectedBillRequests(),type=$('billRequestType')?.value||'BILL',remark=($('billRequestRemark')?.value||'').trim();
+ return cfmBillRequestFormat442(rows,type,remark,dateDisplay(todayISO()),cfmBillQtyValue442,r=>{
+  const stored=cfmBillText442(r.itemCode||r.efpplCode);
+  if(/^EFPPL[- ]/i.test(stored))return stored;
+  return window.CFM_EFPPL?.codeForRow?.(r)?.code||'';
+ });
+}
+function cfmBillRequestQtyPanel442(rows){
+ const preview=$('billRequestPreview');if(!preview)return;
+ let panel=$('cfmBillQtyPanel442');
+ if(!panel){panel=document.createElement('section');panel.id='cfmBillQtyPanel442';panel.style.cssText='margin:8px 0;padding:8px;border:1px solid #c0d3e2;border-radius:8px';preview.before(panel)}
+ const signature=JSON.stringify(rows.map(cfmBillKey442));
+ if(panel.dataset.signature===signature)return;
+ panel.dataset.signature=signature;panel.replaceChildren();panel.hidden=!rows.length;if(!rows.length)return;
+ const title=document.createElement('b');title.textContent='Request Qty (Nos.) — verify before sending';panel.append(title);
+ for(const r of rows){
+  const label=document.createElement('label');label.style.cssText='display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:8px;align-items:center;margin-top:6px';
+  const caption=document.createElement('span');caption.textContent=(r.workNo||'—')+' · Order '+(r.orderQty??'—');
+  const input=document.createElement('input');input.type='number';input.min='1';input.max=String(r.orderQty??'');input.step='1';input.value=cfmBillQtyValue442(r);input.style.cssText='min-width:0;width:100%;box-sizing:border-box;padding:6px;font-size:16px';
+  input.setAttribute('aria-label','Request Qty for '+r.workNo);
+  input.addEventListener('input',()=>{cfmBillQty442.set(cfmBillKey442(r),input.value);preview.textContent=billRequestMessage()});
+  label.append(caption,input);panel.append(label);
+ }
+}
+window.updateBillRequestPreview=function(){const p=$('billRequestPreview');if(p){cfmBillRequestQtyPanel442(selectedBillRequests());p.textContent=billRequestMessage()}}
 window.selectBillRequestWork=function(i){
   const r=state.pending[i];if(!r)return;showView('docs');populateBillRequestCompany();
   const co=$('billRequestCompany');if(co)co.value=r.party||'';populateBillRequestWork();
   const el=$('billRequestWork');if(el)[...el.options].forEach(o=>o.selected=normalize(o.value)===normalize(r.workNo));
   $('billRequestType').value='BILL';updateBillRequestPreview();el?.scrollIntoView({behavior:'smooth',block:'center'})
 }
-window.copyBillRequest=async function(){const t=billRequestMessage();if(t==='Select Work No.')return toast('Select Work No.');try{await navigator.clipboard.writeText(t);toast('Combined request copied')}catch(e){prompt('Copy request:',t)}}
+window.copyBillRequest=async function(){if(selectedBillRequests().some(r=>!cfmBillQtyValid442(r)))return toast('Verify each Request Qty first');const t=billRequestMessage();if(t==='Select Work No.')return toast('Select Work No.');try{await navigator.clipboard.writeText(t);toast('Combined request copied')}catch(e){prompt('Copy request:',t)}}
 window.shareBillRequest=async function(){
   const rows=selectedBillRequests();if(!rows.length)return toast('Select Work No.');
+  if(rows.some(r=>!cfmBillQtyValid442(r)))return toast('Verify each Request Qty first');
   const msg=billRequestMessage();try{if(navigator.share){await navigator.share({title:(rows[0].party||'CFM')+' Bill / Challan Request',text:msg});return}}catch(e){if(e?.name==='AbortError')return}
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank')
 }
 window.markBillRequested=function(){
   const rows=selectedBillRequests();if(!rows.length)return toast('Select Work No.');
+  if(rows.some(r=>!cfmBillQtyValid442(r)))return toast('Verify each Request Qty first');
+  if(rows.some(r=>Number(cfmBillQtyValue442(r))!==Number(r.orderQty)))return alert('Partial request: Copy / Share the request to Accounts. Do not mark the full Work Order as delivered.');
   const type=$('billRequestType')?.value||'BILL',at=new Date().toISOString(),rem=($('billRequestRemark')?.value||'').trim();
   rows.forEach(r=>{if(type==='BILL'||type==='BOTH'){r.billStatus='REQUESTED';r.billRequestedAt=at}if(type==='CHALLAN'||type==='BOTH'){r.challanStatus='REQUESTED';r.challanRequestedAt=at}if(rem)r.accountsRemark=[r.accountsRemark,rem].filter(Boolean).join(' | ');r.materialStatus='DELIVERED';r.deliveredMaterial=true;r.deliveredAt=at;r.billRequestMovedAt=at;stampRecord(r)});
   setNextUpdateNotification?.('🧾 Combined Bill / Challan Request',(rows[0].party||'Company')+' • '+rows.length+' work');

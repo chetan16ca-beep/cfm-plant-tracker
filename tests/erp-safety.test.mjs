@@ -90,3 +90,18 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(writes,1);assert.equal(ctx.cloudBusy,false);
  ok(true,'Direct SOP append preserves production data, rejects conflicts and safely retries same receipt');
 }
+
+{
+ const first=worker.indexOf('const cfmBillQty442=new Map()'),last=worker.indexOf('function billRequestMessage(){',first);
+ assert.ok(first>=0&&last>first);
+ const render=runInNewContext(worker.slice(first,last)+'\ncfmBillRequestFormat442');
+ const rows=[{party:'SAMPLE PHARMA',poNo:'PO-1',workNo:'CFM-1',itemCode:'EFPPL-7000-SFC',description:'Spiral Filter Cloth',description2:'64 x 380',orderQty:24},{party:'SAMPLE PHARMA',poNo:'PO-2',workNo:'CFM-2',itemCode:'EFPPL-3002-BFB',description:'Basket Filter Bag',orderQty:5},{party:'SAMPLE PHARMA',poNo:'PO-1',workNo:'CFM-3',itemCode:'EFPPL-3001-SNF',description:'SNF Filter Bag',orderQty:3}];
+ const out=render(rows,'CHALLAN','','26/11/2026',r=>r.workNo==='CFM-1'?'2':String(r.orderQty),r=>r.itemCode);
+ assert.ok(out.includes('*Company Name:* SAMPLE PHARMA\n*PO No.:* PO-1'));
+ assert.ok(out.indexOf('CFM-3')<out.indexOf('*PO No.:* PO-2'));
+ assert.ok(out.includes('EFPPL Code: EFPPL-7000-SFC'));
+ assert.ok(out.includes('*Total Qty: 10 Nos.*'));
+ assert.ok(out.includes('*CHALLAN REQUEST*'));
+ assert.ok(render(rows,'BOTH','','26/11/2026',()=>'',r=>r.itemCode).includes('*Total Qty: VERIFY QTY*'));
+ ok(true,'Bill/challan grouping, codes, partial quantities and invalid quantity guard');
+}
