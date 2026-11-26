@@ -231,13 +231,9 @@ window.selectBillRequestWork=function(i){
   const el=$('billRequestWork');if(el)[...el.options].forEach(o=>o.selected=normalize(o.value)===normalize(r.workNo));
   $('billRequestType').value='BILL';updateBillRequestPreview();el?.scrollIntoView({behavior:'smooth',block:'center'})
 }
-window.copyBillRequest=async function(){if(selectedBillRequests().some(r=>!cfmBillQtyValid442(r)))return toast('Verify each Request Qty first');const t=billRequestMessage();if(t==='Select Work No.')return toast('Select Work No.');try{await navigator.clipboard.writeText(t);toast('Combined request copied')}catch(e){prompt('Copy request:',t)}}
-window.shareBillRequest=async function(){
-  const rows=selectedBillRequests();if(!rows.length)return toast('Select Work No.');
-  if(rows.some(r=>!cfmBillQtyValid442(r)))return toast('Verify each Request Qty first');
-  const msg=billRequestMessage();try{if(navigator.share){await navigator.share({title:(rows[0].party||'CFM')+' Bill / Challan Request',text:msg});return}}catch(e){if(e?.name==='AbortError')return}
-  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank')
-}
+// All accounts requests use the quantity ledger before sharing.
+window.copyBillRequest=async function(){return window.markBillRequested()};
+window.shareBillRequest=async function(){return window.markBillRequested()};
 window.markBillRequested=function(){
   if(typeof window.CFM_ADV_BILL_V444?.open==='function')return window.CFM_ADV_BILL_V444.open();
   alert('Advanced request module not loaded. Refresh ERP. No delivery or billing status changed.');
