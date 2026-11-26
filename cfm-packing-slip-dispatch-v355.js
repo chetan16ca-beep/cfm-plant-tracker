@@ -148,6 +148,39 @@ function compareOrder(a,b){
  up(a.poNo)===up(b.poNo)&&String(a.orderQty)===String(b.orderQty)&&
  up(a.description)===up(b.description);
 }
+// Direct packing-only append. Preserve every unrelated server field and local draft.
+async function directPackingAppend(latest,record,docNo,newOrders=[]){
+ if(cloudBusy)throw Error('Another save is running. Retry after it finishes.');
+ if(!latest||!validState(latest.payload)||!Number.isSafeInteger(Number(latest.version)))throw Error('Invalid database snapshot');
+ const base=Number(latest.version),payload=clone(latest.payload);
+ const log=Array.isArray(payload.packingSlips)?payload.packingSlips:[];
+ if(log.some(x=>x.id===record.id||x.slipNo===record.slipNo))throw Error('Packing Slip identity already exists');
+ payload.packingSlips=[...log,record];payload.packingSlipGlobalSequence=docNo.serial;
+ if(newOrders.length)payload.packingManualOrders=[...(payload.packingManualOrders||[]),...newOrders];
+ cloudBusy=true;
+ let failure=null;
+ try{
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
+  try{
+   const response=await fetch(CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+base,{
+    method:'PATCH',signal:controller.signal,headers:{...cloudHeaders(),'Prefer':'return=representation','x-cfm-base-version':String(base)},
+    body:JSON.stringify({payload,version:base+1,updated_at:new Date().toISOString()})});
+   if(!response.ok)throw Error('Database refused save HTTP '+response.status);
+   const result=await response.json();
+   if(!Array.isArray(result)||result.length!==1)throw Error('Another device saved first');
+  }catch(e){failure=e}finally{clearTimeout(timer)}
+  const verified=await cloudFetch();
+  const hits=(verified?.payload?.packingSlips||[]).filter(x=>x.id===record.id);
+  const got=hits[0];
+  if(hits.length!==1||got.slipNo!==record.slipNo||Number(got.thisDispatched)!==Number(record.thisDispatched)||
+     !newOrders.every(o=>(verified.payload.packingManualOrders||[]).some(x=>x.id===o.id)))
+    throw Error('Packing save not verified'+(failure?': '+failure.message:'')+'. Check history before sending again.');
+  window.CFM_PACK_UNIQUE_V414.verify(verified.payload,docNo);
+  // Do not advance a stale local version or replace unrelated phone records.
+  return verified;
+ }finally{cloudBusy=false;try{if(!cloudDirty)setTimeout(()=>cloudPoll(),0)}catch(_){}}
+}
+window.CFM_DIRECT_PACK_APPEND_V436=directPackingAppend;
 async function saveSlip(){
  if(busy)return;
  const wo=$('packSlipWO').value;const original=current(),amount=qty($('packSlipThis').value);
@@ -166,23 +199,22 @@ async function saveSlip(){
  if(!address){say('Ship-to / Party Address missing. Enter and verify it against the customer PO before saving.',true);return}
  const ordered=Number(original.orderQty);
  if(!Number.isSafeInteger(ordered)||ordered<=0||shipped(history,wo)+baseline+amount>ordered){say('Dispatch exceeds Work Order Qty, or order quantity is invalid.',true);return}
- if(typeof cloudFetch!=='function'||typeof cloudPush!=='function'||typeof save!=='function'||typeof state==='undefined'){say('CFM Cloud Save not available.',true);return}
- if(!cloudReady||cloudBusy||cloudDirty){say('CFM Cloud is syncing or not ready. Complete Cloud Sync and refresh before saving.',true);return}
+ if(typeof cloudFetch!=='function'||typeof cloudHeaders!=='function'){say('Database connection not available.',true);return}
+ if(cloudBusy){say('Another save is running. Retry when finished.',true);return}
  if(!confirm('Confirm ACTUALLY DISPATCHED '+amount+' nos for '+wo+'? This will record an auditable packing slip, not change stock.'))return;
  busy=true;$('packSlipSave').disabled=true;
  let record=null;
  try{
   const latest=await cloudFetch();
   if(!latest||!Array.isArray(latest.payload?.pending))throw Error('Live Cloud cannot be verified');
-  if(Number(latest.version)!==Number(remote.version)||Number(latest.version)!==Number(cloudVersion))throw Error('Cloud data changed on another device. Refresh and check quantity again');
-  const liveRow=latest.payload.pending.find(r=>r.workNo===wo),localRow=(state.pending||[]).find(r=>r.workNo===wo);
-  if(!compareOrder(original,liveRow)||!compareOrder(original,localRow))throw Error('Work Order details changed. No dispatch recorded');
+  if(!Number.isSafeInteger(Number(latest.version)))throw Error('Invalid database version');
+  const liveRow=latest.payload.pending.find(r=>r.workNo===wo);
+  if(!compareOrder(original,liveRow)||!!liveRow.archived||legacy(original)!==legacy(liveRow))throw Error('Work Order details changed. No dispatch recorded');
   const liveLog=Array.isArray(latest.payload.packingSlips)?latest.payload.packingSlips:[];
-  const localLog=Array.isArray(state.packingSlips)?state.packingSlips:[];
-  if(JSON.stringify(liveLog)!==JSON.stringify(localLog))throw Error('Unverified local packing slips differ from Cloud. Sync before saving');
   const rows=liveLog.filter(x=>up(x.workNo)===up(wo)||(Array.isArray(x.items)&&x.items.some(i=>up(i.workNo)===up(wo))));
   if(typeof window.CFM_PACK_UNIQUE_V414?.next!=='function')throw Error('Unique Packing Slip number service unavailable. Refresh ERP V414.');
   const documentNo=window.CFM_PACK_UNIQUE_V414.next(latest.payload);
+  if(JSON.stringify(rows)!==JSON.stringify(history))throw Error('This shipment history changed. Refresh and check remaining quantity.');
   const prev=shipped(rows,wo)+baseline,balance=ordered-prev-amount;
   if(balance<0)throw Error('New shipment exceeds remaining Work Order Qty');
   record={
@@ -199,18 +231,7 @@ async function saveSlip(){
    createdAt:new Date().toISOString(),notes:String($('packSlipRemarks').value||'').trim(),
    source:'MANUAL CONFIRMED SHIPMENT',operator:typeof deviceLabel==='function'?deviceLabel():''
   };
-  // Atomic Cloud CAS is performed by the ERP's own versioned cloudPush.
-  // No direct database write, stock movement, or Work Order status modification.
-  state.packingSlips=[...liveLog,record];
-  state.packingSlipGlobalSequence=documentNo.serial;
-  clearTimeout(cloudPushTimer);
-  save(false,{poQuick:true});
-  clearTimeout(cloudPushTimer);
-  const committed=await cloudPush(true);
-  if(!committed)throw Error('Cloud save could not be confirmed. Do not save the same shipment again; check Cloud Sync');
-  const confirmed=await cloudFetch();
-  if(!confirmed?.payload?.packingSlips?.some(x=>x.id===record.id))throw Error('Cloud acknowledgment received but receipt not verified. Refresh before retrying');
-  window.CFM_PACK_UNIQUE_V414.verify(confirmed.payload,documentNo);
+  const confirmed=await directPackingAppend(latest,record,documentNo);
   remote=confirmed;verifiedSlip=record;
   $('packSlipThis').value='';$('packSlipPrior').value='';
   summary();
