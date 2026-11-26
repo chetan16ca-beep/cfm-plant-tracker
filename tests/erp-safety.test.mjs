@@ -228,3 +228,15 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(f.getCode({itemCode:'',description:'Unknown product'}),'');
  ok(true,'Stitch label extracts only explicit micron, accepts work number and never fabricates missing code');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){}};
+ runInNewContext(read('cfm-all-report-print-v452.js'),{window,document,setInterval:()=>1});
+ const api=window.CFM_REPORT_PRINT_V452,payload={departmentWork:[{date:'2026-11-16',workNo:'CFM-1',person:'<test>'}],reconstructedPersonWork:[{date:'2026-08-18',workNo:'CFM-2',doneQty:4},{date:'',workNo:'CFM-3'}],cutting:[],reconstructedBatchReports:[]};
+ const before=JSON.stringify(payload),report=api.render({version:1,payload},['actual','person'],'','',true);
+ assert.equal(api.selectRows(payload,api.specs[1],'2026-11-01','2026-11-30',false).length,0);
+ assert.ok(report.includes('DATE NOT RECORDED')&&report.includes('NOT verified attendance')&&report.includes('&lt;test&gt;'));
+ assert.ok(report.includes('CFM-1')&&report.includes('CFM-2')&&report.includes('CFM-3'));
+ assert.equal(JSON.stringify(payload),before);
+ ok(true,'All report print separates actual and review entries, supports undated rows and is read-only');
+}

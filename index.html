@@ -118,7 +118,7 @@ let swReg=null;
 async function registerSW(){
   if(!('serviceWorker' in navigator))return null;
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js?v=20261126-v451',{updateViaCache:'none'});
+    swReg=await navigator.serviceWorker.register('./sw.js?v=20261126-v452',{updateViaCache:'none'});
     try{await swReg.update()}catch(_){}
     await navigator.serviceWorker.ready;
     return swReg;
@@ -176,14 +176,14 @@ window.addEventListener('message',e=>{
 registerSW().then(reg=>{refreshNotifyButton();if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});});
 if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(sessionStorage.getItem('cfm-sw451-reload'))return;
-  sessionStorage.setItem('cfm-sw451-reload','1');location.reload();
+  if(sessionStorage.getItem('cfm-sw452-reload'))return;
+  sessionStorage.setItem('cfm-sw452-reload','1');location.reload();
  });
 }
 
 (async()=>{
  let done=0,total=groups.flat().length,st=document.getElementById('st');
- const urls=groups.flat(), ver='20261126-v451';
+ const urls=groups.flat(), ver='20261126-v452';
  // V200 PC fix: limited parallel downloads + retries. One dropped chunk must not blank the ERP.
  // Never clear browser storage or replace Cloud data while recovering from a network failure.
  let nextChunk=0;
@@ -222,7 +222,7 @@ if('serviceWorker' in navigator){
  let src=texts.join('')+'\n';
   // One canonical displayed version. Old inline modules have repeated timers
   // that can otherwise force a stale header label after deployment.
-  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V451 LIVE');
+  src=src.replace(/\bV\d{2,3}\s+LIVE\b/g,'V452 LIVE');
  // V116 canonical display: prevent old chunk labels (V98/V113/V115) from resurfacing.
  src=src.replace(/V\s*(?:98|113|115|116|117)\s*LIVE/gi,'V167 LIVE');
  src=src.replace(/V(?:98|113|115|116)\b/gi,'V167');
@@ -377,6 +377,7 @@ html,body{background:#f4faff!important;color:#13233b!important}
  src=src.replace('</head>','<script defer src="./cfm-eagle-brand-v361.js?v=370"></scr'+'ipt></head>');
  src=src.replace('</head>','<script defer src="./cfm-workorder-stitch-label-v352.js?v=396"></scr'+'ipt></head>');
  src=src.replace('</head>','<script defer src="./cfm-stitch-label-helper-v451.js?v=451"></scr'+'ipt></head>');
+ src=src.replace('</head>','<script defer src="./cfm-all-report-print-v452.js?v=452"></scr'+'ipt></head>');
  // V416: searchable Eagle Code dropdown for single and multi Work Order auto measurements.
  src=src.replace('</head>','<script defer src="./cfm-eagle-measurement-dropdown-v416.js?v=416"></scr'+'ipt></head>');
  // V414: Unified non-repeating document number across normal, Multi PO and Without-WO slips.
@@ -437,7 +438,7 @@ html,body{background:#f4faff!important;color:#13233b!important}
    const w=app.contentWindow;
    if(!w||!w.document?.body){shellBadge.textContent='CFM ERP • V424 · Loading';return}
    const absent=Object.entries(requiredModules).filter(([name,test])=>{try{return !test(w)}catch(_){return true}}).map(([name])=>name);
-   shellBadge.textContent=absent.length?'CFM ERP • V424 · Check Modules':'CFM ERP • V451 LIVE';
+   shellBadge.textContent=absent.length?'CFM ERP • V424 · Check Modules':'CFM ERP • V452 LIVE';
    shellBadge.title=absent.length?'Module load pending/failed: '+absent.join(', '):'V408 runtime verified · Packing Slip, Label, Multi-WO and Pending Orders loaded';
   }catch(e){shellBadge.textContent='CFM ERP • V424 · Check Modules';shellBadge.title='Runtime status could not be read: '+String(e?.message||e)}
  }
