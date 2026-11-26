@@ -281,7 +281,7 @@ function slip(p,attachment=null,bundleIndex=null){
  const td=(txt,cls='')=>'<td class="'+cls+'">'+esc(show(txt))+'</td>';
  const multi=originalItems.length>1||p.manualNoWO===true;
  const table=p.items.map((x,i)=>multi?
-  '<tr>'+td(String(i+1),'num')+td(p.manualNoWO?'—':x.workNo)+td([x.poNo,x.poDate?'Date '+x.poDate:''].filter(Boolean).join(' · '))+td([x.code,x.customerItemNo?'Cust. '+x.customerItemNo:''].filter(Boolean).join(' · '))+
+  '<tr>'+td(String(i+1),'num')+td(p.manualNoWO?'—':x.workNo)+td([x.poNo,x.poDate?'Date '+x.poDate:''].filter(Boolean).join(' · '))+td(x.customerItemNo)+td(x.code)+
    td([x.name,x.spec,x.size?'Size '+x.size:'',x.micron?'Micron '+x.micron:''].filter(Boolean).join(' · '))+
    td(itemNumber(x.orderQty),'num')+td(itemNumber(x.previousDispatched),'num')+
    td(itemNumber(x.qty),'num')+td(itemNumber(x.balanceAfter),'num')+'</tr>':
@@ -300,10 +300,10 @@ function slip(p,attachment=null,bundleIndex=null){
  (attachment?'<div class="cfm407-remark" style="min-height:0"><b>BILL REFERENCE (ENTERED FOR THIS PRINT)</b><p>'+esc(attachment.billNo)+' · '+esc(attachment.billDate||'Date not entered')+'</p></div>':'')+
  '<div class="cfm407-dest"><div class="cfm434-shipto"><small>SHIP TO / DELIVERY ADDRESS</small><b>'+esc(show(p.party))+'</b>'+
  '<p class="cfm434-address">'+esc(p.address||'Not recorded — verify customer PO')+'</p></div>'+
- '<div><small>PO DATE</small><b>'+esc(show(p.poDate))+'</b><small>CUSTOMER ITEM CODE</small><b>'+esc(show(p.item))+'</b></div></div>'+
+ '<div><small>PO DATE</small><b>'+esc(multi?'See item table':show(p.poDate))+'</b><small>CUSTOMER ITEM CODE</small><b>'+esc(multi?'See item table':show(p.item))+'</b></div></div>'+
  '<h3>PRODUCT DETAILS · '+(p.manualNoWO?'AS PER CUSTOMER PO (NO WORK ORDER)':'AS PER WORK ORDER')+'</h3>'+
- (multi?'<table class="cfm407-products cfm407-multi"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:12%"><col style="width:15%"><col style="width:28%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:7%"></colgroup>'+
-  '<thead><tr><th>#</th><th>WO</th><th>PO NO. / DATE</th><th>EFPPL / CUSTOMER ITEM</th><th>PRODUCT / SPEC</th><th>ORDER</th><th>PREV</th><th>'+ (isBundle?'BUNDLE QTY':'NOW') +'</th><th>PENDING</th></tr></thead><tbody>'+table+'</tbody></table>':
+ (multi?'<table class="cfm407-products cfm407-multi"><colgroup><col style="width:3%"><col style="width:9%"><col style="width:13%"><col style="width:11%"><col style="width:13%"><col style="width:23%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"></colgroup>'+
+  '<thead><tr><th>#</th><th>WO</th><th>PO NO. / DATE</th><th>CUSTOMER ITEM</th><th>EFPPL CODE</th><th>PRODUCT / SPEC</th><th>ORDER</th><th>PREV</th><th>'+ (isBundle?'BUNDLE QTY':'NOW') +'</th><th>PENDING</th></tr></thead><tbody>'+table+'</tbody></table>':
   '<table class="cfm407-products"><colgroup><col style="width:5%"><col style="width:13%"><col style="width:17%"><col style="width:24%"><col style="width:20%"><col style="width:7%"><col style="width:7%"><col style="width:7%"></colgroup>'+
   '<thead><tr><th>#</th><th>WORK NO.</th><th>EFPPL CODE</th><th>PRODUCT</th><th>SPECIFICATION</th><th>MICRON</th><th>SIZE</th><th>'+ (isBundle?'BUNDLE QTY':'QTY') +'</th></tr></thead><tbody>'+table+'</tbody></table>')+
  '<div class="cfm407-qty">'+qty('ORDER QTY',p.orderQty)+qty('PREVIOUS SENT',legacy?'UNVERIFIED':p.prevQty)+
@@ -359,15 +359,15 @@ function documentHtml(record,work,photos,attachment=null){
  '.cfm407-info-cell{border-right:1px solid #111;padding:1.6mm;min-width:0;overflow-wrap:anywhere}',
  '.cfm407-info-cell small,.cfm407-dest small{display:block;font:bold 7pt Arial;color:#222}',
  '.cfm407-info-cell b{display:block;font:bold 8.8pt Arial;margin-top:.5mm}',
- '.cfm407-dest{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);border:1.5px solid #111;flex-shrink:0}',
+ '.cfm407-dest{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,1fr);border:1.5px solid #111;flex-shrink:0}',
  '.cfm407-dest>div{padding:1.5mm 2mm;min-width:0;overflow-wrap:anywhere}.cfm407-dest>div+div{border-left:1px solid #111}',
  '.cfm407-dest b{display:block;font:bold 9pt Arial;margin:1mm 0 2mm}',
- '.cfm407-dest p{margin:1mm 0;font:8.4pt/1.2 Arial;white-space:pre-wrap}.cfm407-dest .cfm434-shipto{padding:2.5mm 3mm}.cfm407-dest .cfm434-shipto small{font:bold 10pt Arial;letter-spacing:.5px}.cfm407-dest .cfm434-shipto b{font:bold 16pt/1.15 Arial;margin:1.3mm 0}.cfm407-dest .cfm434-address{font:600 13pt/1.3 Arial;color:#000;white-space:pre-wrap;overflow-wrap:anywhere;margin:1mm 0 0}',
+ '.cfm407-dest p{margin:1mm 0;font:8.4pt/1.2 Arial;white-space:pre-wrap}.cfm407-dest .cfm434-shipto{padding:2.5mm 3mm}.cfm407-dest .cfm434-shipto small{font:bold 10pt Arial;letter-spacing:.5px}.cfm407-dest .cfm434-shipto b{font:bold 20pt/1.12 Arial;margin:1.3mm 0}.cfm407-dest .cfm434-address{font:600 16pt/1.23 Arial;color:#000;white-space:pre-wrap;overflow-wrap:anywhere;margin:1mm 0 0}',
  '.cfm407-slip h3{font:bold 8.5pt Arial;margin:1.4mm 0 .5mm}',
  '.cfm407-products{width:100%;table-layout:fixed;border-collapse:collapse}',
  '.cfm407-products th,.cfm407-products td{border:1px solid #111;padding:1.6mm 1mm;overflow-wrap:anywhere;vertical-align:top}',
- '.cfm407-products th{font:bold 7pt Arial;text-align:center}.cfm407-products td{font:7.8pt/1.25 Arial}.cfm407-products .num{text-align:center;font-weight:800}',
- '.cfm407-products.cfm407-multi th{font-size:6.5pt}.cfm407-products.cfm407-multi td{font-size:7pt;padding:1.2mm .8mm}',
+ '.cfm407-products th{font:bold 8.5pt Arial;text-align:center;background:#ededed}.cfm407-products td{font:9pt/1.25 Arial}.cfm407-products .num{text-align:center;font-weight:800}',
+ '.cfm407-products.cfm407-multi th{font-size:8pt}.cfm407-products.cfm407-multi td{font-size:8.5pt;padding:1.3mm 1mm}',
  '.cfm407-qty{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid #111;border-right:0}',
  '.cfm407-qty>div{padding:2mm 1mm;text-align:center;border-right:1px solid #111}',
  '.cfm407-qty small{display:block;font:bold 7pt Arial}.cfm407-qty strong{display:block;font:bold 14pt Arial}',
