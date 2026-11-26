@@ -187,3 +187,15 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(r.status,'PENDING');assert.equal(l.summarize(r,p.packingSlips).balanceQty,4);
  ok(true,'Manual old dispatch reconciles total without duplicate packing qty or stock changes, supports verified full and reopen corrections');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ for(const f of ['sync/bill-dispatch-ledger.js','cfm-manual-dispatch-v447.js'])runInNewContext(read(f),{window,document,setInterval:()=>1,clearInterval(){}});
+ const l=window.CFM_BILL_DISPATCH_LEDGER,m=window.CFM_MANUAL_DISPATCH_V447;
+ const r={workNo:'CFM-TEST',party:'SAMPLE',poNo:'P1',description:'Cloth',orderQty:12,cutQty:4,status:'PENDING'},p={pending:[r],packingSlips:[]};
+ assert.equal(m.listState(p,r),'UNVERIFIED');
+ const cmd={id:'T1',workNo:r.workNo,identity:l.identity(r),expectedPacking:0,expectedManual:0,expectedLast:'',total:4,actor:'test',reason:'old'};
+ m.transition(p,cmd);assert.equal(m.listState(p,r),'PARTIAL');assert.equal(l.summarize(r,[]).balanceQty,8);
+ m.transition(p,{...cmd,id:'T2',expectedManual:4,expectedLast:'T1',total:12});assert.equal(m.listState(p,r),'DONE');assert.equal(l.summarize(r,[]).balanceQty,0);
+ ok(true,'Saved old dispatch entries leave default reconciliation queue; partial balance remains in dispatch ledger and completed history');
+}
