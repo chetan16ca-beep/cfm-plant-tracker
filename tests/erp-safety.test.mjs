@@ -155,3 +155,15 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(d.totals.cutWO,1);assert.equal(d.totals.cutQty,8);assert.equal(d.totals.dispatchWO,1);assert.equal(d.totals.dispatchQty,8);assert.equal(d.totals.billQty,8);assert.equal(d.totals.challanQty,8);assert.equal(d.totals.review,1);assert.equal(JSON.stringify(p),before);
  ok(true,'Morning dashboard reports live 12/4/8 balance, flags legacy records and performs no writes');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ runInNewContext(read('cfm-morning-dashboard-v445.js'),{window,document,setInterval:()=>1,clearInterval(){}});
+ const f=window.CFM_MORNING_V445.productDetails;
+ const d=f({description:'GA1270 60" CF BAG PORE SIZE 5 μ',cloth:'333 ANT',width:'50',itemCode:'EFPPL-TEST',description2:'Double layer'});
+ assert.equal(d.size,'60 inch');assert.equal(d.micron,'5');assert.equal(d.width,'50');assert.equal(d.cloth,'333 ANT');assert.equal(d.spec,'Double layer');
+ const missing=f({description:'FBD 19 FINGER NEW',width:'60'});
+ assert.equal(missing.size,'');assert.equal(missing.micron,'');assert.equal(missing.width,'60');
+ assert.ok(window.CFM_MORNING_V445.productCell({description:'<test>'}).includes('&lt;test&gt;'));
+ ok(true,'Dashboard shows source-backed size, micron and specifications without guessing from cloth width or finger count');
+}
