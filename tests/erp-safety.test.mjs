@@ -167,3 +167,23 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.ok(window.CFM_MORNING_V445.productCell({description:'<test>'}).includes('&lt;test&gt;'));
  ok(true,'Dashboard shows source-backed size, micron and specifications without guessing from cloth width or finger count');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ for(const f of ['sync/bill-dispatch-ledger.js','cfm-manual-dispatch-v447.js'])runInNewContext(read(f),{window,document,setInterval:()=>1,clearInterval(){}});
+ const l=window.CFM_BILL_DISPATCH_LEDGER,m=window.CFM_MANUAL_DISPATCH_V447;
+ const r={workNo:'CFM-TEST',party:'SAMPLE',poNo:'PO-1',description:'Cloth',orderQty:12,cutQty:4,status:'PENDING'},p={pending:[r],packingSlips:[{id:'P1',workNo:r.workNo,thisDispatched:2}],store:[{id:'ROLL'}],cutting:[{id:'CUT'}]};
+ const cmd={id:'MD1',workNo:r.workNo,identity:l.identity(r),expectedPacking:2,expectedManual:0,expectedLast:'',total:4,actor:'tester',reason:'Old challan',dispatchDate:'2026-11-01'};
+ const before=JSON.stringify([p.store,p.cutting,p.packingSlips]);m.transition(p,cmd);
+ assert.equal(l.summarize(r,p.packingSlips).confirmedDispatchQty,4);assert.equal(l.summarize(r,p.packingSlips).balanceQty,8);
+ m.transition(p,cmd);assert.equal(r.manualDispatchHistory.length,1);
+ assert.throws(()=>m.transition(p,{...cmd,id:'MD2',expectedManual:2,expectedLast:'MD1',total:1}),/between/);
+ assert.equal(JSON.stringify([p.store,p.cutting,p.packingSlips]),before);
+ p.packingSlips.push({id:'P2',workNo:r.workNo,thisDispatched:3});assert.equal(l.summarize(r,p.packingSlips).balanceQty,5);
+ m.transition(p,{...cmd,id:'MD3',expectedPacking:5,expectedManual:2,expectedLast:'MD1',total:12});
+ assert.equal(r.status,'DISPATCHED');assert.equal(l.summarize(r,p.packingSlips).balanceQty,0);assert.equal(r.cutQty,4);
+ assert.throws(()=>m.transition(p,{...cmd,id:'MD4',expectedPacking:5,expectedManual:7,expectedLast:'MD3',total:8}),/reopen/);
+ m.transition(p,{...cmd,id:'MD4',expectedPacking:5,expectedManual:7,expectedLast:'MD3',total:8,reopen:true});
+ assert.equal(r.status,'PENDING');assert.equal(l.summarize(r,p.packingSlips).balanceQty,4);
+ ok(true,'Manual old dispatch reconciles total without duplicate packing qty or stock changes, supports verified full and reopen corrections');
+}
