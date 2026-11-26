@@ -155,22 +155,19 @@ async function saveCombined(){
  try{data=collect()}catch(e){msg(String(e.message||e),true);return}
  if(!confirm('Confirm ACTUAL dispatch of '+data.items.reduce((a,x)=>a+x.qty,0)+' Nos from '+data.items.length+
   ' Work Orders of '+data.party+'?\nEach PO/WO quantity and physical bundle label will be recorded separately.'))return;
- if(typeof cloudFetch!=='function'||typeof cloudPush!=='function'||typeof save!=='function'||typeof state==='undefined'||!cloudReady||cloudBusy||cloudDirty){
-  msg('Cloud is not ready, or another ERP save is pending. Sync/refresh first.',true);return;
+ if(typeof cloudFetch!=='function'||typeof window.CFM_DIRECT_PACK_APPEND_V436!=='function'||cloudBusy){
+  msg('Database save unavailable or another save is running. Retry shortly.',true);return;
  }
  busy=true;$('cfm408Save').disabled=true;let record;
  try{
   const latest=await cloudFetch();
-  if(!latest||!Array.isArray(latest.payload?.pending)||Number(latest.version)!==Number(snap.version)||Number(latest.version)!==Number(cloudVersion))
+  if(!latest||!Array.isArray(latest.payload?.pending)||!Number.isSafeInteger(Number(latest.version)))
    throw Error('Live Cloud changed. Refresh and recheck all Work Order quantities.');
-  const localLog=Array.isArray(state.packingSlips)?state.packingSlips:[];
   const log=Array.isArray(latest.payload.packingSlips)?latest.payload.packingSlips:[];
-  if(JSON.stringify(log)!==JSON.stringify(localLog))throw Error('Local and Cloud Packing Slips differ. Sync first.');
   for(const item of data.items){
    const cloudRow=latest.payload.pending.find(r=>key(r.workNo)===key(item.workNo));
-   const localRow=(state.pending||[]).find(r=>key(r.workNo)===key(item.workNo));
    const original=allOrders().find(r=>key(r.workNo)===key(item.workNo));
-   if(!equivalent(original,cloudRow)||!equivalent(original,localRow))throw Error(item.workNo+': Work Order changed; refresh first.');
+   if(!equivalent(original,cloudRow)||!!cloudRow.archived||JSON.stringify([original.status,original.dispatchDoneAt,original.dispatchQty])!==JSON.stringify([cloudRow.status,cloudRow.dispatchDoneAt,cloudRow.dispatchQty]))throw Error(item.workNo+': Work Order changed; refresh first.');
    const sentNow=sent(item.workNo,log);
    if(sentNow!==item.previousDispatched-item.manualPreviousBaseline||sentNow+item.manualPreviousBaseline+item.qty>pos(cloudRow.orderQty))
     throw Error(item.workNo+': pending Qty changed. Nothing saved.');
@@ -180,14 +177,7 @@ async function saveCombined(){
   record={...draftRecord(data),id:typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'combined-'+Date.now()+'-'+Math.random().toString(36).slice(2),
    draft:false,slipNo:docNo.slipNo,packingSlipSerial:docNo.serial,source:'MANUAL CONFIRMED COMBINED SHIPMENT',
    operator:typeof deviceLabel==='function'?deviceLabel():''};
-  state.packingSlips=[...log,record];
-  state.packingSlipGlobalSequence=docNo.serial;
-  clearTimeout(cloudPushTimer);save(false,{poQuick:true});clearTimeout(cloudPushTimer);
-  const committed=await cloudPush(true);
-  if(!committed)throw Error('Cloud save not confirmed. Inspect history before retrying.');
-  const confirmed=await cloudFetch();
-  if(!confirmed?.payload?.packingSlips?.some(x=>x.id===record.id))throw Error('Cloud receipt not verified. Refresh before retrying.');
-  window.CFM_PACK_UNIQUE_V414.verify(confirmed.payload,docNo);
+  const confirmed=await window.CFM_DIRECT_PACK_APPEND_V436(latest,record,docNo);
   snap=confirmed;lastSaved=record;render();
   msg('✓ CLOUD VERIFIED: '+record.slipNo+' · '+record.items.length+' Work Orders · This dispatch '+record.thisDispatched+
    ' Nos · Pending '+record.balanceAfter+' Nos · '+record.bundleCount+' Bundle Labels.');

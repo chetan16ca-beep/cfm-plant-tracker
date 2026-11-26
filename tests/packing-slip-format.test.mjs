@@ -68,11 +68,33 @@ test('Saved slip reprint uses original captured PO and address, not new fake det
 });
 
 test('Print code preserves order data integrity and legacy Work Order print enhancement is read-only',()=>{
- assert.match(source,/state\.packingSlips=\[\.\.\.liveLog,record\]/);
+ assert.match(source,/payload\.packingSlips=\[\.\.\.log,record\]/);
+ assert.match(source,/await directPackingAppend\(latest,record,documentNo\)/);
+ assert.doesNotMatch(source,/state\.packingSlips=\[\.\.\.liveLog,record\]/);
  assert.match(source,/partyAddress:address/);
  assert.match(source,/Ship-to \/ Party Address missing/);
  assert.match(source,/onclick=previewFromWorkOrder/);
  assert.match(legacy,/Ship-to \/ Party Address/);
  assert.match(legacy,/text\(x\.workNo\)===wo/);
  assert.doesNotMatch(legacy,/state\.packingSlips\s*=/);
+});
+test('Direct packing append preserves unrelated data, verifies receipt and does not mutate local snapshot',async()=>{
+ const initial={version:10,payload:{pending:[order],store:[{srlNo:'TEST'}],cutting:[{id:'cut'}],packingSlips:[],packingSlipGlobalSequence:0}};
+ let server=structuredClone(initial),writes=0;
+ const phone={pending:[{workNo:'LOCAL-DRAFT'}],packingSlips:[]},before=JSON.stringify(phone);
+ const win={CFM_PACK_UNIQUE_V414:{verify(p,doc){assert.equal(p.packingSlips.filter(x=>x.slipNo===doc.slipNo).length,1);return true}}};
+ const doc={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ const ctx={document:doc,window:win,state:phone,cloudBusy:false,cloudDirty:true,validState:p=>Array.isArray(p.pending),clone:structuredClone,
+  CLOUD_URL:'https://test.invalid',cloudHeaders:()=>({}),AbortController,
+  setTimeout:()=>1,clearTimeout(){},cloudFetch:async()=>structuredClone(server),
+  fetch:async(url,options)=>{writes++;assert.match(url,/version=eq\.10$/);const req=JSON.parse(options.body);
+   assert.deepEqual(req.payload.pending,initial.payload.pending);assert.deepEqual(req.payload.store,initial.payload.store);
+   assert.deepEqual(req.payload.cutting,initial.payload.cutting);server={version:req.version,payload:req.payload};return {ok:true,json:async()=>[server]}}};
+ runInNewContext(source,ctx,{timeout:1000});
+ const rec={id:'test-receipt',slipNo:'TEST-001',thisDispatched:4};
+ const result=await win.CFM_DIRECT_PACK_APPEND_V436(initial,rec,{slipNo:rec.slipNo,serial:1});
+ assert.equal(result.version,11);assert.equal(result.payload.packingSlips[0].id,rec.id);
+ assert.equal(writes,1);assert.equal(JSON.stringify(phone),before);assert.equal(ctx.cloudBusy,false);
+ await assert.rejects(win.CFM_DIRECT_PACK_APPEND_V436(result,rec,{slipNo:rec.slipNo,serial:1}),/already exists/);
+ assert.equal(writes,1);
 });
