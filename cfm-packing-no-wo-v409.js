@@ -226,7 +226,21 @@ function downloadBackup(s){
  a.href=url;a.download='CFM-Manual-Packing-Backup-'+new Date().toISOString().slice(0,10)+'.json';
  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
-async function updateCloud(transform,confirmedCheck){
+async function updateCloud(transform,confirmedCheck,appendOnly=false){
+ if(appendOnly){
+  if(cloudBusy||typeof window.CFM_DIRECT_PACK_APPEND_V436!=='function')throw Error('Database save unavailable or another save is running.');
+  const latest=await cloudFetch();
+  if(!latest||!validState(latest.payload))throw Error('Database read unavailable.');
+  const next=transform(latest);
+  const oldLog=latest.payload.packingSlips||[],newLog=next.packingSlips||[];
+  const oldOrders=latest.payload.packingManualOrders||[],newOrders=next.packingManualOrders||[];
+  if(newLog.length!==oldLog.length+1||JSON.stringify(newLog.slice(0,-1))!==JSON.stringify(oldLog)||
+     JSON.stringify(newOrders.slice(0,oldOrders.length))!==JSON.stringify(oldOrders))throw Error('Unsafe packing append');
+  const record=newLog[newLog.length-1];
+  const verified=await window.CFM_DIRECT_PACK_APPEND_V436(latest,record,{serial:record.packingSlipSerial,slipNo:record.slipNo},newOrders.slice(oldOrders.length));
+  if(!confirmedCheck(verified))throw Error('Database receipt not verified. Check history before retrying.');
+  snap=verified;return verified;
+ }
  if(typeof cloudFetch!=='function'||typeof cloudHeaders!=='function'||typeof CLOUD_URL==='undefined'||
     typeof state==='undefined'||!cloudReady||cloudBusy||cloudDirty)
   throw Error('Cloud is not ready / another ERP sync is pending. Sync and refresh before saving.');
@@ -309,7 +323,7 @@ async function saveSlip(){
   },row=>!!row?.payload?.packingSlips?.some(x=>x.id===receiptId)&&
     Number(row.payload.packingSlipGlobalSequence)>=Number(record?.packingSlipSerial)&&
     window.CFM_PACK_UNIQUE_V414?.verify?.(row.payload,{slipNo:record.slipNo,serial:record.packingSlipSerial})&&
-    data.newOrders.every(o=>(row.payload.packingManualOrders||[]).some(x=>x.id===o.id)));
+    data.newOrders.every(o=>(row.payload.packingManualOrders||[]).some(x=>x.id===o.id)),true);
   lastSaved=snap.payload.packingSlips.find(x=>x.id===receiptId);
   lines=[];window.CFM_PACK_MIX_V411?.reset?.();renderLines();renderHistory();
   msg('✓ CLOUD SAVED: '+lastSaved.slipNo+' · Sent '+total+' Nos · Pending '+lastSaved.balanceAfter+' Nos · '+lastSaved.bundleCount+' Labels.');
