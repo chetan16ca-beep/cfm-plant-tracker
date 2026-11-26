@@ -185,6 +185,7 @@ function collect(){
  return {party,address,items,bundleDetails,bundleContents:mix?.bundleContents||[],newOrders};
 }
 function draftRecord(data){
+ const dispatchMeta=window.CFM_PACK_META_V441?.read('cfm409Dialog')||{};
  const sum=k=>data.items.reduce((a,x)=>a+(Number(x[k])||0),0);
  return {
   id:'',draft:true,manualNoWO:true,
@@ -203,7 +204,7 @@ function draftRecord(data){
   items:data.items,bundleDetails:data.bundleDetails,bundleContents:data.bundleContents||[],
   bundleCount:data.bundleDetails.length,packages:data.bundleDetails.length,
   bundleQtys:data.bundleDetails.map(x=>x.qty),
-  createdAt:new Date().toISOString(),notes:str($('cfm409Remarks')?.value),
+  createdAt:new Date().toISOString(),dispatchMeta,notes:str($('cfm409Remarks')?.value),
   operator:'',source:'NO-WORK-ORDER DRAFT · NOT DISPATCHED'
  };
 }
@@ -419,6 +420,8 @@ function mount(){
  '<button id="cfm409Last">🖨 Reprint Last Saved</button></div>';
  document.body.appendChild(d);
  window.CFM_ADDRESS_PASTE_V440?.('cfm409Address',()=>key($('cfm409Party')?.value));
+ window.CFM_PACK_META_V441?.install('cfm409Dialog','cfm409Remarks');
+ $('cfm409Party').addEventListener('change',()=>window.CFM_PACK_META_V441?.clear('cfm409Dialog'));
  const css=document.createElement('style');css.id='cfm409Css';
  css.textContent='#cfm409Open{display:block;width:100%;margin:6px 0 12px!important;background:#edf9ef!important;color:#146341!important;border:1px solid #95c7ae!important;font-weight:800!important}'+
  '#cfm409Dialog{width:min(1240px,98vw);max-height:94dvh;overflow:auto;border:1px solid #b2cadc;border-radius:12px;padding:0;background:#fff;color:#17394f;font:12px/1.45 Arial}'+
