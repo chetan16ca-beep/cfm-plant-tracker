@@ -429,6 +429,8 @@ async function cloudPush(force=false){
     // Legacy module saves must preserve the authoritative Inbox unchanged.
     if(Array.isArray(remote.payload.orderInbox))snapshot.orderInbox=clone(remote.payload.orderInbox);
     if(Array.isArray(remote.payload.accountsQtyRequests))snapshot.accountsQtyRequests=clone(remote.payload.accountsQtyRequests);
+    // Preserve manually verified historical dispatch audit records in legacy saves.
+    for(const r of snapshot.pending){const server=remote.payload.pending.find(x=>normalize(x.workNo)===normalize(r.workNo));if(Array.isArray(server?.manualDispatchHistory))r.manualDispatchHistory=clone(server.manualDispatchHistory);}
     // Compare-and-swap: require this exact Cloud version for the write.
     const nextVersion=baseVersion+1;
     const u=CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+baseVersion;
