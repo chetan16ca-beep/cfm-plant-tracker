@@ -48,7 +48,11 @@ ok(worker.includes('rec.reportOnly=true;'), 'Daily Worker entries are logged as 
 ok(sop.includes('r.reportOnly !== true'), 'SOP production handover excludes report-only worker logs');
 ok(worker.includes('x.reportOnly!==true'), 'Stage availability previews exclude unverified worker logs');
 ok(sop.includes('supervisor:supervisor.trim(),reportOnly:false'), 'Verified Batch stage entries remain handover eligible');
-has('index.html','cfm-plant-production-sop.js?v=423');
+has('index.html','cfm-plant-production-sop.js?v=438');
+ has('index.html','cfm-sop-register.js?v=438');
+ ok(sop.includes("await directRecord('departmentWork',intended,'cfmBatchEntryId'"), 'Batch save uses direct verified append');
+ ok(sop.includes('version=eq.'+"'"+"+base") || sop.includes("version=eq.'+base"), 'Direct save uses current-version CAS');
+ ok(read('cfm-sop-register.js').includes("await window.CFM_DIRECT_RECORD_V438('sopRecords'"), 'SOP checklist uses direct verified append');
 ok(!index.includes('cfm-jessi-voice.js'),'Removed Jessi is not loaded again');
 console.log('CFM read-only deployment safety checks passed: '+checks);
 
