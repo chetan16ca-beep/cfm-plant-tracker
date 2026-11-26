@@ -4,6 +4,8 @@
 const $=id=>document.getElementById(id),T=x=>String(x??'').trim(),N=x=>T(x).toUpperCase(),A=x=>Array.isArray(x)?x:[],E=x=>T(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ID=()=>globalThis.crypto?.randomUUID?.()||Date.now()+'-'+Math.random().toString(36).slice(2);
 const identity=r=>JSON.stringify([N(r.workNo),N(r.party),N(r.poNo),N(r.description),Number(r.orderQty)]);
+const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
+const equal=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
 const types=t=>t==='BOTH'?['BILL','CHALLAN']:[t];
 function summary(p,r,t){
  const order=Number(r.orderQty);if(!Number.isSafeInteger(order)||order<=0)throw Error('Invalid order quantity');
@@ -26,7 +28,7 @@ function summary(p,r,t){
 function transition(p,req){
  if(!['BILL','CHALLAN','BOTH'].includes(req.type)||!req.id||!T(req.actor)||!A(req.items).length)throw Error('Request type, operator and selected items required');
  const log=A(p.accountsQtyRequests),existing=log.find(x=>x.id===req.id);
- if(existing){if(JSON.stringify(existing.items)!==JSON.stringify(req.items)||existing.type!==req.type)throw Error('Request identity conflict');return existing}
+ if(existing){if(!equal(existing.items,req.items)||existing.type!==req.type)throw Error('Request identity conflict');return existing}
  const seen=new Set();
  for(const i of req.items){
   if(seen.has(N(i.workNo)))throw Error('Duplicate Work Order in request');seen.add(N(i.workNo));
@@ -49,7 +51,7 @@ async function commit(req){
   const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),20000);let ack,error;
   try{const res=await fetch(CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+base,{method:'PATCH',signal:ctrl.signal,headers:{...cloudHeaders(),Prefer:'return=representation','x-cfm-base-version':String(base)},body:JSON.stringify({payload,version:base+1,updated_at:new Date().toISOString()})});if(!res.ok)throw Error('HTTP '+res.status);ack=await res.json()}catch(e){error=e}finally{clearTimeout(timer)}
   const read=await cloudFetch(),hit=A(read?.payload?.accountsQtyRequests).find(x=>x.id===rec.id);
-  if(hit&&hit.requestNo===rec.requestNo&&JSON.stringify(hit.items)===JSON.stringify(rec.items))return read;
+  if(hit&&hit.requestNo===rec.requestNo&&equal(hit.items,rec.items))return read;
   if(error)throw Error('Save not confirmed. Retry same request: '+error.message);
   if(Array.isArray(ack)&&ack.length===0)continue;
   throw Error('Database receipt not verified; retry same request.');
