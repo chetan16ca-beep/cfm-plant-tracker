@@ -1,6 +1,6 @@
 // CFM PWA: network-first for live ERP UI; offline fallback only.
 // No IndexedDB, localStorage, Supabase order/stock changes.
-const CACHE='cfm-plant-ui-20261126-v440-cached-chunks';
+const CACHE='cfm-plant-ui-20261126-v441-cached-chunks';
 const BASE=self.registration.scope;
 const SHELL=[BASE+'index.html',BASE+'po-workorder.html',BASE+'fast-work-order.html',BASE+'cfm-fast-eagle-measurements-v417.js',BASE+'cfm-efppl-master-v330.js',BASE+'cfm-eagle-measurement-dropdown-v416.js',BASE+'cfm-store-srl-master-v350.js',BASE+'cfm-eagle-brand-v361.js',BASE+'cfm-workorder-stitch-label-v352.js',BASE+'cfm-packing-unique-number-v414.js',BASE+'cfm-packing-slip-dispatch-v355.js',BASE+'cfm-packing-slip-preview-v401.js',BASE+'cfm-packing-combined-bundles-v407.js',BASE+'cfm-packing-multi-v408.js',BASE+'cfm-packing-no-wo-v409.js',BASE+'cfm-packing-history-all-v418.js',BASE+'sync/bill-dispatch-ledger.js',BASE+'cfm-packing-mixed-bundle-v411.js',BASE+'cfm-workorder-correction-v413.js',BASE+'cfm-workorder-save-verification-v419.js',BASE+'cfm-packing-label-preview-v404.js',BASE+'cfm-packing-single-format-v402.js',BASE+'cfm-pending-corporate-table-v400.js',BASE+'cfm-legacy-packing-letterhead-v366.js',BASE+'manifest.json',BASE+'cfm-plant-production-sop.js',BASE+'cfm-daily-person-safe-cloud-v424.js',BASE+'cfm-sop-register.js',BASE+'cfm-department-sop-v319.js',BASE+'cfm-unique-measurement-print.js',BASE+'cfm-noncf-measurements-excel.js',BASE+'icons/icon-192.svg',BASE+'icons/icon-512.svg'];
 
