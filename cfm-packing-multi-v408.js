@@ -134,13 +134,14 @@ function collect(){
  return {party,address,items,bundleDetails,bundleContents};
 }
 function draftRecord(data){
+ const dispatchMeta=window.CFM_PACK_META_V441?.read('cfm408Dialog')||{};
  const items=data.items,add=name=>items.reduce((a,i)=>a+(Number(i[name])||0),0);
  return {id:'',draft:true,slipNo:'PREVIEW ONLY',workNo:'MULTI',party:data.party,partyAddress:data.address,
   poNo:'MULTIPLE POs',orderQty:add('orderQty'),previousDispatched:add('previousDispatched'),
   thisDispatched:add('qty'),totalDispatched:add('totalDispatched'),balanceAfter:add('balanceAfter'),
   items,bundleDetails:data.bundleDetails,bundleContents:data.bundleContents||[],bundleCount:data.bundleDetails.length,packages:data.bundleDetails.length,
   bundleQtys:data.bundleDetails.map(x=>x.qty),createdAt:new Date().toISOString(),
-  notes:str($('cfm408Remarks').value),source:'COMBINED DRAFT · NOT DISPATCHED',operator:''};
+  dispatchMeta,notes:str($('cfm408Remarks').value),source:'COMBINED DRAFT · NOT DISPATCHED',operator:''};
 }
 function preview(){
  try{
@@ -248,6 +249,7 @@ function mount(){
  '<button id="cfm408Save">✓ Save Actual Multi-WO Dispatch</button><button id="cfm408Last">🖨 Reprint Last Saved</button></div>';
  document.body.append(d);
  window.CFM_ADDRESS_PASTE_V440?.('cfm408Address',()=>company());
+ window.CFM_PACK_META_V441?.install('cfm408Dialog','cfm408Remarks');
  const style=document.createElement('style');style.id='cfm408Style';
  style.textContent='#cfm408Open{display:block;width:100%;margin:6px 0 12px!important;background:#e8f5ff!important;color:#0b467a!important;border:1px solid #83b4d5!important;font-weight:800!important}'+
  '#cfm408Dialog{width:min(1200px,98vw);max-height:95dvh;padding:0;border:1px solid #a1b7cc;border-radius:12px;color:#173b57;background:#fff;font:12px Arial;overflow:auto}'+
@@ -274,7 +276,7 @@ function mount(){
  '#cfm408Save{background:#0d6040!important;color:#fff!important}#cfm408Dialog .cfm408-head button{color:#173b57}';
  document.head.append(style);
  $('cfm408Close').onclick=()=>d.close();
- $('cfm408Company').onchange=()=>{renderOrders();$('cfm408OneMixedVerified').checked=false};
+ $('cfm408Company').onchange=()=>{window.CFM_PACK_META_V441?.clear('cfm408Dialog');renderOrders();$('cfm408OneMixedVerified').checked=false};
  $('cfm408OneMixed').onchange=()=>{$('cfm408Dialog').classList.toggle('cfm408-one-mixed',mixed());$('cfm408OneMixedVerified').checked=false;refreshTotals()};
  $('cfm408Orders').addEventListener('input',e=>{
   const tr=e.target.closest('tr[data-work-no]');if(!tr)return;
