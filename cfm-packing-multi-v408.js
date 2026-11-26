@@ -183,7 +183,7 @@ async function saveCombined(){
    draft:false,slipNo:docNo.slipNo,packingSlipSerial:docNo.serial,source:'MANUAL CONFIRMED COMBINED SHIPMENT',
    operator:typeof deviceLabel==='function'?deviceLabel():''};
   const confirmed=await window.CFM_DIRECT_PACK_APPEND_V436(latest,record,docNo);
-  snap=confirmed;lastSaved=record;render();
+  snap=confirmed;lastSaved=record;window.CFM_PACK_META_V441?.clear('cfm408Dialog');render();
   msg('✓ CLOUD VERIFIED: '+record.slipNo+' · '+record.items.length+' Work Orders · This dispatch '+record.thisDispatched+
    ' Nos · Pending '+record.balanceAfter+' Nos · '+record.bundleCount+' Bundle Labels.');
  }catch(e){lastSaved=null;msg('⚠ '+String(e.message||e)+'. Do not duplicate dispatch until Cloud History is checked.',true)}
