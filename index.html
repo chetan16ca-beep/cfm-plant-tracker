@@ -567,7 +567,8 @@ $('mrPrintBtn').onclick=()=>{const a=meters(),total=Number($('mrTotal').value);i
 function reply(target,ok,message){
   try{target.postMessage({kind:'CFM_PO_DRAFT_TRANSFER_RESULT',ok,message},location.origin)}catch(e){console.warn(e)}
 }
-window.addEventListener('message',function(event){
+let poTransferBusy=false;
+window.addEventListener('message',async function(event){
   const viewer=document.getElementById('cfmPOFrame');
   if(!viewer||event.source!==viewer.contentWindow||event.origin!==location.origin)return;
   const d=event.data;
@@ -590,9 +591,21 @@ window.addEventListener('message',function(event){
   // Do not reopen the giant ERP multi-item modal (it froze on Android).
   // Original description, buyer item code and discrepancy details are kept.
   try{
-    let unsynced=false;
-    try{unsynced=!!w.eval('typeof cloudDirty!=="undefined"&&cloudDirty')}catch(_){}
-    if(unsynced)return fail('This device has unsynced ERP edits. Sync or export a backup first so local data cannot be lost when opening the Fast Work Order page.');
+    if(poTransferBusy)return reply(event.source,false,'Cloud check already running. Please wait.');
+    poTransferBusy=true;
+    try{
+      const status=()=>w.eval('({dirty:cloudDirty,busy:cloudBusy,ready:cloudReady})');
+      const deadline=Date.now()+45000;
+      while(status().busy&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,250));
+      if(status().dirty&&status().ready&&!status().busy){
+        await w.eval('cloudPush(false)');
+      }
+      while(status().busy&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,250));
+      const finalStatus=status();
+      if(finalStatus.dirty||finalStatus.busy||!finalStatus.ready)return fail('Cloud sync needs review. Your PO remains open and local edits are protected. Use Safe Sync or export a backup, then retry.');
+      const latestDuplicates=w.cfmPOExistingOrders(party,po)||[];
+      if(latestDuplicates.length)return fail('PO already exists after Cloud sync. No duplicate created.');
+    }finally{poTransferBusy=false;}
     const transfer={
       kind:'CFM_FAST_PO_IMPORT_V341',party,poNo:po,orderDate:date,
       deliveryDate:String(d.deliveryDate||''),
