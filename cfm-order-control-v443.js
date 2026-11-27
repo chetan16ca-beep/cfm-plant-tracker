@@ -38,7 +38,7 @@ function transition(p,cmd){
   if(!T(cmd.reason))throw Error('Cancellation reason required.');
   record=event({...current,cancelledAt:new Date().toISOString(),cancelReason:T(cmd.reason)},'CANCELLED',actor);
  }else if(cmd.kind==='convert'){
-  if(!current.groupSentAt)throw Error('Confirm WhatsApp group sent first.');
+  if(!current.groupSentAt&&cmd.allowGroupPending!==true)throw Error('Confirm direct creation while group pending.');
   if(!T(cmd.cloth)||!Number.isFinite(cmd.width)||cmd.width<=0)throw Error('Verified cloth and width required.');
   if(!T(current.itemCode))throw Error('Product code is missing. Review product master first.');
   const duplicates=A(p.pending).filter(w=>N(w.party)===N(current.party)&&N(w.poNo)===N(current.poNo)&&N(w.description)===N(current.description)&&Number(w.orderQty)===current.qty);
@@ -46,7 +46,7 @@ function transition(p,cmd){
   const next=1+Math.max(0,...A(p.pending).map(w=>Number(T(w.workNo).match(/^CFM-(\d+)$/)?.[1])||0));
   if(!Number.isSafeInteger(next)||next<1)throw Error('Cannot allocate Work No.');
   const wo={workNo:'CFM-'+next,party:current.party,poNo:current.poNo||'',orderDate:current.orderDate,deliveryDate:current.deliveryDate||'',itemCode:current.itemCode,eagleCode:'',description:current.description,description2:current.specification||'',cloth:T(cmd.cloth),width:cmd.width,orderQty:current.qty,cutQty:0,status:'PENDING',priority:current.priority,selectedSrl:'',reservedSrl:'',billStatus:'',challanStatus:'',billNo:'',challanNo:'',dispatchDate:'',accountsRemark:'',remark:current.remark||'',measurementStatus:'REQUIRED',orderInboxId:current.id};
-  p.pending=[...p.pending,wo];record=event({...current,workNo:wo.workNo,workCreatedAt:new Date().toISOString()},'WORK ORDER CREATED',actor);
+  p.pending=[...p.pending,wo];record=event({...current,workNo:wo.workNo,workCreatedAt:new Date().toISOString()},current.groupSentAt?'WORK ORDER CREATED':'WORK ORDER CREATED — GROUP PENDING',actor);
  }else throw Error('Unsupported action.');
  p.orderInbox=rows.map(r=>r.id===cmd.id?record:r);return {record};
 }
@@ -85,12 +85,12 @@ function draw(){
  $('ocCompanies').innerHTML=[...new Set(A(snap.payload.pending).map(r=>T(r.party)).filter(Boolean))].sort().map(x=>'<option value="'+E(x)+'"></option>').join('');
  $('ocRows').innerHTML=rows.slice().reverse().filter(r=>!q||N([r.orderNo,r.party,r.poNo,r.description,r.workNo].join(' ')).includes(q)).filter(r=>filter==='ALL'||filter==='GROUP'&&!r.cancelledAt&&!r.groupSentAt||filter==='PO'&&!r.cancelledAt&&!r.poNo||filter==='WO'&&!r.cancelledAt&&!r.workNo||filter==='DONE'&&r.workNo||filter==='CANCEL'&&r.cancelledAt).map(r=>{
   const btn=(action,label)=>'<button type="button" data-act="'+action+'" data-id="'+E(r.id)+'">'+label+'</button>';
-  return '<article><b>'+E(r.orderNo)+' · '+E(r.party)+'</b><p>'+E(r.description)+' · '+E(r.qty)+' Nos. · '+E(r.itemCode||'Code not selected')+'</p><p>PO: '+E(r.poNo||'AWAITED')+' · '+E(r.source)+' · '+E(r.priority)+'</p><small>'+E(r.receivedBy)+' · '+E(new Date(r.createdAt).toLocaleString('en-IN'))+'</small><p><strong>'+E(r.cancelledAt?'CANCELLED':r.workNo||(!r.groupSentAt?'GROUP PENDING':'WORK ORDER PENDING'))+'</strong></p><div class="ocActions">'+(r.cancelledAt?'':btn('share','Copy / Share')+(!r.groupSentAt?btn('group','Confirm Group Sent'):'')+(!r.workNo?btn('po','Update PO')+(r.groupSentAt?btn('convert','Create Work Order'):'')+btn('cancel','Cancel Order'):''))+(r.cancelledAt?'':btn('repeat','Repeat order'))+btn('history','History')+'</div></article>';
+  return '<article><b>'+E(r.orderNo)+' · '+E(r.party)+'</b><p>'+E(r.description)+' · '+E(r.qty)+' Nos. · '+E(r.itemCode||'Code not selected')+'</p><p>PO: '+E(r.poNo||'AWAITED')+' · '+E(r.source)+' · '+E(r.priority)+'</p><small>'+E(r.receivedBy)+' · '+E(new Date(r.createdAt).toLocaleString('en-IN'))+'</small><p><strong>'+E(r.cancelledAt?'CANCELLED':(r.workNo?'WO CREATED · '+r.workNo:'WORK ORDER PENDING')+' · '+(r.groupSentAt?'GROUP SENT':'GROUP PENDING'))+'</strong></p><div class="ocActions">'+(r.cancelledAt?'':btn('share','Copy / Share')+(!r.groupSentAt?btn('group','Confirm Group Sent'):'')+(!r.workNo?btn('convert','Create Work Order')+btn('po','Update PO')+btn('cancel','Cancel Order'):''))+(r.cancelledAt?'':btn('repeat','Repeat order'))+btn('history','History')+'</div></article>';
  }).join('')||'<p>No matching orders.</p>';
  status('Live database · '+rows.length+' received order records · Group, PO and WO counts overlap.');
 }
 async function refresh(){if(busy)return;try{snap=await cloudFetch();if(!snap||!validState(snap.payload))throw Error('Invalid database response');draw()}catch(e){status('Live read failed: '+e.message)}}
-async function run(cmd){if(busy)return false;busy=true;const dialog=$('ocDialog');dialog.querySelectorAll('button').forEach(b=>{b.disabled=true});status('Saving directly to database…');try{snap=await write(cmd);draw();status('Database verified · '+byId(snap.payload,cmd.id).orderNo);try{if(!cloudDirty)setTimeout(()=>cloudPoll(),0)}catch(_){}return true}catch(e){status(e.message);alert(e.message);return false}finally{busy=false;dialog.querySelectorAll('button').forEach(b=>{b.disabled=false})}}
+async function run(cmd){if(busy)return false;busy=true;const dialog=$('ocDialog');dialog.querySelectorAll('button').forEach(b=>{b.disabled=true});status('Saving directly to database…');try{snap=await write(cmd);draw();const saved=byId(snap.payload,cmd.id);status('Database verified · '+saved.orderNo+(saved.workNo?' · '+saved.workNo+' CREATED':'')+(!saved.groupSentAt?' · Group Pending':''));try{if(!cloudDirty)setTimeout(()=>cloudPoll(),0)}catch(_){}return true}catch(e){status(e.message);alert(e.message);return false}finally{busy=false;dialog.querySelectorAll('button').forEach(b=>{b.disabled=false})}}
 function fillCodes(){
  const sel=$('ocCode');sel.innerHTML='<option value="">Choose EFPPL code</option>'+A(window.CFM_EFPPL?.master).map(x=>'<option value="'+E(x.code)+'">'+E(x.code+' | '+x.description)+'</option>').join('');
 }
@@ -115,7 +115,7 @@ function mount(){
   if(kind==='group'&&!confirm('Confirm the order was actually sent to your WhatsApp group?'))return;
   if(kind==='po'){const x=prompt('Actual PO No.',r.poNo||'');if(x===null)return;cmd.poNo=x}
   if(kind==='cancel'){const x=prompt('Cancellation reason');if(x===null)return;cmd.reason=x}
-  if(kind==='convert'){if(!r.poNo&&!confirm('PO is awaited. Confirm authorised production without PO?'))return;const cloth=prompt('Verified cloth quality');if(cloth===null)return;const width=prompt('Verified roll width (inch)');if(width===null)return;cmd.cloth=cloth;cmd.width=Number(width);if(!confirm('Create one Work Order for '+r.orderNo+'?'))return}
+  if(kind==='convert'){if((!r.poNo||/^verb/i.test(T(r.poNo)))&&!confirm('Confirm authorised production with verbal / awaited PO?'))return;const cloth=prompt('Verified cloth quality');if(cloth===null)return;const width=prompt('Verified roll width (inch)');if(width===null)return;cmd.cloth=cloth;cmd.width=Number(width);if(!confirm('Create one Work Order for '+r.orderNo+'?'+(!r.groupSentAt?' Group Sent will remain pending.':'')))return;cmd.allowGroupPending=!r.groupSentAt}
   await run(cmd);
  };
  setInterval(()=>{if(d.open&&!busy&&!d.contains(document.activeElement))refresh()},20000);
