@@ -115,12 +115,20 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(p.orderInbox.length,1);
  assert.equal(f(p,{kind:'add',id:'test-1',record,actor:'tester'}).unchanged,true);
  assert.throws(()=>f(p,{kind:'add',id:'test-2',record,actor:'tester'}),/already exists/);
- assert.throws(()=>f(p,{kind:'convert',id:'test-1',expected:x.updatedAt,actor:'tester',cloth:'PP',width:64}),/Group Sent|group sent/);
+ assert.throws(()=>f(p,{kind:'convert',id:'test-1',expected:x.updatedAt,actor:'tester',cloth:'PP',width:64}),/group pending/);
  const y=f(p,{kind:'group',id:'test-1',expected:x.updatedAt,actor:'tester'}).record;
  const z=f(p,{kind:'convert',id:'test-1',expected:y.updatedAt,actor:'tester',cloth:'PP',width:64}).record;
  assert.equal(z.workNo,'CFM-101');assert.equal(p.pending[1].orderInboxId,'test-1');
  assert.equal(f(p,{kind:'convert',id:'test-1',expected:y.updatedAt,actor:'tester',cloth:'PP',width:64}).unchanged,true);
  assert.equal(p.pending.length,2);assert.equal(p.store.length,1);assert.equal(p.cutting.length,1);
+ const x2=f(p,{kind:'add',id:'test-3',record:{...record,party:'SAMPLE 2'},actor:'tester'}).record;
+ const z2=f(p,{kind:'convert',id:'test-3',expected:x2.updatedAt,actor:'tester',cloth:'PP',width:64,allowGroupPending:true}).record;
+ assert.equal(z2.workNo,'CFM-102');assert.equal(Boolean(z2.groupSentAt),false);
+ assert.equal(z2.history.at(-1).action,'WORK ORDER CREATED — GROUP PENDING');
+ assert.equal(f(p,{kind:'convert',id:'test-3',expected:x2.updatedAt,actor:'tester',cloth:'PP',width:64,allowGroupPending:true}).unchanged,true);
+ const g2=f(p,{kind:'group',id:'test-3',expected:z2.updatedAt,actor:'tester'}).record;
+ assert.equal(Boolean(g2.groupSentAt),true);assert.equal(g2.workNo,'CFM-102');assert.equal(p.pending.length,3);
+
  ok(true,'Order Inbox deduplicates entries and converts exactly once without changing stock/cutting');
 }
 
