@@ -248,3 +248,20 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(JSON.stringify(payload),before);
  ok(true,'All report print separates actual and review entries, supports undated rows and is read-only');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ runInNewContext(read('cfm-order-control-v443.js'),{window,document,setInterval:()=>1,clearInterval(){}});
+ const {transition:f,candidates}=window.CFM_ORDER_CONTROL_V443;
+ const r={id:'r',orderNo:'ORD-1',party:'SAMPLE',itemCode:'EFPPL-2001-CF-48-ORD',description:'CF Bag 48 Ordinary',specification:'5 micron',qty:5,orderDate:'2026-11-27',deliveryDate:'2026-11-30',updatedAt:'v1',poNo:'Verble'};
+ const w={workNo:'CFM-792',party:'Sample',itemCode:r.itemCode,description:'CF BAG 48 ordinary 5micron',orderQty:5,orderDate:'2026-11-26',deliveryDate:r.deliveryDate,poNo:'Very',status:'PENDING',cloth:'333PL',width:50};
+ const p={orderInbox:[r],pending:[w],store:[{id:'s'}],cutting:[{id:'c'}]};
+ assert.equal(candidates(p,r).length,1);
+ assert.throws(()=>f(p,{kind:'convert',id:'r',expected:'v1',actor:'test',cloth:'333PL',width:50,allowGroupPending:true}),/Matching existing/);
+ assert.throws(()=>f(p,{kind:'link',id:'r',workNo:'CFM-792',expected:'v1',actor:'test'}),/not confirmed/);
+ const x=f(p,{kind:'link',id:'r',workNo:'CFM-792',expected:'v1',actor:'test',confirmed:true}).record;
+ assert.equal(x.workNo,'CFM-792');assert.equal(w.orderInboxId,'r');assert.equal(p.pending.length,1);assert.equal(Boolean(x.groupSentAt),false);
+ assert.equal(f(p,{kind:'link',id:'r',workNo:'CFM-792',expected:'v1',actor:'test',confirmed:true}).unchanged,true);
+ assert.equal(p.store.length,1);assert.equal(p.cutting.length,1);assert.equal(w.poNo,'Very');
+ ok(true,'Existing WO candidate requires confirmation, links exactly once and preserves production/group details');
+}
