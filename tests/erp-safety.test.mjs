@@ -62,7 +62,7 @@ ok(daily.includes("payload.departmentWork=original.map(copy).concat(copy(record)
 ok(daily.includes("for(const key of Object.keys(before.payload))"),'Other Cloud families preserved');
 ok(daily.includes("version=eq."),'Cloud compare-and-swap remains mandatory');
 ok(daily.includes('const verified=await cloudFetch()'),'Daily Work Cloud receipt is checked');
-has('index.html','cfm-daily-person-safe-cloud-v424.js?v=425');
+has('index.html','cfm-daily-person-safe-cloud-v424.js?v=456');
 
 // V425 targeted Daily Work has an independent verified Cloud receipt and protected mobile recovery.
 ok(daily.includes("pending.set(entry.cfmDailyEntryId,copy(entry))"),'Every Daily Work save enters the targeted Cloud queue');
@@ -278,4 +278,23 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(r.deliveredMaterial,undefined);
  assert.equal(p.store.length,1);assert.equal(p.cutting.length,1);
  ok(true,'Simple original form validates live quantities and preserves dispatch and stock');
+}
+
+{
+ const initial={version:10,payload:{pending:[{workNo:'CFM-TEST'}],store:[{srlNo:'S'}],cutting:[{id:'C'}],departmentWork:[]}};
+ let live=JSON.parse(JSON.stringify(initial)),writes=0;
+ const window={addEventListener(){}},document={addEventListener(){},getElementById(){return null}};
+ const ctx={window,document,setTimeout:()=>1,clearTimeout(){},cloudBusy:false,CLOUD_URL:'https://example.invalid',cloudHeaders:()=>({}),validState:()=>true,cloudFetch:async()=>JSON.parse(JSON.stringify(live)),AbortController,fetch:async(url,opts)=>{
+  assert.equal(opts.headers['x-cfm-base-version'],String(live.version));writes++;
+  live=JSON.parse(opts.body);live.payload.departmentWork=live.payload.departmentWork.map(r=>Object.fromEntries(Object.entries(r).reverse()));
+  return {ok:true,json:async()=>[live]};
+ }};
+ runInNewContext(read('cfm-daily-person-safe-cloud-v424.js'),ctx);
+ const record={cfmDailyEntryId:'CFM-DW-TEST-1234567890',reportOnly:true,person:'Tester',description:'Cutting',workNo:'CFM-TEST',doneQty:1};
+ assert.equal(await window.CFM_DAILY_V456.appendOnly(record),11);
+ assert.equal(await window.CFM_DAILY_V456.appendOnly(record),11);
+ assert.equal(writes,1);assert.equal(live.payload.departmentWork.length,1);assert.equal(ctx.cloudBusy,false);
+ assert.equal(JSON.stringify(live.payload.store),JSON.stringify(initial.payload.store));
+ assert.equal(JSON.stringify(live.payload.cutting),JSON.stringify(initial.payload.cutting));
+ ok(true,'Daily Work direct append verifies reordered JSON, locks shared save and deduplicates retries');
 }
