@@ -7,6 +7,9 @@ const signature=r=>JSON.stringify([N(r.party),N(r.poNo),N(r.description),N(r.spe
 const list=p=>A(p.orderInbox),byId=(p,id)=>list(p).find(x=>x.id===id);
 const same=(a,b)=>signature(a)===signature(b);
 const event=(r,action,actor)=>({...r,updatedAt:new Date().toISOString(),history:[...A(r.history),{action,actor,at:new Date().toISOString()}]});
+function candidates(p,r){
+ return A(p.pending).filter(w=>!w.archived&&!['ARCHIVED','CANCELLED','CANCELED'].includes(N(w.status))&&!w.orderInboxId&&!list(p).some(x=>x.workNo&&N(x.workNo)===N(w.workNo))&&N(w.party)===N(r.party)&&N(w.itemCode)===N(r.itemCode)&&!!T(r.itemCode)&&Number(w.orderQty)===Number(r.qty)&&((T(w.deliveryDate)&&T(w.deliveryDate)===T(r.deliveryDate))||(T(w.orderDate)&&T(w.orderDate)===T(r.orderDate))));
+}
 function transition(p,cmd){
  const rows=list(p),current=byId(p,cmd.id),actor=T(cmd.actor);
  if(!actor)throw Error('Enter your name.');
@@ -21,7 +24,8 @@ function transition(p,cmd){
  if(!current)throw Error('Order no longer found.');
  if(current.cancelledAt)throw Error('Order already cancelled.');
  if(cmd.kind==='group'&&current.groupSentAt)return {record:current,unchanged:true};
- if(cmd.kind==='convert'&&current.workNo){
+ if(['convert','link'].includes(cmd.kind)&&current.workNo){
+  if(cmd.kind==='link'&&N(current.workNo)!==N(cmd.workNo))throw Error('Order is already linked to another Work Order.');
   if(A(p.pending).some(w=>w.workNo===current.workNo&&w.orderInboxId===current.id))return {record:current,unchanged:true};
   throw Error('Existing Work Order link needs review. No second Work Order created.');
  }
@@ -37,7 +41,13 @@ function transition(p,cmd){
   if(current.workNo)throw Error('Work Order exists. Cannot cancel from inbox.');
   if(!T(cmd.reason))throw Error('Cancellation reason required.');
   record=event({...current,cancelledAt:new Date().toISOString(),cancelReason:T(cmd.reason)},'CANCELLED',actor);
+ }else if(cmd.kind==='link'){
+  const matches=candidates(p,current).filter(w=>N(w.workNo)===N(cmd.workNo));
+  if(matches.length!==1||cmd.confirmed!==true)throw Error('Existing Work Order changed or not confirmed. Refresh and review.');
+  const w=matches[0];w.orderInboxId=current.id;
+  record=event({...current,workNo:w.workNo,workLinkedAt:new Date().toISOString()},'EXISTING WORK ORDER LINKED',actor);
  }else if(cmd.kind==='convert'){
+  if(candidates(p,current).length)throw Error('Matching existing Work Order found. Review and link it instead of creating a duplicate.');
   if(!current.groupSentAt&&cmd.allowGroupPending!==true)throw Error('Confirm direct creation while group pending.');
   if(!T(cmd.cloth)||!Number.isFinite(cmd.width)||cmd.width<=0)throw Error('Verified cloth and width required.');
   if(!T(current.itemCode))throw Error('Product code is missing. Review product master first.');
@@ -62,7 +72,7 @@ async function write(cmd){
    try{const res=await fetch(CLOUD_URL+'/rest/v1/cfm_shared_state?id=eq.main&version=eq.'+base,{method:'PATCH',signal:ctrl.signal,headers:{...cloudHeaders(),Prefer:'return=representation','x-cfm-base-version':String(base)},body:JSON.stringify({payload,version:base+1,updated_at:new Date().toISOString()})});if(!res.ok)throw Error('HTTP '+res.status);ack=await res.json()}catch(e){error=e}finally{clearTimeout(timer)}
    const verified=await cloudFetch(),found=byId(verified?.payload,cmd.id);
    if(found&&found.updatedAt===out.record.updatedAt&&signature(found)===signature(out.record)&&found.workNo===out.record.workNo){
-    if(cmd.kind!=='convert'||A(verified.payload.pending).some(w=>w.workNo===found.workNo&&w.orderInboxId===found.id))return verified;
+    if(!['convert','link'].includes(cmd.kind)||A(verified.payload.pending).some(w=>w.workNo===found.workNo&&w.orderInboxId===found.id))return verified;
    }
    if(error)throw Error('Save not confirmed. Retry the same action to verify. '+error.message);
    if(A(ack).length===0)continue;
@@ -84,13 +94,15 @@ function draw(){
  $('ocMetrics').innerHTML=metrics.map(([k,v])=>'<div><small>'+k+'</small><b>'+v+'</b></div>').join('');
  $('ocCompanies').innerHTML=[...new Set(A(snap.payload.pending).map(r=>T(r.party)).filter(Boolean))].sort().map(x=>'<option value="'+E(x)+'"></option>').join('');
  $('ocRows').innerHTML=rows.slice().reverse().filter(r=>!q||N([r.orderNo,r.party,r.poNo,r.description,r.workNo].join(' ')).includes(q)).filter(r=>filter==='ALL'||filter==='GROUP'&&!r.cancelledAt&&!r.groupSentAt||filter==='PO'&&!r.cancelledAt&&!r.poNo||filter==='WO'&&!r.cancelledAt&&!r.workNo||filter==='DONE'&&r.workNo||filter==='CANCEL'&&r.cancelledAt).map(r=>{
+  const matches=!r.workNo&&!r.cancelledAt?candidates(snap.payload,r):[];
+  const links=matches.map(w=>'<div style="border:1px solid #b3c5d4;padding:8px;margin:6px 0;border-radius:6px"><b>Possible existing: '+E(w.workNo)+'</b><p>'+E(w.description)+' · '+E(w.description2||'')+'</p><small>PO: '+E(w.poNo||'AWAITED')+' · Order: '+E(w.orderDate||'')+' · Delivery: '+E(w.deliveryDate||'')+' · Qty: '+E(w.orderQty)+'</small><p><button type="button" data-act="link" data-id="'+E(r.id)+'" data-wo="'+E(w.workNo)+'">Confirm & Link '+E(w.workNo)+'</button></p></div>').join('');
   const btn=(action,label)=>'<button type="button" data-act="'+action+'" data-id="'+E(r.id)+'">'+label+'</button>';
-  return '<article><b>'+E(r.orderNo)+' · '+E(r.party)+'</b><p>'+E(r.description)+' · '+E(r.qty)+' Nos. · '+E(r.itemCode||'Code not selected')+'</p><p>PO: '+E(r.poNo||'AWAITED')+' · '+E(r.source)+' · '+E(r.priority)+'</p><small>'+E(r.receivedBy)+' · '+E(new Date(r.createdAt).toLocaleString('en-IN'))+'</small><p><strong>'+E(r.cancelledAt?'CANCELLED':(r.workNo?'WO CREATED · '+r.workNo:'WORK ORDER PENDING')+' · '+(r.groupSentAt?'GROUP SENT':'GROUP PENDING'))+'</strong></p><div class="ocActions">'+(r.cancelledAt?'':btn('share','Copy / Share')+(!r.groupSentAt?btn('group','Confirm Group Sent'):'')+(!r.workNo?btn('convert','Create Work Order')+btn('po','Update PO')+btn('cancel','Cancel Order'):''))+(r.cancelledAt?'':btn('repeat','Repeat order'))+btn('history','History')+'</div></article>';
+  return '<article><b>'+E(r.orderNo)+' · '+E(r.party)+'</b><p>'+E(r.description)+' · '+E(r.qty)+' Nos. · '+E(r.itemCode||'Code not selected')+'</p><p>PO: '+E(r.poNo||'AWAITED')+' · '+E(r.source)+' · '+E(r.priority)+'</p><small>'+E(r.receivedBy)+' · '+E(new Date(r.createdAt).toLocaleString('en-IN'))+'</small><p><strong>'+E(r.cancelledAt?'CANCELLED':(r.workNo?'WO CREATED · '+r.workNo:'WORK ORDER PENDING')+' · '+(r.groupSentAt?'GROUP SENT':'GROUP PENDING'))+'</strong></p><div class="ocActions">'+(r.cancelledAt?'':btn('share','Copy / Share')+(!r.groupSentAt?btn('group','Confirm Group Sent'):'')+(!r.workNo?(matches.length?'':btn('convert','Create Work Order'))+btn('po','Update PO')+btn('cancel','Cancel Order'):''))+(r.cancelledAt?'':btn('repeat','Repeat order'))+btn('history','History')+'</div>'+links+'</article>';
  }).join('')||'<p>No matching orders.</p>';
  status('Live database · '+rows.length+' received order records · Group, PO and WO counts overlap.');
 }
 async function refresh(){if(busy)return;try{snap=await cloudFetch();if(!snap||!validState(snap.payload))throw Error('Invalid database response');draw()}catch(e){status('Live read failed: '+e.message)}}
-async function run(cmd){if(busy)return false;busy=true;const dialog=$('ocDialog');dialog.querySelectorAll('button').forEach(b=>{b.disabled=true});status('Saving directly to database…');try{snap=await write(cmd);draw();const saved=byId(snap.payload,cmd.id);status('Database verified · '+saved.orderNo+(saved.workNo?' · '+saved.workNo+' CREATED':'')+(!saved.groupSentAt?' · Group Pending':''));try{if(!cloudDirty)setTimeout(()=>cloudPoll(),0)}catch(_){}return true}catch(e){status(e.message);alert(e.message);return false}finally{busy=false;dialog.querySelectorAll('button').forEach(b=>{b.disabled=false})}}
+async function run(cmd){if(busy)return false;busy=true;const dialog=$('ocDialog');dialog.querySelectorAll('button').forEach(b=>{b.disabled=true});status('Saving directly to database…');try{snap=await write(cmd);draw();const saved=byId(snap.payload,cmd.id);status('Database verified · '+saved.orderNo+(saved.workNo?' · '+saved.workNo+(cmd.kind==='link'?' LINKED':' CREATED'):'')+(!saved.groupSentAt?' · Group Pending':''));try{if(!cloudDirty)setTimeout(()=>cloudPoll(),0)}catch(_){}return true}catch(e){status(e.message);alert(e.message);return false}finally{busy=false;dialog.querySelectorAll('button').forEach(b=>{b.disabled=false})}}
 function fillCodes(){
  const sel=$('ocCode');sel.innerHTML='<option value="">Choose EFPPL code</option>'+A(window.CFM_EFPPL?.master).map(x=>'<option value="'+E(x.code)+'">'+E(x.code+' | '+x.description)+'</option>').join('');
 }
@@ -115,12 +127,13 @@ function mount(){
   if(kind==='group'&&!confirm('Confirm the order was actually sent to your WhatsApp group?'))return;
   if(kind==='po'){const x=prompt('Actual PO No.',r.poNo||'');if(x===null)return;cmd.poNo=x}
   if(kind==='cancel'){const x=prompt('Cancellation reason');if(x===null)return;cmd.reason=x}
+  if(kind==='link'){const w=candidates(snap.payload,r).find(w=>N(w.workNo)===N(b.dataset.wo));if(!w){alert('Refresh and review the existing Work Order.');return}if(!cmd.actor){alert('Enter Entry / action by (name) at top.');$('ocActor').focus();return}if(!confirm('Link '+r.orderNo+' to existing '+w.workNo+'? Verify product, specification, quantity and PO/dates. No new Work Order or stock change.'))return;cmd.workNo=w.workNo;cmd.confirmed=true}
   if(kind==='convert'){if((!r.poNo||/^verb/i.test(T(r.poNo)))&&!confirm('Confirm authorised production with verbal / awaited PO?'))return;const cloth=prompt('Verified cloth quality');if(cloth===null)return;const width=prompt('Verified roll width (inch)');if(width===null)return;cmd.cloth=cloth;cmd.width=Number(width);if(!confirm('Create one Work Order for '+r.orderNo+'?'+(!r.groupSentAt?' Group Sent will remain pending.':'')))return;cmd.allowGroupPending=!r.groupSentAt}
   await run(cmd);
  };
  setInterval(()=>{if(d.open&&!busy&&!d.contains(document.activeElement))refresh()},20000);
 }
-window.CFM_ORDER_CONTROL_V443={transition,signature,message,mount};
+window.CFM_ORDER_CONTROL_V443={transition,signature,message,mount,candidates};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
 let attempts=0;const timer=setInterval(()=>{mount();if($('ocOpen')||++attempts>100)clearInterval(timer)},500);
 })();
