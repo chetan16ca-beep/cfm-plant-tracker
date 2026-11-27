@@ -232,11 +232,11 @@ window.selectBillRequestWork=function(i){
   $('billRequestType').value='BILL';updateBillRequestPreview();el?.scrollIntoView({behavior:'smooth',block:'center'})
 }
 // All accounts requests use the quantity ledger before sharing.
-window.copyBillRequest=async function(){return window.markBillRequested()};
-window.shareBillRequest=async function(){return window.markBillRequested()};
+window.copyBillRequest=async function(){if(window.CFM_ADV_BILL_V444?.simpleAction)return window.CFM_ADV_BILL_V444.simpleAction('copy');alert('Request module loading. Refresh ERP.')};
+window.shareBillRequest=async function(){if(window.CFM_ADV_BILL_V444?.simpleAction)return window.CFM_ADV_BILL_V444.simpleAction('share');alert('Request module loading. Refresh ERP.')};
 window.markBillRequested=function(){
   if(typeof window.CFM_ADV_BILL_V444?.open==='function')return window.CFM_ADV_BILL_V444.open();
-  alert('Advanced request module not loaded. Refresh ERP. No delivery or billing status changed.');
+  alert('Request module not loaded. Refresh ERP. No delivery or billing status changed.');
 }
 function docsUpdateText(rows=null){
   const list=(rows||state.pending.filter(docsActionRequired)).slice().sort(workSort);
