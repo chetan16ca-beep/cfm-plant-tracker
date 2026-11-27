@@ -265,3 +265,17 @@ ok(daily.includes("JSON.stringify(cloudStatePayload())===JSON.stringify(verified
  assert.equal(p.store.length,1);assert.equal(p.cutting.length,1);assert.equal(w.poNo,'Very');
  ok(true,'Existing WO candidate requires confirmation, links exactly once and preserves production/group details');
 }
+
+{
+ const window={},document={readyState:'loading',addEventListener(){},getElementById(){return null}};
+ for(const file of ['sync/bill-dispatch-ledger.js','cfm-advanced-bill-request-v444.js'])runInNewContext(read(file),{window,document,setInterval:()=>1,clearInterval(){}});
+ const f=window.CFM_ADV_BILL_V444,r={workNo:'CFM-TEST',party:'SAMPLE',poNo:'P1',description:'Cloth',orderQty:12},p={pending:[r],packingSlips:[],store:[{id:'s'}],cutting:[{id:'c'}]};
+ const items=f.simpleItems(p,[r],'BILL',()=>4);
+ f.transition(p,{id:'simple',type:'BILL',actor:'test',items});
+ assert.equal(f.simpleItems(p,[r],'BILL',()=>8)[0].requestBalance,0);
+ assert.throws(()=>f.simpleItems(p,[r],'BILL',()=>9),/request balance/);
+ assert.throws(()=>f.simpleItems(p,[{...r,orderQty:13}],'BILL',()=>1),/changed/);
+ assert.equal(r.deliveredMaterial,undefined);
+ assert.equal(p.store.length,1);assert.equal(p.cutting.length,1);
+ ok(true,'Simple original form validates live quantities and preserves dispatch and stock');
+}

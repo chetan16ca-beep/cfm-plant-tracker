@@ -80,20 +80,70 @@ function draw(){
 }
 async function refresh(){if(busy)return;try{snap=await cloudFetch();if(!snap||!validState(snap.payload))throw Error('Invalid database snapshot');$('abrParties').innerHTML=[...new Set(A(snap.payload.pending).map(r=>T(r.party)).filter(Boolean))].sort().map(x=>'<option value="'+E(x)+'"></option>').join('');draw();msg('Live database · actual dispatch is based on confirmed packing records.')}catch(e){msg(e.message)}}
 async function share(req){const t=format(req);try{if(navigator.share){await navigator.share({text:t});return}await navigator.clipboard.writeText(t);msg('Copied request. Send to Accounts.')}catch(e){if(e.name!=='AbortError')prompt('Copy request:',t)}}
-function mount(){
- if($('abrOpen'))return;const anchor=$('billRequestPreview');if(!anchor)return;
- const b=document.createElement('button');b.id='abrOpen';b.type='button';b.textContent='ADVANCED BILL / CHALLAN REQUEST · Partial Qty';b.style.cssText='width:100%;padding:12px;border:0;border-radius:8px;background:#174b75;color:white;font-weight:800;margin:8px 0';anchor.before(b);
- const d=document.createElement('dialog');d.id='abrDialog';d.style.cssText='width:min(98vw,960px);max-height:94dvh;overflow:auto;background:white;color:#17374d;border:1px solid #9bb4c5;border-radius:12px;padding:12px;font:14px Arial';d.innerHTML='<style>#abrDialog *{box-sizing:border-box}#abrDialog input:not([type=checkbox]),#abrDialog select,#abrDialog textarea{max-width:100%;padding:8px;border:1px solid #aabdc9;border-radius:6px;background:white;color:#17374d;font-size:16px}#abrDialog button{padding:9px;border:1px solid #a9becf;border-radius:6px;background:#f0f7fc;color:#174b75;font-weight:700}#abrDialog article{border:1px solid #c1d3df;border-radius:7px;padding:8px;margin:7px 0}#abrDialog small{display:block;color:#4d6474}#abrDialog p{margin:5px 0}#abrDialog .abrGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:6px 0}#abrDialog .abrGrid div{border:1px solid #cbd9e2;padding:6px}#abrDialog .abrGrid b{font-size:18px}#abrDialog [data-qty]{width:90px}#abrPreview{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f9fb;border:1px solid #c5d4df;padding:10px;font:13px/1.4 Arial}</style><div style="display:flex;justify-content:space-between"><h2 style="margin:0">Bill / Challan Control</h2><button id="abrClose">Close</button></div><p>Request is not a bill or dispatch confirmation.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><label>Type <select id="abrType"><option>BILL</option><option>CHALLAN</option><option>BOTH</option></select></label><label>Company <input id="abrParty" list="abrParties" placeholder="All companies"></label><datalist id="abrParties"></datalist><label>Search <input id="abrSearch" placeholder="WO / PO / product"></label><label>List <select id="abrFilter"><option value="REQUEST">Request pending</option><option value="DISPATCH">Dispatch pending</option><option value="REVIEW">Review legacy</option><option value="ALL">All</option></select></label><button id="abrRefresh">Refresh</button></div><p id="abrMetrics"></p><div id="abrRows" style="max-height:40dvh;overflow:auto"></div><label>Requested by <input id="abrActor"></label> <label>Remark <input id="abrRemark"></label><pre id="abrPreview"></pre><button id="abrSave">Save Request · Direct Database</button> <button id="abrShare" disabled>Copy / Share Saved Request</button><p id="abrStatus" role="status"></p><details><summary>Saved Request History</summary><div id="abrHistory"></div></details>';document.body.append(d);
- const reset=()=>{if(attempt){msg('Unverified save: retry original request first.');return false}selected.clear();saved=null;$('abrShare').disabled=true;return true};
- function open(){if(!d.open)d.showModal();const co=$('billRequestCompany')?.value;if(co&&!attempt)$('abrParty').value=co;refresh()}
- b.onclick=open;window.CFM_ADV_BILL_V444.open=open;
- $('abrClose').onclick=()=>{if(!busy)d.close()};d.addEventListener('cancel',e=>{if(busy)e.preventDefault()});
- $('abrRefresh').onclick=refresh;$('abrType').onchange=()=>{if(reset())draw();else $('abrType').value=attempt.type};$('abrParty').onchange=()=>{if(reset())draw()};$('abrSearch').oninput=draw;$('abrFilter').onchange=draw;$('abrRemark').oninput=preview;
- $('abrRows').onchange=e=>{if(attempt){draw();return}const el=e.target;if(el.dataset.pick){const id=el.dataset.pick;if(el.checked)selected.set(id,'');else selected.delete(id);saved=null;$('abrShare').disabled=true;draw()}else if(el.dataset.qty){selected.set(el.dataset.qty,el.value);preview()}};
- $('abrRows').oninput=e=>{if(e.target.dataset.qty&&!attempt){selected.set(e.target.dataset.qty,e.target.value);preview()}};
- $('abrSave').onclick=async()=>{if(busy)return;try{if(!attempt){const req=makeReq();if(!req.actor)throw Error('Enter requested by name');if(!confirm('Save quantity request? This does NOT confirm shipment or issue invoice.'))return;attempt=req}busy=true;$('abrSave').disabled=true;msg('Saving directly to database…');snap=await commit(attempt);saved=A(snap.payload.accountsQtyRequests).find(x=>x.id===attempt.id);attempt=null;selected.clear();draw();$('abrPreview').textContent=format(saved);$('abrShare').disabled=false;msg('Database verified · '+saved.requestNo);try{if(!cloudDirty)setTimeout(()=>cloudPoll(),0)}catch(_){}}catch(e){msg(e.message);alert(e.message)}finally{busy=false;$('abrSave').disabled=false}};
- $('abrShare').onclick=()=>{if(saved)share(saved)};$('abrHistory').onclick=e=>{const id=e.target.dataset.copy,r=A(snap?.payload.accountsQtyRequests).find(x=>x.id===id);if(r)share(r)};
+/* V455: retain verified request ledger behind the original form; no advanced dialog. */
+let simpleBusy=false,simpleAttempt=null,lastSimple=null;
+function simpleItems(p,rows,type,qtyFor){
+ const seen=new Set();
+ return rows.map(local=>{
+  const id=N(local.workNo),matches=A(p.pending).filter(w=>N(w.workNo)===id);
+  if(seen.has(id)||matches.length!==1)throw Error('Work Order missing or duplicated. Refresh.');
+  seen.add(id);const r=matches[0];
+  if(identity(r)!==identity(local)||r.archived||['ARCHIVED','CANCELLED','CANCELED'].includes(N(r.status)))throw Error(r.workNo+' changed. Refresh ERP.');
+  const s=summary(p,r,type),raw=T(qtyFor(local)),q=Number(raw);
+  if(s.legacy)throw Error(r.workNo+' has older request history without a recorded quantity. Review before sending a new request.');
+  if(!raw||!Number.isSafeInteger(q)||q<1||q>s.remaining)throw Error(r.workNo+' request balance '+s.remaining+' Nos. Enter valid quantity.');
+  return {identity:identity(r),workNo:r.workNo,party:r.party,poNo:r.poNo||'',poDate:r.poDate||r.purchaseOrderDate||'',code:productCode(r),description:r.description,specification:r.description2||r.specification||'',orderQty:s.order,qty:q,requestBalance:s.remaining-q,previousBill:s.bill,previousChallan:s.challan,actualDispatch:s.actual,dispatchPending:s.dispatchPending};
+ });
 }
-window.CFM_ADV_BILL_V444={summary,transition,format,mount};
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();let n=0;const timer=setInterval(()=>{mount();if($('abrOpen')||++n>120)clearInterval(timer)},500);
+function simpleFormat(req){
+ const rows=req.items.map(x=>({workNo:x.workNo,party:x.party,poNo:x.poNo,poDate:x.poDate,description:x.description,description2:x.specification,orderQty:x.orderQty,qty:x.qty,code:x.code}));
+ return cfmBillRequestFormat442(rows,req.type,req.remark||'',String(req.createdAt||'').slice(0,10),r=>r.qty,r=>r.code);
+}
+const simpleStatus=t=>{$('abrStatus').textContent=t};
+async function simpleShare(req,mode){
+ const text=simpleFormat(req);
+ if(mode==='save')return;
+ if(mode==='share'){
+  try{if(navigator.share){await navigator.share({text});return}}catch(e){if(e.name==='AbortError'){simpleStatus('Request saved. Share cancelled; use saved history to send again.');return}}
+ }
+ try{await navigator.clipboard.writeText(text);simpleStatus('Saved '+req.requestNo+' · copied. Paste into Accounts group.')}catch(_){prompt('Copy saved request:',text)}
+}
+function showHistory(p){
+ const box=$('abrHistory');if(!box)return;
+ box.innerHTML=A(p.accountsQtyRequests).slice().reverse().map(r=>'<p><b>'+E(r.requestNo)+' · '+E(r.type)+'</b> · '+E(A(r.items).map(i=>i.workNo+' / '+i.qty+' Nos.').join(', '))+' <button type="button" data-simple-copy="'+E(r.id)+'">Copy</button> <button type="button" data-simple-share="'+E(r.id)+'">Share</button></p>').join('')||'No saved quantity requests.';
+}
+async function simpleAction(mode){
+ if(simpleBusy)return;
+ const actor=T($('abrActor').value),rows=selectedBillRequests(),type=$('billRequestType')?.value||'BILL',remark=T($('billRequestRemark')?.value);
+ const sig=JSON.stringify([type,remark,rows.map(r=>[identity(r),T(cfmBillQtyValue442(r))])]);
+ if(lastSimple?.sig===sig&&!simpleAttempt){await simpleShare(lastSimple.record,mode);simpleStatus('Already saved · '+lastSimple.record.requestNo+' · use New Request for another quantity.');return}
+ if(!simpleAttempt&&(!actor||!rows.length)){simpleStatus(!actor?'Enter Requested By.':'Select Company and Work Order.');if(!actor)$('abrActor').focus();return}
+ simpleBusy=true;
+ try{
+  if(!simpleAttempt){
+   simpleStatus('Checking live request balance…');const fresh=await cloudFetch();if(!fresh||!validState(fresh.payload))throw Error('Database unavailable.');
+   const items=simpleItems(fresh.payload,rows,type,cfmBillQtyValue442);
+   if(!confirm('Save '+type+' request for '+items.reduce((a,r)=>a+r.qty,0)+' Nos.? This does not mark material dispatched.')){simpleStatus('Cancelled. No changes.');return}
+   simpleAttempt={sig,req:{id:ID(),type,actor,remark,items}};
+  }
+  simpleStatus('Saving request…');const live=await commit(simpleAttempt.req);
+  const rec=A(live.payload.accountsQtyRequests).find(r=>r.id===simpleAttempt.req.id);if(!rec)throw Error('Receipt not verified.');
+  lastSimple={sig:simpleAttempt.sig,record:rec};simpleAttempt=null;showHistory(live.payload);snap=live;
+  simpleStatus('SAVED · '+rec.requestNo);try{if(!cloudDirty)setTimeout(()=>cloudPoll(),0)}catch(_){}
+  await simpleShare(rec,mode);
+ }catch(e){simpleStatus('NOT CONFIRMED · '+e.message);alert(e.message)}finally{simpleBusy=false}
+}
+function mount(){
+ const anchor=$('billRequestPreview');if(!anchor||$('abrStatus'))return;
+ const panel=document.createElement('div');panel.style.cssText='margin:8px 0;padding:8px;border:1px solid #c0d3e2;border-radius:8px';
+ panel.innerHTML='<label>Requested By <input id="abrActor" autocomplete="name" placeholder="Name"></label><p id="abrStatus" role="status" aria-live="polite">Select Work Order and quantity, then use existing Copy / WhatsApp / Save buttons.</p><button id="abrNew" type="button">New Request</button> <details><summary>Saved Request History</summary><button id="abrHistoryRefresh" type="button">Load / Refresh History</button><div id="abrHistory"></div></details>';
+ anchor.before(panel);
+ $('abrNew').onclick=()=>{if(simpleBusy||simpleAttempt){simpleStatus('Resolve the unverified save first.');return}lastSimple=null;simpleStatus('New request ready. Verify quantity before saving.')};
+ $('abrHistoryRefresh').onclick=async()=>{try{const s=await cloudFetch();if(!s||!validState(s.payload))throw Error('Database unavailable');snap=s;showHistory(s.payload)}catch(e){simpleStatus(e.message)}};
+ $('abrHistory').onclick=e=>{const id=e.target.dataset.simpleCopy||e.target.dataset.simpleShare,r=A(snap?.payload.accountsQtyRequests).find(x=>x.id===id);if(r)simpleShare(r,e.target.dataset.simpleShare?'share':'copy')};
+ window.CFM_ADV_BILL_V444.open=()=>simpleAction('save');
+ window.CFM_ADV_BILL_V444.simpleAction=simpleAction;
+}
+window.CFM_ADV_BILL_V444={summary,transition,format,mount,simpleItems,simpleFormat};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();let n=0;const timer=setInterval(()=>{mount();if($('abrStatus')||++n>120)clearInterval(timer)},500);
 })();
