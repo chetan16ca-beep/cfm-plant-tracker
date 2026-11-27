@@ -7,6 +7,8 @@ const pending=new Map();
 let busy=false;
 const tag='CFM Daily Work';
 const copy=x=>JSON.parse(JSON.stringify(x));
+const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
+const same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
 const $=id=>document.getElementById(id);
 function notice(message,ok=false){
   let host=$('view-deptwork')||$('view-dashboard');
@@ -36,13 +38,15 @@ async function appendOnly(record){
   if(typeof cloudFetch!=='function'||typeof cloudHeaders!=='function'||!CLOUD_URL)
     throw Error('Cloud connection is not available');
   if(!eligible(record))throw Error('Entry is missing its safe Daily Work ID');
-  for(let attempt=0;attempt<3;attempt++){
+  if(cloudBusy)throw Error('Another database save is running. Retry shortly.');
+  cloudBusy=true;
+  try{for(let attempt=0;attempt<3;attempt++){
     const before=await cloudFetch();
     if(!before||!validState(before.payload))throw Error('Cloud read failed; no changes made');
     const original=Array.isArray(before.payload.departmentWork)?before.payload.departmentWork:[];
     const existing=original.find(x=>x?.cfmDailyEntryId===record.cfmDailyEntryId);
     if(existing){
-      if(JSON.stringify(existing)!==JSON.stringify(record))
+      if(!same(existing,record))
         throw Error('This ID already exists with different details. No overwrite made');
       return Number(before.version);
     }
@@ -72,14 +76,14 @@ async function appendOnly(record){
     const verified=await cloudFetch();
     const accepted=(verified?.payload?.departmentWork||[])
       .find(x=>x?.cfmDailyEntryId===record.cfmDailyEntryId);
-    if(!accepted||JSON.stringify(accepted)!==JSON.stringify(record))
+    if(!accepted||!same(accepted,record))
       throw Error('Cloud receipt was not verified. Recheck before retrying');
     // V425: Never advance the shared full-snapshot version unless the phone's
     // entire uploadable state really equals the verified Cloud copy. Otherwise
     // an old phone could overwrite newer orders on its next normal sync.
     try{
       if(typeof cloudStatePayload==='function' && typeof cloudDirty!=='undefined' &&
-         !cloudDirty && JSON.stringify(cloudStatePayload())===JSON.stringify(verified.payload)){
+         !cloudDirty && same(cloudStatePayload(),verified.payload)){
         cloudVersion=Number(verified.version)||base+1;
         cloudUpdatedAt=verified.updated_at||'';
       }
@@ -87,6 +91,7 @@ async function appendOnly(record){
     return Number(verified.version);
   }
   throw Error('Other device updated Cloud during save. Retry safely');
+  }finally{cloudBusy=false}
 }
 async function flush(){
   if(busy)return;
@@ -114,6 +119,24 @@ async function flush(){
 // Independent Daily Work delivery also runs when normal full-state Sync is ready.
 // The normal full-state save may already be in progress; the append path checks
 // the current server first and will deduplicate by immutable entry ID.
+window.cfmSaveDailyPersonDirect456=async function(entry){
+ if(!eligible(entry))throw Error('Missing worker, activity or entry ID');
+ if(busy)throw Error('Daily Work save in progress. Retry shortly.');
+ busy=true;
+ try{
+  notice('Saving Daily Work directly to database…');
+  const version=await appendOnly(entry);
+  pending.delete(entry.cfmDailyEntryId);
+  if(!state.departmentWork.some(r=>r.cfmDailyEntryId===entry.cfmDailyEntryId))state.departmentWork.push(copy(entry));
+  try{safeStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(_){}
+  notice('✓ DAILY WORK SAVED · Database verified v'+version,true);
+  try{toast('Daily Work SAVED · Database verified')}catch(_){}
+  try{if(!cloudDirty)setTimeout(()=>cloudPoll(),0)}catch(_){}
+  return true;
+ }catch(e){notice('Daily Work not confirmed: '+String(e.message||e)+'. Retry the same form.');throw e}
+ finally{busy=false}
+};
+window.CFM_DAILY_V456={same,appendOnly};
 window.cfmSafeDailyPersonCloudSave=function(entry){
   if(!eligible(entry)){notice('Daily Work cannot sync: missing worker, activity or entry ID');return}
   pending.set(entry.cfmDailyEntryId,copy(entry));
@@ -152,7 +175,7 @@ async function recoverLocalDailyWork(){
       if(!eligible(record))continue;
       const server=byId.get(record.cfmDailyEntryId);
       if(!server){pending.set(record.cfmDailyEntryId,copy(record));changed++}
-      else if(JSON.stringify(server)!==JSON.stringify(record))conflicts++;
+      else if(!same(server,record))conflicts++;
     }
     if(conflicts)notice('⚠️ '+conflicts+' Daily Work edits differ between phone and Cloud. Nothing was overwritten; review before editing again.');
     if(changed)void flush();
