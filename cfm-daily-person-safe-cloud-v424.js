@@ -83,7 +83,7 @@ async function appendOnly(record){
     // an old phone could overwrite newer orders on its next normal sync.
     try{
       if(typeof cloudStatePayload==='function' && typeof cloudDirty!=='undefined' &&
-         !cloudDirty && same(cloudStatePayload(),verified.payload)){
+         !cloudDirty && JSON.stringify(cloudStatePayload())===JSON.stringify(verified.payload)){
         cloudVersion=Number(verified.version)||base+1;
         cloudUpdatedAt=verified.updated_at||'';
       }
