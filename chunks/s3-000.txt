@@ -457,7 +457,8 @@ window.openDeptWorkForm=function(i=null){
     field('remark','Remark',r.remark||'','textarea',true)+
     field('supervisor','Supervisor',r.supervisor||'')+
     field('shift','Shift',r.shift||'GENERAL','text',false,['GENERAL','SHIFT 1','SHIFT 2','NIGHT']);
-  openDialog(i==null?'Add Person Work Entry':'Edit Person Work Entry',html,o=>{
+  let directDraft=null;
+  openDialog(i==null?'Add Person Work Entry':'Edit Person Work Entry',html,async o=>{
     let person=String(o.person||'').trim();
     if(person==='__NEW_PERSON__'){
       person=String(o.newPerson||'').trim();
@@ -474,8 +475,8 @@ window.openDeptWorkForm=function(i=null){
       person,
       workNo:o.workNo||'',
       party:o.party||linked?.party||'',
-      description:o.description||'',
-      description2:o.description2||'',
+      description:o.description||linked?.description||'',
+      description2:o.description2||linked?.description2||'',
       givenQty:o.givenQty===''?'':num(o.givenQty),
       doneQty:o.doneQty===''?'':num(o.doneQty),
       remark:o.remark||'',
@@ -496,7 +497,18 @@ window.openDeptWorkForm=function(i=null){
     /* Department daily entry stays open even when legacy/previous-process totals differ.
        Order / Already Done / Balance remain visible for operator reference. */
     const isNewEntry=i==null;
-    if(isNewEntry)state.departmentWork.push(rec);else state.departmentWork[i]=rec;
+    if(isNewEntry){
+      if(typeof window.cfmSaveDailyPersonDirect456!=='function'){alert('Daily Work module not loaded. Reopen ERP online.');return false}
+      const signature=JSON.stringify([rec.date,rec.person,rec.process,rec.workNo,rec.party,rec.description,rec.description2,rec.givenQty,rec.doneQty,rec.remark,rec.supervisor,rec.shift]);
+      if(directDraft&&directDraft.signature!==signature){alert('Previous save is unverified. Retry the same details before changing this entry.');return false}
+      if(!directDraft)directDraft={signature,record:rec};
+      try{await window.cfmSaveDailyPersonDirect456(directDraft.record);directDraft=null}
+      catch(e){alert('Daily Work not confirmed: '+String(e.message||e)+' — retry Save in this form.');return false}
+      if($('deptWorkDate'))$('deptWorkDate').value=rec.date;
+      if($('deptReportGroup'))$('deptReportGroup').value='ALL';
+      return true;
+    }
+    state.departmentWork[i]=rec;
     if($('deptWorkDate'))$('deptWorkDate').value=rec.date;
     if($('deptSupervisor')&&!$('deptSupervisor').value)$('deptSupervisor').value=rec.supervisor||'';
     if($('deptShift'))$('deptShift').value=rec.shift||'GENERAL';
@@ -837,12 +849,13 @@ function openDialog(title,html,onSave,resumeMeta=null){
     }
   },0);
 }
-$('saveFormBtn').addEventListener('click',()=>{
+$('saveFormBtn').addEventListener('click',async()=>{
   const btn=$('saveFormBtn');if(btn?.dataset.saving==='1')return;
   try{
     if(btn){btn.dataset.saving='1';btn.disabled=true;btn.textContent='Saving…'}
     const fd=new FormData($('editForm')),obj=Object.fromEntries(fd.entries());
-    const ok=editContext?.(obj);
+    const result=editContext?.(obj);
+    const ok=dialogResumeMeta?.type==='deptwork'?await result:result;
     if(ok!==false){
       const nextCutting=dialogResumeMeta?.type==='cutting' && dialogResumeMeta?.i==null;
       const priorCutting=nextCutting?{...obj}:null;
